@@ -4,27 +4,33 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-egui = "0.19.0"
-eframe = "0.19.0"
-egui_extras = { version = "0.19.0", features = ["image"] }
-image = { version = "0.24.4", features = ["png"] }
-num_cpus = "1.13.1"
-monero = "0.18.0"
-regex = "1.6.0"
-log = "0.4.17"
-env_logger = "0.9.1"
+dirs = "4.0.0"
 chrono = "0.4.22"
+eframe = "0.19.0"
+egui = "0.19.0"
+egui_extras = { version = "0.19.0", features = ["image"] }
+env_logger = "0.9.1"
+hex-literal = "0.3.4"
+image = { version = "0.24.4", features = ["png"] }
+log = "0.4.17"
+monero = "0.18.0"
+num_cpus = "1.13.1"
+regex = "1.6.0"
+serde = "1.0.145"
+serde_derive = "1.0.145"
+sha2 = "0.10.6"
+toml = "0.5.9"
 
 [profile.optimized]
-inherits = "release"
-strip = "debuginfo"
-debug = false
+codegen-units = 1
 debug-assertions = false
+debug = false
+incremental = true
+inherits = "release"
 lto = true
 overflow-checks = false
-incremental = true
-codegen-units = 1
 rpath = false
+strip = "debuginfo"
 
 [profile.optimized.package."*"]
 opt-level = 3

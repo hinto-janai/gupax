@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-use eframe::egui;
+use eframe::{egui,NativeOptions};
 use egui::{Vec2,Pos2};
 use std::process::exit;
 use std::thread;
@@ -36,12 +36,13 @@ use std::io::Write;
 use std::time::Instant;
 
 mod constants;
+mod toml;
 mod about;
 mod status;
 mod gupax;
 mod p2pool;
 mod xmrig;
-use {constants::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*};
+use {constants::*,crate::toml::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*};
 
 // The state of the outer [App].
 // See the [State] struct for the
@@ -60,6 +61,8 @@ pub struct App {
 	xmrig: bool,
 	state: State,
 	og: State,
+	allowed_to_close: bool,
+	show_confirmation_dialog: bool,
 }
 
 impl App {
@@ -79,12 +82,12 @@ impl App {
 		let resolution = cc.integration_info.window_info.size;
 		init_text_styles(&cc.egui_ctx, resolution[0] as f32);
 		let banner = match RetainedImage::from_image_bytes("banner.png", BYTES_BANNER) {
-			Ok(banner) => { info!("Banner loading OK"); banner },
+			Ok(banner) => { info!("Banner loading ... OK"); banner },
 			Err(err) => { error!("{}", err); panic!("{}", err); },
 		};
 		let mut state = State::new();
 		let mut og = State::new();
-		info!("{:?}", resolution);
+		info!("Frame resolution ... {:#?}", resolution);
 		Self {
 			version,
 			name_version,
@@ -99,6 +102,8 @@ impl App {
 			xmrig: false,
 			state,
 			og,
+			allowed_to_close: false,
+			show_confirmation_dialog: false,
 		}
 	}
 }
@@ -169,48 +174,58 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 //	style.spacing.button_padding = Vec2::new(scale/2.0, scale/2.0);
 	ctx.set_style(style);
 	ctx.set_pixels_per_point(1.0);
+	ctx.request_repaint();
 }
 
-fn main() {
+fn init_logger() {
 	use env_logger::fmt::Color;
 	Builder::new().format(|buf, record| {
 		let level;
 		let mut style = buf.style();
 		match record.level() {
 			Level::Error => { style.set_color(Color::Red); level = "ERROR" },
-			Level::Warn => { style.set_color(Color::Yellow); level = "WARN " },
-			Level::Info => { style.set_color(Color::White); level = "INFO " },
+			Level::Warn => { style.set_color(Color::Yellow); level = "WARN" },
+			Level::Info => { style.set_color(Color::White); level = "INFO" },
 			Level::Debug => { style.set_color(Color::Blue); level = "DEBUG" },
 			Level::Trace => { style.set_color(Color::Magenta); level = "TRACE" },
 		};
 		writeln!(
 			buf,
-			"| {} | {} | {}:{} | {}",
+			"[{}] [{}] [{}:{}] {}",
 			style.set_bold(true).value(level),
 			buf.style().set_dimmed(true).value(chrono::Local::now().format("%F %T%.3f")),
 			buf.style().set_dimmed(true).value(record.file().unwrap_or("???")),
 			buf.style().set_dimmed(true).value(record.line().unwrap_or(0)),
 			record.args(),
 		)
-	}).filter_level(LevelFilter::Info).write_style(WriteStyle::Always).parse_default_env().format_timestamp_millis().try_init();
-	info!("test");
-	warn!("test");
-	error!("test");
-	debug!("test");
+	}).filter_level(LevelFilter::Info).write_style(WriteStyle::Always).parse_default_env().format_timestamp_millis().init();
+	info!("init_logger() ... OK");
+}
 
+fn init_options() -> NativeOptions {
 	let mut options = eframe::NativeOptions::default();
 	options.min_window_size = Option::from(Vec2::new(1280.0, 720.0));
 	options.max_window_size = Option::from(Vec2::new(3180.0, 2160.0));
 	options.initial_window_size = Option::from(Vec2::new(1280.0, 720.0));
 	options.follow_system_theme = false;
 	options.default_theme = eframe::Theme::Dark;
-	let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read ICON bytes").to_rgba8();
+	let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read icon bytes").to_rgba8();
 	let (icon_width, icon_height) = icon.dimensions();
 	options.icon_data = Some(eframe::IconData {
 		rgba: icon.into_raw(),
 		width: icon_width,
 		height: icon_height,
 	});
+	info!("init_options() ... OK");
+	options
+}
+
+fn main() {
+	init_logger();
+	let options = init_options();
+	let toml = Toml::get();
+	info!("Printing gupax.toml...");
+	eprintln!("{:#?}", toml);
 	let now = Instant::now();
 	eframe::run_native(
 		"Gupax",
@@ -220,7 +235,29 @@ fn main() {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+	fn on_close_event(&mut self) -> bool {
+		self.show_confirmation_dialog = true;
+		self.allowed_to_close
+	}
+	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+		if self.show_confirmation_dialog {
+			// Show confirmation dialog:
+			egui::CentralPanel::default().show(ctx, |ui| {
+				let width = ui.available_width();
+				let width = width - 10.0;
+				let height = ui.available_height();
+				init_text_styles(ctx, width);
+				ui.add_sized([width, height/2.0], Label::new("Are you sure you want to quit?"));
+				ui.group(|ui| {
+					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
+						exit(0);
+					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
+						self.show_confirmation_dialog = false;
+					}
+				});
+			});
+			return
+		}
 		// Top: Tabs
 		egui::CentralPanel::default().show(ctx, |ui| {
 			init_text_styles(ctx, ui.available_width());
@@ -354,17 +391,4 @@ impl eframe::App for App {
 
 		});
 	}
-}
-
-pub trait View {
-    fn ui(&mut self, ui: &mut egui::Ui);
-}
-
-/// Something to view
-pub trait Demo {
-    /// `&'static` so we can also use it as a key to store open/close state.
-    fn name(&self) -> &'static str;
-
-    /// Show windows, etc
-    fn show(&mut self, ctx: &egui::Context, open: &mut bool);
 }

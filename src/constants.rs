@@ -16,11 +16,17 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::net::{Ipv4Addr,SocketAddrV4};
+use sha2::{Sha256,Digest};
+use hex_literal::hex;
+use std::{io, fs};
 
-// Compile-time constants
+// These are the versions bundled with Gupax.
+pub const P2POOL_VERSION: &'static str = "v2.4";
+pub const XMRIG_VERSION: &'static str = "v6.18.0";
+
 pub const BYTES_ICON: &[u8] = include_bytes!("../images/png/icon.png");
 pub const BYTES_BANNER: &[u8] = include_bytes!("../images/png/banner.png");
-pub const P2POOL_BASE_ARGS: &'static str = "--host 127.0.0.1 --rpc-port 18081 --zmq-port 18083 --loglevel 3 --out-peers 10 --in-peers 10";
+pub const P2POOL_BASE_ARGS: &'static str = "";
 pub const XMRIG_BASE_ARGS: &'static str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero --randomx-cache-qos";
 
 // OS specific
