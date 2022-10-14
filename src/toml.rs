@@ -36,7 +36,7 @@ use log::*;
 
 //---------------------------------------------------------------------------------------------------- Impl
 // Since [State] is already used in [main.rs] to represent
-// working state, [Toml] is used to disk state.
+// working state, [Toml] is used to represent disk state.
 impl Toml {
 	pub fn default() -> Self {
 		use crate::constants::{P2POOL_VERSION,XMRIG_VERSION};
@@ -53,6 +53,7 @@ impl Toml {
 				out_peers: 10,
 				in_peers: 10,
 				log_level: 3,
+				node: crate::NodeEnum::C3pool,
 				monerod: "localhost".to_string(),
 				rpc: 18081,
 				zmq: 18083,
@@ -83,7 +84,7 @@ impl Toml {
 		let mut path = match dirs::data_dir() {
 			Some(mut path) => {
 				path.push(DIRECTORY);
-				info!("{}, OS data path ... OK", path.display());
+				info!("OS data path ... OK");
 				path
 			},
 			None => { error!("Couldn't get OS PATH for data"); return Err(TomlError::Path(PATH_ERROR.to_string())) },
@@ -107,11 +108,16 @@ impl Toml {
 				fs::read_to_string(&path)?
 			},
 		};
+		info!("TOML path ... {}", path.display());
 		info!("TOML read ... OK");
 
 		// Attempt to parse, return Result
 		match toml::from_str(&file) {
-			Ok(file) => { info!("TOML parse ... OK"); Ok(file) },
+			Ok(toml) => {
+			info!("TOML parse ... OK");
+				eprint!("{}", file);
+				Ok(toml)
+			},
 			Err(err) => { error!("Couldn't parse TOML file"); Err(TomlError::Parse(err)) },
 		}
 	}
@@ -198,6 +204,7 @@ struct P2pool {
 	out_peers: u8,
 	in_peers: u8,
 	log_level: u8,
+	node: crate::node::NodeEnum,
 	monerod: String,
 	rpc: u16,
 	zmq: u16,

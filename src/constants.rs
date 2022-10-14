@@ -15,11 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::net::{Ipv4Addr,SocketAddrV4};
-use sha2::{Sha256,Digest};
-use hex_literal::hex;
-use std::{io, fs};
-
 // These are the versions bundled with Gupax.
 pub const P2POOL_VERSION: &'static str = "v2.4";
 pub const XMRIG_VERSION: &'static str = "v6.18.0";
@@ -44,19 +39,6 @@ pub const HUGEPAGES_1GB: bool = false;
 pub const OS: &'static str = "🐧 Linux";
 #[cfg(target_os = "linux")]
 pub const HUGEPAGES_1GB: bool = true;
-
-// Community Monerod nodes
-pub const IP_RINO: &'static str = "node.community.rino.io";
-pub const RPC_RINO: u16 = 18081;
-pub const ZMQ_RINO: u16 = 18083;
-
-pub const IP_SETH: &'static str = "node.sethforprivacy.com";
-pub const RPC_SETH: u16 = 18089;
-pub const ZMQ_SETH: u16 = 18083;
-
-pub const IP_SELSTA: &'static str = "selsta1.featherwallet.net";
-pub const RPC_SELSTA: u16 = 18081;
-pub const ZMQ_SELSTA: u16 = 18083;
 
 // Tooltips
 // Gupax

@@ -34,15 +34,17 @@ use env_logger::Builder;
 use env_logger::WriteStyle;
 use std::io::Write;
 use std::time::Instant;
+use std::sync::{Arc,Mutex};
 
 mod constants;
+mod node;
 mod toml;
 mod about;
 mod status;
 mod gupax;
 mod p2pool;
 mod xmrig;
-use {constants::*,crate::toml::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*};
+use {constants::*,node::*,crate::toml::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*};
 
 // The state of the outer [App].
 // See the [State] struct for the
@@ -63,6 +65,10 @@ pub struct App {
 	og: State,
 	allowed_to_close: bool,
 	show_confirmation_dialog: bool,
+	now: Instant,
+	ping: bool,
+	ping_prog: Arc<Mutex<bool>>,
+	node: Arc<Mutex<NodeStruct>>,
 }
 
 impl App {
@@ -104,6 +110,10 @@ impl App {
 			og,
 			allowed_to_close: false,
 			show_confirmation_dialog: false,
+			now: Instant::now(),
+			node: Arc::new(Mutex::new(NodeStruct::default())),
+			ping: false,
+			ping_prog: Arc::new(Mutex::new(false)),
 		}
 	}
 }
@@ -222,26 +232,71 @@ fn init_options() -> NativeOptions {
 
 fn main() {
 	init_logger();
+	let toml = match Toml::get() {
+		Ok(toml) => toml,
+		Err(err) => {
+			error!("{}", err);
+			let error_msg = err.to_string();
+			let options = Panic::options();
+			eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error_msg))),);
+			exit(1);
+		},
+	};
 	let options = init_options();
-	let toml = Toml::get();
-	info!("Printing gupax.toml...");
-	eprintln!("{:#?}", toml);
-	let now = Instant::now();
-	eframe::run_native(
-		"Gupax",
-		options,
-		Box::new(|cc| Box::new(App::new(cc))),
-	);
+	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(App::new(cc))),);
+}
+
+// [App] frame for Panic situations.
+struct Panic { error_msg: String, }
+impl Panic {
+	fn options() -> NativeOptions {
+		let mut options = eframe::NativeOptions::default();
+		let frame = Option::from(Vec2::new(1280.0, 720.0));
+		options.min_window_size = frame;
+		options.max_window_size = frame;
+		options.initial_window_size = frame;
+		options.follow_system_theme = false;
+		options.default_theme = eframe::Theme::Dark;
+		let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read icon bytes").to_rgba8();
+		let (icon_width, icon_height) = icon.dimensions();
+		options.icon_data = Some(eframe::IconData {
+			rgba: icon.into_raw(),
+			width: icon_width,
+			height: icon_height,
+		});
+		info!("Panic::options() ... OK");
+		options
+	}
+	fn new(cc: &eframe::CreationContext<'_>, error_msg: String) -> Self {
+		let resolution = cc.integration_info.window_info.size;
+		init_text_styles(&cc.egui_ctx, resolution[0] as f32);
+		Self { error_msg }
+	}
+}
+
+impl eframe::App for Panic {
+	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+		egui::CentralPanel::default().show(ctx, |ui| {
+			let width = ui.available_width();
+			let height = ui.available_height();
+			init_text_styles(ctx, width);
+			ui.add_sized([width, height/8.0], Label::new("Gupax has encountered a fatal error:"));
+			ui.add_sized([width, height/8.0], Label::new(&self.error_msg));
+			ui.add_sized([width, height/3.0], Label::new("Please report to: https://github.com/hinto-janaiyo/gupax/issues"));
+			ui.add_sized([width, height/3.0], egui::Button::new("Quit")).clicked() && exit(1)
+		});
+	}
 }
 
 impl eframe::App for App {
 	fn on_close_event(&mut self) -> bool {
-		self.show_confirmation_dialog = true;
+//		self.show_confirmation_dialog = true;
+		self.ping = true;
 		self.allowed_to_close
 	}
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+		// Close confirmation.
 		if self.show_confirmation_dialog {
-			// Show confirmation dialog:
 			egui::CentralPanel::default().show(ctx, |ui| {
 				let width = ui.available_width();
 				let width = width - 10.0;
@@ -250,14 +305,50 @@ impl eframe::App for App {
 				ui.add_sized([width, height/2.0], Label::new("Are you sure you want to quit?"));
 				ui.group(|ui| {
 					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
+						info!("Quit confirmation = yes ... goodbye!");
 						exit(0);
 					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
+						info!("Quit confirmation = no ... returning!");
 						self.show_confirmation_dialog = false;
 					}
 				});
 			});
 			return
 		}
+
+		//
+		if self.ping {
+			self.ping = false;
+			self.ping_prog = Arc::new(Mutex::new(true));
+			let node_clone = Arc::clone(&self.node);
+			let prog_clone = Arc::clone(&self.ping_prog);
+			thread::spawn(move|| {
+				let result = NodeStruct::ping();
+				*node_clone.lock().unwrap() = result.node;
+				*prog_clone.lock().unwrap() = false;
+			});
+		}
+
+		if *self.ping_prog.lock().unwrap() {
+			egui::CentralPanel::default().show(ctx, |ui| {
+				let width = ui.available_width();
+				let width = width - 10.0;
+				let height = ui.available_height();
+				init_text_styles(ctx, width);
+				ui.add_sized([width, height/2.0], Label::new(format!("In progress: {}", *self.ping_prog.lock().unwrap())));
+				ui.group(|ui| {
+					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
+						info!("Quit confirmation = yes ... goodbye!");
+						exit(0);
+					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
+						info!("Quit confirmation = no ... returning!");
+						self.show_confirmation_dialog = false;
+					}
+				});
+			});
+			return
+		}
+
 		// Top: Tabs
 		egui::CentralPanel::default().show(ctx, |ui| {
 			init_text_styles(ctx, ui.available_width());

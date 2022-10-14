@@ -1,7 +1,7 @@
 # Gupax source files
-* [State](#State)
 * [Structure](#Structure)
 * [Bootstrap](#Bootstrap)
+* [State](#State)
 
 ## Structure
 | File/Folder    | Purpose |
@@ -10,6 +10,7 @@
 | `constants.rs` | General constants needed in Gupax
 | `gupax.rs`     | Struct/impl for `Gupax` tab
 | `main.rs`      | Struct/enum/impl for `App/Tab/State`, init functions, main function
+| `node.rs`      | Struct/impl for Community Nodes
 | `p2pool.rs`    | Struct/impl for `P2Pool` tab
 | `status.rs`    | Struct/impl for `Status` tab
 | `toml.rs`      | Struct/impl for `gupax.toml`, the disk state
@@ -25,12 +26,13 @@ This is how Gupax works internally when starting up, divided into 3 sections.
 	- Attempt to read `gupax.toml` || *warn!*, *initialize config with default options*
 	- If errors were found, pop-up window
 	
-2. **AUTO-UPDATE**
+2. **AUTO**
 	- If `auto_update` == `true`, pop-up auto-updating window || *info!*, *skip auto-update*
 	- Multi-threaded GitHub API check on Gupax -> P2Pool -> XMRig || *warn!*, *skip auto-update*
 	- Multi-threaded download if current version != new version || *warn!*, *skip auto-update*
 	- After download, atomically replace current binaries with new || *warn!*, *skip auto-update*
 	- Update version metadata || *warn!*, *skip auto-update*
+	- If `auto_select` == `true`, ping community nodes and select fastest one || *warn!*
 
 3. **MAIN**
 	- All data must be initialized at this point, either via `gupax.toml` or default options || *panic!*
@@ -40,7 +42,7 @@ This is how Gupax works internally when starting up, divided into 3 sections.
 	- Kill processes, kill connections, exit
 
 ## State
-Internal state is saved in the "OS data folder" as `gupax.toml`, using the [TOML](https://github.com/toml-lang/toml) format. If the version can't be parsed (not in the `vX.X.X` or `vX.X` format), the auto-updater will be skipped. [If not found, a default `gupax.toml` file will be created with `Toml::default`.](https://github.com/hinto-janaiyo/gupax/blob/main/src/toml.rs)
+Internal state is saved in the "OS data folder" as `gupax.toml`, using the [TOML](https://github.com/toml-lang/toml) format. If the version can't be parsed (not in the `vX.X.X` or `vX.X` format), the auto-updater will be skipped. [If not found, a default `gupax.toml` file will be created with `Toml::default`.](https://github.com/hinto-janaiyo/gupax/blob/main/src/toml.rs) Gupax will `panic!` if `gupax.toml` has IO or parsing issues.
 
 | OS       | Data Folder                              | Example                                                   |
 |----------|----------------------------------------- |-----------------------------------------------------------|
