@@ -16,6 +16,7 @@ log = "0.4.17"
 monero = "0.18.0"
 num_cpus = "1.13.1"
 num-format = "0.4.0"
+rand = "0.8.5"
 regex = "1.6.0"
 reqwest = { version = "0.11.12", features = ["blocking", "json"] }
 serde = "1.0.145"

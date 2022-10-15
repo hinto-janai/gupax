@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::thread;
 use egui::Color32;
+use rand::Rng;
 use log::*;
 
 // Community Monerod nodes. All of these have ZMQ on 18083.
@@ -69,19 +70,21 @@ pub struct PingResult {
 impl NodeStruct {
 	pub fn default() -> Self {
 		use crate::NodeEnum::*;
+		let ms = 0;
+		let color = Color32::GRAY;
 		Self {
-			c3pool:        Data { ms: 0, color: Color32::GRAY, id: C3pool, ip: C3POOL.to_string(), },
-			cake:          Data { ms: 0, color: Color32::GRAY, id: Cake, ip: CAKE.to_string(), },
-			cake_eu:       Data { ms: 0, color: Color32::GRAY, id: CakeEu, ip: CAKE_EU.to_string(), },
-			cake_uk:       Data { ms: 0, color: Color32::GRAY, id: CakeUk, ip: CAKE_UK.to_string(), },
-			cake_us:       Data { ms: 0, color: Color32::GRAY, id: CakeUs, ip: CAKE_US.to_string(), },
-			monerujo:      Data { ms: 0, color: Color32::GRAY, id: Monerujo, ip: MONERUJO.to_string(), },
-			rino:          Data { ms: 0, color: Color32::GRAY, id: Rino, ip: RINO.to_string(), },
-			selsta:        Data { ms: 0, color: Color32::GRAY, id: Selsta, ip: SELSTA.to_string(), },
-			seth:          Data { ms: 0, color: Color32::GRAY, id: Seth, ip: SETH.to_string(), },
-			supportxmr:    Data { ms: 0, color: Color32::GRAY, id: SupportXmr, ip: SUPPORTXMR.to_string(), },
-			supportxmr_ir: Data { ms: 0, color: Color32::GRAY, id: SupportXmrIr, ip: SUPPORTXMR_IR.to_string(), },
-			xmrvsbeast:    Data { ms: 0, color: Color32::GRAY, id: XmrVsBeast, ip: XMRVSBEAST.to_string(), },
+			c3pool:        Data { ms, color, id: C3pool,       ip: C3POOL.to_string(), },
+			cake:          Data { ms, color, id: Cake,         ip: CAKE.to_string(), },
+			cake_eu:       Data { ms, color, id: CakeEu,       ip: CAKE_EU.to_string(), },
+			cake_uk:       Data { ms, color, id: CakeUk,       ip: CAKE_UK.to_string(), },
+			cake_us:       Data { ms, color, id: CakeUs,       ip: CAKE_US.to_string(), },
+			monerujo:      Data { ms, color, id: Monerujo,     ip: MONERUJO.to_string(), },
+			rino:          Data { ms, color, id: Rino,         ip: RINO.to_string(), },
+			selsta:        Data { ms, color, id: Selsta,       ip: SELSTA.to_string(), },
+			seth:          Data { ms, color, id: Seth,         ip: SETH.to_string(), },
+			supportxmr:    Data { ms, color, id: SupportXmr,   ip: SUPPORTXMR.to_string(), },
+			supportxmr_ir: Data { ms, color, id: SupportXmrIr, ip: SUPPORTXMR_IR.to_string(), },
+			xmrvsbeast:    Data { ms, color, id: XmrVsBeast,   ip: XMRVSBEAST.to_string(), },
 		}
 	}
 
@@ -96,7 +99,8 @@ impl NodeStruct {
 	// This is for pinging the community nodes to
 	// find the fastest/slowest one for the user.
 	// The process:
-	//   - Send 3x [get_info] JSON-RPC requests over HTTP
+	//   - Send [get_info] JSON-RPC requests over HTTP
+	//   - To prevent fingerprinting, randomly send [1-5] calls
 	//   - Measure each request in milliseconds as [u128]
 	//   - Timeout on requests over 5 seconds
 	//   - Calculate average time
@@ -142,7 +146,7 @@ impl NodeStruct {
 			};
 			let mut timeout = false;
 			let mut mid = Duration::new(0, 0);
-			let max = 3;
+			let max = rng::thread_rng().gen_range(1..5);
 			for i in 1..=max {
 				let client = reqwest::blocking::ClientBuilder::new();
 				let client = reqwest::blocking::ClientBuilder::timeout(client, timeout_sec);
@@ -152,7 +156,7 @@ impl NodeStruct {
 				match client.post(http).json(&get_info).send() {
 					Ok(r) => mid += now.elapsed(),
 					Err(err) => {
-						error!("Timeout on [{}] (over 3 seconds)", ip);
+						error!("Timeout on [{}: {}] (over 5 seconds)", id, ip);
 						mid += timeout_sec;
 						timeout = true;
 					},
@@ -160,7 +164,7 @@ impl NodeStruct {
 			}
 			let ms = mid.as_millis() / 3;
 			vec.push((ms, id));
-			info!("{}ms ... {}", ms, ip);
+			info!("{}ms ... {} calls ... {}", ms, max, ip);
 			let color: Color32;
 			if timeout == true {
 				color = Color32::BLACK
