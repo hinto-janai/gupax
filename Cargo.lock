@@ -1085,6 +1085,7 @@ dependencies = [
  "monero",
  "num-format",
  "num_cpus",
+ "rand",
  "regex",
  "reqwest",
  "serde",

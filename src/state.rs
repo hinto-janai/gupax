@@ -18,7 +18,7 @@
 // This handles reading/parsing the state file: [gupax.toml]
 // The TOML format is used. This struct hierarchy directly
 // translates into the TOML parser:
-//   Toml/
+//   State/
 //   ├─ Gupax/
 //   │  ├─ ...
 //   ├─ P2pool/
@@ -31,13 +31,12 @@
 use std::{fs,env};
 use std::fmt::Display;
 use std::path::{Path,PathBuf};
+use std::result::Result;
 use serde_derive::{Serialize,Deserialize};
 use log::*;
 
 //---------------------------------------------------------------------------------------------------- Impl
-// Since [State] is already used in [main.rs] to represent
-// working state, [Toml] is used to represent disk state.
-impl Toml {
+impl State {
 	pub fn default() -> Self {
 		use crate::constants::{P2POOL_VERSION,XMRIG_VERSION};
 		Self {
@@ -64,7 +63,9 @@ impl Toml {
 				tls: false,
 				nicehash: false,
 				keepalive: false,
-				threads: 1,
+				hugepages_jit: true,
+				current_threads: 1,
+				max_threads: 1,
 				priority: 2,
 				pool: "localhost:3333".to_string(),
 				address: "".to_string(),
@@ -76,7 +77,7 @@ impl Toml {
 		}
 	}
 
-	pub fn get() -> Result<Toml, TomlError> {
+	pub fn get_path() -> Result<PathBuf, TomlError> {
 		// Get OS data folder
 		// Linux   | $XDG_DATA_HOME or $HOME/.local/share | /home/alice/.local/state
 		// macOS   | $HOME/Library/Application Support    | /Users/Alice/Library/Application Support
@@ -89,36 +90,67 @@ impl Toml {
 			},
 			None => { error!("Couldn't get OS PATH for data"); return Err(TomlError::Path(PATH_ERROR.to_string())) },
 		};
-
 		// Create directory
 		fs::create_dir_all(&path)?;
-
-		// Attempt to read file, create default if not found
 		path.push(FILENAME);
-		let file = match fs::read_to_string(&path) {
-			Ok(file) => file,
+		info!("TOML path ... {}", path.display());
+		Ok(path)
+	}
+
+	// Attempts to read [gupax.toml] or
+	// attempts to create if not found.
+	pub fn read_or_create(path: PathBuf) -> Result<String, TomlError> {
+		// Attempt to read file, create default if not found
+		match fs::read_to_string(&path) {
+			Ok(string) => {
+				info!("TOML read ... OK");
+				Ok(string)
+			},
 			Err(err) => {
 				error!("TOML not found, attempting to create default");
-				let default = match toml::ser::to_string(&Toml::default()) {
+				let default = match toml::ser::to_string(&State::default()) {
 						Ok(o) => { info!("TOML serialization ... OK"); o },
 						Err(e) => { error!("Couldn't serialize default TOML file: {}", e); return Err(TomlError::Serialize(e)) },
 				};
-				fs::write(&path, default)?;
+				fs::write(&path, &default)?;
 				info!("TOML write ... OK");
-				fs::read_to_string(&path)?
+				Ok(fs::read_to_string(default)?)
 			},
-		};
-		info!("TOML path ... {}", path.display());
-		info!("TOML read ... OK");
+		}
+	}
 
-		// Attempt to parse, return Result
-		match toml::from_str(&file) {
+	// Attempt to parse from String
+	pub fn parse(string: String) -> Result<State, TomlError> {
+		match toml::de::from_str(&string) {
 			Ok(toml) => {
-			info!("TOML parse ... OK");
-				eprint!("{}", file);
+				info!("TOML parse ... OK");
+				eprint!("{}", string);
 				Ok(toml)
 			},
-			Err(err) => { error!("Couldn't parse TOML file"); Err(TomlError::Parse(err)) },
+			Err(err) => { error!("Couldn't parse TOML from string"); Err(TomlError::Deserialize(err)) },
+		}
+	}
+
+	// Last three functions combined
+	// get_path() -> read_or_create() -> parse()
+//	pub fn get() -> Result<State, TomlError> {
+//		let path = Self::path();
+//	}
+
+	// Overwrite disk Toml with memory State (save state)
+	pub fn overwrite(state: State, path: PathBuf) -> Result<(), TomlError> {
+		info!("Starting TOML overwrite...");
+		let string = match toml::ser::to_string(&state) {
+			Ok(string) => {
+				info!("TOML parse ... OK");
+				eprint!("{}", string);
+				string
+			},
+			Err(err) => { error!("Couldn't parse TOML into string"); return Err(TomlError::Serialize(err)) },
+		};
+		match fs::write(&path, string) {
+			Ok(_) => { info!("TOML overwrite ... OK"); Ok(()) },
+			Err(err) => { error!("Couldn't overwrite TOML file"); return Err(TomlError::Io(err)) },
 		}
 	}
 }
@@ -129,8 +161,8 @@ impl Display for TomlError {
 		match self {
 			Io(err) => write!(f, "{} | {}", ERROR, err),
 			Path(err) => write!(f, "{} | {}", ERROR, err),
-			Parse(err) => write!(f, "{} | {}", ERROR, err),
 			Serialize(err) => write!(f, "{} | {}", ERROR, err),
+			Deserialize(err) => write!(f, "{} | {}", ERROR, err),
 		}
 	}
 }
@@ -141,17 +173,10 @@ impl From<std::io::Error> for TomlError {
 	}
 }
 
-fn main() {
-	let state = match Toml::get() {
-		Ok(state) => { println!("OK"); state },
-		Err(err) => panic!(),
-	};
-}
-
 //---------------------------------------------------------------------------------------------------- Const
 const FILENAME: &'static str = "gupax.toml";
 const ERROR: &'static str = "TOML Error";
-const PATH_ERROR: &'static str = "PATH for state directory could not be not found";
+	const PATH_ERROR: &'static str = "PATH for state directory could not be not found";
 #[cfg(target_os = "windows")]
 const DIRECTORY: &'static str = "Gupax";
 #[cfg(target_os = "macos")]
@@ -176,55 +201,57 @@ const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
 pub enum TomlError {
 	Io(std::io::Error),
 	Path(String),
-	Parse(toml::de::Error),
 	Serialize(toml::ser::Error),
+	Deserialize(toml::de::Error),
 }
 
 //---------------------------------------------------------------------------------------------------- Structs
-#[derive(Debug,Deserialize,Serialize)]
-pub struct Toml {
-	gupax: Gupax,
-	p2pool: P2pool,
-	xmrig: Xmrig,
-	version: Version,
+#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub struct State {
+	pub gupax: Gupax,
+	pub p2pool: P2pool,
+	pub xmrig: Xmrig,
+	pub version: Version,
 }
 
-#[derive(Debug,Deserialize,Serialize)]
-struct Gupax {
-	auto_update: bool,
-	ask_before_quit: bool,
-	p2pool_path: String,
-	xmrig_path: String,
+#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub struct Gupax {
+	pub auto_update: bool,
+	pub ask_before_quit: bool,
+	pub p2pool_path: String,
+	pub xmrig_path: String,
 }
 
-#[derive(Debug,Deserialize,Serialize)]
-struct P2pool {
-	simple: bool,
-	mini: bool,
-	out_peers: u8,
-	in_peers: u8,
-	log_level: u8,
-	node: crate::node::NodeEnum,
-	monerod: String,
-	rpc: u16,
-	zmq: u16,
-	address: String,
+#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub struct P2pool {
+	pub simple: bool,
+	pub mini: bool,
+	pub out_peers: u16,
+	pub in_peers: u16,
+	pub log_level: u8,
+	pub node: crate::node::NodeEnum,
+	pub monerod: String,
+	pub rpc: u16,
+	pub zmq: u16,
+	pub address: String,
 }
 
-#[derive(Debug,Deserialize,Serialize)]
-struct Xmrig {
-	simple: bool,
-	tls: bool,
-	nicehash: bool,
-	keepalive: bool,
-	threads: u16,
-	priority: u8,
-	pool: String,
-	address: String,
+#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub struct Xmrig {
+	pub simple: bool,
+	pub tls: bool,
+	pub nicehash: bool,
+	pub keepalive: bool,
+	pub hugepages_jit: bool,
+	pub max_threads: u16,
+	pub current_threads: u16,
+	pub priority: u8,
+	pub pool: String,
+	pub address: String,
 }
 
-#[derive(Debug,Deserialize,Serialize)]
-struct Version {
-	p2pool: String,
-	xmrig: String,
+#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub struct Version {
+	pub p2pool: String,
+	pub xmrig: String,
 }

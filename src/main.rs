@@ -16,135 +16,98 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
-use eframe::{egui,NativeOptions};
-use egui::{Vec2,Pos2};
-use std::process::exit;
-use std::thread;
-use egui::color::Color32;
-use egui::Stroke;
-use egui::FontId;
-use egui::FontFamily::Proportional;
-use egui::TextStyle::{Body,Button,Heading,Monospace,Name,Small};
-use egui::RichText;
-use egui::Label;
-use regex::Regex;
-use egui_extras::RetainedImage;
-use log::*;
-use env_logger::Builder;
-use env_logger::WriteStyle;
-use std::io::Write;
-use std::time::Instant;
-use std::sync::{Arc,Mutex};
 
+//---------------------------------------------------------------------------------------------------- Imports
+// egui/eframe
+use egui::TextStyle::*;
+use egui::color::Color32;
+use egui::FontFamily::Proportional;
+use egui::{FontId,Label,RichText,Stroke,Vec2,Pos2};
+use egui_extras::RetainedImage;
+use eframe::{egui,NativeOptions};
+
+// Logging
+use log::*;
+use env_logger::{Builder,WriteStyle};
+
+// std
+use std::io::Write;
+use std::process::exit;
+use std::sync::{Arc,Mutex};
+use std::thread;
+use std::time::Instant;
+
+// Modules
 mod constants;
 mod node;
-mod toml;
+mod state;
 mod about;
 mod status;
 mod gupax;
 mod p2pool;
 mod xmrig;
-use {constants::*,node::*,crate::toml::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*};
+use {constants::*,node::*,state::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*};
 
-// The state of the outer [App].
-// See the [State] struct for the
-// actual inner state of the settings.
+//---------------------------------------------------------------------------------------------------- Struct + Impl
+// The state of the outer main [App].
+// See the [State] struct in [state.rs] for the
+// actual inner state of the tab settings.
 pub struct App {
+	// Misc state
+	tab: Tab, // What tab are we on?
+	quit: bool, // Did user click quit button?
+	quit_confirm: bool, // Did user confirm to quit?
+	ping: bool, // Did user click the ping button?
+	ping_prog: Arc<Mutex<bool>>, // Are we in the progress of pinging?
+	node: Arc<Mutex<NodeStruct>>, // Data on community nodes
+	// State:
+	// og    = Old state to compare against
+	// state = Working state (current settings)
+	// Instead of comparing [og == state] every frame,
+	// the [diff] bool will be the signal for [Reset/Save].
+	og: State,
+	state: State,
+	diff: bool,
+	// Static stuff
+	now: Instant,
+	resolution: Vec2,
+	os: &'static str,
 	version: String,
 	name_version: String,
-	tab: Tab,
-	changed: bool,
-	os: &'static str,
-	current_threads: u16,
-	max_threads: u16,
-	resolution: Vec2,
 	banner: RetainedImage,
+
+	// TEMPORARY FIXME
 	p2pool: bool,
 	xmrig: bool,
-	state: State,
-	og: State,
-	allowed_to_close: bool,
-	show_confirmation_dialog: bool,
-	now: Instant,
-	ping: bool,
-	ping_prog: Arc<Mutex<bool>>,
-	node: Arc<Mutex<NodeStruct>>,
 }
 
 impl App {
 	fn new(cc: &eframe::CreationContext<'_>) -> Self {
-		let version = String::from("v0.0.1");
-		let name_version = String::from("Gupax v0.0.1");
-		let tab = Tab::default();
-		let max_threads = num_cpus::get().try_into().unwrap();
-		let current_threads: u16;
-		let changed = false;
-		let os = OS;
-		if max_threads != 1 {
-			current_threads = max_threads / 2
-		} else {
-			current_threads = 1
-		}
-		let resolution = cc.integration_info.window_info.size;
-		init_text_styles(&cc.egui_ctx, resolution[0] as f32);
-		let banner = match RetainedImage::from_image_bytes("banner.png", BYTES_BANNER) {
-			Ok(banner) => { info!("Banner loading ... OK"); banner },
-			Err(err) => { error!("{}", err); panic!("{}", err); },
-		};
-		let mut state = State::new();
-		let mut og = State::new();
-		info!("Frame resolution ... {:#?}", resolution);
 		Self {
-			version,
-			name_version,
-			tab,
-			current_threads,
-			max_threads,
-			changed,
-			resolution,
-			os,
-			banner,
-			p2pool: false,
-			xmrig: false,
-			state,
-			og,
-			allowed_to_close: false,
-			show_confirmation_dialog: false,
-			now: Instant::now(),
-			node: Arc::new(Mutex::new(NodeStruct::default())),
+			tab: Tab::default(),
+			quit: false,
+			quit_confirm: false,
 			ping: false,
 			ping_prog: Arc::new(Mutex::new(false)),
+			node: Arc::new(Mutex::new(NodeStruct::default())),
+			og: State::default(),
+			state: State::default(),
+			diff: false,
+			now: Instant::now(),
+			resolution: cc.integration_info.window_info.size,
+			os: OS,
+			version: "v0.0.1".to_string(),
+			name_version: "Gupax v0.0.1".to_string(),
+			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).expect("oops"),
+
+			// TEMPORARY FIXME
+			p2pool: false,
+			xmrig: false,
 		}
 	}
 }
 
-// Inner state holding all
-// mutable tab structs.
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct State {
-	gupax: Gupax,
-	p2pool: P2pool,
-	xmrig: Xmrig,
-}
-
-impl State {
-	fn new() -> Self {
-		Self {
-			gupax: Gupax::new(),
-			p2pool: P2pool::new(),
-			xmrig: Xmrig::new(),
-		}
-	}
-
-	fn save(new: State) -> Self {
-		Self {
-			gupax: new.gupax,
-			p2pool: new.p2pool,
-			xmrig: new.xmrig,
-		}
-	}
-}
-
+//---------------------------------------------------------------------------------------------------- Enum + Impl
 // The tabs inside [App].
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Tab {
@@ -154,12 +117,14 @@ enum Tab {
 	P2pool,
 	Xmrig,
 }
+
 impl Default for Tab {
     fn default() -> Self {
         Self::About
     }
 }
 
+//---------------------------------------------------------------------------------------------------- Init functions
 fn init_text_styles(ctx: &egui::Context, width: f32) {
 	let scale = width / 26.666;
 	let mut style = (*ctx.style()).clone();
@@ -230,23 +195,7 @@ fn init_options() -> NativeOptions {
 	options
 }
 
-fn main() {
-	init_logger();
-	let toml = match Toml::get() {
-		Ok(toml) => toml,
-		Err(err) => {
-			error!("{}", err);
-			let error_msg = err.to_string();
-			let options = Panic::options();
-			eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error_msg))),);
-			exit(1);
-		},
-	};
-	let options = init_options();
-	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(App::new(cc))),);
-}
-
-// [App] frame for Panic situations.
+//---------------------------------------------------------------------------------------------------- [App] frame for [Panic] situations
 struct Panic { error_msg: String, }
 impl Panic {
 	fn options() -> NativeOptions {
@@ -288,15 +237,35 @@ impl eframe::App for Panic {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- Main [App] frame
+fn main() {
+	init_logger();
+//	let toml = match State::get() {
+//		Ok(toml) => toml,
+//		Err(err) => {
+//			error!("{}", err);
+//			let error_msg = err.to_string();
+//			let options = Panic::options();
+//			eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error_msg))),);
+//			exit(1);
+//		},
+//	};
+	let state = State::default();
+	let options = init_options();
+	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(App::new(cc))),);
+}
+
 impl eframe::App for App {
 	fn on_close_event(&mut self) -> bool {
-//		self.show_confirmation_dialog = true;
-		self.ping = true;
-		self.allowed_to_close
+		self.quit = true;
+		self.quit_confirm
 	}
+
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+		init_text_styles(ctx, 1280.0);
+
 		// Close confirmation.
-		if self.show_confirmation_dialog {
+		if self.quit {
 			egui::CentralPanel::default().show(ctx, |ui| {
 				let width = ui.available_width();
 				let width = width - 10.0;
@@ -306,10 +275,10 @@ impl eframe::App for App {
 				ui.group(|ui| {
 					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
 						info!("Quit confirmation = yes ... goodbye!");
-						exit(0);
+						self.quit_confirm = true;
+						frame.close();
 					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
-						info!("Quit confirmation = no ... returning!");
-						self.show_confirmation_dialog = false;
+						self.quit = false;
 					}
 				});
 			});
@@ -329,25 +298,25 @@ impl eframe::App for App {
 			});
 		}
 
-		if *self.ping_prog.lock().unwrap() {
-			egui::CentralPanel::default().show(ctx, |ui| {
-				let width = ui.available_width();
-				let width = width - 10.0;
-				let height = ui.available_height();
-				init_text_styles(ctx, width);
-				ui.add_sized([width, height/2.0], Label::new(format!("In progress: {}", *self.ping_prog.lock().unwrap())));
-				ui.group(|ui| {
-					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
-						info!("Quit confirmation = yes ... goodbye!");
-						exit(0);
-					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
-						info!("Quit confirmation = no ... returning!");
-						self.show_confirmation_dialog = false;
-					}
-				});
-			});
-			return
-		}
+//		if *self.ping_prog.lock().unwrap() {
+//			egui::CentralPanel::default().show(ctx, |ui| {
+//				let width = ui.available_width();
+//				let width = width - 10.0;
+//				let height = ui.available_height();
+//				init_text_styles(ctx, width);
+//				ui.add_sized([width, height/2.0], Label::new(format!("In progress: {}", *self.ping_prog.lock().unwrap())));
+//				ui.group(|ui| {
+//					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
+//						info!("Quit confirmation = yes ... goodbye!");
+//						exit(0);
+//					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
+//						info!("Quit confirmation = no ... returning!");
+//						self.show_confirmation_dialog = false;
+//					}
+//				});
+//			});
+//			return
+//		}
 
 		// Top: Tabs
 		egui::CentralPanel::default().show(ctx, |ui| {
@@ -390,6 +359,9 @@ impl eframe::App for App {
 					ui.add_sized([width, height], Label::new(self.os));
 					ui.separator();
 					ui.add_sized([width/1.5, height], Label::new("P2Pool"));
+// TODO
+// self.p2pool + self.xmrig
+// This is for process online/offline status
 					if self.p2pool == true {
 						ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(100, 230, 100))));
 					} else {
@@ -469,7 +441,8 @@ impl eframe::App for App {
 					Status::show(self, ctx, ui);
 	            }
 	            Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, ctx, ui);
+//					Gupax::show(self.state.gupax, ctx, ui);
+					exit(0);
 	            }
 	            Tab::P2pool => {
 					P2pool::show(&mut self.state.p2pool, ctx, ui);

@@ -55,10 +55,16 @@ pub struct Data {
 	pub ip: String,
 }
 
-#[derive(Copy,Clone,Debug,Deserialize,Serialize)]
+#[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum NodeEnum {
 	C3pool, Cake, CakeEu, CakeUk, CakeUs, Monerujo, Rino,
 	Selsta, Seth, SupportXmr, SupportXmrIr, XmrVsBeast,
+}
+
+impl std::fmt::Display for NodeEnum {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f, "{:#?}", self)
+	}
 }
 
 #[derive(Debug)]
@@ -146,7 +152,7 @@ impl NodeStruct {
 			};
 			let mut timeout = false;
 			let mut mid = Duration::new(0, 0);
-			let max = rng::thread_rng().gen_range(1..5);
+			let max = rand::thread_rng().gen_range(1..5);
 			for i in 1..=max {
 				let client = reqwest::blocking::ClientBuilder::new();
 				let client = reqwest::blocking::ClientBuilder::timeout(client, timeout_sec);
@@ -156,7 +162,7 @@ impl NodeStruct {
 				match client.post(http).json(&get_info).send() {
 					Ok(r) => mid += now.elapsed(),
 					Err(err) => {
-						error!("Timeout on [{}: {}] (over 5 seconds)", id, ip);
+						error!("Timeout on [{:#?}: {}] (over 5 seconds)", id, ip);
 						mid += timeout_sec;
 						timeout = true;
 					},
