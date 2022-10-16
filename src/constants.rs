@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// These are the versions bundled with Gupax.
+pub const GUPAX_VERSION: &'static str = "v0.1.0";
 pub const P2POOL_VERSION: &'static str = "v2.4";
 pub const XMRIG_VERSION: &'static str = "v6.18.0";
 
@@ -23,6 +23,7 @@ pub const BYTES_ICON: &[u8] = include_bytes!("../images/png/icon.png");
 pub const BYTES_BANNER: &[u8] = include_bytes!("../images/png/banner.png");
 pub const P2POOL_BASE_ARGS: &'static str = "";
 pub const XMRIG_BASE_ARGS: &'static str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero --randomx-cache-qos";
+pub const HORIZONTAL: &'static str = "--------------------------------------------";
 
 // OS specific
 #[cfg(target_os = "windows")]
@@ -66,3 +67,19 @@ pub const XMRIG_NICEHASH: &'static str = "Enable nicehash.com support";
 pub const XMRIG_KEEPALIVE: &'static str = "Send keepalived packet to prevent timeout (needs pool support)";
 pub const XMRIG_THREADS: &'static str = "Number of CPU threads to use for mining";
 pub const XMRIG_PRIORITY: &'static str = "Set process priority (0 idle, 2 normal to 5 highest)";
+
+// CLI argument messages
+pub const ARG_HELP: &'static str =
+r#"USAGE: gupax [--flags]
+
+    -h | --help              Print this help message
+    -v | --version           Print versions
+    -n | --no-startup        Disable auto-update/node connections at startup
+    -r | --reset             Reset all Gupax configuration/state"#;
+pub const ARG_COPYRIGHT: &'static str =
+r#"For more information:
+https://github.com/hinto-janaiyo/gupax
+https://github.com/SChernykh/p2pool
+https://github.com/xmrig/xmrig
+
+Gupax, P2Pool, and XMRig are licensed under GPLv3."#;

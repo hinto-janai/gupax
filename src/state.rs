@@ -33,6 +33,7 @@ use std::fmt::Display;
 use std::path::{Path,PathBuf};
 use std::result::Result;
 use serde_derive::{Serialize,Deserialize};
+use crate::constants::HORIZONTAL;
 use log::*;
 
 //---------------------------------------------------------------------------------------------------- Impl
@@ -43,6 +44,7 @@ impl State {
 			gupax: Gupax {
 				auto_update: true,
 				ask_before_quit: true,
+				save_before_quit: true,
 				p2pool_path: DEFAULT_P2POOL_PATH.to_string(),
 				xmrig_path: DEFAULT_XMRIG_PATH.to_string(),
 			},
@@ -107,14 +109,14 @@ impl State {
 				Ok(string)
 			},
 			Err(err) => {
-				error!("TOML not found, attempting to create default");
+				warn!("TOML not found, attempting to create default");
 				let default = match toml::ser::to_string(&State::default()) {
 						Ok(o) => { info!("TOML serialization ... OK"); o },
 						Err(e) => { error!("Couldn't serialize default TOML file: {}", e); return Err(TomlError::Serialize(e)) },
 				};
 				fs::write(&path, &default)?;
 				info!("TOML write ... OK");
-				Ok(fs::read_to_string(default)?)
+				Ok(default)
 			},
 		}
 	}
@@ -124,7 +126,9 @@ impl State {
 		match toml::de::from_str(&string) {
 			Ok(toml) => {
 				info!("TOML parse ... OK");
-				eprint!("{}", string);
+				info!("{}", HORIZONTAL);
+				for i in string.lines() { info!("{}", i); }
+				info!("{}", HORIZONTAL);
 				Ok(toml)
 			},
 			Err(err) => { error!("Couldn't parse TOML from string"); Err(TomlError::Deserialize(err)) },
@@ -133,22 +137,25 @@ impl State {
 
 	// Last three functions combined
 	// get_path() -> read_or_create() -> parse()
-//	pub fn get() -> Result<State, TomlError> {
-//		let path = Self::path();
-//	}
+	pub fn get() -> Result<State, TomlError> {
+		Self::parse(Self::read_or_create(Self::get_path()?)?)
+	}
 
-	// Overwrite disk Toml with memory State (save state)
-	pub fn overwrite(state: State, path: PathBuf) -> Result<(), TomlError> {
+	// Save [State] onto disk file [gupax.toml]
+	pub fn save(&self) -> Result<(), TomlError> {
+		let path = Self::get_path()?;
 		info!("Starting TOML overwrite...");
-		let string = match toml::ser::to_string(&state) {
+		let string = match toml::ser::to_string(&self) {
 			Ok(string) => {
 				info!("TOML parse ... OK");
-				eprint!("{}", string);
+				info!("{}", HORIZONTAL);
+				for i in string.lines() { info!("{}", i); }
+				info!("{}", HORIZONTAL);
 				string
 			},
 			Err(err) => { error!("Couldn't parse TOML into string"); return Err(TomlError::Serialize(err)) },
 		};
-		match fs::write(&path, string) {
+		match fs::write(path, string) {
 			Ok(_) => { info!("TOML overwrite ... OK"); Ok(()) },
 			Err(err) => { error!("Couldn't overwrite TOML file"); return Err(TomlError::Io(err)) },
 		}
@@ -176,7 +183,7 @@ impl From<std::io::Error> for TomlError {
 //---------------------------------------------------------------------------------------------------- Const
 const FILENAME: &'static str = "gupax.toml";
 const ERROR: &'static str = "TOML Error";
-	const PATH_ERROR: &'static str = "PATH for state directory could not be not found";
+const PATH_ERROR: &'static str = "PATH for state directory could not be not found";
 #[cfg(target_os = "windows")]
 const DIRECTORY: &'static str = "Gupax";
 #[cfg(target_os = "macos")]
@@ -218,6 +225,7 @@ pub struct State {
 pub struct Gupax {
 	pub auto_update: bool,
 	pub ask_before_quit: bool,
+	pub save_before_quit: bool,
 	pub p2pool_path: String,
 	pub xmrig_path: String,
 }
@@ -234,6 +242,8 @@ pub struct P2pool {
 	pub rpc: u16,
 	pub zmq: u16,
 	pub address: String,
+//	pub config: String,
+//	pub args: String,
 }
 
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
@@ -248,6 +258,8 @@ pub struct Xmrig {
 	pub priority: u8,
 	pub pool: String,
 	pub address: String,
+//	pub config: String,
+//	pub args: String,
 }
 
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]

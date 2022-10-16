@@ -41,6 +41,11 @@ pub const SUPPORTXMR: &'static str = "node.supportxmr.com:18081";
 pub const SUPPORTXMR_IR: &'static str = "node.supportxmr.ir:18081";
 pub const XMRVSBEAST: &'static str = "p2pmd.xmrvsbeast.com:18081";
 
+pub const NODE_IPS: [&'static str; 12] = [
+	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,MONERUJO,RINO,
+	SELSTA,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
+];
+
 #[derive(Debug)]
 pub struct NodeStruct {
 	c3pool: Data, cake: Data, cake_eu: Data, cake_uk: Data, cake_us: Data, monerujo: Data,
@@ -52,7 +57,7 @@ pub struct Data {
 	pub ms: u128,
 	pub color: Color32,
 	pub id: NodeEnum,
-	pub ip: String,
+	pub ip: &'static str,
 }
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
@@ -69,37 +74,29 @@ impl std::fmt::Display for NodeEnum {
 
 #[derive(Debug)]
 pub struct PingResult {
-	pub node: NodeStruct,
+	pub nodes: NodeStruct,
 	pub fastest: NodeEnum,
 }
 
+use crate::NodeEnum::*;
 impl NodeStruct {
 	pub fn default() -> Self {
-		use crate::NodeEnum::*;
 		let ms = 0;
 		let color = Color32::GRAY;
 		Self {
-			c3pool:        Data { ms, color, id: C3pool,       ip: C3POOL.to_string(), },
-			cake:          Data { ms, color, id: Cake,         ip: CAKE.to_string(), },
-			cake_eu:       Data { ms, color, id: CakeEu,       ip: CAKE_EU.to_string(), },
-			cake_uk:       Data { ms, color, id: CakeUk,       ip: CAKE_UK.to_string(), },
-			cake_us:       Data { ms, color, id: CakeUs,       ip: CAKE_US.to_string(), },
-			monerujo:      Data { ms, color, id: Monerujo,     ip: MONERUJO.to_string(), },
-			rino:          Data { ms, color, id: Rino,         ip: RINO.to_string(), },
-			selsta:        Data { ms, color, id: Selsta,       ip: SELSTA.to_string(), },
-			seth:          Data { ms, color, id: Seth,         ip: SETH.to_string(), },
-			supportxmr:    Data { ms, color, id: SupportXmr,   ip: SUPPORTXMR.to_string(), },
-			supportxmr_ir: Data { ms, color, id: SupportXmrIr, ip: SUPPORTXMR_IR.to_string(), },
-			xmrvsbeast:    Data { ms, color, id: XmrVsBeast,   ip: XMRVSBEAST.to_string(), },
+			c3pool:        Data { ms, color, id: C3pool,       ip: C3POOL, },
+			cake:          Data { ms, color, id: Cake,         ip: CAKE, },
+			cake_eu:       Data { ms, color, id: CakeEu,       ip: CAKE_EU, },
+			cake_uk:       Data { ms, color, id: CakeUk,       ip: CAKE_UK, },
+			cake_us:       Data { ms, color, id: CakeUs,       ip: CAKE_US, },
+			monerujo:      Data { ms, color, id: Monerujo,     ip: MONERUJO, },
+			rino:          Data { ms, color, id: Rino,         ip: RINO, },
+			selsta:        Data { ms, color, id: Selsta,       ip: SELSTA, },
+			seth:          Data { ms, color, id: Seth,         ip: SETH, },
+			supportxmr:    Data { ms, color, id: SupportXmr,   ip: SUPPORTXMR, },
+			supportxmr_ir: Data { ms, color, id: SupportXmrIr, ip: SUPPORTXMR_IR, },
+			xmrvsbeast:    Data { ms, color, id: XmrVsBeast,   ip: XMRVSBEAST, },
 		}
-	}
-
-	// Return array of all IPs
-	fn array() -> [&'static str; 12] {
-		[
-			C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,MONERUJO,RINO,
-			SELSTA,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
-		]
 	}
 
 	// This is for pinging the community nodes to
@@ -123,9 +120,8 @@ impl NodeStruct {
 	// timeout = BLACK
 	// default = GRAY
 	pub fn ping() -> PingResult {
-		use crate::NodeEnum::*;
 		info!("Starting community node pings...");
-		let mut node = NodeStruct::default();
+		let mut nodes = NodeStruct::default();
 		let mut get_info = HashMap::new();
 		get_info.insert("jsonrpc", "2.0");
 		get_info.insert("id", "0");
@@ -134,7 +130,7 @@ impl NodeStruct {
 		let fastest = false;
 		let timeout_sec = Duration::from_millis(5000);
 
-		for ip in Self::array().iter() {
+		for ip in NODE_IPS.iter() {
 			let id = match *ip {
 				C3POOL        => C3pool,
 				CAKE          => Cake,
@@ -182,18 +178,18 @@ impl NodeStruct {
 				color = Color32::LIGHT_GREEN
 			}
 			match id {
-				C3pool       => { node.c3pool.ms = ms; node.c3pool.color = color; },
-				Cake         => { node.cake.ms = ms; node.cake.color = color; },
-				CakeEu       => { node.cake_eu.ms = ms; node.cake_eu.color = color; },
-				CakeUk       => { node.cake_uk.ms = ms; node.cake_uk.color = color; },
-				CakeUs       => { node.cake_us.ms = ms; node.cake_us.color = color; },
-				Monerujo     => { node.monerujo.ms = ms; node.monerujo.color = color; },
-				Rino         => { node.rino.ms = ms; node.rino.color = color; },
-				Selsta       => { node.selsta.ms = ms; node.selsta.color = color; },
-				Seth         => { node.seth.ms = ms; node.seth.color = color; },
-				SupportXmr   => { node.supportxmr.ms = ms; node.supportxmr.color = color; },
-				SupportXmrIr => { node.supportxmr_ir.ms = ms; node.supportxmr_ir.color = color; },
-				XmrVsBeast   => { node.xmrvsbeast.ms = ms; node.xmrvsbeast.color = color; },
+				C3pool       => { nodes.c3pool.ms = ms; nodes.c3pool.color = color; },
+				Cake         => { nodes.cake.ms = ms; nodes.cake.color = color; },
+				CakeEu       => { nodes.cake_eu.ms = ms; nodes.cake_eu.color = color; },
+				CakeUk       => { nodes.cake_uk.ms = ms; nodes.cake_uk.color = color; },
+				CakeUs       => { nodes.cake_us.ms = ms; nodes.cake_us.color = color; },
+				Monerujo     => { nodes.monerujo.ms = ms; nodes.monerujo.color = color; },
+				Rino         => { nodes.rino.ms = ms; nodes.rino.color = color; },
+				Selsta       => { nodes.selsta.ms = ms; nodes.selsta.color = color; },
+				Seth         => { nodes.seth.ms = ms; nodes.seth.color = color; },
+				SupportXmr   => { nodes.supportxmr.ms = ms; nodes.supportxmr.color = color; },
+				SupportXmrIr => { nodes.supportxmr_ir.ms = ms; nodes.supportxmr_ir.color = color; },
+				XmrVsBeast   => { nodes.xmrvsbeast.ms = ms; nodes.xmrvsbeast.color = color; },
 			}
 		}
 		let mut best_ms: u128 = vec[0].0;
@@ -208,22 +204,7 @@ impl NodeStruct {
 		// The values don't update if not printed beforehand,
 		// so the match below on [fastest] gets funky.
 		info!("Fastest node ... {:#?} @ {:#?}ms", fastest, best_ms);
-		let ip = match fastest {
-			C3pool       => C3POOL,
-			Cake         => CAKE,
-			CakeEu       => CAKE_EU,
-			CakeUk       => CAKE_UK,
-			CakeUs       => CAKE_US,
-			Monerujo     => MONERUJO,
-			Rino         => RINO,
-			Selsta       => SELSTA,
-			Seth         => SETH,
-			SupportXmr   => SUPPORTXMR,
-			SupportXmrIr => SUPPORTXMR_IR,
-			XmrVsBeast   => XMRVSBEAST,
-		};
-		info!("Using IP ... {}", ip);
 		info!("Community node ping ... OK");
-		PingResult { node, fastest, }
+		PingResult { nodes, fastest, }
 	}
 }

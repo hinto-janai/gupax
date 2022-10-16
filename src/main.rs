@@ -34,8 +34,9 @@ use env_logger::{Builder,WriteStyle};
 use std::io::Write;
 use std::process::exit;
 use std::sync::{Arc,Mutex};
-use std::thread;
+use std::{thread,env};
 use std::time::Instant;
+use std::path::PathBuf;
 
 // Modules
 mod constants;
@@ -55,10 +56,10 @@ use {constants::*,node::*,state::*,about::*,status::*,gupax::*,p2pool::*,xmrig::
 pub struct App {
 	// Misc state
 	tab: Tab, // What tab are we on?
-	quit: bool, // Did user click quit button?
-	quit_confirm: bool, // Did user confirm to quit?
-	ping: bool, // Did user click the ping button?
-	ping_prog: Arc<Mutex<bool>>, // Are we in the progress of pinging?
+	quit: bool, // Was the quit button clicked?
+	quit_confirm: bool, // Was the quit confirmed?
+	ping: bool, // Was the ping button clicked?
+	pinging: Arc<Mutex<bool>>, // Is a ping in progress?
 	node: Arc<Mutex<NodeStruct>>, // Data on community nodes
 	// State:
 	// og    = Old state to compare against
@@ -68,42 +69,58 @@ pub struct App {
 	og: State,
 	state: State,
 	diff: bool,
+	// Process/update state:
+	// Doesn't make sense to save this on disk
+	// so it's represented as a bool here.
+	p2pool: bool, // Is p2pool online?
+	xmrig: bool, // Is xmrig online?
+	updating: bool, // Is an update in progress?
+	// State from [--flags]
+	startup: bool,
+	reset: bool,
 	// Static stuff
-	now: Instant,
-	resolution: Vec2,
-	os: &'static str,
-	version: String,
-	name_version: String,
-	banner: RetainedImage,
-
-	// TEMPORARY FIXME
-	p2pool: bool,
-	xmrig: bool,
+	now: Instant, // Internal timer
+	resolution: Vec2, // Frame resolution
+	os: &'static str, // OS
+	version: String, // Gupax version
+	name_version: String, // [Gupax vX.X.X]
+	banner: RetainedImage, // Gupax banner image
 }
 
 impl App {
-	fn new(cc: &eframe::CreationContext<'_>) -> Self {
+	fn cc(cc: &eframe::CreationContext<'_>, app: Self) -> Self {
+		let resolution = cc.integration_info.window_info.size;
+		init_text_styles(&cc.egui_ctx, resolution[0] as f32);
 		Self {
+			resolution,
+			..app
+		}
+	}
+
+	fn default() -> Self {
+		let app = Self {
 			tab: Tab::default(),
 			quit: false,
 			quit_confirm: false,
 			ping: false,
-			ping_prog: Arc::new(Mutex::new(false)),
+			pinging: Arc::new(Mutex::new(false)),
 			node: Arc::new(Mutex::new(NodeStruct::default())),
 			og: State::default(),
 			state: State::default(),
 			diff: false,
+			p2pool: false,
+			xmrig: false,
+			updating: false,
+			startup: true,
+			reset: false,
 			now: Instant::now(),
-			resolution: cc.integration_info.window_info.size,
+			resolution: Vec2::new(1280.0, 720.0),
 			os: OS,
 			version: "v0.0.1".to_string(),
 			name_version: "Gupax v0.0.1".to_string(),
 			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).expect("oops"),
-
-			// TEMPORARY FIXME
-			p2pool: false,
-			xmrig: false,
-		}
+		};
+		parse_args(app)
 	}
 }
 
@@ -153,6 +170,10 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 }
 
 fn init_logger() {
+	#[cfg(debug_assertions)]
+	let filter = LevelFilter::Info;
+	#[cfg(not(debug_assertions))]
+	let filter = LevelFilter::Warn;
 	use env_logger::fmt::Color;
 	Builder::new().format(|buf, record| {
 		let level;
@@ -173,7 +194,7 @@ fn init_logger() {
 			buf.style().set_dimmed(true).value(record.line().unwrap_or(0)),
 			record.args(),
 		)
-	}).filter_level(LevelFilter::Info).write_style(WriteStyle::Always).parse_default_env().format_timestamp_millis().init();
+	}).filter_level(filter).write_style(WriteStyle::Always).parse_default_env().format_timestamp_millis().init();
 	info!("init_logger() ... OK");
 }
 
@@ -193,6 +214,45 @@ fn init_options() -> NativeOptions {
 	});
 	info!("init_options() ... OK");
 	options
+}
+
+//---------------------------------------------------------------------------------------------------- Misc functions
+fn into_absolute_path(path: String) -> Result<PathBuf, std::io::Error> {
+	let path = PathBuf::from(path);
+	if path.is_relative() {
+		let mut dir = std::env::current_exe()?;
+		dir.pop();
+		dir.push(path);
+		Ok(dir)
+	} else {
+		Ok(path)
+	}
+}
+
+fn parse_args(mut app: App) -> App {
+	info!("Parsing CLI arguments...");
+	let mut args: Vec<String> = env::args().collect();
+	if args.len() == 1 { info!("No args ... OK"); return app } else { args.remove(0); info!("Args ... {:?}", args); }
+	// [help/version], exit early
+	for arg in &args {
+		match arg.as_str() {
+			"-h"|"--help"    => { println!("{}", ARG_HELP); exit(0); },
+			"-v"|"--version" => {
+				println!("Gupax  | {}\nP2Pool | {}\nXMRig  | {}\n\n{}", GUPAX_VERSION, P2POOL_VERSION, XMRIG_VERSION, ARG_COPYRIGHT);
+				exit(0);
+			},
+			_ => (),
+		}
+	}
+	// Everything else
+	for arg in args {
+		match arg.as_str() {
+			"-n"|"--no-startup" => { info!("Disabling startup..."); app.startup = false; }
+			"-r"|"--reset" => { info!("Resetting state..."); app.reset = true; }
+			_ => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
+		}
+	}
+	app
 }
 
 //---------------------------------------------------------------------------------------------------- [App] frame for [Panic] situations
@@ -240,19 +300,19 @@ impl eframe::App for Panic {
 //---------------------------------------------------------------------------------------------------- Main [App] frame
 fn main() {
 	init_logger();
-//	let toml = match State::get() {
-//		Ok(toml) => toml,
-//		Err(err) => {
-//			error!("{}", err);
-//			let error_msg = err.to_string();
-//			let options = Panic::options();
-//			eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error_msg))),);
-//			exit(1);
-//		},
-//	};
-	let state = State::default();
+	let app = App::default();
 	let options = init_options();
-	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(App::new(cc))),);
+	let toml = match State::get() {
+		Ok(toml) => toml,
+		Err(err) => {
+			error!("{}", err);
+			let error_msg = err.to_string();
+			let options = Panic::options();
+			eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error_msg))),);
+			exit(1);
+		},
+	};
+	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 
 impl eframe::App for App {
@@ -262,49 +322,75 @@ impl eframe::App for App {
 	}
 
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-		init_text_styles(ctx, 1280.0);
+//		init_text_styles(ctx, 1280.0);
 
 		// Close confirmation.
 		if self.quit {
 			egui::CentralPanel::default().show(ctx, |ui| {
+				init_text_styles(ctx, ui.available_width());
 				let width = ui.available_width();
 				let width = width - 10.0;
 				let height = ui.available_height();
-				init_text_styles(ctx, width);
-				ui.add_sized([width, height/2.0], Label::new("Are you sure you want to quit?"));
-				ui.group(|ui| {
-					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
-						info!("Quit confirmation = yes ... goodbye!");
-						self.quit_confirm = true;
-						frame.close();
-					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
-						self.quit = false;
+				// Detect processes or update
+				if self.p2pool || self.xmrig {
+					ui.add_sized([width, height/6.0], Label::new("Are you sure you want to quit?"));
+					if self.p2pool { ui.add_sized([width, height/6.0], Label::new("P2Pool is online...!")); }
+					if self.xmrig { ui.add_sized([width, height/6.0], Label::new("XMRig is online...!")); }
+				// Else, just quit
+				} else {
+					if self.state.gupax.save_before_quit {
+						info!("Saving before quit...");
+						match self.state.save() {
+							Err(err) => { error!("{}", err); exit(1); },
+							_ => (),
+						};
 					}
+					info!("No processes or update in progress ... goodbye!");
+					exit(0);
+				}
+				egui::TopBottomPanel::bottom("quit").show(ctx, |ui| {
+					ui.group(|ui| {
+						if ui.add_sized([width, height/8.0], egui::Button::new("Yes")).clicked() {
+							if self.state.gupax.save_before_quit {
+								info!("Saving before quit...");
+								match self.state.save() {
+									Err(err) => { error!("{}", err); exit(1); },
+									_ => (),
+								};
+							}
+							info!("Quit confirmation = yes ... goodbye!");
+							self.quit_confirm = true;
+							exit(0);
+						} else if ui.add_sized([width, height/8.0], egui::Button::new("No")).clicked() {
+							self.quit = false;
+						}
+					});
 				});
 			});
 			return
 		}
 
-		//
+		// If ping was pressed, start thread
 		if self.ping {
 			self.ping = false;
-			self.ping_prog = Arc::new(Mutex::new(true));
+			self.pinging = Arc::new(Mutex::new(true));
 			let node_clone = Arc::clone(&self.node);
-			let prog_clone = Arc::clone(&self.ping_prog);
+			let pinging_clone = Arc::clone(&self.pinging);
 			thread::spawn(move|| {
 				let result = NodeStruct::ping();
-				*node_clone.lock().unwrap() = result.node;
-				*prog_clone.lock().unwrap() = false;
+				*node_clone.lock().unwrap() = result.nodes;
+				*pinging_clone.lock().unwrap() = false;
 			});
 		}
 
-//		if *self.ping_prog.lock().unwrap() {
+		// If ping-ING, display stats
+//		if *self.pinging.lock().unwrap() {
 //			egui::CentralPanel::default().show(ctx, |ui| {
 //				let width = ui.available_width();
 //				let width = width - 10.0;
 //				let height = ui.available_height();
 //				init_text_styles(ctx, width);
-//				ui.add_sized([width, height/2.0], Label::new(format!("In progress: {}", *self.ping_prog.lock().unwrap())));
+//				ui.add_sized([width, height/2.0], Label::new(format!("In progress: {}", *self.pinging.lock().unwrap())));
 //				ui.group(|ui| {
 //					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
 //						info!("Quit confirmation = yes ... goodbye!");
@@ -324,8 +410,8 @@ impl eframe::App for App {
 			let width = (ui.available_width() - 90.0) / 5.0;
 			let height = ui.available_height() / 10.0;
 		    ui.add_space(4.0);
-			ui.style_mut().override_text_style = Some(Name("Tab".into()));
 			ui.horizontal(|ui| {
+				ui.style_mut().override_text_style = Some(Name("Tab".into()));
 				ui.style_mut().visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
 				ui.style_mut().visuals.selection.bg_fill = Color32::from_rgb(255, 120, 120);
 				ui.style_mut().visuals.selection.stroke = Stroke {
@@ -346,7 +432,6 @@ impl eframe::App for App {
 			ui.separator();
 //		});
 
-
 		let height = height / 2.0;
 		// Bottom: app info + state/process buttons
 		egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
@@ -359,9 +444,6 @@ impl eframe::App for App {
 					ui.add_sized([width, height], Label::new(self.os));
 					ui.separator();
 					ui.add_sized([width/1.5, height], Label::new("P2Pool"));
-// TODO
-// self.p2pool + self.xmrig
-// This is for process online/offline status
 					if self.p2pool == true {
 						ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(100, 230, 100))));
 					} else {
@@ -428,31 +510,25 @@ impl eframe::App for App {
 			});
 		});
 
-		// Central: tab contents
-		// Docs say to add central last, don't think it matters here but whatever:
-		// [https://docs.rs/egui/latest/egui/containers/panel/struct.TopBottomPanel.html]
-//        egui::TopBottomPanel::bottom("2").show(ctx, |ui| {
-			ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
-	        match self.tab {
-	            Tab::About => {
-					About::show(self, ctx, ui);
-	            }
-	            Tab::Status => {
-					Status::show(self, ctx, ui);
-	            }
-	            Tab::Gupax => {
-//					Gupax::show(self.state.gupax, ctx, ui);
-					exit(0);
-	            }
-	            Tab::P2pool => {
-					P2pool::show(&mut self.state.p2pool, ctx, ui);
-	            }
-	            Tab::Xmrig => {
-					Xmrig::show(&mut self.state.xmrig, ctx, ui);
-	            }
-	        }
-//        });
-
+		ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
+        match self.tab {
+            Tab::About => {
+				About::show(self, ctx, ui);
+            }
+            Tab::Status => {
+				Status::show(self, ctx, ui);
+            }
+            Tab::Gupax => {
+//				Gupax::show(self.state.gupax, ctx, ui);
+				exit(0);
+            }
+            Tab::P2pool => {
+				P2pool::show(&mut self.state.p2pool, ctx, ui);
+            }
+            Tab::Xmrig => {
+				Xmrig::show(&mut self.state.xmrig, ctx, ui);
+            }
+        }
 		});
 	}
 }
