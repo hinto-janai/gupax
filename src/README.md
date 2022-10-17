@@ -2,6 +2,7 @@
 * [Structure](#Structure)
 * [Bootstrap](#Bootstrap)
 * [State](#State)
+* [Scale](#Scale)
 
 ## Structure
 | File/Folder    | Purpose |
@@ -48,3 +49,14 @@ Internal state is saved in the "OS data folder" as `gupax.toml`, using the [TOML
 | Windows  | `{FOLDERID_LocalAppData}`                | C:\Users\Alice\AppData\Roaming\Gupax\gupax.toml           |
 | macOS    | `$HOME`/Library/Application Support      | /Users/Alice/Library/Application Support/Gupax/gupax.toml |
 | Linux    | `$XDG_DATA_HOME` or `$HOME`/.local/share | /home/alice/.local/share/gupax/gupax.toml                 |
+
+## Scale
+Every frame, the max available `[width, height]` are calculated, and those are used as a baseline for the Top/Bottom bars, containing the tabs and status bar. After that, all available space is given to the middle ui elements. The scale is calculated every frame so that all elements can scale immediately as the user adjusts it; this doesn't take as much CPU as you might think since frames are only rendered on user interaction. Some elements are subtracted a fixed number because the `ui.seperator()`s add some fixed space which needs to be accounted for.
+
+```
+Main [App] outer frame (default: [1280.0, 720.0])
+├─ Inner frame (1264.0, 704.0)
+   ├─ TopPanel     = [width: (max-90.0)/5.0, height: max/10.0]
+   ├─ BottomPanel  = [width: max, height: max/15.0]
+   ├─ CentralPanel = [width: (max/8.0), height: the rest
+```
