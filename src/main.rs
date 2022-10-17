@@ -23,6 +23,7 @@ use egui::TextStyle::*;
 use egui::color::Color32;
 use egui::FontFamily::Proportional;
 use egui::{FontId,Label,RichText,Stroke,Vec2,Pos2};
+use egui::special_emojis::GITHUB;
 use egui_extras::RetainedImage;
 use eframe::{egui,NativeOptions};
 
@@ -97,7 +98,7 @@ impl App {
 		}
 	}
 
-	fn default() -> Self {
+	fn new() -> Self {
 		let app = Self {
 			tab: Tab::default(),
 			quit: false,
@@ -116,11 +117,30 @@ impl App {
 			now: Instant::now(),
 			resolution: Vec2::new(1280.0, 720.0),
 			os: OS,
-			version: "v0.0.1".to_string(),
-			name_version: "Gupax v0.0.1".to_string(),
+			version: format!("{}", GUPAX_VERSION),
+			name_version: format!("Gupax {}", GUPAX_VERSION),
 			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).expect("oops"),
 		};
-		parse_args(app)
+		// Apply arg state
+		let mut app = parse_args(app);
+		// Read disk state if no [--reset] arg
+		if app.reset == false {
+			app.og = match State::get() {
+				Ok(toml) => toml,
+				Err(err) => {
+					error!("{}", err);
+					let error_msg = err.to_string();
+					let options = Panic::options();
+					eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error_msg))),);
+					exit(1);
+				},
+			};
+		}
+		// Make sure thread count is accurate/doesn't overflow
+		app.og.xmrig.max_threads = num_cpus::get();
+		if app.og.xmrig.current_threads > app.og.xmrig.max_threads { app.og.xmrig.current_threads = app.og.xmrig.max_threads; }
+		app.state = app.og.clone();
+		app
 	}
 }
 
@@ -238,7 +258,7 @@ fn parse_args(mut app: App) -> App {
 		match arg.as_str() {
 			"-h"|"--help"    => { println!("{}", ARG_HELP); exit(0); },
 			"-v"|"--version" => {
-				println!("Gupax  | {}\nP2Pool | {}\nXMRig  | {}\n\n{}", GUPAX_VERSION, P2POOL_VERSION, XMRIG_VERSION, ARG_COPYRIGHT);
+				println!("Gupax  | {}\nP2Pool | {}\nXMRig  | {}\n\nOS: [{}], Commit: [{}]\n\n{}", GUPAX_VERSION, P2POOL_VERSION, XMRIG_VERSION, OS_NAME, &COMMIT[..40], ARG_COPYRIGHT);
 				exit(0);
 			},
 			_ => (),
@@ -300,30 +320,22 @@ impl eframe::App for Panic {
 //---------------------------------------------------------------------------------------------------- Main [App] frame
 fn main() {
 	init_logger();
-	let app = App::default();
+	let app = App::new();
 	let options = init_options();
-	let toml = match State::get() {
-		Ok(toml) => toml,
-		Err(err) => {
-			error!("{}", err);
-			let error_msg = err.to_string();
-			let options = Panic::options();
-			eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error_msg))),);
-			exit(1);
-		},
-	};
 	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 
 impl eframe::App for App {
 	fn on_close_event(&mut self) -> bool {
 		self.quit = true;
-		self.quit_confirm
+		if self.og.gupax.ask_before_quit {
+			self.quit_confirm
+		} else {
+			true
+		}
 	}
 
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-//		init_text_styles(ctx, 1280.0);
-
 		// Close confirmation.
 		if self.quit {
 			egui::CentralPanel::default().show(ctx, |ui| {
@@ -332,10 +344,11 @@ impl eframe::App for App {
 				let width = width - 10.0;
 				let height = ui.available_height();
 				// Detect processes or update
-				if self.p2pool || self.xmrig {
+				if self.p2pool || self.xmrig || self.updating {
 					ui.add_sized([width, height/6.0], Label::new("Are you sure you want to quit?"));
-					if self.p2pool { ui.add_sized([width, height/6.0], Label::new("P2Pool is online...!")); }
-					if self.xmrig { ui.add_sized([width, height/6.0], Label::new("XMRig is online...!")); }
+					if self.updating { ui.add_sized([width, height/9.0], Label::new("Update is in progress...!")); }
+					if self.p2pool { ui.add_sized([width, height/9.0], Label::new("P2Pool is online...!")); }
+					if self.xmrig { ui.add_sized([width, height/9.0], Label::new("XMRig is online...!")); }
 				// Else, just quit
 				} else {
 					if self.state.gupax.save_before_quit {
@@ -383,27 +396,6 @@ impl eframe::App for App {
 			});
 		}
 
-		// If ping-ING, display stats
-//		if *self.pinging.lock().unwrap() {
-//			egui::CentralPanel::default().show(ctx, |ui| {
-//				let width = ui.available_width();
-//				let width = width - 10.0;
-//				let height = ui.available_height();
-//				init_text_styles(ctx, width);
-//				ui.add_sized([width, height/2.0], Label::new(format!("In progress: {}", *self.pinging.lock().unwrap())));
-//				ui.group(|ui| {
-//					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
-//						info!("Quit confirmation = yes ... goodbye!");
-//						exit(0);
-//					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
-//						info!("Quit confirmation = no ... returning!");
-//						self.show_confirmation_dialog = false;
-//					}
-//				});
-//			});
-//			return
-//		}
-
 		// Top: Tabs
 		egui::CentralPanel::default().show(ctx, |ui| {
 			init_text_styles(ctx, ui.available_width());
@@ -439,19 +431,19 @@ impl eframe::App for App {
 			ui.horizontal(|ui| {
 				ui.group(|ui| {
 					let width = width / 2.0;
-					ui.add_sized([width, height], Label::new(&self.name_version));
+					ui.add_sized([width, height], Label::new(&*self.name_version));
 					ui.separator();
 					ui.add_sized([width, height], Label::new(self.os));
 					ui.separator();
 					ui.add_sized([width/1.5, height], Label::new("P2Pool"));
-					if self.p2pool == true {
+					if self.p2pool {
 						ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(100, 230, 100))));
 					} else {
 						ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(230, 50, 50))));
 					}
 					ui.separator();
 					ui.add_sized([width/1.5, height], Label::new("XMRig"));
-					if self.xmrig == true {
+					if self.xmrig {
 							ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(100, 230, 100))));
 					} else {
 							ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(230, 50, 50))));
@@ -464,7 +456,7 @@ impl eframe::App for App {
 							ui.set_enabled(false)
 						}
 						let width = width / 2.0;
-						if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() { self.og = self.state.clone(); }
+						if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() { self.og = self.state.clone(); self.state.save(); }
 						if ui.add_sized([width, height], egui::Button::new("Reset")).on_hover_text("Reset changes").clicked() { self.state = self.og.clone(); }
 					});
 
@@ -472,7 +464,7 @@ impl eframe::App for App {
 					match self.tab {
 						Tab::P2pool => {
 							ui.group(|ui| {
-								if self.p2pool == true {
+								if self.p2pool {
 									if ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() { self.p2pool = false; }
 									if ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() { self.p2pool = false; }
 									ui.add_enabled_ui(false, |ui| {
@@ -489,7 +481,7 @@ impl eframe::App for App {
 						}
 						Tab::Xmrig => {
 							ui.group(|ui| {
-								if self.xmrig == true {
+								if self.xmrig {
 									if ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart XMRig").clicked() { self.xmrig = false; }
 									if ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop XMRig").clicked() { self.xmrig = false; }
 									ui.add_enabled_ui(false, |ui| {
@@ -513,14 +505,31 @@ impl eframe::App for App {
 		ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
         match self.tab {
             Tab::About => {
-				About::show(self, ctx, ui);
+				ui.add_space(10.0);
+				ui.vertical_centered(|ui| {
+					let space = ui.available_height()/2.2;
+					self.banner.show(ui);
+					ui.label("Gupax (guh-picks) is a cross-platform GUI for mining");
+					ui.hyperlink_to("[Monero]", "https://www.github.com/monero-project/monero");
+					ui.label("on the decentralized");
+					ui.hyperlink_to("[P2Pool]", "https://www.github.com/SChernykh/p2pool");
+					ui.label("using the dedicated");
+					ui.hyperlink_to("[XMRig]", "https://www.github.com/xmrig/xmrig");
+					ui.label("miner for max hashrate");
+
+					ui.add_space(ui.available_height()/2.4);
+
+					ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui");
+					ui.hyperlink_to(format!("{} {}", GITHUB, "Gupax made by hinto-janaiyo"), "https://www.github.com/hinto-janaiyo/gupax");
+					ui.label("egui is licensed under MIT & Apache-2.0");
+					ui.label("Gupax, P2Pool, and XMRig are licensed under GPLv3");
+				});
             }
             Tab::Status => {
 				Status::show(self, ctx, ui);
             }
             Tab::Gupax => {
-//				Gupax::show(self.state.gupax, ctx, ui);
-				exit(0);
+				Gupax::show(&mut self.state.gupax, ctx, ui);
             }
             Tab::P2pool => {
 				P2pool::show(&mut self.state.p2pool, ctx, ui);

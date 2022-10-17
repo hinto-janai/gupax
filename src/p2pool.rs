@@ -35,6 +35,29 @@ use crate::node::{RINO,SETH,SELSTA};
 
 impl P2pool {
 	pub fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+		// TODO:
+		// ping code
+		// If ping-ING, display stats
+//		if *self.pinging.lock().unwrap() {
+//			egui::CentralPanel::default().show(ctx, |ui| {
+//				let width = ui.available_width();
+//				let width = width - 10.0;
+//				let height = ui.available_height();
+//				init_text_styles(ctx, width);
+//				ui.add_sized([width, height/2.0], Label::new(format!("In progress: {}", *self.pinging.lock().unwrap())));
+//				ui.group(|ui| {
+//					if ui.add_sized([width, height/10.0], egui::Button::new("Yes")).clicked() {
+//						info!("Quit confirmation = yes ... goodbye!");
+//						exit(0);
+//					} else if ui.add_sized([width, height/10.0], egui::Button::new("No")).clicked() {
+//						info!("Quit confirmation = no ... returning!");
+//						self.show_confirmation_dialog = false;
+//					}
+//				});
+//			});
+//			return
+//		}
+
 		let height = ui.available_height() / 10.0;
 		let mut width = ui.available_width() - 50.0;
 		ui.group(|ui| {

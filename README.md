@@ -3,23 +3,18 @@
 **Gupax** (*guh-picks*) is a cross-platform GUI for mining [**Monero**](https://github.com/monero-project/monero) on the decentralized [**P2Pool**](https://github.com/SChernykh/p2pool), using the dedicated [**XMRig**](https://github.com/xmrig/xmrig) miner for max hashrate.
 
 ## Demo
-*	<details>
-	<summary>Click me to load the demo!</summary>
+https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e-ac65-3a339b96a9d2.mp4
 
-	https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e-ac65-3a339b96a9d2.mp4
+<details>
+<summary>Click me to load images!</summary>
 
-	</details>
+![about.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/about.png)
+![status.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/status.png)
+![gupax.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/gupax.png)
+![p2pool.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/p2pool.png)
+![xmrig.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/xmrig.png)
 
-*	<details>
-	<summary>Click me to load images!</summary>
-
-	![about.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/about.png)
-	![status.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/status.png)
-	![gupax.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/gupax.png)
-	![p2pool.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/p2pool.png)
-	![xmrig.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/xmrig.png)
-
-	</details>
+</details>
 
 
 ## Implementation

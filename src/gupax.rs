@@ -19,32 +19,9 @@ use std::path::Path;
 use crate::App;
 use egui::WidgetType::Button;
 use crate::constants::*;
-
-// Main data structure for the Gupax tab
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Gupax {
-	auto_update: bool,
-	ask_before_quit: bool,
-	updating: bool,
-	upgrading: bool,
-	config: String,
-	p2pool: String,
-	xmrig: String,
-}
+use crate::state::Gupax;
 
 impl Gupax {
-	pub fn new() -> Self {
-		Self {
-			auto_update: false,
-			ask_before_quit: true,
-			updating: false,
-			upgrading: false,
-			config: String::from("/home/hinto/gupax/gupax.toml"),
-			p2pool: String::from("/home/hinto/gupax/p2pool"),
-			xmrig: String::from("/home/hinto/gupax/xmrig"),
-		}
-	}
-
 	pub fn show(state: &mut Gupax, ctx: &egui::Context, ui: &mut egui::Ui) {
 		let height = ui.available_height();
 		let width = ui.available_width();
@@ -54,41 +31,40 @@ impl Gupax {
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
 					ui.vertical(|ui| {
-						ui.add_sized([half_width - 8.0, half_height], egui::Button::new("Check for updates")).on_hover_text(GUPAX_CHECK_FOR_UPDATES);
+						ui.add_sized([half_width - 8.0, half_height], egui::Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE);
 						ui.set_enabled(false);
-						ui.add_sized([half_width - 8.0, half_height], egui::Button::new("Upgrade")).on_hover_text(GUPAX_UPGRADE);
+						ui.add_sized([half_width - 8.0, half_height], egui::Button::new("Upgrade")).on_hover_text("asdf");
 					});
 			});
 
 			ui.group(|ui| {
+					let mut style = (*ctx.style()).clone();
+					style.spacing.icon_width_inner = ui.available_height() / 6.0;
+					style.spacing.icon_width = ui.available_height() / 4.0;
+					style.spacing.icon_spacing = ui.available_width() / 20.0;
+					ctx.set_style(style);
+					let half_width = (half_width/2.0)-15.0;
 					ui.vertical(|ui| {
-						let mut style = (*ctx.style()).clone();
-						style.spacing.icon_width_inner = ui.available_height() / 6.0;
-						style.spacing.icon_width = ui.available_height() / 4.0;
-						style.spacing.icon_spacing = ui.available_width() / 20.0;
-						ctx.set_style(style);
 						ui.add_sized([half_width, half_height], egui::Checkbox::new(&mut state.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
-
 						ui.add_sized([half_width, half_height], egui::Checkbox::new(&mut state.ask_before_quit, "Ask before quitting")).on_hover_text(GUPAX_ASK_BEFORE_QUIT);
-				});
+					});
+					ui.vertical(|ui| {
+						ui.add_sized([half_width, half_height], egui::Checkbox::new(&mut state.auto_node, "Auto-node")).on_hover_text(GUPAX_AUTO_NODE);
+						ui.add_sized([half_width, half_height], egui::Checkbox::new(&mut state.save_before_quit, "Save before quitting")).on_hover_text(GUPAX_SAVE_BEFORE_QUIT);
+					});
 			});
 		});
 		ui.add_space(10.0);
 
 		ui.horizontal(|ui| {
-			ui.label("Gupax config path: ");
-			ui.spacing_mut().text_edit_width = ui.available_width() - 35.0;
-			ui.text_edit_singleline(&mut state.config).on_hover_text(GUPAX_PATH_CONFIG);
-		});
-		ui.horizontal(|ui| {
 			ui.label("P2Pool binary path:");
 			ui.spacing_mut().text_edit_width = ui.available_width() - 35.0;
-			ui.text_edit_singleline(&mut state.p2pool).on_hover_text(GUPAX_PATH_P2POOL);
+			ui.text_edit_singleline(&mut state.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
 		});
 		ui.horizontal(|ui| {
 			ui.label("XMRig binary path: ");
 			ui.spacing_mut().text_edit_width = ui.available_width() - 35.0;
-			ui.text_edit_singleline(&mut state.xmrig).on_hover_text(GUPAX_PATH_XMRIG);
+			ui.text_edit_singleline(&mut state.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
 		});
 	}
 }

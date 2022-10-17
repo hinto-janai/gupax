@@ -15,9 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub const GUPAX_VERSION: &'static str = "v0.1.0";
+pub const GUPAX_VERSION: &'static str = concat!("v", env!("CARGO_PKG_VERSION"));
 pub const P2POOL_VERSION: &'static str = "v2.4";
 pub const XMRIG_VERSION: &'static str = "v6.18.0";
+pub const COMMIT: &'static str = include_str!("../.git/refs/heads/main");
 
 pub const BYTES_ICON: &[u8] = include_bytes!("../images/png/icon.png");
 pub const BYTES_BANNER: &[u8] = include_bytes!("../images/png/banner.png");
@@ -34,22 +35,26 @@ pub const HUGEPAGES_1GB: bool = false;
 #[cfg(target_os = "macos")]
 pub const OS: &'static str = " macOS";
 #[cfg(target_os = "macos")]
+pub const OS_NAME: &'static str = "macOS";
+#[cfg(target_os = "macos")]
 pub const HUGEPAGES_1GB: bool = false;
 
 #[cfg(target_os = "linux")]
 pub const OS: &'static str = "🐧 Linux";
 #[cfg(target_os = "linux")]
+pub const OS_NAME: &'static str = "Linux";
+#[cfg(target_os = "linux")]
 pub const HUGEPAGES_1GB: bool = true;
 
 // Tooltips
 // Gupax
-pub const GUPAX_CHECK_FOR_UPDATES: &'static str = "Check for Gupax, P2Pool, and XMRig updates via GitHub's API";
-pub const GUPAX_UPGRADE: &'static str = "Upgrade anything that is out-of-date";
+pub const GUPAX_UPDATE: &'static str = "Update Gupax, P2Pool, and XMRig via GitHub's API";
 pub const GUPAX_AUTO_UPDATE: &'static str = "Automatically check for updates at startup";
-pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting if processes are still alive";
-pub const GUPAX_PATH_CONFIG: &'static str = "The location of the Gupax configuration file";
-pub const GUPAX_PATH_P2POOL: &'static str = "The location of the P2Pool binary";
-pub const GUPAX_PATH_XMRIG: &'static str = "The location of the XMRig binary";
+pub const GUPAX_AUTO_NODE: &'static str = "Automatically ping the community Monero nodes and select the fastest at startup";
+pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting if processes are still alive, or if an update is in progress";
+pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed settings before quitting";
+pub const GUPAX_PATH_P2POOL: &'static str = "The location of the P2Pool binary, both absolute and relative paths are accepted";
+pub const GUPAX_PATH_XMRIG: &'static str = "The location of the XMRig binary, both absolute and relative paths are accepted";
 // P2Pool
 pub const P2POOL_MAIN: &'static str = "The P2Pool main-chain. This P2Pool finds shares faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
 pub const P2POOL_MINI: &'static str = "The P2Pool mini-chain. This P2Pool finds shares slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
@@ -77,9 +82,8 @@ r#"USAGE: gupax [--flags]
     -n | --no-startup        Disable auto-update/node connections at startup
     -r | --reset             Reset all Gupax configuration/state"#;
 pub const ARG_COPYRIGHT: &'static str =
-r#"For more information:
-https://github.com/hinto-janaiyo/gupax
-https://github.com/SChernykh/p2pool
-https://github.com/xmrig/xmrig
-
-Gupax, P2Pool, and XMRig are licensed under GPLv3."#;
+r#"Gupax, P2Pool, and XMRig are licensed under GPLv3.
+For more information, see here:
+    - https://github.com/hinto-janaiyo/gupax
+    - https://github.com/SChernykh/p2pool
+    - https://github.com/xmrig/xmrig"#;

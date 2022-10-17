@@ -6,15 +6,14 @@
 ## Structure
 | File/Folder    | Purpose |
 |----------------|---------|
-| `about.rs`     | Struct/impl for `About` tab
 | `constants.rs` | General constants needed in Gupax
-| `gupax.rs`     | Struct/impl for `Gupax` tab
+| `gupax.rs`     | Impl for `Gupax` tab
 | `main.rs`      | Struct/enum/impl for `App/Tab/State`, init functions, main function
 | `node.rs`      | Struct/impl for Community Nodes
-| `p2pool.rs`    | Struct/impl for `P2Pool` tab
-| `state.rs`     | Struct/impl for `gupax.toml`, the disk state
+| `p2pool.rs`    | Impl for `P2Pool` tab
+| `state.rs`     | Struct/impl for `gupax.toml`, the disk state. This holds the structs representing tabs with mutable state (Gupax/P2Pool/XMRig)
 | `status.rs`    | Struct/impl for `Status` tab
-| `xmrig.rs`     | Struct/impl for `XMRig` tab
+| `xmrig.rs`     | Impl for `XMRig` tab
 
 ## Bootstrap
 This is how Gupax works internally when starting up, divided into 3 sections.

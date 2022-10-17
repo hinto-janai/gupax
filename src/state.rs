@@ -40,9 +40,13 @@ use log::*;
 impl State {
 	pub fn default() -> Self {
 		use crate::constants::{P2POOL_VERSION,XMRIG_VERSION};
+		let max_threads = num_cpus::get();
+		let current_threads;
+		if max_threads == 1 { current_threads = 1; } else { current_threads = max_threads / 2; }
 		Self {
 			gupax: Gupax {
 				auto_update: true,
+				auto_node: true,
 				ask_before_quit: true,
 				save_before_quit: true,
 				p2pool_path: DEFAULT_P2POOL_PATH.to_string(),
@@ -66,8 +70,8 @@ impl State {
 				nicehash: false,
 				keepalive: false,
 				hugepages_jit: true,
-				current_threads: 1,
-				max_threads: 1,
+				current_threads,
+				max_threads,
 				priority: 2,
 				pool: "localhost:3333".to_string(),
 				address: "".to_string(),
@@ -224,6 +228,7 @@ pub struct State {
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub struct Gupax {
 	pub auto_update: bool,
+	pub auto_node: bool,
 	pub ask_before_quit: bool,
 	pub save_before_quit: bool,
 	pub p2pool_path: String,
@@ -253,8 +258,8 @@ pub struct Xmrig {
 	pub nicehash: bool,
 	pub keepalive: bool,
 	pub hugepages_jit: bool,
-	pub max_threads: u16,
-	pub current_threads: u16,
+	pub max_threads: usize,
+	pub current_threads: usize,
 	pub priority: u8,
 	pub pool: String,
 	pub address: String,
