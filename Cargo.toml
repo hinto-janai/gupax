@@ -10,6 +10,7 @@ eframe = "0.19.0"
 egui = "0.19.0"
 egui_extras = { version = "0.19.0", features = ["image"] }
 env_logger = "0.9.1"
+figment = { version = "0.10.8", features = ["toml"] }
 hex-literal = "0.3.4"
 image = { version = "0.24.4", features = ["png"] }
 log = "0.4.17"
@@ -23,6 +24,7 @@ serde = "1.0.145"
 serde_derive = "1.0.145"
 sha2 = "0.10.6"
 toml = "0.5.9"
+openssl = { version = "*", features = ["vendored"] }
 
 [profile.optimized]
 codegen-units = 1

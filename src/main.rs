@@ -41,6 +41,7 @@ use std::time::Instant;
 use std::path::PathBuf;
 
 // Modules
+mod ferris;
 mod constants;
 mod node;
 mod state;
@@ -49,7 +50,7 @@ mod status;
 mod gupax;
 mod p2pool;
 mod xmrig;
-use {constants::*,node::*,state::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*};
+use {ferris::*,constants::*,node::*,state::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*};
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
 // The state of the outer main [App].
@@ -72,13 +73,13 @@ pub struct App {
 	// the [diff] bool will be the signal for [Reset/Save].
 	og: State,
 	state: State,
+//	update: Update, // State for update data [update.rs]
 	diff: bool,
 	// Process/update state:
 	// Doesn't make sense to save this on disk
 	// so it's represented as a bool here.
 	p2pool: bool, // Is p2pool online?
 	xmrig: bool, // Is xmrig online?
-	updating: bool, // Is an update in progress?
 	// State from [--flags]
 	startup: bool,
 	reset: bool,
@@ -113,10 +114,10 @@ impl App {
 			node: Arc::new(Mutex::new(NodeStruct::default())),
 			og: State::default(),
 			state: State::default(),
+//			update: Update::default(),
 			diff: false,
 			p2pool: false,
 			xmrig: false,
-			updating: false,
 			startup: true,
 			reset: false,
 			now: Instant::now(),
@@ -242,18 +243,6 @@ fn init_options() -> NativeOptions {
 }
 
 //---------------------------------------------------------------------------------------------------- Misc functions
-fn into_absolute_path(path: String) -> Result<PathBuf, std::io::Error> {
-	let path = PathBuf::from(path);
-	if path.is_relative() {
-		let mut dir = std::env::current_exe()?;
-		dir.pop();
-		dir.push(path);
-		Ok(dir)
-	} else {
-		Ok(path)
-	}
-}
-
 fn parse_args(mut app: App) -> App {
 	info!("Parsing CLI arguments...");
 	let mut args: Vec<String> = env::args().collect();
@@ -266,6 +255,7 @@ fn parse_args(mut app: App) -> App {
 				println!("Gupax  | {}\nP2Pool | {}\nXMRig  | {}\n\nOS: [{}], Commit: [{}]\n\n{}", GUPAX_VERSION, P2POOL_VERSION, XMRIG_VERSION, OS_NAME, &COMMIT[..40], ARG_COPYRIGHT);
 				exit(0);
 			},
+			"-f"|"--ferris" => { println!("{}", FERRIS); exit(0); },
 			_ => (),
 		}
 	}
@@ -349,50 +339,76 @@ impl eframe::App for App {
 
 		// Close confirmation.
 		if self.quit {
-			egui::TopBottomPanel::bottom("quit").show(ctx, |ui| {
-				let width = self.width;
-				let height = self.height/8.0;
-				ui.group(|ui| {
-					if ui.add_sized([width, height], egui::Button::new("Yes")).clicked() {
-						if self.state.gupax.save_before_quit {
-							info!("Saving before quit...");
-							match self.state.save() {
-								Err(err) => { error!("{}", err); exit(1); },
-								_ => (),
-							};
+			// If [ask_before_quit == true]
+			if self.state.gupax.ask_before_quit {
+				egui::TopBottomPanel::bottom("quit").show(ctx, |ui| {
+					let width = self.width;
+					let height = self.height/8.0;
+					ui.group(|ui| {
+						if ui.add_sized([width, height], egui::Button::new("Yes")).clicked() {
+							if self.state.gupax.save_before_quit {
+								if self.diff {
+									info!("Saving before quit...");
+									match self.state.save() {
+										Err(err) => { error!("{}", err); exit(1); },
+										_ => (),
+									};
+								} else {
+									info!("No changed detected, not saving...");
+								}
+							}
+							info!("Quit confirmation = yes ... goodbye!");
+							exit(0);
+						} else if ui.add_sized([width, height], egui::Button::new("No")).clicked() {
+							self.quit = false;
 						}
-						info!("Quit confirmation = yes ... goodbye!");
-						self.quit_confirm = true;
+					});
+				});
+				egui::CentralPanel::default().show(ctx, |ui| {
+					let width = self.width;
+					let height = ui.available_height();
+					let ten = height/10.0;
+					// Detect processes or update
+					ui.add_space(ten);
+					// || self.update.updating
+					if self.p2pool || self.xmrig {
+						ui.add_sized([width, height/4.0], Label::new("Are you sure you want to quit?"));
+//						if self.update.updating { ui.add_sized([width, ten], Label::new("Update is in progress...!")); }
+						if self.p2pool { ui.add_sized([width, ten], Label::new("P2Pool is online...!")); }
+						if self.xmrig { ui.add_sized([width, ten], Label::new("XMRig is online...!")); }
+					// Else, just quit
+					} else {
+						if self.state.gupax.save_before_quit {
+							if self.diff {
+								info!("Saving before quit...");
+								match self.state.save() {
+									Err(err) => { error!("{}", err); exit(1); },
+									_ => (),
+								};
+							} else {
+								info!("No changed detected, not saving...");
+							}
+						}
+						info!("No processes or update in progress ... goodbye!");
 						exit(0);
-					} else if ui.add_sized([width, height], egui::Button::new("No")).clicked() {
-						self.quit = false;
 					}
 				});
-			});
-			egui::CentralPanel::default().show(ctx, |ui| {
-				let width = self.width;
-				let height = ui.available_height();
-				let ten = height/10.0;
-				// Detect processes or update
-				ui.add_space(ten);
-				if self.p2pool || self.xmrig || self.updating {
-					ui.add_sized([width, height/4.0], Label::new("Are you sure you want to quit?"));
-					if self.updating { ui.add_sized([width, ten], Label::new("Update is in progress...!")); }
-					if self.p2pool { ui.add_sized([width, ten], Label::new("P2Pool is online...!")); }
-					if self.xmrig { ui.add_sized([width, ten], Label::new("XMRig is online...!")); }
-				// Else, just quit
-				} else {
-					if self.state.gupax.save_before_quit {
+			// Else, quit (save if [save_before_quit == true]
+			} else {
+				if self.state.gupax.save_before_quit {
+					if self.diff {
 						info!("Saving before quit...");
 						match self.state.save() {
 							Err(err) => { error!("{}", err); exit(1); },
 							_ => (),
 						};
+					} else {
+						info!("No changed detected, not saving...");
 					}
-					info!("No processes or update in progress ... goodbye!");
-					exit(0);
 				}
-			});
+				info!("Quit confirmation = yes ... goodbye!");
+				exit(0);
+			}
 			return
 		}
 

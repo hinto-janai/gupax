@@ -110,7 +110,7 @@ impl NodeStruct {
 	//   - Add data to appropriate struct
 	//   - Sort fastest to lowest
 	//   - Return [PingResult(NodeStruct, NodeEnum)] (data and fastest node)
-	//
+ 	//
 	// This is done linearly since per IP since
 	// multi-threading might affect performance.
 	//

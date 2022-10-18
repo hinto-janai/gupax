@@ -33,6 +33,8 @@ use std::fmt::Display;
 use std::path::{Path,PathBuf};
 use std::result::Result;
 use serde_derive::{Serialize,Deserialize};
+use figment::Figment;
+use figment::providers::{Format,Toml};
 use crate::constants::HORIZONTAL;
 use log::*;
 
@@ -51,6 +53,8 @@ impl State {
 				save_before_quit: true,
 				p2pool_path: DEFAULT_P2POOL_PATH.to_string(),
 				xmrig_path: DEFAULT_XMRIG_PATH.to_string(),
+				absolute_p2pool_path: Self::into_absolute_path(DEFAULT_P2POOL_PATH.to_string()).unwrap(),
+				absolute_xmrig_path: Self::into_absolute_path(DEFAULT_XMRIG_PATH.to_string()).unwrap(),
 			},
 			p2pool: P2pool {
 				simple: true,
@@ -114,7 +118,7 @@ impl State {
 			},
 			Err(err) => {
 				warn!("TOML not found, attempting to create default");
-				let default = match toml::ser::to_string(&State::default()) {
+				let default = match toml::ser::to_string(&Self::default()) {
 						Ok(o) => { info!("TOML serialization ... OK"); o },
 						Err(e) => { error!("Couldn't serialize default TOML file: {}", e); return Err(TomlError::Serialize(e)) },
 				};
@@ -126,35 +130,67 @@ impl State {
 	}
 
 	// Attempt to parse from String
-	pub fn parse(string: String) -> Result<State, TomlError> {
+	// If failed, assume we're working with an old [State]
+	// and attempt to merge it with a new [State::default()].
+	pub fn parse(string: String) -> Result<Self, TomlError> {
 		match toml::de::from_str(&string) {
 			Ok(toml) => {
 				info!("TOML parse ... OK");
-				info!("{}", HORIZONTAL);
-				for i in string.lines() { info!("{}", i); }
-				info!("{}", HORIZONTAL);
+				Self::info(&toml);
 				Ok(toml)
 			},
-			Err(err) => { error!("Couldn't parse TOML from string"); Err(TomlError::Deserialize(err)) },
+			Err(err) => {
+				warn!("Couldn't parse TOML, assuming old [State], attempting merge...");
+				Self::merge(&Self::default())
+			},
 		}
 	}
 
 	// Last three functions combined
 	// get_path() -> read_or_create() -> parse()
-	pub fn get() -> Result<State, TomlError> {
+	pub fn get() -> Result<Self, TomlError> {
 		Self::parse(Self::read_or_create(Self::get_path()?)?)
 	}
 
-	// Save [State] onto disk file [gupax.toml]
-	pub fn save(&self) -> Result<(), TomlError> {
+	// Completely overwrite current [gupax.toml]
+	// with a new default version, and return [Self].
+	pub fn new_default() -> Result<Self, TomlError> {
+		info!("Creating new default TOML...");
+		let default = Self::default();
 		let path = Self::get_path()?;
+		let string = match toml::ser::to_string(&default) {
+				Ok(o) => { info!("TOML serialization ... OK"); o },
+				Err(e) => { error!("Couldn't serialize default TOML file: {}", e); return Err(TomlError::Serialize(e)) },
+		};
+		fs::write(&path, &string)?;
+		info!("TOML write ... OK");
+		Ok(default)
+	}
+
+	// Turn relative paths into absolute paths
+	fn into_absolute_path(path: String) -> Result<PathBuf, TomlError> {
+		let path = PathBuf::from(path);
+		if path.is_relative() {
+			let mut dir = std::env::current_exe()?;
+			dir.pop();
+			dir.push(path);
+			Ok(dir)
+		} else {
+			Ok(path)
+		}
+	}
+
+	// Save [State] onto disk file [gupax.toml]
+	pub fn save(&mut self) -> Result<(), TomlError> {
 		info!("Starting TOML overwrite...");
+		let path = Self::get_path()?;
+		// Convert path to absolute
+		self.gupax.absolute_p2pool_path = Self::into_absolute_path(self.gupax.p2pool_path.clone())?;
+		self.gupax.absolute_xmrig_path = Self::into_absolute_path(self.gupax.xmrig_path.clone())?;
 		let string = match toml::ser::to_string(&self) {
 			Ok(string) => {
 				info!("TOML parse ... OK");
-				info!("{}", HORIZONTAL);
-				for i in string.lines() { info!("{}", i); }
-				info!("{}", HORIZONTAL);
+				Self::info(&self);
 				string
 			},
 			Err(err) => { error!("Couldn't parse TOML into string"); return Err(TomlError::Serialize(err)) },
@@ -164,16 +200,49 @@ impl State {
 			Err(err) => { error!("Couldn't overwrite TOML file"); return Err(TomlError::Io(err)) },
 		}
 	}
+
+	// Take [Self] as input, merge it with whatever the current [default] is,
+	// leaving behind old keys+values and updating [default] with old valid ones.
+	// Automatically overwrite current file.
+	pub fn merge(old: &Self) -> Result<Self, TomlError> {
+		info!("Starting TOML merge...");
+		let old = match toml::ser::to_string(&old) {
+			Ok(string) => { info!("Old TOML parse ... OK"); string },
+			Err(err) => { error!("Couldn't parse old TOML into string"); return Err(TomlError::Serialize(err)) },
+		};
+		let default = match toml::ser::to_string(&Self::default()) {
+			Ok(string) => { info!("Default TOML parse ... OK"); string },
+			Err(err) => { error!("Couldn't parse default TOML into string"); return Err(TomlError::Serialize(err)) },
+		};
+		let mut new: Self = match Figment::new().merge(Toml::string(&old)).merge(Toml::string(&default)).extract() {
+			Ok(new) => { info!("TOML merge ... OK"); new },
+			Err(err) => { error!("Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
+		};
+		// Attempt save
+		info!("Attempting to save to disk...");
+		Self::save(&mut new)?;
+		Ok(new)
+	}
+
+	// Write [Self] to console with
+	// [info!] surrounded by "---"
+	pub fn info(&self) -> Result<(), toml::ser::Error> {
+		info!("{}", HORIZONTAL);
+		for i in toml::ser::to_string(&self)?.lines() { info!("{}", i); }
+		info!("{}", HORIZONTAL);
+		Ok(())
+	}
 }
 
 impl Display for TomlError {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		use TomlError::*;
 		match self {
-			Io(err) => write!(f, "{} | {}", ERROR, err),
-			Path(err) => write!(f, "{} | {}", ERROR, err),
-			Serialize(err) => write!(f, "{} | {}", ERROR, err),
-			Deserialize(err) => write!(f, "{} | {}", ERROR, err),
+			Io(err) => write!(f, "{}: Io | {}", ERROR, err),
+			Path(err) => write!(f, "{}: Path | {}", ERROR, err),
+			Serialize(err) => write!(f, "{}: Serialize | {}", ERROR, err),
+			Deserialize(err) => write!(f, "{}: Deserialize | {}", ERROR, err),
+			Merge(err) => write!(f, "{}: Merge | {}", ERROR, err),
 		}
 	}
 }
@@ -214,6 +283,7 @@ pub enum TomlError {
 	Path(String),
 	Serialize(toml::ser::Error),
 	Deserialize(toml::de::Error),
+	Merge(figment::Error),
 }
 
 //---------------------------------------------------------------------------------------------------- Structs
@@ -233,6 +303,8 @@ pub struct Gupax {
 	pub save_before_quit: bool,
 	pub p2pool_path: String,
 	pub xmrig_path: String,
+	pub absolute_p2pool_path: PathBuf,
+	pub absolute_xmrig_path: PathBuf,
 }
 
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]

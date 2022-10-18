@@ -26,6 +26,11 @@ pub const P2POOL_BASE_ARGS: &'static str = "";
 pub const XMRIG_BASE_ARGS: &'static str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero --randomx-cache-qos";
 pub const HORIZONTAL: &'static str = "--------------------------------------------";
 
+// Update data
+pub const GITHUB_METADATA_GUPAX: &'static str = "https://api.github.com/repos/hinto-janaiyo/gupax/releases/latest";
+pub const GITHUB_METADATA_P2POOL: &'static str = "https://api.github.com/repos/SChernykh/p2pool/releases/latest";
+pub const GITHUB_METADATA_XMRIG: &'static str = "https://api.github.com/repos/xmrig/xmrig/releases/latest";
+
 // OS specific
 #[cfg(target_os = "windows")]
 pub const OS: &'static str = " Windows";
@@ -80,7 +85,8 @@ r#"USAGE: gupax [--flags]
     -h | --help              Print this help message
     -v | --version           Print versions
     -n | --no-startup        Disable auto-update/node connections at startup
-    -r | --reset             Reset all Gupax configuration/state"#;
+    -r | --reset             Reset all Gupax configuration/state
+    -f | --ferris            Print an extremely cute crab"#;
 pub const ARG_COPYRIGHT: &'static str =
 r#"Gupax, P2Pool, and XMRig are licensed under GPLv3.
 For more information, see here:
