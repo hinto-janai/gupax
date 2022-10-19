@@ -85,6 +85,8 @@ pub struct App {
 	reset: bool,
 	// Static stuff
 	now: Instant, // Internal timer
+	exe: String, // Path for [Gupax] binary
+	tmp: String, // Tmp folder for updates, random every update
 	resolution: Vec2, // Frame resolution
 	os: &'static str, // OS
 	version: String, // Gupax version
@@ -121,6 +123,8 @@ impl App {
 			startup: true,
 			reset: false,
 			now: Instant::now(),
+			exe: "".to_string(),
+			tmp: "".to_string(),
 			resolution: Vec2::new(1280.0, 720.0),
 			os: OS,
 			version: format!("{}", GUPAX_VERSION),
@@ -129,20 +133,19 @@ impl App {
 		};
 		// Apply arg state
 		let mut app = parse_args(app);
+		// Get exe path + random tmp folder 
+		app.exe = match get_exe_dir() {
+			Ok(exe) => exe,
+			Err(err) => { panic_app(err.to_string()); exit(1); },
+		};
+		app.tmp = get_rand_tmp(&app.exe);
 		// Read disk state if no [--reset] arg
 		if app.reset == false {
 			app.og = match State::get() {
 				Ok(toml) => toml,
-				Err(err) => {
-					error!("{}", err);
-					let error_msg = err.to_string();
-					let options = Panic::options();
-					eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error_msg))),);
-					exit(1);
-				},
+				Err(err) => { panic_app(err.to_string()); exit(1); },
 			};
 		}
-		// Make sure thread count is accurate/doesn't overflow
 		app.og.xmrig.max_threads = num_cpus::get();
 		if app.og.xmrig.current_threads > app.og.xmrig.max_threads { app.og.xmrig.current_threads = app.og.xmrig.max_threads; }
 		app.state = app.og.clone();
@@ -268,6 +271,33 @@ fn parse_args(mut app: App) -> App {
 		}
 	}
 	app
+}
+
+fn get_exe_dir() -> Result<String, std::io::Error> {
+	match std::env::current_exe() {
+		Ok(mut path) => { path.pop(); Ok(path.into_os_string().into_string().unwrap()) },
+		Err(err) => { error!("Couldn't get exe basepath PATH"); return Err(err) },
+	}
+}
+
+fn get_rand_tmp(path: &String) -> String {
+	use rand::{thread_rng, Rng};
+	use rand::distributions::Alphanumeric;
+    let rand: String = thread_rng()
+		.sample_iter(&Alphanumeric)
+		.take(10)
+		.map(char::from)
+		.collect();
+	let path = path.to_string() + "/gupax_tmp_" + &rand;
+	info!("Generated rand_tmp ... {}", path);
+	path
+}
+
+fn panic_app(error: String) {
+	error!("{}", error);
+	let options = Panic::options();
+	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error))),);
+	exit(1);
 }
 
 //---------------------------------------------------------------------------------------------------- [App] frame for [Panic] situations

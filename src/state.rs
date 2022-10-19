@@ -182,7 +182,7 @@ impl State {
 
 	// Save [State] onto disk file [gupax.toml]
 	pub fn save(&mut self) -> Result<(), TomlError> {
-		info!("Starting TOML overwrite...");
+		info!("Saving TOML to disk...");
 		let path = Self::get_path()?;
 		// Convert path to absolute
 		self.gupax.absolute_p2pool_path = Self::into_absolute_path(self.gupax.p2pool_path.clone())?;
@@ -196,7 +196,7 @@ impl State {
 			Err(err) => { error!("Couldn't parse TOML into string"); return Err(TomlError::Serialize(err)) },
 		};
 		match fs::write(path, string) {
-			Ok(_) => { info!("TOML overwrite ... OK"); Ok(()) },
+			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
 			Err(err) => { error!("Couldn't overwrite TOML file"); return Err(TomlError::Io(err)) },
 		}
 	}
@@ -219,7 +219,6 @@ impl State {
 			Err(err) => { error!("Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
 		};
 		// Attempt save
-		info!("Attempting to save to disk...");
 		Self::save(&mut new)?;
 		Ok(new)
 	}
