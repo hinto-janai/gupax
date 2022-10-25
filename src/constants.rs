@@ -26,11 +26,6 @@ pub const P2POOL_BASE_ARGS: &'static str = "";
 pub const XMRIG_BASE_ARGS: &'static str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero --randomx-cache-qos";
 pub const HORIZONTAL: &'static str = "--------------------------------------------";
 
-// Update data
-pub const GITHUB_METADATA_GUPAX: &'static str = "https://api.github.com/repos/hinto-janaiyo/gupax/releases/latest";
-pub const GITHUB_METADATA_P2POOL: &'static str = "https://api.github.com/repos/SChernykh/p2pool/releases/latest";
-pub const GITHUB_METADATA_XMRIG: &'static str = "https://api.github.com/repos/xmrig/xmrig/releases/latest";
-
 // OS specific
 #[cfg(target_os = "windows")]
 pub const OS: &'static str = " Windows";

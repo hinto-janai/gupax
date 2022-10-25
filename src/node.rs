@@ -103,7 +103,7 @@ impl NodeStruct {
 	// find the fastest/slowest one for the user.
 	// The process:
 	//   - Send [get_info] JSON-RPC requests over HTTP
-	//   - To prevent fingerprinting, randomly send [1-5] calls
+	//   - To prevent fingerprinting, randomly send [2-4] calls
 	//   - Measure each request in milliseconds as [u128]
 	//   - Timeout on requests over 5 seconds
 	//   - Calculate average time
@@ -121,16 +121,26 @@ impl NodeStruct {
 	// default = GRAY
 	pub fn ping() -> PingResult {
 		info!("Starting community node pings...");
+		// Get node list
 		let mut nodes = NodeStruct::default();
+
+		// Create JSON request
 		let mut get_info = HashMap::new();
 		get_info.insert("jsonrpc", "2.0");
 		get_info.insert("id", "0");
 		get_info.insert("method", "get_info");
+
+		// Misc Settings
 		let mut vec: Vec<(u128, NodeEnum)> = Vec::new();
-		let fastest = false;
+
+		// Create HTTP Client
 		let timeout_sec = Duration::from_millis(5000);
+		let client = reqwest::blocking::ClientBuilder::new();
+		let client = reqwest::blocking::ClientBuilder::timeout(client, timeout_sec);
+		let client = reqwest::blocking::ClientBuilder::build(client).unwrap();
 
 		for ip in NODE_IPS.iter() {
+			// Match IP
 			let id = match *ip {
 				C3POOL        => C3pool,
 				CAKE          => Cake,
@@ -143,27 +153,28 @@ impl NodeStruct {
 				SETH          => Seth,
 				SUPPORTXMR    => SupportXmr,
 				SUPPORTXMR_IR => SupportXmrIr,
-//				XMRVSBEAST    => XmrVsBeast,
 				_ => XmrVsBeast,
 			};
+			// Misc
 			let mut timeout = false;
 			let mut mid = Duration::new(0, 0);
-			let max = rand::thread_rng().gen_range(1..5);
+			let max = rand::thread_rng().gen_range(2..4);
+
+			// Start JSON-RPC request
 			for i in 1..=max {
-				let client = reqwest::blocking::ClientBuilder::new();
-				let client = reqwest::blocking::ClientBuilder::timeout(client, timeout_sec);
-				let client = reqwest::blocking::ClientBuilder::build(client).unwrap();
-				let http = "http://".to_owned() + &**ip + "/json_rpc";
 				let now = Instant::now();
+				let http = "http://".to_owned() + &**ip + "/json_rpc";
 				match client.post(http).json(&get_info).send() {
-					Ok(r) => mid += now.elapsed(),
+					Ok(_) => mid += now.elapsed(),
 					Err(err) => {
-						error!("Timeout on [{:#?}: {}] (over 5 seconds)", id, ip);
+						error!("Timeout on [{:#?}: {}] (over 5 seconds) | {}", id, ip, err);
 						mid += timeout_sec;
 						timeout = true;
 					},
 				};
 			}
+
+			// Calculate average
 			let ms = mid.as_millis() / 3;
 			vec.push((ms, id));
 			info!("{}ms ... {} calls ... {}", ms, max, ip);
@@ -192,6 +203,8 @@ impl NodeStruct {
 				XmrVsBeast   => { nodes.xmrvsbeast.ms = ms; nodes.xmrvsbeast.color = color; },
 			}
 		}
+
+		// Calculate fastest out of all nodes
 		let mut best_ms: u128 = vec[0].0;
 		let mut fastest: NodeEnum = vec[0].1;
 		for (ms, id) in vec.iter() {

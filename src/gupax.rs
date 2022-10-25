@@ -20,6 +20,7 @@ use crate::App;
 use egui::WidgetType::Button;
 use crate::constants::*;
 use crate::state::Gupax;
+use crate::update::*;
 
 impl Gupax {
 	pub fn show(state: &mut Gupax, ctx: &egui::Context, ui: &mut egui::Ui) {
