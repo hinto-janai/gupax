@@ -14,6 +14,15 @@
 //// You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+// This file contains all (most) of the code for updating.
+// The main [Update] struct contains meta update information.
+// It is held by the top [App] struct. Each package also gets
+// a [Pkg] struct that only lasts as long as the download.
+//
+// An update is triggered by either:
+//     a. user clicks update on [Gupax] tab
+//     b. auto-update at startup
+
 //---------------------------------------------------------------------------------------------------- Imports
 use serde_derive::{Serialize,Deserialize};
 use tokio::task::JoinHandle;
@@ -146,7 +155,7 @@ const FAKE_USER_AGENT: [&'static str; 50] = [
 	"curl/7.85.0",
 ];
 
-const MSG_START: &'static str = "Starting update...";
+const MSG_START: &'static str = "Starting update";
 const MSG_TMP: &'static str = "Creating temporary directory";
 const MSG_PKG: &'static str = "Creating package list";
 const MSG_TOR: &'static str = "Creating Tor+HTTPS client";
@@ -164,8 +173,8 @@ const MSG_ARCHIVE: &'static str = "Downloading packages";
 // Progress bar structure:
 // 5%  | Create tmp directory
 // 5%  | Create package list
-// 10% | Create Tor/HTTPS client
-// 20% | Download Metadata (x3)
+// 15% | Create Tor/HTTPS client
+// 15% | Download Metadata (x3)
 // 30% | Download Archive (x3)
 // 15% | Extract (x3)
 // 15% | Upgrade (x3)
@@ -183,7 +192,7 @@ pub struct Update {
 
 impl Update {
 	// Takes in current paths from [State]
-	pub fn new(path_p2pool: &PathBuf, path_xmrig: &PathBuf, tor: bool) -> Self {
+	pub fn new(path_p2pool: PathBuf, path_xmrig: PathBuf, tor: bool) -> Self {
 		Self {
 			path_gupax: crate::get_exe().unwrap(),
 			path_p2pool: path_p2pool.display().to_string(),
@@ -207,32 +216,35 @@ impl Update {
 			.collect();
 		let tmp = std::env::temp_dir();
 		let tmp = format!("{}{}{}{}", tmp.display(), "/gupax_", rand_string, "/");
-		info!("Update | TMP directory ... {}", tmp);
 		tmp
 	}
 
-	// The HTTPS client created when Tor is enabled:
-	//     TLS implementation | tls-api -> native-tls
-	//     Tor implementatoin | arti
-	pub async fn get_tor_client() -> Result<ClientEnum, anyhow::Error> {
-		info!("Update | Creating Tor+HTTPS client...");
-		let tor = TorClient::create_bootstrapped(TorClientConfig::default()).await?;
-		let tls = tls_api_native_tls::TlsConnector::builder()?.build()?;
-	    let http = ArtiHttpConnector::new(tor, tls);
-		let client = ClientEnum::Tor(Client::builder().build(http));
-		info!("Update | Tor client ... OK");
-		Ok(client)
-	}
-
-	// The HTTPS client created when Tor is disabled:
-	//     TLS implementation | hyper-tls
-	pub async fn get_client() -> Result<ClientEnum, anyhow::Error> {
-		info!("Update | Creating HTTPS client...");
-		let mut https = hyper_tls::HttpsConnector::new();
-		https.https_only(true);
-		let client = ClientEnum::Https(Client::builder().build(https));
-		info!("Update | HTTPS client ... OK");
-		Ok(client)
+	// Get a HTTPS client. Uses [Arti] if Tor is enabled.
+	// The base type looks something like [hyper::Client<...>].
+	// This is then wrapped with the custom [ClientEnum] type to implement
+	// returning either a [Tor+TLS|TLS-only] client AT RUNTIME BASED ON USER SETTINGS
+	//     tor == true?  => return Tor client
+	//     tor == false? => return normal TLS client
+	//
+	// Since functions that take generic INPUT are much easier to implement,
+	// [get_response()] just takes a [hyper::Client<C>], which is passed to
+	// it via deconstructing this [ClientEnum] with a match, like so:
+	//     ClientEnum::Tor(T)   => get_reponse(... T ...)
+	//     ClientEnum::Https(H) => get_reponse(... H ...)
+	//
+	pub async fn get_client(tor: bool) -> Result<ClientEnum, anyhow::Error> {
+		if tor {
+			let tor = TorClient::create_bootstrapped(TorClientConfig::default()).await?;
+			let tls = tls_api_native_tls::TlsConnector::builder()?.build()?;
+		    let connector = ArtiHttpConnector::new(tor, tls);
+			let client = ClientEnum::Tor(Client::builder().build(connector));
+			return Ok(client)
+		} else {
+			let mut connector = hyper_tls::HttpsConnector::new();
+			connector.https_only(true);
+			let client = ClientEnum::Https(Client::builder().build(connector));
+			return Ok(client)
+		}
 	}
 
 	// Download process:
@@ -248,57 +260,58 @@ impl Update {
 		// Set progress bar
 		*self.msg.lock().unwrap() = MSG_START.to_string();
 		*self.prog.lock().unwrap() = 0;
+		info!("Update | Init | {}...", *self.msg.lock().unwrap());
 
 		// Get temporary directory
 		*self.msg.lock().unwrap() = MSG_TMP.to_string();
+		info!("Update | Init | {} ... {}%", *self.msg.lock().unwrap(), *self.prog.lock().unwrap());
 		let tmp_dir = Self::get_tmp_dir();
-		*self.prog.lock().unwrap() = 5;
+		*self.prog.lock().unwrap() += 5;
 
 		// Make Pkg vector
 		*self.msg.lock().unwrap() = MSG_PKG.to_string();
+		info!("Update | Init | {} ... {}%", *self.msg.lock().unwrap(), *self.prog.lock().unwrap());
 		let vec = vec![
 			Pkg::new(Gupax, &tmp_dir, self.prog.clone(), self.msg.clone()),
 			Pkg::new(P2pool, &tmp_dir, self.prog.clone(), self.msg.clone()),
 			Pkg::new(Xmrig, &tmp_dir, self.prog.clone(), self.msg.clone()),
 		];
 		let mut handles: Vec<JoinHandle<()>> = vec![];
-		*self.prog.lock().unwrap() = 5;
+		*self.prog.lock().unwrap() += 5;
 
 		// Create Tor/HTTPS client
-		let mut client: ClientEnum;
-		if self.tor {
-			*self.msg.lock().unwrap() = MSG_TOR.to_string();
-			client = Self::get_tor_client().await?;
-		} else {
-			*self.msg.lock().unwrap() = MSG_HTTPS.to_string();
-			client = Self::get_client().await?;
-		}
-		*self.prog.lock().unwrap() = 10;
+		if self.tor { *self.msg.lock().unwrap() = MSG_TOR.to_string() } else { *self.msg.lock().unwrap() = MSG_HTTPS.to_string() }
+		info!("Update | Init | {} ... {}%", *self.msg.lock().unwrap(), *self.prog.lock().unwrap());
+		let client = Self::get_client(self.tor).await?;
+		*self.prog.lock().unwrap() += 10;
 
-		// loop for metadata
+		// Loop for metadata
+		info!("Update | Metadata | Starting metadata fetch...");
 		for pkg in vec.iter() {
-			info!("Update | Metadata | Starting ... {}", pkg.name);
+			// Clone data before sending to async
 			let name = pkg.name.clone();
 			let version = Arc::clone(&pkg.version);
-			let request = hyper::Request::builder()
-				.method("GET")
-				.uri(pkg.link_metadata)
-				.header(hyper::header::USER_AGENT, hyper::header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0"))
-				.body(Body::empty())?;
+			let prog = Arc::clone(&pkg.prog);
 			let client = client.clone();
+			let request = Pkg::get_request(pkg.link_metadata.to_string())?;
+			// Send to async
 			let handle: JoinHandle<()> = tokio::spawn(async move {
-				Pkg::get_tor_response(name, version, client, request).await;
+				match client {
+					ClientEnum::Tor(t) => Pkg::get_response(name, version, prog, t, request).await,
+					ClientEnum::Https(h) => Pkg::get_response(name, version, prog, h, request).await,
+				};
 			});
 			handles.push(handle);
 		}
+		// Unwrap async
 		for handle in handles {
 			handle.await?;
 		}
-		info!("Update | Metadata ... OK\n");
+		info!("Update | Metadata ... OK");
 		Ok(())
 
 	//----------------------------------------------
-	//
+		//
 	//	// loop for download
 	//	let mut handles: Vec<JoinHandle<()>> = vec![];
 	//	for pkg in vec.iter() {
@@ -358,10 +371,10 @@ impl Update {
 	}
 }
 
-// Wrapper type around Tor/HTTPS client
+#[derive(Debug,Clone)]
 enum ClientEnum {
-	Tor(Client<ArtiHttpConnector<tor_rtcompat::PreferredRuntime, tls_api_native_tls::TlsConnector>>),
-	Https(Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>),
+    Tor(Client<ArtiHttpConnector<tor_rtcompat::PreferredRuntime, tls_api_native_tls::TlsConnector>>),
+    Https(Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>),
 }
 
 //---------------------------------------------------------------------------------------------------- Pkg struct/impl
@@ -373,14 +386,14 @@ pub struct Pkg {
 	link_suffix: &'static str,
 	link_extension: &'static str,
 	tmp_dir: String,
-	update_prog: Arc<Mutex<u8>>,
-	update_msg: Arc<Mutex<String>>,
+	prog: Arc<Mutex<u8>>,
+	msg: Arc<Mutex<String>>,
 	bytes: Arc<Mutex<bytes::Bytes>>,
 	version: Arc<Mutex<String>>,
 }
 
 impl Pkg {
-	pub fn new(name: Name, tmp_dir: &String, update_prog: Arc<Mutex<u8>>, update_msg: Arc<Mutex<String>>) -> Self {
+	pub fn new(name: Name, tmp_dir: &String, prog: Arc<Mutex<u8>>, msg: Arc<Mutex<String>>) -> Self {
 		let link_metadata = match name {
 			Gupax => GUPAX_METADATA,
 			P2pool => P2POOL_METADATA,
@@ -408,42 +421,34 @@ impl Pkg {
 			link_suffix,
 			link_extension,
 			tmp_dir: tmp_dir.to_string(),
-			update_prog,
-			update_msg,
+			prog,
+			msg,
 			bytes: Arc::new(Mutex::new(bytes::Bytes::new())),
 			version: Arc::new(Mutex::new(String::new())),
 		}
 	}
 
 	// Generate GET request based off input URI + fake user agent
-	pub async fn get_request(self) -> Result<Request<Body>, anyhow::Error> {
+	pub fn get_request(link: String) -> Result<Request<Body>, anyhow::Error> {
 		let user_agent = FAKE_USER_AGENT[thread_rng().gen_range(0..50)];
 		let request = Request::builder()
 			.method("GET")
-			.uri(self.link_metadata)
+			.uri(link)
 			.header(hyper::header::USER_AGENT, HeaderValue::from_static(user_agent))
 			.body(Body::empty())?;
 		Ok(request)
 	}
 
-	// Get response using [Tor client] + [request]
-	// and change the [version] under an Arc<Mutex>
-	pub async fn get_tor_response(name: Name, version: Arc<Mutex<String>>, client: Client<ArtiHttpConnector<tor_rtcompat::PreferredRuntime, tls_api_native_tls::TlsConnector>>, request: Request<Body>) -> Result<(), Error> {
+	// Get response using [Generic hyper::client<C>] & [Request]
+	// and change [version, prog] under an Arc<Mutex>
+	pub async fn get_response<C>(name: Name, version: Arc<Mutex<String>>, prog: Arc<Mutex<u8>>, client: Client<C>, request: Request<Body>) -> Result<(), Error>
+		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
 		let mut response = client.request(request).await?;
 		let body = hyper::body::to_bytes(response.body_mut()).await?;
 		let body: Version = serde_json::from_slice(&body)?;
 		*version.lock().unwrap() = body.tag_name.clone();
-		info!("Update | Metadata | {} {} ... OK", name, body.tag_name);
-		Ok(())
-	}
-
-	// Same thing, but without Tor.
-	pub async fn get_response(name: Name, version: Arc<Mutex<String>>, client: Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>, request: Request<Body>) -> Result<(), Error> {
-		let mut response = client.request(request).await?;
-		let body = hyper::body::to_bytes(response.body_mut()).await?;
-		let body: Version = serde_json::from_slice(&body)?;
-		*version.lock().unwrap() = body.tag_name.clone();
-		info!("Update | Metadata | {} {} ... OK", name, body.tag_name);
+		*prog.lock().unwrap() += 5;
+		info!("Update | Metadata | {} {} ... {}%", name, body.tag_name, *prog.lock().unwrap());
 		Ok(())
 	}
 }

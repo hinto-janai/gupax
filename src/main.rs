@@ -70,7 +70,7 @@ pub struct App {
 	// State
 	og: State, // og    = Old state to compare against
 	state: State, // state = Working state (current settings)
-	update: Update, // State for update data [update.rs]
+//	update: Update, // State for update data [update.rs]
 	diff: bool, // Instead of comparing [og == state] every frame, this bool indicates changes
 	// Process/update state:
 	// Doesn't make sense to save this on disk
@@ -114,7 +114,7 @@ impl App {
 			node: Arc::new(Mutex::new(NodeStruct::default())),
 			og: State::default(),
 			state: State::default(),
-			update: Update::new(&throwaway.gupax.absolute_p2pool_path, &throwaway.gupax.absolute_xmrig_path, true),
+//			update: Update::new(&throwaway.gupax.absolute_p2pool_path, &throwaway.gupax.absolute_xmrig_path, true),
 			diff: false,
 			p2pool: false,
 			xmrig: false,
@@ -147,7 +147,7 @@ impl App {
 		app.og.xmrig.max_threads = num_cpus::get();
 		if app.og.xmrig.current_threads > app.og.xmrig.max_threads { app.og.xmrig.current_threads = app.og.xmrig.max_threads; }
 		app.state = app.og.clone();
-		app.update = Update::new(&app.og.gupax.absolute_p2pool_path, &app.og.gupax.absolute_xmrig_path, app.og.gupax.update_via_tor);
+//		app.update = Update::new(&app.og.gupax.absolute_p2pool_path, &app.og.gupax.absolute_xmrig_path, app.og.gupax.update_via_tor);
 		app
 	}
 }
@@ -372,8 +372,14 @@ impl eframe::App for App {
 		// *-------*
 		// | DEBUG |
 		// *-------*
-		self.update.start();
-		thread::sleep;
+		let p2pool = self.og.gupax.absolute_p2pool_path.clone();
+		let xmrig = self.og.gupax.absolute_xmrig_path.clone();
+		let tor = self.og.gupax.update_via_tor.clone();
+		thread::spawn(move|| {
+			info!("Spawning update thread...");
+			let update = Update::start(&mut Update::new(p2pool, xmrig, tor));
+		});
+		thread::park();
 		// This sets the top level Ui dimensions.
 		// Used as a reference for other uis.
 		egui::CentralPanel::default().show(ctx, |ui| { self.width = ui.available_width(); self.height = ui.available_height(); });
