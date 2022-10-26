@@ -157,7 +157,6 @@ const FAKE_USER_AGENT: [&'static str; 50] = [
 
 const MSG_START: &'static str = "Starting update";
 const MSG_TMP: &'static str = "Creating temporary directory";
-const MSG_PKG: &'static str = "Creating package list";
 const MSG_TOR: &'static str = "Creating Tor+HTTPS client";
 const MSG_HTTPS: &'static str = "Creating HTTPS client";
 const MSG_METADATA: &'static str = "Fetching package metadata";
@@ -171,8 +170,7 @@ const MSG_ARCHIVE: &'static str = "Downloading packages";
 //---------------------------------------------------------------------------------------------------- Update struct/impl
 // Contains values needed during update
 // Progress bar structure:
-// 5%  | Create tmp directory
-// 5%  | Create package list
+// 10% | Create tmp directory and pkg list
 // 15% | Create Tor/HTTPS client
 // 15% | Download Metadata (x3)
 // 30% | Download Archive (x3)
@@ -266,24 +264,21 @@ impl Update {
 		*self.msg.lock().unwrap() = MSG_TMP.to_string();
 		info!("Update | Init | {} ... {}%", *self.msg.lock().unwrap(), *self.prog.lock().unwrap());
 		let tmp_dir = Self::get_tmp_dir();
-		*self.prog.lock().unwrap() += 5;
+		*self.prog.lock().unwrap() += 10;
 
 		// Make Pkg vector
-		*self.msg.lock().unwrap() = MSG_PKG.to_string();
-		info!("Update | Init | {} ... {}%", *self.msg.lock().unwrap(), *self.prog.lock().unwrap());
 		let vec = vec![
 			Pkg::new(Gupax, &tmp_dir, self.prog.clone(), self.msg.clone()),
 			Pkg::new(P2pool, &tmp_dir, self.prog.clone(), self.msg.clone()),
 			Pkg::new(Xmrig, &tmp_dir, self.prog.clone(), self.msg.clone()),
 		];
 		let mut handles: Vec<JoinHandle<()>> = vec![];
-		*self.prog.lock().unwrap() += 5;
 
 		// Create Tor/HTTPS client
 		if self.tor { *self.msg.lock().unwrap() = MSG_TOR.to_string() } else { *self.msg.lock().unwrap() = MSG_HTTPS.to_string() }
 		info!("Update | Init | {} ... {}%", *self.msg.lock().unwrap(), *self.prog.lock().unwrap());
 		let client = Self::get_client(self.tor).await?;
-		*self.prog.lock().unwrap() += 10;
+		*self.prog.lock().unwrap() += 15;
 
 		// Loop for metadata
 		info!("Update | Metadata | Starting metadata fetch...");
@@ -297,77 +292,81 @@ impl Update {
 			// Send to async
 			let handle: JoinHandle<()> = tokio::spawn(async move {
 				match client {
-					ClientEnum::Tor(t) => Pkg::get_response(name, version, prog, t, request).await,
-					ClientEnum::Https(h) => Pkg::get_response(name, version, prog, h, request).await,
+					ClientEnum::Tor(t) => Pkg::get_metadata(name, version, prog, t, request).await,
+					ClientEnum::Https(h) => Pkg::get_metadata(name, version, prog, h, request).await,
 				};
 			});
 			handles.push(handle);
 		}
+
+
+		// TODO:
+		// connection fails sometimes
+		// Regex for [v...] or restart Client process.
+
+
 		// Unwrap async
 		for handle in handles {
 			handle.await?;
 		}
 		info!("Update | Metadata ... OK");
-		Ok(())
 
-	//----------------------------------------------
-		//
-	//	// loop for download
-	//	let mut handles: Vec<JoinHandle<()>> = vec![];
-	//	for pkg in vec.iter() {
-	//		let name = pkg.name.clone();
-	//		let bytes = Arc::clone(&pkg.bytes);
-	//		let version = pkg.version.lock().unwrap();
-	//		let link;
-	//		if pkg.name == Name::Xmrig {
-	//			link = pkg.link_prefix.clone() + &version + &pkg.link_suffix_1 + &version[1..] + &pkg.link_suffix_2;
-	//		} else {
-	//			link = pkg.link_prefix.clone() + &version + &pkg.link_suffix_1 + &version + &pkg.link_suffix_2;
-	//		}
-	//		println!("download: {:#?} | {}", pkg.name, link);
-	//		let request = Client::get(&client.clone(), &link);
-	//		let handle: JoinHandle<()> = tokio::spawn(async move {
-	//			get_bytes(request, bytes, name).await;
-	//		});
-	//		handles.push(handle);
-	//	}
-	//	for handle in handles {
-	//		handle.await.unwrap();
-	//	}
-	//	println!("download ... OK\n");
-	//
-	//	// extract
-	//	let TMP = num();
-	//	std::fs::create_dir(&TMP).unwrap();
-	//	for pkg in vec.iter() {
-	//		let name = TMP.to_string() + &pkg.name.to_string();
-	//		println!("extract: {:#?} | {}", pkg.name, name);
-	//		if pkg.name == Name::Gupax {
-	//			std::fs::OpenOptions::new().mode(0o700).create(true).write(true).open(&name);
-	//			std::fs::write(name, pkg.bytes.lock().unwrap().as_ref()).unwrap();
-	//		} else {
-	//			std::fs::create_dir(&name).unwrap();
-	//			tar::Archive::new(flate2::read::GzDecoder::new(pkg.bytes.lock().unwrap().as_ref())).unpack(name).unwrap();
-	//		}
-	//	}
-	//	println!("extract ... OK");
-	//
-	//async fn get_bytes(request: RequestBuilder, bytes: Arc<Mutex<bytes::Bytes>>, name: Name) {
-	//	*bytes.lock().unwrap() = request.send().await.unwrap().bytes().await.unwrap();
-	//	println!("{} download ... OK", name);
-	//}
-	//
-	//async fn func(request: RequestBuilder, version: Arc<Mutex<String>>, name: Name) {
-	//	let response = request.send().await.unwrap().bytes().await.unwrap();
-	//
-	//	let mut bytes = flate2::read::GzDecoder::new(response.as_ref());
-	//	let mut response = String::new();
-	//	bytes.read_to_string(&mut response).unwrap();
-	//
-	//	let response: Version = serde_json::from_str(&response).unwrap();
-	//	*version.lock().unwrap() = response.tag_name.clone();
-	//	println!("{} {} ... OK", name, response.tag_name);
-	//}
+		// Loop for download
+		let mut handles: Vec<JoinHandle<()>> = vec![];
+		info!("Update | Download | Starting download...");
+		for pkg in vec.iter() {
+			// Clone data before async
+			let name = pkg.name.clone();
+			let bytes = Arc::clone(&pkg.bytes);
+			let prog = Arc::clone(&pkg.prog);
+			let client = client.clone();
+			let version = pkg.version.lock().unwrap().to_string();
+			let link;
+			// Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
+			// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64
+			// XMRig doesn't have a [v], so slice it out
+			if pkg.name == Name::Xmrig {
+				link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version[1..] + &pkg.link_extension;
+			// TODO FIX ME
+			// This is temp link for v0.0.1 of [Gupax]
+			} else if pkg.name == Name::Gupax {
+				link = "https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64".to_string()
+			} else {
+				link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version + &pkg.link_extension;
+			}
+			info!("Update | Download | {} ... {}", pkg.name, link);
+			let request = Pkg::get_request(link)?;
+			let handle: JoinHandle<()> = tokio::spawn(async move {
+				match client {
+					ClientEnum::Tor(t) => Pkg::get_bytes(name, bytes, prog, t, request).await,
+					ClientEnum::Https(h) => Pkg::get_bytes(name, bytes, prog, h, request).await,
+				};
+			});
+			handles.push(handle);
+		}
+		for handle in handles {
+			handle.await?;
+		}
+		info!("Update | Download ... OK");
+
+		// Write to disk, extract
+		let tmp = Self::get_tmp_dir();
+//		std::fs::OpenOptions::new().mode(0o700).create(true).write(true).open(&tmp);
+		std::fs::create_dir(&tmp)?;
+		info!("Update | Extract | Starting extraction...");
+		for pkg in vec.iter() {
+			let tmp = tmp.to_string() + &pkg.name.to_string();
+			if pkg.name == Name::Gupax {
+				std::fs::write(tmp, pkg.bytes.lock().unwrap().as_ref())?;
+			} else {
+				tar::Archive::new(flate2::read::GzDecoder::new(pkg.bytes.lock().unwrap().as_ref())).unpack(tmp)?;
+			}
+			*pkg.prog.lock().unwrap() += 5;
+			info!("Update | Extract | {} ... {}%", pkg.name, pkg.prog.lock().unwrap());
+		}
+		info!("Update | Extract ... OK");
+		std::process::exit(0);
+		Ok(())
 	}
 }
 
@@ -388,7 +387,7 @@ pub struct Pkg {
 	tmp_dir: String,
 	prog: Arc<Mutex<u8>>,
 	msg: Arc<Mutex<String>>,
-	bytes: Arc<Mutex<bytes::Bytes>>,
+	bytes: Arc<Mutex<hyper::body::Bytes>>,
 	version: Arc<Mutex<String>>,
 }
 
@@ -439,9 +438,9 @@ impl Pkg {
 		Ok(request)
 	}
 
-	// Get response using [Generic hyper::client<C>] & [Request]
+	// Get metadata using [Generic hyper::client<C>] & [Request]
 	// and change [version, prog] under an Arc<Mutex>
-	pub async fn get_response<C>(name: Name, version: Arc<Mutex<String>>, prog: Arc<Mutex<u8>>, client: Client<C>, request: Request<Body>) -> Result<(), Error>
+	pub async fn get_metadata<C>(name: Name, version: Arc<Mutex<String>>, prog: Arc<Mutex<u8>>, client: Client<C>, request: Request<Body>) -> Result<(), Error>
 		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
 		let mut response = client.request(request).await?;
 		let body = hyper::body::to_bytes(response.body_mut()).await?;
@@ -449,6 +448,23 @@ impl Pkg {
 		*version.lock().unwrap() = body.tag_name.clone();
 		*prog.lock().unwrap() += 5;
 		info!("Update | Metadata | {} {} ... {}%", name, body.tag_name, *prog.lock().unwrap());
+		Ok(())
+	}
+
+	// Takes a [Request], fills the appropriate [Pkg]
+	// [bytes] field with the [Archive/Standalone]
+	pub async fn get_bytes<C>(name: Name, bytes: Arc<Mutex<bytes::Bytes>>, prog: Arc<Mutex<u8>>, client: Client<C>, request: Request<Body>) -> Result<(), anyhow::Error>
+		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
+		// GitHub sends a 302 redirect, so we must follow
+		// the [Location] header... only if Reqwest had custom
+		// connectors so I didn't have to manually do this...
+		let response = client.request(request).await?;
+		let request = Self::get_request(response.headers().get(hyper::header::LOCATION).unwrap().to_str()?.to_string())?;
+		let response = client.request(request).await?;
+		let body = hyper::body::to_bytes(response.into_body()).await?;
+		*bytes.lock().unwrap() = body;
+		*prog.lock().unwrap() += 10;
+		info!("Update | Download | {} ... {}%", name, *prog.lock().unwrap());
 		Ok(())
 	}
 }
