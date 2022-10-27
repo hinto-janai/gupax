@@ -35,27 +35,41 @@ impl Gupax {
 				// I have to pick one. This one seperates them though.
 				let height = height/6.0;
 				let width = width - SPACE;
+				let updating = *update.updating.lock().unwrap();
 				ui.vertical(|ui| {
-					ui.set_enabled(!*update.updating.lock().unwrap());
+					ui.set_enabled(!updating);
 					if ui.add_sized([width, height], egui::Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
 						update.path_p2pool = state.absolute_p2pool_path.display().to_string();
 						update.path_xmrig = state.absolute_xmrig_path.display().to_string();
 						update.tor = state.update_via_tor;
 						let u = Arc::new(Mutex::new(update.clone()));
 						let u = Arc::clone(&u);
+						let u2 = Arc::new(Mutex::new(update.clone()));
+						let u2 = Arc::clone(&u);
 						thread::spawn(move|| {
 							info!("Spawning update thread...");
-							let handle = Update::start(u, version);
-							info!("...........>");
+							match Update::start(u, version) {
+								Err(e) => {
+									info!("Update | {} ... FAIL", e);
+									*u2.lock().unwrap().msg.lock().unwrap() = MSG_FAILED.to_string();
+									*u2.lock().unwrap().updating.lock().unwrap() = false;
+								},
+								_ => {
+									info!("Update ... OK");
+									*u2.lock().unwrap().msg.lock().unwrap() = MSG_SUCCESS.to_string();
+									*u2.lock().unwrap().prog.lock().unwrap() = 100;
+									*u2.lock().unwrap().updating.lock().unwrap() = false;
+								},
+							}
 						});
 					}
 				});
 				ui.vertical(|ui| {
-					ui.set_enabled(*update.updating.lock().unwrap());
+					ui.set_enabled(updating);
 					let height = height/2.0;
 					let msg = format!("{}{}{}{}", *update.msg.lock().unwrap(), " ... ", *update.prog.lock().unwrap(), "%");
 					ui.add_sized([width, height], egui::Label::new(msg));
-//						let range = *update.prog.lock().unwrap() as f32 / 100.0;
+					if updating { ui.add_sized([width, height], egui::Spinner::new().size(height)); }
 					ui.add_sized([width, height], egui::ProgressBar::new(*update.prog.lock().unwrap() as f32 / 100.0));
 				});
 		});

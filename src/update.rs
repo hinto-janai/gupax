@@ -163,7 +163,10 @@ const MSG_TMP: &'static str = "Creating temporary directory";
 const MSG_TOR: &'static str = "Creating Tor+HTTPS client";
 const MSG_HTTPS: &'static str = "Creating HTTPS client";
 const MSG_METADATA: &'static str = "Fetching package metadata";
-const MSG_ARCHIVE: &'static str = "Downloading packages";
+const MSG_COMPARE: &'static str = "Compare package versions";
+const MSG_DOWNLOAD: &'static str = "Downloading packages";
+pub const MSG_SUCCESS: &'static str = "Update successful";
+pub const MSG_FAILED: &'static str = "Update failed";
 
 // These two are sequential and not async so no need for a constant message.
 // The package in question will be known at runtime, so that will be printed.
@@ -173,9 +176,10 @@ const MSG_ARCHIVE: &'static str = "Downloading packages";
 //---------------------------------------------------------------------------------------------------- Update struct/impl
 // Contains values needed during update
 // Progress bar structure:
-// 10% | Create tmp directory and pkg list
-// 15% | Create Tor/HTTPS client
+// 0%  | Create tmp directory and pkg list
+// 10% | Create Tor/HTTPS client
 // 15% | Download Metadata (x3)
+// 15% | Compare Versions (x3)
 // 30% | Download Archive (x3)
 // 15% | Extract (x3)
 // 15% | Upgrade (x3)
@@ -273,7 +277,6 @@ impl Update {
 		// so there will be some intermediate variables.
 		info!("Update | Init | {} ... {}%", MSG_TMP.to_string(), *update.lock().unwrap().prog.lock().unwrap());
 		let tmp_dir = Self::get_tmp_dir();
-		*update.lock().unwrap().prog.lock().unwrap() += 10;
 
 		// Make Pkg vector
 		let prog = update.lock().unwrap().prog.clone();
@@ -294,7 +297,8 @@ impl Update {
 		let prog = *update.lock().unwrap().prog.lock().unwrap();
 		info!("Update | Init | {} ... {}%", *update.lock().unwrap().msg.lock().unwrap(), prog);
 		let client = Self::get_client(update.lock().unwrap().tor).await?;
-		*update.lock().unwrap().prog.lock().unwrap() += 15;
+		*update.lock().unwrap().prog.lock().unwrap() += 10;
+		info!("Update | Init ... OK");
 
 		// Loop for metadata
 		*update.lock().unwrap().msg.lock().unwrap() = MSG_METADATA.to_string();
@@ -322,6 +326,7 @@ impl Update {
 		info!("Update | Metadata ... OK");
 
 		// Loop for version comparison
+		*update.lock().unwrap().msg.lock().unwrap() = MSG_COMPARE.to_string();
 		info!("Update | Compare | Starting version comparison...");
 		let prog = update.lock().unwrap().prog.clone();
 		let msg = update.lock().unwrap().msg.clone();
@@ -354,10 +359,13 @@ impl Update {
 					}
 				}
 			}
+			*update.lock().unwrap().prog.lock().unwrap() += 5;
 		}
+		info!("Update | Compare ... OK");
 
 		// Loop for download
 		let mut handles: Vec<JoinHandle<()>> = vec![];
+		*update.lock().unwrap().msg.lock().unwrap() = MSG_DOWNLOAD.to_string();
 		info!("Update | Download | Starting download...");
 		for pkg in vec2.iter() {
 			// Clone data before async
@@ -380,11 +388,10 @@ impl Update {
 				link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version + &pkg.link_extension;
 			}
 			info!("Update | Download | {} ... {}", pkg.name, link);
-			let request = Pkg::get_request(link)?;
 			let handle: JoinHandle<()> = tokio::spawn(async move {
 				match client {
-					ClientEnum::Tor(t) => Pkg::get_bytes(name, bytes, prog, t, request).await,
-					ClientEnum::Https(h) => Pkg::get_bytes(name, bytes, prog, h, request).await,
+					ClientEnum::Tor(t) => Pkg::get_bytes(name, bytes, prog, t, link).await,
+					ClientEnum::Https(h) => Pkg::get_bytes(name, bytes, prog, h, link).await,
 				};
 			});
 			handles.push(handle);
@@ -411,7 +418,6 @@ impl Update {
 		}
 		info!("Update | Extract ... OK");
 		*update.lock().unwrap().updating.lock().unwrap() = false;
-		std::process::exit(0);
 		Ok(())
 	}
 }
@@ -491,8 +497,7 @@ impl Pkg {
 	pub async fn get_metadata<C>(name: Name, new_ver: Arc<Mutex<String>>, prog: Arc<Mutex<u8>>, client: Client<C>, link: String) -> Result<(), Error>
 		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
 		// Retry [3] times if version is not [v*]
-		let mut n = 0;
-		while n < 3 {
+		for i in 0..3 {
 			let request = Pkg::get_request(link.clone())?;
 			let mut response = client.request(request).await?;
 			let body = hyper::body::to_bytes(response.body_mut()).await?;
@@ -503,28 +508,36 @@ impl Pkg {
 				info!("Update | Metadata | {} {} ... {}%", name, body.tag_name, *prog.lock().unwrap());
 				return Ok(())
 			}
-			warn!("Update | Metadata | {} metadata fetch failed, retry [{}/3]...", name, n);
-			n += 1;
+			warn!("Update | Metadata | {} failed, retry [{}/3]...", name, i);
 		}
-		error!("Update | Metadata | {} metadata fetch failed", name);
-		Err(anyhow!("Metadata fetch failed"))
+		error!("Update | Metadata | {} failed", name);
+		Err(anyhow!("{} | Metadata fetch failed", name))
 	}
 
 	// Takes a [Request], fills the appropriate [Pkg]
 	// [bytes] field with the [Archive/Standalone]
-	pub async fn get_bytes<C>(name: Name, bytes: Arc<Mutex<bytes::Bytes>>, prog: Arc<Mutex<u8>>, client: Client<C>, request: Request<Body>) -> Result<(), anyhow::Error>
+	pub async fn get_bytes<C>(name: Name, bytes: Arc<Mutex<bytes::Bytes>>, prog: Arc<Mutex<u8>>, client: Client<C>, link: String) -> Result<(), anyhow::Error>
 		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
 		// GitHub sends a 302 redirect, so we must follow
 		// the [Location] header... only if Reqwest had custom
 		// connectors so I didn't have to manually do this...
-		let response = client.request(request).await?;
-		let request = Self::get_request(response.headers().get(hyper::header::LOCATION).unwrap().to_str()?.to_string())?;
-		let response = client.request(request).await?;
-		let body = hyper::body::to_bytes(response.into_body()).await?;
-		*bytes.lock().unwrap() = body;
-		*prog.lock().unwrap() += 10;
-		info!("Update | Download | {} ... {}%", name, *prog.lock().unwrap());
-		Ok(())
+		// Also, retry [3] times if [Bytes] == empty
+		for i in 0..3 {
+			let request = Pkg::get_request(link.clone())?;
+			let response = client.request(request).await?;
+			let request = Self::get_request(response.headers().get(hyper::header::LOCATION).unwrap().to_str()?.to_string())?;
+			let response = client.request(request).await?;
+			let body = hyper::body::to_bytes(response.into_body()).await?;
+			if ! body.is_empty() {
+				*bytes.lock().unwrap() = body;
+				*prog.lock().unwrap() += 10;
+				info!("Update | Download | {} ... {}%", name, *prog.lock().unwrap());
+				return Ok(())
+			}
+			warn!("Update | Metadata | {} download bytes are empty, retry [{}/3]...", name, i);
+		}
+		error!("Update | Download | {} failed", name);
+		Err(anyhow!("{} | Download failed", name))
 	}
 }
 

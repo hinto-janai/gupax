@@ -56,7 +56,7 @@ pub const HUGEPAGES_1GB: bool = true;
 // Gupax
 pub const GUPAX_UPDATE: &'static str = "Check for update on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
 pub const GUPAX_AUTO_UPDATE: &'static str = "Automatically check for updates at startup";
-pub const GUPAX_UPDATE_VIA_TOR: &'static str = "Update through the Tor network. Gupax has Tor embedded, a Tor system proxy is not required.";
+pub const GUPAX_UPDATE_VIA_TOR: &'static str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
 pub const GUPAX_AUTO_NODE: &'static str = "Automatically ping the community Monero nodes and select the fastest at startup for P2Pool";
 pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting if processes are still alive or if an update is in progress";
 pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed settings before quitting";

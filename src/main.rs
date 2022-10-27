@@ -582,6 +582,7 @@ impl eframe::App for App {
 			ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
 			match self.tab {
 				Tab::About => {
+					info!("");
 					ui.add_space(10.0);
 					ui.vertical_centered(|ui| {
 						// Display [Gupax] banner at max, 1/4 the available length
