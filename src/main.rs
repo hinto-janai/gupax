@@ -70,7 +70,7 @@ pub struct App {
 	// State
 	og: State, // og    = Old state to compare against
 	state: State, // state = Working state (current settings)
-//	update: Update, // State for update data [update.rs]
+	update: Update, // State for update data [update.rs]
 	diff: bool, // Instead of comparing [og == state] every frame, this bool indicates changes
 	// Process/update state:
 	// Doesn't make sense to save this on disk
@@ -102,7 +102,6 @@ impl App {
 	}
 
 	fn new() -> Self {
-		let throwaway = State::default();
 		let app = Self {
 			tab: Tab::default(),
 			quit: false,
@@ -114,7 +113,7 @@ impl App {
 			node: Arc::new(Mutex::new(NodeStruct::default())),
 			og: State::default(),
 			state: State::default(),
-//			update: Update::new(&throwaway.gupax.absolute_p2pool_path, &throwaway.gupax.absolute_xmrig_path, true),
+			update: Update::new(PathBuf::new(), PathBuf::new(), true),
 			diff: false,
 			p2pool: false,
 			xmrig: false,
@@ -144,10 +143,12 @@ impl App {
 				Err(err) => { panic_app(err.to_string()); exit(1); },
 			};
 		}
+		app.state = app.og.clone();
+		// Handle max threads
 		app.og.xmrig.max_threads = num_cpus::get();
 		if app.og.xmrig.current_threads > app.og.xmrig.max_threads { app.og.xmrig.current_threads = app.og.xmrig.max_threads; }
-		app.state = app.og.clone();
-//		app.update = Update::new(&app.og.gupax.absolute_p2pool_path, &app.og.gupax.absolute_xmrig_path, app.og.gupax.update_via_tor);
+		// Apply TOML values to [Update]
+		app.update = Update::new(app.og.gupax.absolute_p2pool_path.clone(), app.og.gupax.absolute_xmrig_path.clone(), app.og.gupax.update_via_tor);
 		app
 	}
 }
@@ -198,10 +199,10 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 }
 
 fn init_logger() {
-	#[cfg(debug_assertions)]
+//	#[cfg(debug_assertions)]
 	let filter = LevelFilter::Info;
-	#[cfg(not(debug_assertions))]
-	let filter = LevelFilter::Warn;
+//	#[cfg(not(debug_assertions))]
+//	let filter = LevelFilter::Warn;
 	use env_logger::fmt::Color;
 	Builder::new().format(|buf, record| {
 		let level;
@@ -228,7 +229,7 @@ fn init_logger() {
 
 fn init_options() -> NativeOptions {
 	let mut options = eframe::NativeOptions::default();
-	options.min_window_size = Option::from(Vec2::new(1280.0, 720.0));
+	options.min_window_size = Option::from(Vec2::new(854.0, 480.0));
 	options.max_window_size = Option::from(Vec2::new(3180.0, 2160.0));
 	options.initial_window_size = Option::from(Vec2::new(1280.0, 720.0));
 	options.follow_system_theme = false;
@@ -353,8 +354,8 @@ impl eframe::App for Panic {
 //---------------------------------------------------------------------------------------------------- Main [App] frame
 fn main() {
 	init_logger();
-	let app = App::new();
 	let options = init_options();
+	let app = App::new();
 	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 
@@ -372,14 +373,7 @@ impl eframe::App for App {
 		// *-------*
 		// | DEBUG |
 		// *-------*
-		let p2pool = self.og.gupax.absolute_p2pool_path.clone();
-		let xmrig = self.og.gupax.absolute_xmrig_path.clone();
-		let tor = self.og.gupax.update_via_tor.clone();
-		thread::spawn(move|| {
-			info!("Spawning update thread...");
-			let update = Update::start(&mut Update::new(p2pool, xmrig, tor));
-		});
-		thread::park();
+
 		// This sets the top level Ui dimensions.
 		// Used as a reference for other uis.
 		egui::CentralPanel::default().show(ctx, |ui| { self.width = ui.available_width(); self.height = ui.available_height(); });
@@ -580,15 +574,19 @@ impl eframe::App for App {
 			});
 		}
 
+		// Middle panel, contents of the [Tab]
 		egui::CentralPanel::default().show(ctx, |ui| {
+			// This sets the Ui dimensions after Top/Bottom are filled
+			self.width = ui.available_width();
+			self.height = ui.available_height();
 			ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
-	        match self.tab {
-	            Tab::About => {
+			match self.tab {
+				Tab::About => {
 					ui.add_space(10.0);
 					ui.vertical_centered(|ui| {
-						let space = ui.available_height()/2.2;
-						self.banner.show(ui);
-						ui.label("Gupax (guh-picks) is a cross-platform GUI for mining");
+						// Display [Gupax] banner at max, 1/4 the available length
+						self.banner.show_max_size(ui, Vec2::new(self.width, self.height/4.0));
+						ui.label("Gupax is a cross-platform GUI for mining");
 						ui.hyperlink_to("[Monero]", "https://www.github.com/monero-project/monero");
 						ui.label("on the decentralized");
 						ui.hyperlink_to("[P2Pool]", "https://www.github.com/SChernykh/p2pool");
@@ -596,27 +594,26 @@ impl eframe::App for App {
 						ui.hyperlink_to("[XMRig]", "https://www.github.com/xmrig/xmrig");
 						ui.label("miner for max hashrate");
 
-						ui.add_space(ui.available_height()/2.4);
-
+						ui.add_space(ui.available_height()/2.0);
 						ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui");
 						ui.hyperlink_to(format!("{} {}", GITHUB, "Gupax made by hinto-janaiyo"), "https://www.github.com/hinto-janaiyo/gupax");
 						ui.label("egui is licensed under MIT & Apache-2.0");
 						ui.label("Gupax, P2Pool, and XMRig are licensed under GPLv3");
 					});
-	            }
-	            Tab::Status => {
-					Status::show(self, ctx, ui);
-	            }
-	            Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, ctx, ui);
-	            }
-	            Tab::P2pool => {
-					P2pool::show(&mut self.state.p2pool, ctx, ui);
-	            }
-	            Tab::Xmrig => {
-					Xmrig::show(&mut self.state.xmrig, ctx, ui);
-	            }
-	        }
+				}
+				Tab::Status => {
+					Status::show(self, self.width, self.height, ctx, ui);
+				}
+				Tab::Gupax => {
+					Gupax::show(&mut self.state.gupax, self.width, self.height, &mut self.update, self.og.version.clone(), ctx, ui);
+				}
+				Tab::P2pool => {
+					P2pool::show(&mut self.state.p2pool, self.width, self.height, ctx, ui);
+				}
+				Tab::Xmrig => {
+					Xmrig::show(&mut self.state.xmrig, self.width, self.height, ctx, ui);
+				}
+			}
 		});
 	}
 }

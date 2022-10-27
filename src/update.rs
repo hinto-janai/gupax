@@ -33,7 +33,7 @@ use std::io::{Read,Write};
 //use crate::{Name::*,State};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
-use anyhow::Error;
+use anyhow::{anyhow,Error};
 use arti_hyper::*;
 use arti_client::{TorClient,TorClientConfig};
 use tokio::io::{AsyncReadExt,AsyncWriteExt};
@@ -45,6 +45,8 @@ use arti_hyper::*;
 use log::*;
 use crate::update::Name::*;
 use std::path::PathBuf;
+use crate::state::Version;
+use crate::constants::GUPAX_VERSION;
 
 // use tls_api_native_tls::{TlsConnector,TlsConnectorBuilder};
 
@@ -155,6 +157,7 @@ const FAKE_USER_AGENT: [&'static str; 50] = [
 	"curl/7.85.0",
 ];
 
+const MSG_NONE: &'static str = "No update in progress";
 const MSG_START: &'static str = "Starting update";
 const MSG_TMP: &'static str = "Creating temporary directory";
 const MSG_TOR: &'static str = "Creating Tor+HTTPS client";
@@ -177,15 +180,16 @@ const MSG_ARCHIVE: &'static str = "Downloading packages";
 // 15% | Extract (x3)
 // 15% | Upgrade (x3)
 
+#[derive(Clone)]
 pub struct Update {
-	path_gupax: String, // Full path to current gupax
-	path_p2pool: String, // Full path to current p2pool
-	path_xmrig: String, // Full path to current xmrig
-	tmp_dir: String, // Full path to temporary directory
-	updating: Arc<Mutex<bool>>, // Is an update in progress?
-	prog: Arc<Mutex<u8>>, // Holds the 0-100% progress bar number
-	msg: Arc<Mutex<String>>, // Message to display on [Gupax] tab while updating
-	tor: bool, // Is Tor enabled or not?
+	pub path_gupax: String, // Full path to current gupax
+	pub path_p2pool: String, // Full path to current p2pool
+	pub path_xmrig: String, // Full path to current xmrig
+	pub tmp_dir: String, // Full path to temporary directory
+	pub updating: Arc<Mutex<bool>>, // Is an update in progress?
+	pub prog: Arc<Mutex<u8>>, // Holds the 0-100% progress bar number
+	pub msg: Arc<Mutex<String>>, // Message to display on [Gupax] tab while updating
+	pub tor: bool, // Is Tor enabled or not?
 }
 
 impl Update {
@@ -196,9 +200,9 @@ impl Update {
 			path_p2pool: path_p2pool.display().to_string(),
 			path_xmrig: path_xmrig.display().to_string(),
 			tmp_dir: "".to_string(),
-			updating: Arc::new(Mutex::new(true)),
+			updating: Arc::new(Mutex::new(false)),
 			prog: Arc::new(Mutex::new(0)),
-			msg: Arc::new(Mutex::new("".to_string())),
+			msg: Arc::new(Mutex::new(MSG_NONE.to_string())),
 			tor,
 		}
 	}
@@ -254,73 +258,114 @@ impl Update {
 	// 5. extract, upgrade
 
 	#[tokio::main]
-	pub async fn start(&mut self) -> Result<(), anyhow::Error> {
+	pub async fn start(update: Arc<Mutex<Self>>, version: Version) -> Result<(), anyhow::Error> {
+		// Start
+		*update.lock().unwrap().updating.lock().unwrap() = true;
+
 		// Set progress bar
-		*self.msg.lock().unwrap() = MSG_START.to_string();
-		*self.prog.lock().unwrap() = 0;
-		info!("Update | Init | {}...", *self.msg.lock().unwrap());
+		*update.lock().unwrap().msg.lock().unwrap() = MSG_START.to_string();
+		*update.lock().unwrap().prog.lock().unwrap() = 0;
+		info!("Update | Init | {}...", *update.lock().unwrap().msg.lock().unwrap());
 
 		// Get temporary directory
-		*self.msg.lock().unwrap() = MSG_TMP.to_string();
-		info!("Update | Init | {} ... {}%", *self.msg.lock().unwrap(), *self.prog.lock().unwrap());
+		*update.lock().unwrap().msg.lock().unwrap() = MSG_TMP.to_string();
+		// Cannot lock Arc<Mutex> twice in same line
+		// so there will be some intermediate variables.
+		info!("Update | Init | {} ... {}%", MSG_TMP.to_string(), *update.lock().unwrap().prog.lock().unwrap());
 		let tmp_dir = Self::get_tmp_dir();
-		*self.prog.lock().unwrap() += 10;
+		*update.lock().unwrap().prog.lock().unwrap() += 10;
 
 		// Make Pkg vector
+		let prog = update.lock().unwrap().prog.clone();
+		let msg = update.lock().unwrap().msg.clone();
 		let vec = vec![
-			Pkg::new(Gupax, &tmp_dir, self.prog.clone(), self.msg.clone()),
-			Pkg::new(P2pool, &tmp_dir, self.prog.clone(), self.msg.clone()),
-			Pkg::new(Xmrig, &tmp_dir, self.prog.clone(), self.msg.clone()),
+			Pkg::new(Gupax, &tmp_dir, prog.clone(), msg.clone()),
+			Pkg::new(P2pool, &tmp_dir, prog.clone(), msg.clone()),
+			Pkg::new(Xmrig, &tmp_dir, prog.clone(), msg.clone()),
 		];
 		let mut handles: Vec<JoinHandle<()>> = vec![];
 
 		// Create Tor/HTTPS client
-		if self.tor { *self.msg.lock().unwrap() = MSG_TOR.to_string() } else { *self.msg.lock().unwrap() = MSG_HTTPS.to_string() }
-		info!("Update | Init | {} ... {}%", *self.msg.lock().unwrap(), *self.prog.lock().unwrap());
-		let client = Self::get_client(self.tor).await?;
-		*self.prog.lock().unwrap() += 15;
+		if update.lock().unwrap().tor {
+			*update.lock().unwrap().msg.lock().unwrap() = MSG_TOR.to_string()
+		} else {
+			*update.lock().unwrap().msg.lock().unwrap() = MSG_HTTPS.to_string()
+		}
+		let prog = *update.lock().unwrap().prog.lock().unwrap();
+		info!("Update | Init | {} ... {}%", *update.lock().unwrap().msg.lock().unwrap(), prog);
+		let client = Self::get_client(update.lock().unwrap().tor).await?;
+		*update.lock().unwrap().prog.lock().unwrap() += 15;
 
 		// Loop for metadata
+		*update.lock().unwrap().msg.lock().unwrap() = MSG_METADATA.to_string();
 		info!("Update | Metadata | Starting metadata fetch...");
 		for pkg in vec.iter() {
 			// Clone data before sending to async
 			let name = pkg.name.clone();
-			let version = Arc::clone(&pkg.version);
+			let new_ver = Arc::clone(&pkg.new_ver);
 			let prog = Arc::clone(&pkg.prog);
 			let client = client.clone();
-			let request = Pkg::get_request(pkg.link_metadata.to_string())?;
+			let link = pkg.link_metadata.to_string();
 			// Send to async
 			let handle: JoinHandle<()> = tokio::spawn(async move {
 				match client {
-					ClientEnum::Tor(t) => Pkg::get_metadata(name, version, prog, t, request).await,
-					ClientEnum::Https(h) => Pkg::get_metadata(name, version, prog, h, request).await,
+					ClientEnum::Tor(t) => Pkg::get_metadata(name, new_ver, prog, t, link).await,
+					ClientEnum::Https(h) => Pkg::get_metadata(name, new_ver, prog, h, link).await,
 				};
 			});
 			handles.push(handle);
 		}
-
-
-		// TODO:
-		// connection fails sometimes
-		// Regex for [v...] or restart Client process.
-
-
 		// Unwrap async
 		for handle in handles {
 			handle.await?;
 		}
 		info!("Update | Metadata ... OK");
 
+		// Loop for version comparison
+		info!("Update | Compare | Starting version comparison...");
+		let prog = update.lock().unwrap().prog.clone();
+		let msg = update.lock().unwrap().msg.clone();
+		let mut vec2 = vec![];
+		for pkg in vec.iter() {
+			let new_ver = pkg.new_ver.lock().unwrap().to_owned();
+			match pkg.name {
+				Gupax  => {
+					if new_ver == GUPAX_VERSION {
+						info!("Update | Compare | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), GUPAX_VERSION);
+					} else {
+						info!("Update | Compare | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), GUPAX_VERSION);
+						vec2.push(pkg);
+					}
+				}
+				P2pool => {
+					if new_ver == version.p2pool {
+						info!("Update | Compare | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), version.p2pool);
+					} else {
+						info!("Update | Compare | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), version.p2pool);
+						vec2.push(pkg);
+					}
+				}
+				Xmrig  => {
+					if new_ver == GUPAX_VERSION {
+						info!("Update | Compare | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), version.xmrig);
+					} else {
+						info!("Update | Compare | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), version.xmrig);
+						vec2.push(pkg);
+					}
+				}
+			}
+		}
+
 		// Loop for download
 		let mut handles: Vec<JoinHandle<()>> = vec![];
 		info!("Update | Download | Starting download...");
-		for pkg in vec.iter() {
+		for pkg in vec2.iter() {
 			// Clone data before async
 			let name = pkg.name.clone();
 			let bytes = Arc::clone(&pkg.bytes);
 			let prog = Arc::clone(&pkg.prog);
 			let client = client.clone();
-			let version = pkg.version.lock().unwrap().to_string();
+			let version = pkg.new_ver.lock().unwrap();
 			let link;
 			// Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
 			// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64
@@ -354,7 +399,7 @@ impl Update {
 //		std::fs::OpenOptions::new().mode(0o700).create(true).write(true).open(&tmp);
 		std::fs::create_dir(&tmp)?;
 		info!("Update | Extract | Starting extraction...");
-		for pkg in vec.iter() {
+		for pkg in vec2.iter() {
 			let tmp = tmp.to_string() + &pkg.name.to_string();
 			if pkg.name == Name::Gupax {
 				std::fs::write(tmp, pkg.bytes.lock().unwrap().as_ref())?;
@@ -365,6 +410,7 @@ impl Update {
 			info!("Update | Extract | {} ... {}%", pkg.name, pkg.prog.lock().unwrap());
 		}
 		info!("Update | Extract ... OK");
+		*update.lock().unwrap().updating.lock().unwrap() = false;
 		std::process::exit(0);
 		Ok(())
 	}
@@ -388,7 +434,8 @@ pub struct Pkg {
 	prog: Arc<Mutex<u8>>,
 	msg: Arc<Mutex<String>>,
 	bytes: Arc<Mutex<hyper::body::Bytes>>,
-	version: Arc<Mutex<String>>,
+	old_ver: String,
+	new_ver: Arc<Mutex<String>>,
 }
 
 impl Pkg {
@@ -423,7 +470,8 @@ impl Pkg {
 			prog,
 			msg,
 			bytes: Arc::new(Mutex::new(bytes::Bytes::new())),
-			version: Arc::new(Mutex::new(String::new())),
+			old_ver: String::new(),
+			new_ver: Arc::new(Mutex::new(String::new())),
 		}
 	}
 
@@ -440,15 +488,26 @@ impl Pkg {
 
 	// Get metadata using [Generic hyper::client<C>] & [Request]
 	// and change [version, prog] under an Arc<Mutex>
-	pub async fn get_metadata<C>(name: Name, version: Arc<Mutex<String>>, prog: Arc<Mutex<u8>>, client: Client<C>, request: Request<Body>) -> Result<(), Error>
+	pub async fn get_metadata<C>(name: Name, new_ver: Arc<Mutex<String>>, prog: Arc<Mutex<u8>>, client: Client<C>, link: String) -> Result<(), Error>
 		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
-		let mut response = client.request(request).await?;
-		let body = hyper::body::to_bytes(response.body_mut()).await?;
-		let body: Version = serde_json::from_slice(&body)?;
-		*version.lock().unwrap() = body.tag_name.clone();
-		*prog.lock().unwrap() += 5;
-		info!("Update | Metadata | {} {} ... {}%", name, body.tag_name, *prog.lock().unwrap());
-		Ok(())
+		// Retry [3] times if version is not [v*]
+		let mut n = 0;
+		while n < 3 {
+			let request = Pkg::get_request(link.clone())?;
+			let mut response = client.request(request).await?;
+			let body = hyper::body::to_bytes(response.body_mut()).await?;
+			let body: TagName = serde_json::from_slice(&body)?;
+			if body.tag_name.starts_with('v') {
+				*new_ver.lock().unwrap() = body.tag_name.clone();
+				*prog.lock().unwrap() += 5;
+				info!("Update | Metadata | {} {} ... {}%", name, body.tag_name, *prog.lock().unwrap());
+				return Ok(())
+			}
+			warn!("Update | Metadata | {} metadata fetch failed, retry [{}/3]...", name, n);
+			n += 1;
+		}
+		error!("Update | Metadata | {} metadata fetch failed", name);
+		Err(anyhow!("Metadata fetch failed"))
 	}
 
 	// Takes a [Request], fills the appropriate [Pkg]
@@ -471,7 +530,7 @@ impl Pkg {
 
 // This inherits the value of [tag_name] from GitHub's JSON API
 #[derive(Debug, Serialize, Deserialize)]
-struct Version {
+struct TagName {
 	tag_name: String,
 }
 

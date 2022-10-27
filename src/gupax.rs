@@ -19,43 +19,69 @@ use std::path::Path;
 use crate::App;
 use egui::WidgetType::Button;
 use crate::constants::*;
-use crate::state::Gupax;
+use crate::state::{Gupax,Version};
 use crate::update::*;
+use std::thread;
+use std::sync::{Arc,Mutex};
+use log::*;
 
 impl Gupax {
-	pub fn show(state: &mut Gupax, ctx: &egui::Context, ui: &mut egui::Ui) {
-		let height = ui.available_height();
-		let width = ui.available_width();
-		let half_height = height / 6.0;
-		let half_width = width / 2.0;
+	pub fn show(state: &mut Gupax, width: f32, height: f32, update: &mut Update, version: Version, ctx: &egui::Context, ui: &mut egui::Ui) {
+		// Update button + Progress bar
+		ui.group(|ui| {
+				// These are in unnecessary [ui.vertical()]'s
+				// because I need to use [ui.set_enabled]s, but I can't
+				// find a way to use a [ui.xxx()] with [ui.add_sized()].
+				// I have to pick one. This one seperates them though.
+				let height = height/6.0;
+				let width = width - SPACE;
+				ui.vertical(|ui| {
+					ui.set_enabled(!*update.updating.lock().unwrap());
+					if ui.add_sized([width, height], egui::Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
+						update.path_p2pool = state.absolute_p2pool_path.display().to_string();
+						update.path_xmrig = state.absolute_xmrig_path.display().to_string();
+						update.tor = state.update_via_tor;
+						let u = Arc::new(Mutex::new(update.clone()));
+						let u = Arc::clone(&u);
+						thread::spawn(move|| {
+							info!("Spawning update thread...");
+							let handle = Update::start(u, version);
+							info!("...........>");
+						});
+					}
+				});
+				ui.vertical(|ui| {
+					ui.set_enabled(*update.updating.lock().unwrap());
+					let height = height/2.0;
+					let msg = format!("{}{}{}{}", *update.msg.lock().unwrap(), " ... ", *update.prog.lock().unwrap(), "%");
+					ui.add_sized([width, height], egui::Label::new(msg));
+//						let range = *update.prog.lock().unwrap() as f32 / 100.0;
+					ui.add_sized([width, height], egui::ProgressBar::new(*update.prog.lock().unwrap() as f32 / 100.0));
+				});
+		});
 
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
-					ui.vertical(|ui| {
-						ui.add_sized([half_width - 8.0, half_height], egui::Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE);
-						ui.set_enabled(false);
-						ui.add_sized([half_width - 8.0, half_height], egui::Button::new("Upgrade")).on_hover_text("asdf");
-					});
-			});
-
-			ui.group(|ui| {
+					let width = (width - SPACE*10.0)/5.0;
+					let height = height/2.0;
 					let mut style = (*ctx.style()).clone();
-					style.spacing.icon_width_inner = ui.available_height() / 6.0;
-					style.spacing.icon_width = ui.available_height() / 4.0;
-					style.spacing.icon_spacing = ui.available_width() / 20.0;
+					style.spacing.icon_width_inner = height / 6.0;
+					style.spacing.icon_width = height / 4.0;
+					style.spacing.icon_spacing = width / 20.0;
 					ctx.set_style(style);
-					let half_width = (half_width/2.0)-15.0;
-					ui.vertical(|ui| {
-						ui.add_sized([half_width, half_height], egui::Checkbox::new(&mut state.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
-						ui.add_sized([half_width, half_height], egui::Checkbox::new(&mut state.ask_before_quit, "Ask before quitting")).on_hover_text(GUPAX_ASK_BEFORE_QUIT);
-					});
-					ui.vertical(|ui| {
-						ui.add_sized([half_width, half_height], egui::Checkbox::new(&mut state.auto_node, "Auto-node")).on_hover_text(GUPAX_AUTO_NODE);
-						ui.add_sized([half_width, half_height], egui::Checkbox::new(&mut state.save_before_quit, "Save before quitting")).on_hover_text(GUPAX_SAVE_BEFORE_QUIT);
-					});
+					let height = height/2.0;
+					ui.add_sized([width, height], egui::Checkbox::new(&mut state.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
+					ui.separator();
+					ui.add_sized([width, height], egui::Checkbox::new(&mut state.auto_node, "Auto-node")).on_hover_text(GUPAX_AUTO_NODE);
+					ui.separator();
+					ui.add_sized([width, height], egui::Checkbox::new(&mut state.update_via_tor, "Update via Tor")).on_hover_text(GUPAX_UPDATE_VIA_TOR);
+					ui.separator();
+					ui.add_sized([width, height], egui::Checkbox::new(&mut state.ask_before_quit, "Ask before quit")).on_hover_text(GUPAX_ASK_BEFORE_QUIT);
+					ui.separator();
+					ui.add_sized([width, height], egui::Checkbox::new(&mut state.save_before_quit, "Save before quit")).on_hover_text(GUPAX_SAVE_BEFORE_QUIT);
 			});
 		});
-		ui.add_space(10.0);
+		ui.add_space(SPACE);
 
 		ui.horizontal(|ui| {
 			ui.label("P2Pool binary path:");

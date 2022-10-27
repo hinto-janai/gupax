@@ -26,6 +26,12 @@ pub const P2POOL_BASE_ARGS: &'static str = "";
 pub const XMRIG_BASE_ARGS: &'static str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero --randomx-cache-qos";
 pub const HORIZONTAL: &'static str = "--------------------------------------------";
 
+// This is the typical space added when using
+// [ui.separator()] or [ui.group()]
+// Used for subtracting the width/height so
+// things actually line up.
+pub const SPACE: f32 = 10.0;
+
 // OS specific
 #[cfg(target_os = "windows")]
 pub const OS: &'static str = " Windows";
@@ -48,10 +54,11 @@ pub const HUGEPAGES_1GB: bool = true;
 
 // Tooltips
 // Gupax
-pub const GUPAX_UPDATE: &'static str = "Update Gupax, P2Pool, and XMRig via GitHub's API";
+pub const GUPAX_UPDATE: &'static str = "Check for update on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
 pub const GUPAX_AUTO_UPDATE: &'static str = "Automatically check for updates at startup";
-pub const GUPAX_AUTO_NODE: &'static str = "Automatically ping the community Monero nodes and select the fastest at startup";
-pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting if processes are still alive, or if an update is in progress";
+pub const GUPAX_UPDATE_VIA_TOR: &'static str = "Update through the Tor network. Gupax has Tor embedded, a Tor system proxy is not required.";
+pub const GUPAX_AUTO_NODE: &'static str = "Automatically ping the community Monero nodes and select the fastest at startup for P2Pool";
+pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting if processes are still alive or if an update is in progress";
 pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed settings before quitting";
 pub const GUPAX_PATH_P2POOL: &'static str = "The location of the P2Pool binary, both absolute and relative paths are accepted";
 pub const GUPAX_PATH_XMRIG: &'static str = "The location of the XMRig binary, both absolute and relative paths are accepted";

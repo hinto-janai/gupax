@@ -24,7 +24,7 @@ use crate::constants::*;
 use crate::state::Xmrig;
 
 impl Xmrig {
-	pub fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 		let height = ui.available_height() / 10.0;
 		let mut width = ui.available_width() - 10.0;
 		ui.group(|ui| {

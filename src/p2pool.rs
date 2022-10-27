@@ -34,7 +34,7 @@ use crate::node::{RINO,SETH,SELSTA};
 
 
 impl P2pool {
-	pub fn show(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// TODO:
 		// ping code
 		// If ping-ING, display stats

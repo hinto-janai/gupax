@@ -24,7 +24,7 @@ pub struct About {
 }
 
 impl About {
-	pub fn show(app: &mut App, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(app: &mut App, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 		ui.add_space(10.0);
 		ui.vertical_centered(|ui| {
 			let space = ui.available_height()/2.2;
