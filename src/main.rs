@@ -605,7 +605,7 @@ impl eframe::App for App {
 					Status::show(self, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, self.width, self.height, &mut self.update, self.og.version.clone(), ctx, ui);
+					Gupax::show(&mut self.state.gupax, &self.og.gupax, self.width, self.height, &mut self.update, self.og.version.clone(), ctx, ui);
 				}
 				Tab::P2pool => {
 					P2pool::show(&mut self.state.p2pool, self.width, self.height, ctx, ui);

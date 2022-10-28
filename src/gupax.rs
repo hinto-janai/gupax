@@ -26,7 +26,7 @@ use std::sync::{Arc,Mutex};
 use log::*;
 
 impl Gupax {
-	pub fn show(state: &mut Gupax, width: f32, height: f32, update: &mut Update, version: Version, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(state: &mut Gupax, og: &Gupax, width: f32, height: f32, update: &mut Update, version: Version, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
@@ -39,20 +39,17 @@ impl Gupax {
 				ui.vertical(|ui| {
 					ui.set_enabled(!updating);
 					if ui.add_sized([width, height], egui::Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
-						update.path_p2pool = state.absolute_p2pool_path.display().to_string();
-						update.path_xmrig = state.absolute_xmrig_path.display().to_string();
-						update.tor = state.update_via_tor;
-						let u = Arc::new(Mutex::new(update.clone()));
-						let u = Arc::clone(&u);
-						let u2 = Arc::new(Mutex::new(update.clone()));
-						let u2 = Arc::clone(&u);
+						update.path_p2pool = og.absolute_p2pool_path.display().to_string();
+						update.path_xmrig = og.absolute_xmrig_path.display().to_string();
+						update.tor = og.update_via_tor;
+						let update = Arc::new(Mutex::new(update.clone()));
 						thread::spawn(move|| {
 							info!("Spawning update thread...");
-							match Update::start(u, version) {
+							match Update::start(update.clone(), version) {
 								Err(e) => {
 									info!("Update | {} ... FAIL", e);
-									*u2.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
-									*u2.lock().unwrap().updating.lock().unwrap() = false;
+									*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
+									*update.lock().unwrap().updating.lock().unwrap() = false;
 								},
 								_ => (),
 							}
