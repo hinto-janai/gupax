@@ -45,8 +45,9 @@ use arti_hyper::*;
 use log::*;
 use crate::update::Name::*;
 use std::path::PathBuf;
-use crate::state::Version;
+use crate::state::*;
 use crate::constants::GUPAX_VERSION;
+use walkdir::WalkDir;
 
 // use tls_api_native_tls::{TlsConnector,TlsConnectorBuilder};
 
@@ -163,10 +164,22 @@ const MSG_TMP: &'static str = "Creating temporary directory";
 const MSG_TOR: &'static str = "Creating Tor+HTTPS client";
 const MSG_HTTPS: &'static str = "Creating HTTPS client";
 const MSG_METADATA: &'static str = "Fetching package metadata";
+const MSG_METADATA_RETRY: &'static str = "Fetching package metadata failed, attempt";
 const MSG_COMPARE: &'static str = "Compare package versions";
+const MSG_UP_TO_DATE: &'static str = "All packages already up-to-date";
 const MSG_DOWNLOAD: &'static str = "Downloading packages";
+const MSG_DOWNLOAD_RETRY: &'static str = "Downloading packages failed, attempt";
+const MSG_EXTRACT: &'static str = "Extracting packages";
+const MSG_UPGRADE: &'static str = "Upgrading packages";
 pub const MSG_SUCCESS: &'static str = "Update successful";
 pub const MSG_FAILED: &'static str = "Update failed";
+
+const INIT: &'static str = "------------------- Init -------------------";
+const METADATA: &'static str = "----------------- Metadata -----------------";
+const COMPARE: &'static str = "----------------- Compare ------------------";
+const DOWNLOAD: &'static str = "----------------- Download -----------------";
+const EXTRACT: &'static str = "----------------- Extract ------------------";
+const UPGRADE: &'static str = "----------------- Upgrade ------------------";
 
 // These two are sequential and not async so no need for a constant message.
 // The package in question will be known at runtime, so that will be printed.
@@ -176,13 +189,14 @@ pub const MSG_FAILED: &'static str = "Update failed";
 //---------------------------------------------------------------------------------------------------- Update struct/impl
 // Contains values needed during update
 // Progress bar structure:
-// 0%  | Create tmp directory and pkg list
-// 10% | Create Tor/HTTPS client
-// 15% | Download Metadata (x3)
-// 15% | Compare Versions (x3)
+// 0%  | Start
+// 5%  | Create tmp directory, pkg list, fake user-agent
+// 5%  | Create Tor/HTTPS client
+// 30% | Download Metadata (x3)
+// 5%  | Compare Versions (x3)
 // 30% | Download Archive (x3)
-// 15% | Extract (x3)
-// 15% | Upgrade (x3)
+// 5%  | Extract (x3)
+// 5%  | Upgrade (x3)
 
 #[derive(Clone)]
 pub struct Update {
@@ -191,7 +205,7 @@ pub struct Update {
 	pub path_xmrig: String, // Full path to current xmrig
 	pub tmp_dir: String, // Full path to temporary directory
 	pub updating: Arc<Mutex<bool>>, // Is an update in progress?
-	pub prog: Arc<Mutex<u8>>, // Holds the 0-100% progress bar number
+	pub prog: Arc<Mutex<f32>>, // Holds the 0-100% progress bar number
 	pub msg: Arc<Mutex<String>>, // Message to display on [Gupax] tab while updating
 	pub tor: bool, // Is Tor enabled or not?
 }
@@ -205,24 +219,26 @@ impl Update {
 			path_xmrig: path_xmrig.display().to_string(),
 			tmp_dir: "".to_string(),
 			updating: Arc::new(Mutex::new(false)),
-			prog: Arc::new(Mutex::new(0)),
+			prog: Arc::new(Mutex::new(0.0)),
 			msg: Arc::new(Mutex::new(MSG_NONE.to_string())),
 			tor,
 		}
 	}
 
-	// Get a temporary random folder
-	// for package download contents
-	// Will look like [/tmp/gupax_A1m98FN3fa/] on Unix
-	pub fn get_tmp_dir() -> String {
+	// Get a temporary random folder for package download contents
+	// This used to use [std::env::temp_dir()] but there were issues
+	// using [std::fs::rename()] on tmpfs -> disk (Invalid cross-device link (os error 18)).
+	// So, uses the [Gupax] binary directory as a base, something like [/home/hinto/gupax/gupax_SG4xsDdVmr]
+	pub fn get_tmp_dir() -> Result<String, anyhow::Error> {
 		let rand_string: String = thread_rng()
 			.sample_iter(&Alphanumeric)
 			.take(10)
 			.map(char::from)
 			.collect();
-		let tmp = std::env::temp_dir();
-		let tmp = format!("{}{}{}{}", tmp.display(), "/gupax_", rand_string, "/");
-		tmp
+		let base = crate::get_exe_dir()?;
+		let tmp_dir = format!("{}{}{}{}", base, "/gupax_", rand_string, "/");
+		info!("Update | Temporary directory ... {}", tmp_dir);
+		Ok(tmp_dir)
 	}
 
 	// Get a HTTPS client. Uses [Arti] if Tor is enabled.
@@ -240,6 +256,8 @@ impl Update {
 	//
 	pub async fn get_client(tor: bool) -> Result<ClientEnum, anyhow::Error> {
 		if tor {
+			// This one below is non-async, but it doesn't bootstrap immediately.
+//			let tor = TorClient::builder().bootstrap_behavior(arti_client::BootstrapBehavior::OnDemand).create_unbootstrapped()?;
 			let tor = TorClient::create_bootstrapped(TorClientConfig::default()).await?;
 			let tls = tls_api_native_tls::TlsConnector::builder()?.build()?;
 		    let connector = ArtiHttpConnector::new(tor, tls);
@@ -262,31 +280,37 @@ impl Update {
 	// 5. extract, upgrade
 
 	#[tokio::main]
-	pub async fn start(update: Arc<Mutex<Self>>, version: Version) -> Result<(), anyhow::Error> {
-		// Start
+	pub async fn start(update: Arc<Mutex<Self>>, mut version: Version) -> Result<(), anyhow::Error> {
+		//---------------------------------------------------------------------------------------------------- Init
 		*update.lock().unwrap().updating.lock().unwrap() = true;
+		// Set timer
+		let now = std::time::Instant::now();
 
 		// Set progress bar
 		*update.lock().unwrap().msg.lock().unwrap() = MSG_START.to_string();
-		*update.lock().unwrap().prog.lock().unwrap() = 0;
-		info!("Update | Init | {}...", *update.lock().unwrap().msg.lock().unwrap());
+		*update.lock().unwrap().prog.lock().unwrap() = 0.0;
+		info!("Update | {}", INIT);
 
 		// Get temporary directory
 		*update.lock().unwrap().msg.lock().unwrap() = MSG_TMP.to_string();
 		// Cannot lock Arc<Mutex> twice in same line
 		// so there will be some intermediate variables.
-		info!("Update | Init | {} ... {}%", MSG_TMP.to_string(), *update.lock().unwrap().prog.lock().unwrap());
-		let tmp_dir = Self::get_tmp_dir();
+		info!("Update | {}", MSG_TMP.to_string());
+		let tmp_dir = Self::get_tmp_dir()?;
+		std::fs::create_dir(&tmp_dir)?;
 
 		// Make Pkg vector
 		let prog = update.lock().unwrap().prog.clone();
 		let msg = update.lock().unwrap().msg.clone();
-		let vec = vec![
+		let mut vec = vec![
 			Pkg::new(Gupax, &tmp_dir, prog.clone(), msg.clone()),
 			Pkg::new(P2pool, &tmp_dir, prog.clone(), msg.clone()),
 			Pkg::new(Xmrig, &tmp_dir, prog.clone(), msg.clone()),
 		];
-		let mut handles: Vec<JoinHandle<()>> = vec![];
+
+		// Generate fake user-agent
+		let user_agent = Pkg::get_user_agent();
+		*update.lock().unwrap().prog.lock().unwrap() = 5.0;
 
 		// Create Tor/HTTPS client
 		if update.lock().unwrap().tor {
@@ -295,141 +319,287 @@ impl Update {
 			*update.lock().unwrap().msg.lock().unwrap() = MSG_HTTPS.to_string()
 		}
 		let prog = *update.lock().unwrap().prog.lock().unwrap();
-		info!("Update | Init | {} ... {}%", *update.lock().unwrap().msg.lock().unwrap(), prog);
+		info!("Update | {}", update.lock().unwrap().msg.lock().unwrap());
 		let client = Self::get_client(update.lock().unwrap().tor).await?;
-		*update.lock().unwrap().prog.lock().unwrap() += 10;
-		info!("Update | Init ... OK");
+		*update.lock().unwrap().prog.lock().unwrap() += 5.0;
+		info!("Update | Init ... OK ... {}%", prog);
 
-		// Loop for metadata
+		//---------------------------------------------------------------------------------------------------- Metadata
 		*update.lock().unwrap().msg.lock().unwrap() = MSG_METADATA.to_string();
-		info!("Update | Metadata | Starting metadata fetch...");
-		for pkg in vec.iter() {
-			// Clone data before sending to async
-			let name = pkg.name.clone();
-			let new_ver = Arc::clone(&pkg.new_ver);
-			let prog = Arc::clone(&pkg.prog);
-			let client = client.clone();
-			let link = pkg.link_metadata.to_string();
-			// Send to async
-			let handle: JoinHandle<()> = tokio::spawn(async move {
-				match client {
-					ClientEnum::Tor(t) => Pkg::get_metadata(name, new_ver, prog, t, link).await,
-					ClientEnum::Https(h) => Pkg::get_metadata(name, new_ver, prog, h, link).await,
-				};
-			});
-			handles.push(handle);
+		info!("Update | {}", METADATA);
+		let mut vec2 = vec![];
+		// Loop process:
+		// 1. Start all async metadata fetches
+		// 2. Wait for all to finish
+		// 3. Iterate over all [pkg.new_ver], check if empty
+		// 4. If not empty, move [pkg] to different vec
+		// 5. At end, if original vec isn't empty, that means something failed
+		// 6. Redo loop [3] times, with the original vec (that now only has the failed pkgs)
+		//
+		// This logic was originally in the [Pkg::get_metadata()]
+		// function itself but for some reason, it was getting skipped over,
+		// so the [new_ver] check is now here, in the outer scope.
+		for i in 1..=3 {
+			if i > 1 { *update.lock().unwrap().msg.lock().unwrap() = format!("{} [{}/3]", MSG_METADATA_RETRY.to_string(), i); }
+			let mut handles: Vec<JoinHandle<Result<(), anyhow::Error>>> = vec![];
+			for pkg in vec.iter() {
+				// Clone data before sending to async
+				let name = pkg.name.clone();
+				let new_ver = Arc::clone(&pkg.new_ver);
+				let client = client.clone();
+				let link = pkg.link_metadata.to_string();
+				// Send to async
+				let handle: JoinHandle<Result<(), anyhow::Error>> = tokio::spawn(async move {
+					match client {
+						ClientEnum::Tor(t) => Pkg::get_metadata(name, new_ver, t, link, user_agent).await,
+						ClientEnum::Https(h) => Pkg::get_metadata(name, new_ver, h, link, user_agent).await,
+					}
+				});
+				handles.push(handle);
+			}
+			// Handle await
+			for handle in handles {
+				// Two [??] will send the error.
+				// We don't actually want to return the error here since we
+				// prefer looping and retrying over immediately erroring out.
+				match handle.await? {
+					Err(e) => warn!("Update | {}", e),
+					_ => (),
+				}
+			}
+			// Check for empty version
+			let mut indexes = vec![];
+			for (index, pkg) in vec.iter().enumerate() {
+				if pkg.new_ver.lock().unwrap().is_empty() {
+					warn!("Update | {} failed, attempt [{}/3]...", pkg.name, i);
+				} else {
+					indexes.push(index);
+					vec2.push(pkg.clone());
+					*update.lock().unwrap().prog.lock().unwrap() += 10.0;
+					info!("Update | {} {} ... OK", pkg.name, pkg.new_ver.lock().unwrap());
+				}
+			}
+			// Order indexes from biggest to smallest
+			// This prevents shifting the whole vector and causing panics.
+			indexes.sort();
+			indexes.reverse();
+			for index in indexes {
+				vec.remove(index);
+			}
+			if vec.is_empty() { break }
 		}
-		// Unwrap async
-		for handle in handles {
-			handle.await?;
+		if vec.is_empty() {
+			info!("Update | Metadata ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
+		} else {
+			error!("Update | Metadata ... FAIL");
+			return Err(anyhow!("Metadata fetch failed", ))
 		}
-		info!("Update | Metadata ... OK");
 
-		// Loop for version comparison
+		//---------------------------------------------------------------------------------------------------- Compare
 		*update.lock().unwrap().msg.lock().unwrap() = MSG_COMPARE.to_string();
-		info!("Update | Compare | Starting version comparison...");
+		info!("Update | {}", COMPARE);
 		let prog = update.lock().unwrap().prog.clone();
 		let msg = update.lock().unwrap().msg.clone();
-		let mut vec2 = vec![];
-		for pkg in vec.iter() {
+		let mut vec3 = vec![];
+		let mut new_pkgs = vec![];
+		for pkg in vec2.iter() {
 			let new_ver = pkg.new_ver.lock().unwrap().to_owned();
 			match pkg.name {
 				Gupax  => {
 					if new_ver == GUPAX_VERSION {
-						info!("Update | Compare | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), GUPAX_VERSION);
+						info!("Update | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), GUPAX_VERSION);
 					} else {
-						info!("Update | Compare | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), GUPAX_VERSION);
-						vec2.push(pkg);
+						info!("Update | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), GUPAX_VERSION);
+						new_pkgs.push(format!("\nGupax {}  ➡  {}", GUPAX_VERSION, pkg.new_ver.lock().unwrap()));
+						vec3.push(pkg);
 					}
 				}
 				P2pool => {
 					if new_ver == version.p2pool {
-						info!("Update | Compare | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), version.p2pool);
+						info!("Update | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), version.p2pool);
 					} else {
-						info!("Update | Compare | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), version.p2pool);
-						vec2.push(pkg);
+						info!("Update | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), version.p2pool);
+						new_pkgs.push(format!("\nP2Pool {}  ➡  {}", version.p2pool, pkg.new_ver.lock().unwrap()));
+						vec3.push(pkg);
 					}
 				}
 				Xmrig  => {
 					if new_ver == GUPAX_VERSION {
-						info!("Update | Compare | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), version.xmrig);
+						info!("Update | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), version.xmrig);
 					} else {
-						info!("Update | Compare | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), version.xmrig);
-						vec2.push(pkg);
+						info!("Update | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), version.xmrig);
+						new_pkgs.push(format!("\nXMRig {}  ➡  {}", version.xmrig, pkg.new_ver.lock().unwrap()));
+						vec3.push(pkg);
 					}
 				}
 			}
-			*update.lock().unwrap().prog.lock().unwrap() += 5;
 		}
-		info!("Update | Compare ... OK");
+		*update.lock().unwrap().prog.lock().unwrap() += 5.0;
+		info!("Update | Compare ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
+		// Return if 0 (all packages up-to-date)
+		// Get amount of packages to divide up the percentage increases
+		let pkg_amount = vec3.len() as f32;
+		if pkg_amount == 0.0 {
+			info!("Update | All packages up-to-date ... RETURNING");
+			*update.lock().unwrap().prog.lock().unwrap() = 100.0;
+			*update.lock().unwrap().msg.lock().unwrap() = MSG_UP_TO_DATE.to_string();
+			return Ok(())
+		}
+		let new_pkgs: String = new_pkgs.concat();
 
-		// Loop for download
-		let mut handles: Vec<JoinHandle<()>> = vec![];
-		*update.lock().unwrap().msg.lock().unwrap() = MSG_DOWNLOAD.to_string();
-		info!("Update | Download | Starting download...");
-		for pkg in vec2.iter() {
-			// Clone data before async
-			let name = pkg.name.clone();
-			let bytes = Arc::clone(&pkg.bytes);
-			let prog = Arc::clone(&pkg.prog);
-			let client = client.clone();
-			let version = pkg.new_ver.lock().unwrap();
-			let link;
-			// Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
-			// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64
-			// XMRig doesn't have a [v], so slice it out
-			if pkg.name == Name::Xmrig {
-				link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version[1..] + &pkg.link_extension;
-			// TODO FIX ME
-			// This is temp link for v0.0.1 of [Gupax]
-			} else if pkg.name == Name::Gupax {
-				link = "https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64".to_string()
-			} else {
-				link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version + &pkg.link_extension;
+		//---------------------------------------------------------------------------------------------------- Download
+		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_DOWNLOAD, new_pkgs);
+		info!("Update | {}", DOWNLOAD);
+		let mut vec4 = vec![];
+		for i in 1..=3 {
+			if i > 1 { *update.lock().unwrap().msg.lock().unwrap() = format!("{} [{}/3]{}", MSG_DOWNLOAD_RETRY.to_string(), i, new_pkgs); }
+			let mut handles: Vec<JoinHandle<Result<(), anyhow::Error>>> = vec![];
+			for pkg in vec3.iter() {
+				// Clone data before async
+				let name = pkg.name.clone();
+				let bytes = Arc::clone(&pkg.bytes);
+				let client = client.clone();
+				let version = pkg.new_ver.lock().unwrap();
+				let link;
+				// Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
+				// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64
+				// XMRig doesn't have a [v], so slice it out
+				if pkg.name == Name::Xmrig {
+					link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version[1..] + &pkg.link_extension;
+				// TODO FIX ME
+				// This is temp link for v0.0.1 of [Gupax]
+				} else if pkg.name == Name::Gupax {
+					link = "https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64".to_string()
+				} else {
+					link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version + &pkg.link_extension;
+				}
+				info!("Update | {} ... {}", pkg.name, link);
+				let handle: JoinHandle<Result<(), anyhow::Error>> = tokio::spawn(async move {
+					match client {
+						ClientEnum::Tor(t) => Pkg::get_bytes(name, bytes, t, link, user_agent).await,
+						ClientEnum::Https(h) => Pkg::get_bytes(name, bytes, h, link, user_agent).await,
+					}
+				});
+				handles.push(handle);
 			}
-			info!("Update | Download | {} ... {}", pkg.name, link);
-			let handle: JoinHandle<()> = tokio::spawn(async move {
-				match client {
-					ClientEnum::Tor(t) => Pkg::get_bytes(name, bytes, prog, t, link).await,
-					ClientEnum::Https(h) => Pkg::get_bytes(name, bytes, prog, h, link).await,
-				};
-			});
-			handles.push(handle);
+			// Handle await
+			for handle in handles {
+				match handle.await? {
+					Err(e) => warn!("Update | {}", e),
+					_ => (),
+				}
+			}
+			// Check for empty bytes
+			let mut indexes = vec![];
+			for (index, pkg) in vec3.iter().enumerate() {
+				if pkg.bytes.lock().unwrap().is_empty() {
+					warn!("Update | {} failed, attempt [{}/3]...", pkg.name, i);
+				} else {
+					indexes.push(index);
+					vec4.push(pkg.clone());
+					*update.lock().unwrap().prog.lock().unwrap() += (30.0 / pkg_amount).round();
+					info!("Update | {} ... OK", pkg.name);
+				}
+			}
+			// Order indexes from biggest to smallest
+			// This prevents shifting the whole vector and causing panics.
+			indexes.sort();
+			indexes.reverse();
+			for index in indexes {
+				vec3.remove(index);
+			}
+			if vec3.is_empty() { break }
 		}
-		for handle in handles {
-			handle.await?;
+		if vec3.is_empty() {
+			info!("Update | Download ... OK ... {}%", *update.lock().unwrap().prog.lock().unwrap());
+		} else {
+			error!("Update | Download ... FAIL");
+			return Err(anyhow!("Download failed", ))
 		}
-		info!("Update | Download ... OK");
 
-		// Write to disk, extract
-		let tmp = Self::get_tmp_dir();
-//		std::fs::OpenOptions::new().mode(0o700).create(true).write(true).open(&tmp);
-		std::fs::create_dir(&tmp)?;
-		info!("Update | Extract | Starting extraction...");
-		for pkg in vec2.iter() {
-			let tmp = tmp.to_string() + &pkg.name.to_string();
+		//---------------------------------------------------------------------------------------------------- Extract
+		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_EXTRACT, new_pkgs);
+		info!("Update | {}", EXTRACT);
+		for pkg in vec4.iter() {
+			let tmp = tmp_dir.to_owned() + &pkg.name.to_string();
 			if pkg.name == Name::Gupax {
+				#[cfg(target_family = "unix")]
+				std::fs::OpenOptions::new().create(true).write(true).mode(0o770).open(&tmp)?;
 				std::fs::write(tmp, pkg.bytes.lock().unwrap().as_ref())?;
 			} else {
+				#[cfg(target_family = "unix")]
 				tar::Archive::new(flate2::read::GzDecoder::new(pkg.bytes.lock().unwrap().as_ref())).unpack(tmp)?;
 			}
-			*pkg.prog.lock().unwrap() += 5;
-			info!("Update | Extract | {} ... {}%", pkg.name, pkg.prog.lock().unwrap());
+			*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
+			info!("Update | {} ... OK", pkg.name);
 		}
-		info!("Update | Extract ... OK");
+		info!("Update | Extract ... OK ... {}%", *update.lock().unwrap().prog.lock().unwrap());
+
+		//---------------------------------------------------------------------------------------------------- Upgrade
+		// 0. Walk directories
+		// 1. If basename matches known binary name, start
+		// 2. Rename tmp path into current path
+		// 3a. Update [State/Version]
+		// 3b. Gupax version is builtin to binary, so no state change needed
+		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_UPGRADE, new_pkgs);
+		info!("Update | {}", UPGRADE);
+		// Just in case, create all folders
+		for entry in WalkDir::new(tmp_dir.clone()) {
+			let entry = entry?.clone();
+			let basename = entry.file_name().to_str().ok_or(anyhow::Error::msg("WalkDir basename failed"))?;
+			match basename {
+				"Gupax" => {
+					let path = update.lock().unwrap().path_gupax.clone();
+					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path);
+					std::fs::rename(entry.path(), path)?;
+					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
+				},
+				"p2pool" => {
+					let path = update.lock().unwrap().path_p2pool.clone();
+					let path = std::path::Path::new(&path);
+					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path.display());
+					std::fs::create_dir_all(path.parent().ok_or(anyhow::Error::msg("P2Pool path failed"))?)?;
+					std::fs::rename(entry.path(), path)?;
+					version.p2pool = Pkg::get_new_pkg_version(P2pool, &vec4)?;
+					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
+				},
+				"xmrig" => {
+					let path = update.lock().unwrap().path_xmrig.clone();
+					let path = std::path::Path::new(&path);
+					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path.display());
+					std::fs::create_dir_all(path.parent().ok_or(anyhow::Error::msg("XMRig path failed"))?)?;
+					std::fs::rename(entry.path(), path)?;
+					version.xmrig = Pkg::get_new_pkg_version(Xmrig, &vec4)?;
+					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
+				},
+				_ => (),
+			}
+		}
+
+		info!("Update | Removing temporary directory ... {}", tmp_dir);
+		std::fs::remove_dir_all(&tmp_dir)?;
+		let seconds = now.elapsed().as_secs();
+		info!("Update ... Seconds elapsed: [{}s]", seconds);
+		info!("Update ... OK ... 100%");
+		match seconds {
+			0 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 0 seconds... Do you have 10Gbit internet or something...?!{}", MSG_SUCCESS, new_pkgs),
+			1 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 1 second... Wow!{}", MSG_SUCCESS, new_pkgs),
+			_ => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took {} seconds.{}", MSG_SUCCESS, seconds, new_pkgs),
+		}
+		*update.lock().unwrap().prog.lock().unwrap() = 100.0;
 		*update.lock().unwrap().updating.lock().unwrap() = false;
 		Ok(())
 	}
 }
 
 #[derive(Debug,Clone)]
-enum ClientEnum {
+pub enum ClientEnum {
     Tor(Client<ArtiHttpConnector<tor_rtcompat::PreferredRuntime, tls_api_native_tls::TlsConnector>>),
     Https(Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>),
 }
 
 //---------------------------------------------------------------------------------------------------- Pkg struct/impl
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Pkg {
 	name: Name,
 	link_metadata: &'static str,
@@ -437,7 +607,7 @@ pub struct Pkg {
 	link_suffix: &'static str,
 	link_extension: &'static str,
 	tmp_dir: String,
-	prog: Arc<Mutex<u8>>,
+	prog: Arc<Mutex<f32>>,
 	msg: Arc<Mutex<String>>,
 	bytes: Arc<Mutex<hyper::body::Bytes>>,
 	old_ver: String,
@@ -445,7 +615,7 @@ pub struct Pkg {
 }
 
 impl Pkg {
-	pub fn new(name: Name, tmp_dir: &String, prog: Arc<Mutex<u8>>, msg: Arc<Mutex<String>>) -> Self {
+	pub fn new(name: Name, tmp_dir: &String, prog: Arc<Mutex<f32>>, msg: Arc<Mutex<String>>) -> Self {
 		let link_metadata = match name {
 			Gupax => GUPAX_METADATA,
 			P2pool => P2POOL_METADATA,
@@ -481,9 +651,17 @@ impl Pkg {
 		}
 	}
 
+	//---------------------------------------------------------------------------------------------------- Pkg functions
+	// Generate fake [User-Agent] HTTP header
+	pub fn get_user_agent() -> &'static str {
+		let rand = thread_rng().gen_range(0..50);
+		let user_agent = FAKE_USER_AGENT[rand];
+		info!("Update | Randomly selecting User-Agent ({}/50) ... {}", rand, user_agent);
+		user_agent
+	}
+
 	// Generate GET request based off input URI + fake user agent
-	pub fn get_request(link: String) -> Result<Request<Body>, anyhow::Error> {
-		let user_agent = FAKE_USER_AGENT[thread_rng().gen_range(0..50)];
+	pub fn get_request(link: String, user_agent: &'static str) -> Result<Request<Body>, anyhow::Error> {
 		let request = Request::builder()
 			.method("GET")
 			.uri(link)
@@ -494,50 +672,41 @@ impl Pkg {
 
 	// Get metadata using [Generic hyper::client<C>] & [Request]
 	// and change [version, prog] under an Arc<Mutex>
-	pub async fn get_metadata<C>(name: Name, new_ver: Arc<Mutex<String>>, prog: Arc<Mutex<u8>>, client: Client<C>, link: String) -> Result<(), Error>
+	pub async fn get_metadata<C>(name: Name, new_ver: Arc<Mutex<String>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), Error>
 		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
-		// Retry [3] times if version is not [v*]
-		for i in 0..3 {
-			let request = Pkg::get_request(link.clone())?;
-			let mut response = client.request(request).await?;
-			let body = hyper::body::to_bytes(response.body_mut()).await?;
-			let body: TagName = serde_json::from_slice(&body)?;
-			if body.tag_name.starts_with('v') {
-				*new_ver.lock().unwrap() = body.tag_name.clone();
-				*prog.lock().unwrap() += 5;
-				info!("Update | Metadata | {} {} ... {}%", name, body.tag_name, *prog.lock().unwrap());
-				return Ok(())
-			}
-			warn!("Update | Metadata | {} failed, retry [{}/3]...", name, i);
-		}
-		error!("Update | Metadata | {} failed", name);
-		Err(anyhow!("{} | Metadata fetch failed", name))
+		let request = Pkg::get_request(link.clone(), user_agent)?;
+		let mut response = client.request(request).await?;
+		let body = hyper::body::to_bytes(response.body_mut()).await?;
+		let body: TagName = serde_json::from_slice(&body)?;
+		*new_ver.lock().unwrap() = body.tag_name.clone();
+		Ok(())
 	}
 
 	// Takes a [Request], fills the appropriate [Pkg]
 	// [bytes] field with the [Archive/Standalone]
-	pub async fn get_bytes<C>(name: Name, bytes: Arc<Mutex<bytes::Bytes>>, prog: Arc<Mutex<u8>>, client: Client<C>, link: String) -> Result<(), anyhow::Error>
+	pub async fn get_bytes<C>(name: Name, bytes: Arc<Mutex<bytes::Bytes>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), anyhow::Error>
 		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
 		// GitHub sends a 302 redirect, so we must follow
 		// the [Location] header... only if Reqwest had custom
 		// connectors so I didn't have to manually do this...
-		// Also, retry [3] times if [Bytes] == empty
-		for i in 0..3 {
-			let request = Pkg::get_request(link.clone())?;
-			let response = client.request(request).await?;
-			let request = Self::get_request(response.headers().get(hyper::header::LOCATION).unwrap().to_str()?.to_string())?;
-			let response = client.request(request).await?;
-			let body = hyper::body::to_bytes(response.into_body()).await?;
-			if ! body.is_empty() {
-				*bytes.lock().unwrap() = body;
-				*prog.lock().unwrap() += 10;
-				info!("Update | Download | {} ... {}%", name, *prog.lock().unwrap());
-				return Ok(())
+		let request = Self::get_request(link.clone(), user_agent)?;
+		let response = client.request(request).await?;
+		let request = Self::get_request(response.headers().get(hyper::header::LOCATION).unwrap().to_str()?.to_string(), user_agent)?;
+		let response = client.request(request).await?;
+		let body = hyper::body::to_bytes(response.into_body()).await?;
+		*bytes.lock().unwrap() = body;
+		Ok(())
+	}
+
+	// Take in a [Name] and [Vec] of [Pkg]s, find
+	// that [Name]'s corresponding new version.
+	fn get_new_pkg_version(name: Name, vec: &Vec<&Pkg>) -> Result<String, Error> {
+		for pkg in vec.iter() {
+			if pkg.name == name {
+				return Ok(pkg.new_ver.lock().unwrap().to_string())
 			}
-			warn!("Update | Metadata | {} download bytes are empty, retry [{}/3]...", name, i);
 		}
-		error!("Update | Download | {} failed", name);
-		Err(anyhow!("{} | Download failed", name))
+		Err(anyhow::Error::msg("Couldn't find new_pkg_version"))
 	}
 }
 

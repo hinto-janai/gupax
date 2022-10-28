@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const GUPAX_VERSION: &'static str = concat!("v", env!("CARGO_PKG_VERSION"));
-pub const P2POOL_VERSION: &'static str = "v2.4";
+pub const P2POOL_VERSION: &'static str = "v2.3";
 pub const XMRIG_VERSION: &'static str = "v6.18.0";
 pub const COMMIT: &'static str = include_str!("../.git/refs/heads/main");
 

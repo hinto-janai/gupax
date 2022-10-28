@@ -457,7 +457,7 @@ impl eframe::App for App {
 
 		// Top: Tabs
 		egui::TopBottomPanel::top("top").show(ctx, |ui| {
-			let width = (self.width - 95.0)/5.0;
+			let width = (self.width - (SPACE*10.0))/5.0;
 			let height = self.height/10.0;
 			ui.group(|ui| {
 			    ui.add_space(4.0);
@@ -582,7 +582,6 @@ impl eframe::App for App {
 			ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
 			match self.tab {
 				Tab::About => {
-					info!("");
 					ui.add_space(10.0);
 					ui.vertical_centered(|ui| {
 						// Display [Gupax] banner at max, 1/4 the available length

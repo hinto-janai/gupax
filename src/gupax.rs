@@ -51,37 +51,36 @@ impl Gupax {
 							match Update::start(u, version) {
 								Err(e) => {
 									info!("Update | {} ... FAIL", e);
-									*u2.lock().unwrap().msg.lock().unwrap() = MSG_FAILED.to_string();
+									*u2.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
 									*u2.lock().unwrap().updating.lock().unwrap() = false;
 								},
-								_ => {
-									info!("Update ... OK");
-									*u2.lock().unwrap().msg.lock().unwrap() = MSG_SUCCESS.to_string();
-									*u2.lock().unwrap().prog.lock().unwrap() = 100;
-									*u2.lock().unwrap().updating.lock().unwrap() = false;
-								},
+								_ => (),
 							}
 						});
 					}
 				});
 				ui.vertical(|ui| {
 					ui.set_enabled(updating);
+					let msg = format!("{}\n{}{}", *update.msg.lock().unwrap(), *update.prog.lock().unwrap(), "%");
+					ui.add_sized([width, height*1.4], egui::Label::new(msg));
 					let height = height/2.0;
-					let msg = format!("{}{}{}{}", *update.msg.lock().unwrap(), " ... ", *update.prog.lock().unwrap(), "%");
-					ui.add_sized([width, height], egui::Label::new(msg));
-					if updating { ui.add_sized([width, height], egui::Spinner::new().size(height)); }
-					ui.add_sized([width, height], egui::ProgressBar::new(*update.prog.lock().unwrap() as f32 / 100.0));
+					if updating {
+						ui.add_sized([width, height], egui::Spinner::new().size(height));
+					} else {
+						ui.add_sized([width, height], egui::Label::new("..."));
+					}
+					ui.add_sized([width, height], egui::ProgressBar::new((update.prog.lock().unwrap().round() / 100.0)));
 				});
 		});
 
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
-					let width = (width - SPACE*10.0)/5.0;
+					let width = (width - SPACE*9.8)/5.0;
 					let height = height/2.0;
 					let mut style = (*ctx.style()).clone();
-					style.spacing.icon_width_inner = height / 6.0;
-					style.spacing.icon_width = height / 4.0;
-					style.spacing.icon_spacing = width / 20.0;
+					style.spacing.icon_width_inner = width / 6.0;
+					style.spacing.icon_width = width / 4.0;
+					style.spacing.icon_spacing = 20.0;
 					ctx.set_style(style);
 					let height = height/2.0;
 					ui.add_sized([width, height], egui::Checkbox::new(&mut state.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
@@ -99,12 +98,12 @@ impl Gupax {
 
 		ui.horizontal(|ui| {
 			ui.label("P2Pool binary path:");
-			ui.spacing_mut().text_edit_width = ui.available_width() - 35.0;
+			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.text_edit_singleline(&mut state.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
 		});
 		ui.horizontal(|ui| {
 			ui.label("XMRig binary path: ");
-			ui.spacing_mut().text_edit_width = ui.available_width() - 35.0;
+			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.text_edit_singleline(&mut state.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
 		});
 	}

@@ -263,18 +263,19 @@ const DIRECTORY: &'static str = "Gupax";
 const DIRECTORY: &'static str = "Gupax";
 #[cfg(target_os = "linux")]
 const DIRECTORY: &'static str = "gupax";
+
 #[cfg(target_os = "windows")]
-const DEFAULT_P2POOL_PATH: &'static str = r"P2Pool\p2pool.exe";
+pub const DEFAULT_P2POOL_PATH: &'static str = r"P2Pool\p2pool.exe";
 #[cfg(target_os = "macos")]
-const DEFAULT_P2POOL_PATH: &'static str = "P2Pool/p2pool";
+pub const DEFAULT_P2POOL_PATH: &'static str = "P2Pool/p2pool";
 #[cfg(target_os = "linux")]
-const DEFAULT_P2POOL_PATH: &'static str = "p2pool/p2pool";
+pub const DEFAULT_P2POOL_PATH: &'static str = "p2pool/p2pool";
 #[cfg(target_os = "windows")]
-const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
+pub const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
 #[cfg(target_os = "macos")]
-const DEFAULT_XMRIG_PATH: &'static str = "XMRig/xmrig";
+pub const DEFAULT_XMRIG_PATH: &'static str = "XMRig/xmrig";
 #[cfg(target_os = "linux")]
-const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
+pub const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
 
 //---------------------------------------------------------------------------------------------------- Error Enum
 #[derive(Debug)]
