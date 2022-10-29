@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 //---------------------------------------------------------------------------------------------------- Imports
 // egui/eframe
@@ -25,6 +25,7 @@ use egui::color::Color32;
 use egui::FontFamily::Proportional;
 use egui::{FontId,Label,RichText,Stroke,Vec2,Pos2};
 use egui::special_emojis::GITHUB;
+use egui::{Key,Modifiers};
 use egui_extras::RetainedImage;
 use eframe::{egui,NativeOptions};
 
@@ -133,14 +134,14 @@ impl App {
 		// Get exe path + random tmp folder
 		app.exe = match get_exe_dir() {
 			Ok(exe) => exe,
-			Err(err) => { panic_app(err.to_string()); exit(1); },
+			Err(err) => { panic_main(err.to_string()); exit(1); },
 		};
 		app.tmp = get_rand_tmp(&app.exe);
 		// Read disk state if no [--reset] arg
 		if app.reset == false {
 			app.og = match State::get() {
 				Ok(toml) => toml,
-				Err(err) => { panic_app(err.to_string()); exit(1); },
+				Err(err) => { panic_main(err.to_string()); exit(1); },
 			};
 		}
 		app.state = app.og.clone();
@@ -302,14 +303,15 @@ pub fn get_rand_tmp(path: &String) -> String {
 	path
 }
 
-fn panic_app(error: String) {
+//---------------------------------------------------------------------------------------------------- [App] frame for [Panic] situations
+fn panic_main(error: String) {
 	error!("{}", error);
 	let options = Panic::options();
-	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(Panic::new(cc, error))),);
+	let name = format!("Gupax {}", GUPAX_VERSION);
+	eframe::run_native(&name, options, Box::new(|cc| Box::new(Panic::new(cc, error))),);
 	exit(1);
 }
 
-//---------------------------------------------------------------------------------------------------- [App] frame for [Panic] situations
 struct Panic { error_msg: String, }
 impl Panic {
 	fn options() -> NativeOptions {
@@ -356,7 +358,8 @@ fn main() {
 	init_logger();
 	let options = init_options();
 	let app = App::new();
-	eframe::run_native("Gupax", options, Box::new(|cc| Box::new(App::cc(cc, app))),);
+	let name = app.name_version.clone();
+	eframe::run_native(&name, options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 
 impl eframe::App for App {
@@ -379,6 +382,12 @@ impl eframe::App for App {
 		egui::CentralPanel::default().show(ctx, |ui| { self.width = ui.available_width(); self.height = ui.available_height(); });
 		// This sets fonts globally depending on the width.
 		init_text_styles(ctx, self.width);
+
+		// If [F11] was pressed, reverse [fullscreen] bool
+        if ctx.input_mut().consume_key(Modifiers::NONE, Key::F11) {
+            let info = frame.info();
+            frame.set_fullscreen(!info.window_info.fullscreen);
+        }
 
 		// Close confirmation.
 		if self.quit {

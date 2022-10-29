@@ -13,6 +13,14 @@ dirs = "4.0.0"
 eframe = "0.19.0"
 egui = "0.19.0"
 egui_extras = { version = "0.19.0", features = ["image"] }
+## [external/egui/crates/eframe/src/native/run.rs] line 41: [.with_srgb(true)]
+## This line causes a [panic!] inside a Windows VM, from a Linux host.
+## There are many issue threads and PRs to fix it but for now,
+## this is here for convenience sake when I'm testing.
+## The only change is [.with_srgb()] is set to [false].
+#eframe = { path = "egui/crates/eframe" }
+#egui = { path = "egui/crates/egui" }
+#egui_extras = { path = "egui/crates/egui_extras", features = ["image"] }
 env_logger = "0.9.1"
 figment = { version = "0.10.8", features = ["toml"] }
 flate2 = "1.0"
@@ -24,10 +32,11 @@ log = "0.4.17"
 monero = "0.18.0"
 num_cpus = "1.13.1"
 num-format = "0.4.0"
-openssl = { version = "*", features = ["vendored"] }
+#openssl = { version = "*", features = ["vendored"] }
 rand = "0.8.5"
 regex = "1.6.0"
 reqwest = { version = "0.11.12", features = ["blocking", "json"] }
+rusqlite = { version = "0.28.0", features = ["bundled"] }
 serde = "1.0.145"
 serde_derive = "1.0.145"
 serde_json = "1.0"

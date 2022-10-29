@@ -36,6 +36,8 @@ pub const SPACE: f32 = 10.0;
 #[cfg(target_os = "windows")]
 pub const OS: &'static str = " Windows";
 #[cfg(target_os = "windows")]
+pub const OS_NAME: &'static str = "Windows";
+#[cfg(target_os = "windows")]
 pub const HUGEPAGES_1GB: bool = false;
 
 #[cfg(target_os = "macos")]

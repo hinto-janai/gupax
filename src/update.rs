@@ -28,7 +28,6 @@ use serde_derive::{Serialize,Deserialize};
 use tokio::task::JoinHandle;
 use std::time::Duration;
 use std::sync::{Arc,Mutex};
-use std::os::unix::fs::OpenOptionsExt;
 use std::io::{Read,Write};
 //use crate::{Name::*,State};
 use rand::{thread_rng, Rng};
@@ -236,6 +235,9 @@ impl Update {
 			.map(char::from)
 			.collect();
 		let base = crate::get_exe_dir()?;
+		#[cfg(target_os = "windows")]
+		let tmp_dir = format!("{}{}{}{}", base, r"\gupax_", rand_string, r"\");
+		#[cfg(target_family = "unix")]
 		let tmp_dir = format!("{}{}{}{}", base, "/gupax_", rand_string, "/");
 		info!("Update | Temporary directory ... {}", tmp_dir);
 		Ok(tmp_dir)
@@ -523,6 +525,8 @@ impl Update {
 		for pkg in vec4.iter() {
 			let tmp = tmp_dir.to_owned() + &pkg.name.to_string();
 			if pkg.name == Name::Gupax {
+				#[cfg(target_family = "unix")]
+				use std::os::unix::fs::OpenOptionsExt;
 				#[cfg(target_family = "unix")]
 				std::fs::OpenOptions::new().create(true).write(true).mode(0o770).open(&tmp)?;
 				std::fs::write(tmp, pkg.bytes.lock().unwrap().as_ref())?;
