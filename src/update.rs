@@ -24,31 +24,30 @@
 //     b. auto-update at startup
 
 //---------------------------------------------------------------------------------------------------- Imports
-use serde_derive::{Serialize,Deserialize};
-use tokio::task::JoinHandle;
-use std::time::Duration;
-use std::sync::{Arc,Mutex};
-use std::io::{Read,Write};
-//use crate::{Name::*,State};
-use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
 use anyhow::{anyhow,Error};
-use arti_hyper::*;
 use arti_client::{TorClient,TorClientConfig};
-use tokio::io::{AsyncReadExt,AsyncWriteExt};
-use tls_api::{TlsConnector, TlsConnectorBuilder};
-use hyper::header::HeaderValue;
-use hyper::{Client,Body,Request};
-use hyper_tls::HttpsConnector;
 use arti_hyper::*;
-use log::*;
-use crate::update::Name::*;
-use std::path::PathBuf;
-use crate::state::*;
+use arti_hyper::*;
 use crate::constants::GUPAX_VERSION;
+//use crate::{Name::*,State};
+use crate::state::*;
+use crate::update::Name::*;
+use hyper::{Client,Body,Request};
+use hyper::header::HeaderValue;
+use hyper_tls::HttpsConnector;
+use log::*;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+use serde_derive::{Serialize,Deserialize};
+use std::io::{Read,Write};
+use std::path::PathBuf;
+use std::sync::{Arc,Mutex};
+use std::time::Duration;
+use tls_api::{TlsConnector, TlsConnectorBuilder};
+use tokio::io::{AsyncReadExt,AsyncWriteExt};
+use tokio::task::JoinHandle;
 use walkdir::WalkDir;
-
-// use tls_api_native_tls::{TlsConnector,TlsConnectorBuilder};
+use zip::ZipArchive;
 
 //---------------------------------------------------------------------------------------------------- Constants
 // Package naming schemes:
@@ -531,6 +530,8 @@ impl Update {
 				std::fs::OpenOptions::new().create(true).write(true).mode(0o770).open(&tmp)?;
 				std::fs::write(tmp, pkg.bytes.lock().unwrap().as_ref())?;
 			} else {
+				#[cfg(target_os = "windows")]
+				ZipArchive::extract(&mut ZipArchive::new(std::io::Cursor::new(pkg.bytes.lock().unwrap().as_ref()))?, tmp)?;
 				#[cfg(target_family = "unix")]
 				tar::Archive::new(flate2::read::GzDecoder::new(pkg.bytes.lock().unwrap().as_ref())).unpack(tmp)?;
 			}

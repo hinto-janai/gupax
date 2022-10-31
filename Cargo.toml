@@ -18,9 +18,9 @@ egui_extras = { version = "0.19.0", features = ["image"] }
 ## There are many issue threads and PRs to fix it but for now,
 ## this is here for convenience sake when I'm testing.
 ## The only change is [.with_srgb()] is set to [false].
-#eframe = { path = "egui/crates/eframe" }
-#egui = { path = "egui/crates/egui" }
-#egui_extras = { path = "egui/crates/egui_extras", features = ["image"] }
+#eframe = { path = "external/egui/crates/eframe" }
+#egui = { path = "external/egui/crates/egui" }
+#egui_extras = { path = "external/egui/crates/egui_extras", features = ["image"] }
 env_logger = "0.9.1"
 figment = { version = "0.10.8", features = ["toml"] }
 flate2 = "1.0"
@@ -48,17 +48,14 @@ tokio = { version = "1.21.2", features = ["full"] }
 toml = "0.5.9"
 tor-rtcompat = "0.7.0"
 walkdir = "2.3.2"
+zip = "0.6.3"
 
-[profile.optimized]
-codegen-units = 1
-debug-assertions = false
-debug = false
-incremental = true
-inherits = "release"
-lto = true
-overflow-checks = false
-rpath = false
-strip = "debuginfo"
+# For Windows
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1.12"
 
-[profile.optimized.package."*"]
-opt-level = 3
+# For macOS (cargo-bundle)
+[package.metadata.bundle]
+identifier = "io.github.hinto-janaiyo.gupax"
+icon = ["images/png/icon@2x.png"]
+short_description = "GUI for P2Pool+XMRig"

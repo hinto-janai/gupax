@@ -1,5 +1,5 @@
 # Gupax - WORK IN PROGRESS
-![banner.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/png/banner.png)
+![banner.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/banner.png)
 **Gupax** (*guh-picks*) is a cross-platform GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
 
 ## Contents
@@ -47,7 +47,7 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 2. **Monero GUI** runs the ***Monero node***
 3. **Gupax** runs ***P2Pool/XMRig***
 
-![stack.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/diagrams/stack.png)
+![stack.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/diagram.png)
 
 With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/XMRig on the other, it is (hopefully) very easy for anyone to start mining Monero at **max hashrate in a decentralized, permissionless, and trustless manner**.
 
@@ -88,13 +88,13 @@ https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e
 * A Monero node/wallet
 
 ## Build
-Optimized:
+Windows/macOS/Linux:
 ```
-cargo build --profile optimized
+cargo build --release
 ```
-Optimized for your specific CPU (15%~ speed increase, depending on your CPU):
+On macOS, if you want the binary to have an icon in `Finder`, you must install [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle) and compile with:
 ```
-RUSTFLAGS="-C target-cpu=native" cargo build --profile optimized
+cargo bundle --release
 ```
 
-Add `--target x86_64-pc-windows-gnu` to build for Windows.
+The `build.rs` file in the repo root sets the icon in `File Explorer` for Windows. The taskbar icon & App frame icon (for all OS's) get set at runtime using pre-compiled bytes in [`src/constants.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/constants.rs) from [`images`](https://github.com/hinto-janaiyo/gupax/blob/main/images).

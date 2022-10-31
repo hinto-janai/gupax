@@ -16,12 +16,16 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const GUPAX_VERSION: &'static str = concat!("v", env!("CARGO_PKG_VERSION"));
-pub const P2POOL_VERSION: &'static str = "v2.3";
+pub const P2POOL_VERSION: &'static str = "v2.4";
 pub const XMRIG_VERSION: &'static str = "v6.18.0";
 pub const COMMIT: &'static str = include_str!("../.git/refs/heads/main");
 
-pub const BYTES_ICON: &[u8] = include_bytes!("../images/png/icon.png");
-pub const BYTES_BANNER: &[u8] = include_bytes!("../images/png/banner.png");
+// Use macOS shaped icon for macOS
+#[cfg(target_os = "macos")]
+pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon@2x.png");
+#[cfg(not(target_os = "macos"))]
+pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon.png");
+pub const BYTES_BANNER: &[u8] = include_bytes!("../images/banner.png");
 pub const P2POOL_BASE_ARGS: &'static str = "";
 pub const XMRIG_BASE_ARGS: &'static str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero --randomx-cache-qos";
 pub const HORIZONTAL: &'static str = "--------------------------------------------";
