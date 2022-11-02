@@ -57,6 +57,6 @@ Every frame, the max available `[width, height]` are calculated, and those are u
 Main [App] outer frame (default: [1280.0, 720.0])
 ├─ Inner frame (1264.0, 704.0)
    ├─ TopPanel     = [width: (max-90.0)/5.0, height: max/10.0]
-   ├─ BottomPanel  = [width: max, height: max/15.0]
+   ├─ BottomPanel  = [width: max, height: max/18.0]
    ├─ CentralPanel = [width: (max/8.0), height: the rest
 ```

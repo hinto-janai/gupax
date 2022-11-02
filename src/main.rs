@@ -85,7 +85,7 @@ pub struct App {
 	// Static stuff
 	now: Instant, // Internal timer
 	exe: String, // Path for [Gupax] binary
-	tmp: String, // Tmp folder for updates, random every update
+	dir: String, // Directory [Gupax] binary is in
 	resolution: Vec2, // Frame resolution
 	os: &'static str, // OS
 	version: String, // Gupax version
@@ -115,7 +115,7 @@ impl App {
 			node: Arc::new(Mutex::new(NodeStruct::default())),
 			og: Arc::new(Mutex::new(State::default())),
 			state: State::default(),
-			update: Arc::new(Mutex::new(Update::new(PathBuf::new(), PathBuf::new(), true))),
+			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
 			diff: false,
 			p2pool: false,
 			xmrig: false,
@@ -123,7 +123,7 @@ impl App {
 			reset: false,
 			now: Instant::now(),
 			exe: "".to_string(),
-			tmp: "".to_string(),
+			dir: "".to_string(),
 			resolution: Vec2::new(1280.0, 720.0),
 			os: OS,
 			version: format!("{}", GUPAX_VERSION),
@@ -132,12 +132,16 @@ impl App {
 		};
 		// Apply arg state
 		let mut app = parse_args(app);
-		// Get exe path + random tmp folder
-		app.exe = match get_exe_dir() {
+		// Get exe path
+		app.exe = match get_exe() {
 			Ok(exe) => exe,
 			Err(err) => { panic_main(err.to_string()); exit(1); },
 		};
-		app.tmp = get_rand_tmp(&app.exe);
+		// Get exe directory path
+		app.dir = match get_exe_dir() {
+			Ok(dir) => dir,
+			Err(err) => { panic_main(err.to_string()); exit(1); },
+		};
 		// Read disk state if no [--reset] arg
 		if app.reset == false {
 			app.og = match State::get() {
@@ -157,7 +161,7 @@ impl App {
 		let p2pool_path = app.og.lock().unwrap().gupax.absolute_p2pool_path.clone();
 		let xmrig_path = app.og.lock().unwrap().gupax.absolute_xmrig_path.clone();
 		let tor = app.og.lock().unwrap().gupax.update_via_tor;
-		app.update = Arc::new(Mutex::new(Update::new(p2pool_path, xmrig_path, tor)));
+		app.update = Arc::new(Mutex::new(Update::new(app.exe.clone(), p2pool_path, xmrig_path, tor)));
 		app
 	}
 }
@@ -264,7 +268,7 @@ fn parse_args(mut app: App) -> App {
 		match arg.as_str() {
 			"-h"|"--help"    => { println!("{}", ARG_HELP); exit(0); },
 			"-v"|"--version" => {
-				println!("Gupax  | {}\nP2Pool | {}\nXMRig  | {}\n\nOS: [{}], Commit: [{}]\n\n{}", GUPAX_VERSION, P2POOL_VERSION, XMRIG_VERSION, OS_NAME, &COMMIT[..40], ARG_COPYRIGHT);
+				println!("Gupax {} (OS: {}, Commit: {})\n\n{}", GUPAX_VERSION, OS_NAME, &COMMIT[..40], ARG_COPYRIGHT);
 				exit(0);
 			},
 			"-f"|"--ferris" => { println!("{}", FERRIS); exit(0); },
@@ -298,25 +302,12 @@ pub fn get_exe_dir() -> Result<String, std::io::Error> {
 	}
 }
 
-pub fn get_rand_tmp(path: &String) -> String {
-	use rand::{thread_rng, Rng};
-	use rand::distributions::Alphanumeric;
-    let rand: String = thread_rng()
-		.sample_iter(&Alphanumeric)
-		.take(10)
-		.map(char::from)
-		.collect();
-	let path = path.to_string() + "/gupax_tmp_" + &rand;
-	info!("Generated rand_tmp ... {}", path);
-	path
-}
-
 // Clean any [gupax_tmp.*] directories
 pub fn clean_dir() -> Result<(), anyhow::Error> {
 	for entry in std::fs::read_dir(get_exe_dir()?)? {
 		let entry = entry?;
-		entry.path().is_dir() && continue;
-		if entry.file_name().to_str().ok_or(anyhow::Error::msg("Basename failed"))?.starts_with("gupax_tmp_") {
+		if ! entry.path().is_dir() { continue }
+		if entry.file_name().to_str().ok_or(anyhow::Error::msg("Basename failed"))?.starts_with("gupax_update_") {
 			let path = entry.path();
 			match std::fs::remove_dir_all(&path) {
 				Ok(_) => info!("Remove [{}] ... OK", path.display()),
@@ -431,13 +422,13 @@ impl eframe::App for App {
 		// Close confirmation.
 		if self.quit {
 			// If [ask_before_quit == true]
-			if self.state.gupax.ask_before_quit {
+			if self.og.lock().unwrap().gupax.ask_before_quit {
 				egui::TopBottomPanel::bottom("quit").show(ctx, |ui| {
 					let width = self.width;
 					let height = self.height/8.0;
 					ui.group(|ui| {
 						if ui.add_sized([width, height], egui::Button::new("Yes")).clicked() {
-							if self.state.gupax.save_before_quit {
+							if self.og.lock().unwrap().gupax.save_before_quit {
 								if self.diff {
 									info!("Saving before quit...");
 									match self.state.save() {
@@ -461,15 +452,14 @@ impl eframe::App for App {
 					let ten = height/10.0;
 					// Detect processes or update
 					ui.add_space(ten);
-					// || self.update.updating
-					if self.p2pool || self.xmrig {
+					if *self.update.lock().unwrap().updating.lock().unwrap() || self.p2pool || self.xmrig {
 						ui.add_sized([width, height/4.0], Label::new("Are you sure you want to quit?"));
-//						if self.update.updating { ui.add_sized([width, ten], Label::new("Update is in progress...!")); }
+						if *self.update.lock().unwrap().updating.lock().unwrap() { ui.add_sized([width, ten], Label::new("Update is in progress...!")); }
 						if self.p2pool { ui.add_sized([width, ten], Label::new("P2Pool is online...!")); }
 						if self.xmrig { ui.add_sized([width, ten], Label::new("XMRig is online...!")); }
 					// Else, just quit
 					} else {
-						if self.state.gupax.save_before_quit {
+						if self.og.lock().unwrap().gupax.save_before_quit {
 							if self.diff {
 								info!("Saving before quit...");
 								match self.state.save() {
@@ -486,7 +476,7 @@ impl eframe::App for App {
 				});
 			// Else, quit (save if [save_before_quit == true]
 			} else {
-				if self.state.gupax.save_before_quit {
+				if self.og.lock().unwrap().gupax.save_before_quit {
 					if self.diff {
 						info!("Saving before quit...");
 						match self.state.save() {
@@ -534,7 +524,7 @@ impl eframe::App for App {
 		// Bottom: app info + state/process buttons
 		egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
 			let width = self.width/8.0;
-			let height = self.height/15.0;
+			let height = self.height/18.0;
 			ui.style_mut().override_text_style = Some(Name("Bottom".into()));
 			ui.horizontal(|ui| {
 				ui.group(|ui| {

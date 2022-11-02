@@ -3,6 +3,48 @@
 version = 3
 
 [[package]]
+name = "Gupax"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "arti-client",
+ "arti-hyper",
+ "bytes",
+ "chrono",
+ "dirs",
+ "eframe",
+ "egui",
+ "egui_extras",
+ "env_logger 0.9.1",
+ "figment",
+ "flate2",
+ "hex-literal",
+ "hyper",
+ "hyper-tls",
+ "image",
+ "log",
+ "monero",
+ "num-format",
+ "num_cpus",
+ "rand 0.8.5",
+ "regex",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.6",
+ "tar",
+ "tls-api",
+ "tls-api-native-tls",
+ "tokio",
+ "toml",
+ "tor-rtcompat",
+ "walkdir",
+ "winres",
+ "zip",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1158,6 +1200,8 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0d49426c3e72a6728b0c790d22db8bf7bbcff10d83b8b6f3a01295be982302e"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1178,6 +1222,8 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc9fcd393c3daaaf5909008a1d948319d538b79c51871e4df0993260260a94e4"
 dependencies = [
  "ahash 0.8.0",
  "epaint",
@@ -1188,6 +1234,8 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07ddc525334c416e11580123e147b970f738507f427c9fb1cd09ea2dd7416a3a"
 dependencies = [
  "arboard",
  "egui",
@@ -1201,6 +1249,8 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f698f685bb0ad39e87109e2f695ded0bccde77d5d40bbf7590cb5561c1e3039d"
 dependencies = [
  "egui",
  "image",
@@ -1209,6 +1259,8 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad77d4a00402bae9658ee64be148f4b2a0b38e4fc7874970575ca01ed1c5b75d"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1228,6 +1280,8 @@ checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 [[package]]
 name = "emath"
 version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9542a40106fdba943a055f418d1746a050e1a903a049b030c2b097d4686a33cf"
 dependencies = [
  "bytemuck",
 ]
@@ -1284,6 +1338,8 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ba04741be7f6602b1a1b28f1082cce45948a7032961c52814f8946b28493300"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.0",
@@ -1764,48 +1820,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3da5951a1569dbab865c6f2a863efafff193a93caf05538d193e9e3816d21696"
 dependencies = [
  "gl_generator",
-]
-
-[[package]]
-name = "gupax"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "arti-client",
- "arti-hyper",
- "bytes",
- "chrono",
- "dirs",
- "eframe",
- "egui",
- "egui_extras",
- "env_logger 0.9.1",
- "figment",
- "flate2",
- "hex-literal",
- "hyper",
- "hyper-tls",
- "image",
- "log",
- "monero",
- "num-format",
- "num_cpus",
- "rand 0.8.5",
- "regex",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.10.6",
- "tar",
- "tls-api",
- "tls-api-native-tls",
- "tokio",
- "toml",
- "tor-rtcompat",
- "walkdir",
- "winres",
- "zip",
 ]
 
 [[package]]

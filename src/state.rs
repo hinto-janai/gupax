@@ -96,7 +96,7 @@ impl State {
 		// Windows | {FOLDERID_RoamingAppData}            | C:\Users\Alice\AppData\Roaming
 		let mut path = match dirs::data_dir() {
 			Some(mut path) => {
-				path.push(DIRECTORY);
+				path.push(STATE_DIRECTORY);
 				info!("OS data path ... OK");
 				path
 			},
@@ -104,7 +104,7 @@ impl State {
 		};
 		// Create directory
 		fs::create_dir_all(&path)?;
-		path.push(FILENAME);
+		path.push(STATE_FILE);
 		info!("TOML path ... {}", path.display());
 		Ok(path)
 	}
@@ -255,27 +255,24 @@ impl From<std::io::Error> for TomlError {
 }
 
 //---------------------------------------------------------------------------------------------------- Const
-const FILENAME: &'static str = "gupax.toml";
+// State file
+const STATE_FILE: &'static str = "gupax.toml";
 const ERROR: &'static str = "TOML Error";
 const PATH_ERROR: &'static str = "PATH for state directory could not be not found";
 #[cfg(target_os = "windows")]
-const DIRECTORY: &'static str = "Gupax";
+const STATE_DIRECTORY: &'static str = "Gupax";
 #[cfg(target_os = "macos")]
-const DIRECTORY: &'static str = "Gupax";
+const STATE_DIRECTORY: &'static str = "com.github.hinto-janaiyo.gupax";
 #[cfg(target_os = "linux")]
-const DIRECTORY: &'static str = "gupax";
+const STATE_DIRECTORY: &'static str = "gupax";
 
 #[cfg(target_os = "windows")]
 pub const DEFAULT_P2POOL_PATH: &'static str = r"P2Pool\p2pool.exe";
-#[cfg(target_os = "macos")]
-pub const DEFAULT_P2POOL_PATH: &'static str = "P2Pool/P2Pool";
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 pub const DEFAULT_P2POOL_PATH: &'static str = "p2pool/p2pool";
 #[cfg(target_os = "windows")]
 pub const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
-#[cfg(target_os = "macos")]
-pub const DEFAULT_XMRIG_PATH: &'static str = "XMRig/XMRig";
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 pub const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
 
 //---------------------------------------------------------------------------------------------------- Error Enum

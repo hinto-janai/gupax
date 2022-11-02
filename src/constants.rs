@@ -96,8 +96,6 @@ r#"USAGE: gupax [--flags]
     -r | --reset             Reset all Gupax configuration/state
     -f | --ferris            Print an extremely cute crab"#;
 pub const ARG_COPYRIGHT: &'static str =
-r#"Gupax, P2Pool, and XMRig are licensed under GPLv3.
-For more information, see here:
-    - https://github.com/hinto-janaiyo/gupax
-    - https://github.com/SChernykh/p2pool
-    - https://github.com/xmrig/xmrig"#;
+r#"Gupax is licensed under GPLv3.
+For more information, see link below:
+<https://github.com/hinto-janaiyo/gupax>"#;

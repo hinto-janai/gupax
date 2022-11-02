@@ -1,6 +1,9 @@
 [package]
-name = "gupax"
+name = "Gupax"
 version = "0.1.0"
+authors = ["hinto-janaiyo <hinto-janaiyo@protonmail.com>"]
+description = "GUI for P2Pool+XMRig"
+documentation = "https://github.com/hinto-janaiyo/gupax"
 edition = "2021"
 
 [dependencies]
@@ -10,17 +13,18 @@ arti-hyper = "0.7.0"
 bytes = "1.2.1"
 chrono = "0.4.22"
 dirs = "4.0.0"
-#eframe = "0.19.0"
-#egui = "0.19.0"
-#egui_extras = { version = "0.19.0", features = ["image"] }
+eframe = "0.19.0"
+egui = "0.19.0"
+egui_extras = { version = "0.19.0", features = ["image"] }
 ## [external/egui/crates/eframe/src/native/run.rs] line 41: [.with_srgb(true)]
 ## This line causes a [panic!] inside a Windows VM, from a Linux host.
 ## There are many issue threads and PRs to fix it but for now,
 ## this is here for convenience sake when I'm testing.
 ## The only change is [.with_srgb()] is set to [false].
-eframe = { path = "external/egui/crates/eframe" }
-egui = { path = "external/egui/crates/egui" }
-egui_extras = { path = "external/egui/crates/egui_extras", features = ["image"] }
+#eframe = { path = "external/egui/crates/eframe" }
+#egui = { path = "external/egui/crates/egui" }
+#egui_glow = { path = "external/egui/crates/egui_glow"}
+#egui_extras = { path = "external/egui/crates/egui_extras", features = ["image"] }
 env_logger = "0.9.1"
 figment = { version = "0.10.8", features = ["toml"] }
 flate2 = "1.0"
@@ -61,6 +65,5 @@ winres = "0.1.12"
 
 # For macOS build (cargo-bundle)
 [package.metadata.bundle]
-identifier = "io.github.hinto-janaiyo.gupax"
-icon = ["images/png/icon@2x.png"]
-short_description = "GUI for P2Pool+XMRig"
+identifier = "com.github.hinto-janaiyo.gupax"
+icon = ["images/icons/icon@2x.png"]

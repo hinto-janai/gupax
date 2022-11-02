@@ -35,6 +35,7 @@ use crate::update::Name::*;
 use hyper::{Client,Body,Request};
 use hyper::header::HeaderValue;
 use hyper_tls::HttpsConnector;
+use hyper::header::LOCATION;
 use log::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -55,18 +56,17 @@ use std::os::unix::fs::OpenOptionsExt;
 
 //---------------------------------------------------------------------------------------------------- Constants
 // Package naming schemes:
-// gupax  | gupax-vX.X.X-(windows|macos|linux)-x64.(zip|tar.gz)
+// gupax  | gupax-vX.X.X-(windows|macos|linux)-x64(standalone|bundle).(zip|tar.gz)
 // p2pool | p2pool-vX.X.X-(windows|macos|linux)-x64.(zip|tar.gz)
 // xmrig  | xmrig-X.X.X-(msvc-win64|macos-x64|linux-static-x64).(zip|tar.gz)
 //
 // Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
-// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64
+// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64.tar.gz
 //
 // Exceptions (there are always exceptions...):
 //   - XMRig doesn't have a [v], so it is [xmrig-6.18.0-...]
 //   - XMRig separates the hash and signature
 //   - P2Pool hashes are in UPPERCASE
-//   - Gupax will be downloaded as a standalone binary (no decompression/extraction needed)
 
 const GUPAX_METADATA: &'static str = "https://api.github.com/repos/hinto-janaiyo/gupax/releases/latest";
 const P2POOL_METADATA: &'static str = "https://api.github.com/repos/SChernykh/p2pool/releases/latest";
@@ -85,21 +85,21 @@ const P2POOL_HASH: &'static str = "sha256sums.txt.asc";
 const XMRIG_HASH: &'static str = "SHA256SUMS";
 
 #[cfg(target_os = "windows")]
-const GUPAX_EXTENSION: &'static str = "-windows-x64-standalone.exe";
+const GUPAX_EXTENSION: &'static str = "-windows-x64-standalone.zip";
 #[cfg(target_os = "windows")]
 const P2POOL_EXTENSION: &'static str = "-windows-x64.zip";
 #[cfg(target_os = "windows")]
 const XMRIG_EXTENSION: &'static str = "-msvc-win64.zip";
 
 #[cfg(target_os = "macos")]
-const GUPAX_EXTENSION: &'static str = "-macos-x64-standalone";
+const GUPAX_EXTENSION: &'static str = "-macos-x64-standalone.tar.gz";
 #[cfg(target_os = "macos")]
 const P2POOL_EXTENSION: &'static str = "-macos-x64.tar.gz";
 #[cfg(target_os = "macos")]
 const XMRIG_EXTENSION: &'static str = "-macos-x64.tar.gz";
 
 #[cfg(target_os = "linux")]
-const GUPAX_EXTENSION: &'static str = "-linux-x64-standalone";
+const GUPAX_EXTENSION: &'static str = "-linux-x64-standalone.tar.gz";
 #[cfg(target_os = "linux")]
 const P2POOL_EXTENSION: &'static str = "-linux-x64.tar.gz";
 #[cfg(target_os = "linux")]
@@ -107,23 +107,17 @@ const XMRIG_EXTENSION: &'static str = "-linux-static-x64.tar.gz";
 
 #[cfg(target_os = "windows")]
 const GUPAX_BINARY: &'static str = "gupax.exe";
-#[cfg(target_os = "macos")]
-const GUPAX_BINARY: &'static str = "Gupax";
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 const GUPAX_BINARY: &'static str = "gupax";
 
 #[cfg(target_os = "windows")]
 const P2POOL_BINARY: &'static str = "p2pool.exe";
-#[cfg(target_os = "macos")]
-const P2POOL_BINARY: &'static str = "P2Pool";
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 const P2POOL_BINARY: &'static str = "p2pool";
 
 #[cfg(target_os = "windows")]
 const XMRIG_BINARY: &'static str = "xmrig.exe";
-#[cfg(target_os = "macos")]
-const XMRIG_BINARY: &'static str = "XMRig";
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 const XMRIG_BINARY: &'static str = "xmrig";
 
 // Some fake Curl/Wget user-agents because GitHub API requires one and a Tor browser
@@ -235,9 +229,9 @@ pub struct Update {
 
 impl Update {
 	// Takes in current paths from [State]
-	pub fn new(path_p2pool: PathBuf, path_xmrig: PathBuf, tor: bool) -> Self {
+	pub fn new(path_gupax: String, path_p2pool: PathBuf, path_xmrig: PathBuf, tor: bool) -> Self {
 		Self {
-			path_gupax: crate::get_exe().unwrap(),
+			path_gupax,
 			path_p2pool: path_p2pool.display().to_string(),
 			path_xmrig: path_xmrig.display().to_string(),
 			tmp_dir: "".to_string(),
@@ -260,9 +254,9 @@ impl Update {
 			.collect();
 		let base = crate::get_exe_dir()?;
 		#[cfg(target_os = "windows")]
-		let tmp_dir = format!("{}{}{}{}", base, r"\gupax_tmp_", rand_string, r"\");
+		let tmp_dir = format!("{}{}{}{}", base, r"\gupax_update_", rand_string, r"\");
 		#[cfg(target_family = "unix")]
-		let tmp_dir = format!("{}{}{}{}", base, "/gupax_tmp_", rand_string, "/");
+		let tmp_dir = format!("{}{}{}{}", base, "/gupax_update_", rand_string, "/");
 		info!("Update | Temporary directory ... {}", tmp_dir);
 		Ok(tmp_dir)
 	}
@@ -346,7 +340,8 @@ impl Update {
 		}
 		let prog = *update.lock().unwrap().prog.lock().unwrap();
 		info!("Update | {}", update.lock().unwrap().msg.lock().unwrap());
-		let client = Self::get_client(update.lock().unwrap().tor).await?;
+		let tor = update.lock().unwrap().tor;
+		let client = Self::get_client(tor).await?;
 		*update.lock().unwrap().prog.lock().unwrap() += 5.0;
 		info!("Update | Init ... OK ... {}%", prog);
 
@@ -490,14 +485,10 @@ impl Update {
 				let version = pkg.new_ver.lock().unwrap();
 				let link;
 				// Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
-				// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64
+				// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64-standalone
 				// XMRig doesn't have a [v], so slice it out
 				if pkg.name == Name::Xmrig {
 					link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version[1..] + &pkg.link_extension;
-				// TODO FIX ME
-				// This is temp link for v0.0.1 of [Gupax]
-				} else if pkg.name == Name::Gupax {
-					link = "https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64".to_string()
 				} else {
 					link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version + &pkg.link_extension;
 				}
@@ -549,18 +540,15 @@ impl Update {
 		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_EXTRACT, new_pkgs);
 		info!("Update | {}", EXTRACT);
 		for pkg in vec4.iter() {
-			if pkg.name == Name::Gupax {
-				let tmp = tmp_dir.to_owned() + GUPAX_BINARY;
-				#[cfg(target_family = "unix")]
-				std::fs::OpenOptions::new().create(true).write(true).mode(0o750).open(&tmp)?;
-				std::fs::write(tmp, pkg.bytes.lock().unwrap().as_ref())?;
-			} else {
-				let tmp = tmp_dir.to_owned() + &pkg.name.to_string();
-				#[cfg(target_os = "windows")]
-				ZipArchive::extract(&mut ZipArchive::new(std::io::Cursor::new(pkg.bytes.lock().unwrap().as_ref()))?, tmp)?;
-				#[cfg(target_family = "unix")]
-				tar::Archive::new(flate2::read::GzDecoder::new(pkg.bytes.lock().unwrap().as_ref())).unpack(tmp)?;
+			let tmp;
+			match pkg.name {
+				Name::Gupax => tmp = tmp_dir.to_owned() + GUPAX_BINARY,
+				_ => tmp = tmp_dir.to_owned() + &pkg.name.to_string(),
 			}
+			#[cfg(target_os = "windows")]
+			ZipArchive::extract(&mut ZipArchive::new(std::io::Cursor::new(pkg.bytes.lock().unwrap().as_ref()))?, tmp)?;
+			#[cfg(target_family = "unix")]
+			tar::Archive::new(flate2::read::GzDecoder::new(pkg.bytes.lock().unwrap().as_ref())).unpack(tmp)?;
 			*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 			info!("Update | {} ... OK", pkg.name);
 		}
@@ -577,18 +565,24 @@ impl Update {
 		// Just in case, create all folders
 		for entry in WalkDir::new(tmp_dir.clone()) {
 			let entry = entry?.clone();
+			// If not a file, continue
+			if ! entry.file_type().is_file() { continue }
 			let basename = entry.file_name().to_str().ok_or(anyhow::Error::msg("WalkDir basename failed"))?;
 			match basename {
 				GUPAX_BINARY => {
-					let path = update.lock().unwrap().path_gupax.clone();
-					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path);
 					// Unix can replace running binaries no problem (they're loading into memory)
 					// Windows locks binaries in place, so we must move (rename) current binary
 					// into the temp folder, then move the new binary into the old ones spot.
 					// Clearing the temp folder is now moved at startup instead at the end
 					// of this function due to this behavior, thanks Windows.
+					let path = update.lock().unwrap().path_gupax.clone();
 					#[cfg(target_os = "windows")]
-					std::fs::rename(&path, tmp_dir.clone() + "gupax_old.exe")?;
+					let tmp_windows = tmp_dir.clone() + "gupax_old.exe";
+					#[cfg(target_os = "windows")]
+					info!("Update | WINDOWS ONLY ... Moving [{}] -> [{}]", &path, tmp_windows);
+					#[cfg(target_os = "windows")]
+					std::fs::rename(&path, tmp_windows)?;
+					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path);
 					std::fs::rename(entry.path(), path)?;
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
@@ -693,7 +687,7 @@ impl Pkg {
 
 	//---------------------------------------------------------------------------------------------------- Pkg functions
 	// Generate fake [User-Agent] HTTP header
-	pub fn get_user_agent() -> &'static str {
+	fn get_user_agent() -> &'static str {
 		let rand = thread_rng().gen_range(0..50);
 		let user_agent = FAKE_USER_AGENT[rand];
 		info!("Update | Randomly selecting User-Agent ({}/50) ... {}", rand, user_agent);
@@ -701,7 +695,7 @@ impl Pkg {
 	}
 
 	// Generate GET request based off input URI + fake user agent
-	pub fn get_request(link: String, user_agent: &'static str) -> Result<Request<Body>, anyhow::Error> {
+	fn get_request(link: String, user_agent: &'static str) -> Result<Request<Body>, anyhow::Error> {
 		let request = Request::builder()
 			.method("GET")
 			.uri(link)
@@ -712,8 +706,8 @@ impl Pkg {
 
 	// Get metadata using [Generic hyper::client<C>] & [Request]
 	// and change [version, prog] under an Arc<Mutex>
-	pub async fn get_metadata<C>(name: Name, new_ver: Arc<Mutex<String>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), Error>
-		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
+	async fn get_metadata<C>(name: Name, new_ver: Arc<Mutex<String>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), Error>
+	where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
 		let request = Pkg::get_request(link.clone(), user_agent)?;
 		let mut response = client.request(request).await?;
 		let body = hyper::body::to_bytes(response.body_mut()).await?;
@@ -724,15 +718,17 @@ impl Pkg {
 
 	// Takes a [Request], fills the appropriate [Pkg]
 	// [bytes] field with the [Archive/Standalone]
-	pub async fn get_bytes<C>(name: Name, bytes: Arc<Mutex<bytes::Bytes>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), anyhow::Error>
-		where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
+	async fn get_bytes<C>(name: Name, bytes: Arc<Mutex<bytes::Bytes>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), anyhow::Error>
+	where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
+		let request = Self::get_request(link.clone(), user_agent)?;
+		let mut response = client.request(request).await?;
 		// GitHub sends a 302 redirect, so we must follow
 		// the [Location] header... only if Reqwest had custom
 		// connectors so I didn't have to manually do this...
-		let request = Self::get_request(link.clone(), user_agent)?;
-		let response = client.request(request).await?;
-		let request = Self::get_request(response.headers().get(hyper::header::LOCATION).unwrap().to_str()?.to_string(), user_agent)?;
-		let response = client.request(request).await?;
+		if response.headers().contains_key(LOCATION) {
+			let request = Self::get_request(response.headers().get(LOCATION).unwrap().to_str()?.to_string(), user_agent)?;
+			response = client.request(request).await?;
+		}
 		let body = hyper::body::to_bytes(response.into_body()).await?;
 		*bytes.lock().unwrap() = body;
 		Ok(())

@@ -92,7 +92,7 @@ Windows/macOS/Linux:
 ```
 cargo build --release
 ```
-On macOS, if you want the binary to have an icon in `Finder`, you must install [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle) and compile with:
+On macOS, if you want the binary to have an icon in `Finder`, you must install [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle) and compile uwith:
 ```
 cargo bundle --release
 ```

@@ -51,7 +51,7 @@ impl Gupax {
 							info!("Spawning update thread...");
 							match Update::start(update_thread, og_ver.clone(), state_ver.clone()) {
 								Err(e) => {
-									info!("Update ... {} ... FAIL", e);
+									info!("Update ... FAIL ... {}", e);
 									*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
 								},
 								_ => {
@@ -87,13 +87,13 @@ impl Gupax {
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
 					let width = (width - SPACE*9.8)/5.0;
-					let height = height/2.0;
+					let height = height/2.5;
 					let mut style = (*ctx.style()).clone();
 					style.spacing.icon_width_inner = width / 6.0;
 					style.spacing.icon_width = width / 4.0;
 					style.spacing.icon_spacing = 20.0;
 					ctx.set_style(style);
-					let height = height/2.0;
+					let height = height/2.5;
 					ui.add_sized([width, height], egui::Checkbox::new(&mut state.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
 					ui.separator();
 					ui.add_sized([width, height], egui::Checkbox::new(&mut state.auto_node, "Auto-node")).on_hover_text(GUPAX_AUTO_NODE);
