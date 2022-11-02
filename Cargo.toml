@@ -10,17 +10,17 @@ arti-hyper = "0.7.0"
 bytes = "1.2.1"
 chrono = "0.4.22"
 dirs = "4.0.0"
-eframe = "0.19.0"
-egui = "0.19.0"
-egui_extras = { version = "0.19.0", features = ["image"] }
+#eframe = "0.19.0"
+#egui = "0.19.0"
+#egui_extras = { version = "0.19.0", features = ["image"] }
 ## [external/egui/crates/eframe/src/native/run.rs] line 41: [.with_srgb(true)]
 ## This line causes a [panic!] inside a Windows VM, from a Linux host.
 ## There are many issue threads and PRs to fix it but for now,
 ## this is here for convenience sake when I'm testing.
 ## The only change is [.with_srgb()] is set to [false].
-#eframe = { path = "external/egui/crates/eframe" }
-#egui = { path = "external/egui/crates/egui" }
-#egui_extras = { path = "external/egui/crates/egui_extras", features = ["image"] }
+eframe = { path = "external/egui/crates/eframe" }
+egui = { path = "external/egui/crates/egui" }
+egui_extras = { path = "external/egui/crates/egui_extras", features = ["image"] }
 env_logger = "0.9.1"
 figment = { version = "0.10.8", features = ["toml"] }
 flate2 = "1.0"
@@ -37,24 +37,29 @@ rand = "0.8.5"
 regex = "1.6.0"
 reqwest = { version = "0.11.12", features = ["blocking", "json"] }
 rusqlite = { version = "0.28.0", features = ["bundled"] }
-serde = "1.0.145"
-serde_derive = "1.0.145"
+serde = { version = "1.0.145", features = ["rc", "derive"] }
 serde_json = "1.0"
 sha2 = "0.10.6"
-tar = "0.4.38"
 tls-api = "0.9.0"
 tls-api-native-tls = "0.9.0"
 tokio = { version = "1.21.2", features = ["full"] }
 toml = "0.5.9"
 tor-rtcompat = "0.7.0"
 walkdir = "2.3.2"
+
+# Unix dependencies
+[target.'cfg(unix)'.dependencies]
+tar = "0.4.38"
+
+# Windows dependencies
+[target.'cfg(windows)'.dependencies]
 zip = "0.6.3"
 
-# For Windows
+# For Windows build (icon)
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.12"
 
-# For macOS (cargo-bundle)
+# For macOS build (cargo-bundle)
 [package.metadata.bundle]
 identifier = "io.github.hinto-janaiyo.gupax"
 icon = ["images/png/icon@2x.png"]

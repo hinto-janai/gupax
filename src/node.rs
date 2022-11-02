@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use serde_derive::{Serialize,Deserialize};
+use serde::{Serialize,Deserialize};
 use std::time::{Instant,Duration};
 use std::collections::HashMap;
 use std::error::Error;

@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 // Hide console in Windows
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 //---------------------------------------------------------------------------------------------------- Imports
 // egui/eframe
@@ -70,10 +70,10 @@ pub struct App {
 	width: f32, // Top-level width
 	height: f32, // Top-level height
 	// State
-	og: State, // og    = Old state to compare against
+	og: Arc<Mutex<State>>, // og = Old state to compare against
 	state: State, // state = Working state (current settings)
-	update: Update, // State for update data [update.rs]
-	diff: bool, // Instead of comparing [og == state] every frame, this bool indicates changes
+	update: Arc<Mutex<Update>>, // State for update data [update.rs]
+	diff: bool, // This bool indicates state changes
 	// Process/update state:
 	// Doesn't make sense to save this on disk
 	// so it's represented as a bool here.
@@ -113,9 +113,9 @@ impl App {
 			width: 1280.0,
 			height: 720.0,
 			node: Arc::new(Mutex::new(NodeStruct::default())),
-			og: State::default(),
+			og: Arc::new(Mutex::new(State::default())),
 			state: State::default(),
-			update: Update::new(PathBuf::new(), PathBuf::new(), true),
+			update: Arc::new(Mutex::new(Update::new(PathBuf::new(), PathBuf::new(), true))),
 			diff: false,
 			p2pool: false,
 			xmrig: false,
@@ -141,16 +141,23 @@ impl App {
 		// Read disk state if no [--reset] arg
 		if app.reset == false {
 			app.og = match State::get() {
-				Ok(toml) => toml,
+				Ok(toml) => Arc::new(Mutex::new(toml)),
 				Err(err) => { panic_main(err.to_string()); exit(1); },
 			};
 		}
-		app.state = app.og.clone();
+		app.state = app.og.lock().unwrap().clone();
 		// Handle max threads
-		app.og.xmrig.max_threads = num_cpus::get();
-		if app.og.xmrig.current_threads > app.og.xmrig.max_threads { app.og.xmrig.current_threads = app.og.xmrig.max_threads; }
+		app.og.lock().unwrap().xmrig.max_threads = num_cpus::get();
+		let current = app.og.lock().unwrap().xmrig.current_threads;
+		let max = app.og.lock().unwrap().xmrig.max_threads;
+		if current > max {
+			app.og.lock().unwrap().xmrig.current_threads = max;
+		}
 		// Apply TOML values to [Update]
-		app.update = Update::new(app.og.gupax.absolute_p2pool_path.clone(), app.og.gupax.absolute_xmrig_path.clone(), app.og.gupax.update_via_tor);
+		let p2pool_path = app.og.lock().unwrap().gupax.absolute_p2pool_path.clone();
+		let xmrig_path = app.og.lock().unwrap().gupax.absolute_xmrig_path.clone();
+		let tor = app.og.lock().unwrap().gupax.update_via_tor;
+		app.update = Arc::new(Mutex::new(Update::new(p2pool_path, xmrig_path, tor)));
 		app
 	}
 }
@@ -304,6 +311,22 @@ pub fn get_rand_tmp(path: &String) -> String {
 	path
 }
 
+// Clean any [gupax_tmp.*] directories
+pub fn clean_dir() -> Result<(), anyhow::Error> {
+	for entry in std::fs::read_dir(get_exe_dir()?)? {
+		let entry = entry?;
+		entry.path().is_dir() && continue;
+		if entry.file_name().to_str().ok_or(anyhow::Error::msg("Basename failed"))?.starts_with("gupax_tmp_") {
+			let path = entry.path();
+			match std::fs::remove_dir_all(&path) {
+				Ok(_) => info!("Remove [{}] ... OK", path.display()),
+				Err(e) => warn!("Remove [{}] ... FAIL ... {}", path.display(), e),
+			}
+		}
+	}
+	Ok(())
+}
+
 //---------------------------------------------------------------------------------------------------- [App] frame for [Panic] situations
 fn panic_main(error: String) {
 	error!("{}", error);
@@ -358,6 +381,10 @@ impl eframe::App for Panic {
 fn main() {
 	init_logger();
 	let options = init_options();
+	match clean_dir() {
+		Ok(_) => info!("Temporary folder cleanup ... OK"),
+		Err(e) => warn!("Could not cleanup [gupax_tmp] folders: {}", e),
+	}
 	let app = App::new();
 	let name = app.name_version.clone();
 	eframe::run_native(&name, options, Box::new(|cc| Box::new(App::cc(cc, app))),);
@@ -366,7 +393,7 @@ fn main() {
 impl eframe::App for App {
 	fn on_close_event(&mut self) -> bool {
 		self.quit = true;
-		if self.og.gupax.ask_before_quit {
+		if self.og.lock().unwrap().gupax.ask_before_quit {
 			self.quit_confirm
 		} else {
 			true
@@ -389,6 +416,17 @@ impl eframe::App for App {
             let info = frame.info();
             frame.set_fullscreen(!info.window_info.fullscreen);
         }
+
+		// If no state diff (og == state), compare and enable if found.
+		// The struct fields are compared directly because [Version]
+		// contains Arc<Mutex>'s that cannot be compared easily.
+		// They don't need to be compared anyway.
+		let og = self.og.lock().unwrap().clone();
+		if og.gupax != self.state.gupax || og.p2pool != self.state.p2pool || og.xmrig != self.state.xmrig {
+			self.diff = true;
+		} else {
+			self.diff = false;
+		}
 
 		// Close confirmation.
 		if self.quit {
@@ -521,12 +559,21 @@ impl eframe::App for App {
 
 				ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
 					ui.group(|ui| {
-						if self.state == self.og {
+						if self.diff == false {
 							ui.set_enabled(false)
 						}
 						let width = width / 2.0;
-						if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() { self.og = self.state.clone(); self.state.save(); }
-						if ui.add_sized([width, height], egui::Button::new("Reset")).on_hover_text("Reset changes").clicked() { self.state = self.og.clone(); }
+						if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() {
+							self.og.lock().unwrap().gupax = self.state.gupax.clone();
+							self.og.lock().unwrap().p2pool = self.state.p2pool.clone();
+							self.og.lock().unwrap().xmrig = self.state.xmrig.clone();
+							self.og.lock().unwrap().save();
+						}
+						if ui.add_sized([width, height], egui::Button::new("Reset")).on_hover_text("Reset changes").clicked() {
+							self.state.gupax = self.og.lock().unwrap().gupax.clone();
+							self.state.p2pool = self.og.lock().unwrap().p2pool.clone();
+							self.state.xmrig = self.og.lock().unwrap().xmrig.clone();
+						}
 					});
 
 					let width = (ui.available_width() / 3.0) - 6.2;
@@ -615,7 +662,7 @@ impl eframe::App for App {
 					Status::show(self, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, &self.og.gupax, self.width, self.height, &mut self.update, self.og.version.clone(), ctx, ui);
+					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, self.width, self.height, ctx, ui);
 				}
 				Tab::P2pool => {
 					P2pool::show(&mut self.state.p2pool, self.width, self.height, ctx, ui);

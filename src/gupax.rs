@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use std::path::Path;
-use crate::App;
+use crate::{App,State};
 use egui::WidgetType::Button;
 use crate::constants::*;
 use crate::state::{Gupax,Version};
@@ -26,7 +26,7 @@ use std::sync::{Arc,Mutex};
 use log::*;
 
 impl Gupax {
-	pub fn show(state: &mut Gupax, og: &Gupax, width: f32, height: f32, update: &mut Update, version: Version, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(state: &mut Gupax, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
@@ -35,30 +35,44 @@ impl Gupax {
 				// I have to pick one. This one seperates them though.
 				let height = height/6.0;
 				let width = width - SPACE;
-				let updating = *update.updating.lock().unwrap();
+				let updating = *update.lock().unwrap().updating.lock().unwrap();
 				ui.vertical(|ui| {
 					ui.set_enabled(!updating);
 					if ui.add_sized([width, height], egui::Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
-						update.path_p2pool = og.absolute_p2pool_path.display().to_string();
-						update.path_xmrig = og.absolute_xmrig_path.display().to_string();
-						update.tor = og.update_via_tor;
-						let update = Arc::new(Mutex::new(update.clone()));
+						update.lock().unwrap().path_p2pool = og.lock().unwrap().gupax.absolute_p2pool_path.display().to_string();
+						update.lock().unwrap().path_xmrig = og.lock().unwrap().gupax.absolute_xmrig_path.display().to_string();
+						update.lock().unwrap().tor = og.lock().unwrap().gupax.update_via_tor;
+						let og = Arc::clone(&og);
+						let og_ver = Arc::clone(&og.lock().unwrap().version);
+						let state_ver = Arc::clone(&state_ver);
+						let update = Arc::clone(&update);
+						let update_thread = Arc::clone(&update);
 						thread::spawn(move|| {
 							info!("Spawning update thread...");
-							match Update::start(update.clone(), version) {
+							match Update::start(update_thread, og_ver.clone(), state_ver.clone()) {
 								Err(e) => {
-									info!("Update | {} ... FAIL", e);
+									info!("Update ... {} ... FAIL", e);
 									*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
-									*update.lock().unwrap().updating.lock().unwrap() = false;
 								},
-								_ => (),
-							}
+								_ => {
+									info!("Update | Saving state...");
+									match State::save(&mut og.lock().unwrap()) {
+										Ok(_) => info!("Update ... OK"),
+										Err(e) => {
+											warn!("Update | Saving state ... FAIL ... {}", e);
+											*update.lock().unwrap().msg.lock().unwrap() = format!("Saving new versions into state failed");
+										},
+									};
+								}
+							};
+							*update.lock().unwrap().updating.lock().unwrap() = false;
 						});
 					}
 				});
 				ui.vertical(|ui| {
 					ui.set_enabled(updating);
-					let msg = format!("{}\n{}{}", *update.msg.lock().unwrap(), *update.prog.lock().unwrap(), "%");
+					let prog = *update.lock().unwrap().prog.lock().unwrap();
+					let msg = format!("{}\n{}{}", *update.lock().unwrap().msg.lock().unwrap(), prog, "%");
 					ui.add_sized([width, height*1.4], egui::Label::new(msg));
 					let height = height/2.0;
 					if updating {
@@ -66,7 +80,7 @@ impl Gupax {
 					} else {
 						ui.add_sized([width, height], egui::Label::new("..."));
 					}
-					ui.add_sized([width, height], egui::ProgressBar::new((update.prog.lock().unwrap().round() / 100.0)));
+					ui.add_sized([width, height], egui::ProgressBar::new((update.lock().unwrap().prog.lock().unwrap().round() / 100.0)));
 				});
 		});
 

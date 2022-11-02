@@ -32,7 +32,8 @@ use std::{fs,env};
 use std::fmt::Display;
 use std::path::{Path,PathBuf};
 use std::result::Result;
-use serde_derive::{Serialize,Deserialize};
+use std::sync::{Arc,Mutex};
+use serde::{Serialize,Deserialize};
 use figment::Figment;
 use figment::providers::{Format,Toml};
 use crate::constants::HORIZONTAL;
@@ -81,10 +82,10 @@ impl State {
 				pool: "localhost:3333".to_string(),
 				address: "".to_string(),
 			},
-			version: Version {
-				p2pool: P2POOL_VERSION.to_string(),
-				xmrig: XMRIG_VERSION.to_string(),
-			},
+			version: Arc::new(Mutex::new(Version {
+				p2pool: Arc::new(Mutex::new(P2POOL_VERSION.to_string())),
+				xmrig: Arc::new(Mutex::new(XMRIG_VERSION.to_string())),
+			})),
 		}
 	}
 
@@ -267,13 +268,13 @@ const DIRECTORY: &'static str = "gupax";
 #[cfg(target_os = "windows")]
 pub const DEFAULT_P2POOL_PATH: &'static str = r"P2Pool\p2pool.exe";
 #[cfg(target_os = "macos")]
-pub const DEFAULT_P2POOL_PATH: &'static str = "P2Pool/p2pool";
+pub const DEFAULT_P2POOL_PATH: &'static str = "P2Pool/P2Pool";
 #[cfg(target_os = "linux")]
 pub const DEFAULT_P2POOL_PATH: &'static str = "p2pool/p2pool";
 #[cfg(target_os = "windows")]
 pub const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
 #[cfg(target_os = "macos")]
-pub const DEFAULT_XMRIG_PATH: &'static str = "XMRig/xmrig";
+pub const DEFAULT_XMRIG_PATH: &'static str = "XMRig/XMRig";
 #[cfg(target_os = "linux")]
 pub const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
 
@@ -288,12 +289,12 @@ pub enum TomlError {
 }
 
 //---------------------------------------------------------------------------------------------------- Structs
-#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+#[derive(Clone,Debug,Deserialize,Serialize)]
 pub struct State {
 	pub gupax: Gupax,
 	pub p2pool: P2pool,
 	pub xmrig: Xmrig,
-	pub version: Version,
+	pub version: Arc<Mutex<Version>>,
 }
 
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
@@ -341,8 +342,8 @@ pub struct Xmrig {
 //	pub args: String,
 }
 
-#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+#[derive(Clone,Debug,Deserialize,Serialize)]
 pub struct Version {
-	pub p2pool: String,
-	pub xmrig: String,
+	pub p2pool: Arc<Mutex<String>>,
+	pub xmrig: Arc<Mutex<String>>,
 }

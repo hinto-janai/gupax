@@ -38,7 +38,7 @@ use hyper_tls::HttpsConnector;
 use log::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use serde_derive::{Serialize,Deserialize};
+use serde::{Serialize,Deserialize};
 use std::io::{Read,Write};
 use std::path::PathBuf;
 use std::sync::{Arc,Mutex};
@@ -47,7 +47,11 @@ use tls_api::{TlsConnector, TlsConnectorBuilder};
 use tokio::io::{AsyncReadExt,AsyncWriteExt};
 use tokio::task::JoinHandle;
 use walkdir::WalkDir;
+
+#[cfg(target_os = "windows")]
 use zip::ZipArchive;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::OpenOptionsExt;
 
 //---------------------------------------------------------------------------------------------------- Constants
 // Package naming schemes:
@@ -81,25 +85,46 @@ const P2POOL_HASH: &'static str = "sha256sums.txt.asc";
 const XMRIG_HASH: &'static str = "SHA256SUMS";
 
 #[cfg(target_os = "windows")]
-const GUPAX_EXTENSION: &'static str = "-windows-standalone-x64.exe";
+const GUPAX_EXTENSION: &'static str = "-windows-x64-standalone.exe";
 #[cfg(target_os = "windows")]
 const P2POOL_EXTENSION: &'static str = "-windows-x64.zip";
 #[cfg(target_os = "windows")]
 const XMRIG_EXTENSION: &'static str = "-msvc-win64.zip";
 
 #[cfg(target_os = "macos")]
-const GUPAX_EXTENSION: &'static str = "-macos-standalone-x64";
+const GUPAX_EXTENSION: &'static str = "-macos-x64-standalone";
 #[cfg(target_os = "macos")]
 const P2POOL_EXTENSION: &'static str = "-macos-x64.tar.gz";
 #[cfg(target_os = "macos")]
 const XMRIG_EXTENSION: &'static str = "-macos-x64.tar.gz";
 
 #[cfg(target_os = "linux")]
-const GUPAX_EXTENSION: &'static str = "-linux-standalone-x64";
+const GUPAX_EXTENSION: &'static str = "-linux-x64-standalone";
 #[cfg(target_os = "linux")]
 const P2POOL_EXTENSION: &'static str = "-linux-x64.tar.gz";
 #[cfg(target_os = "linux")]
 const XMRIG_EXTENSION: &'static str = "-linux-static-x64.tar.gz";
+
+#[cfg(target_os = "windows")]
+const GUPAX_BINARY: &'static str = "gupax.exe";
+#[cfg(target_os = "macos")]
+const GUPAX_BINARY: &'static str = "Gupax";
+#[cfg(target_os = "linux")]
+const GUPAX_BINARY: &'static str = "gupax";
+
+#[cfg(target_os = "windows")]
+const P2POOL_BINARY: &'static str = "p2pool.exe";
+#[cfg(target_os = "macos")]
+const P2POOL_BINARY: &'static str = "P2Pool";
+#[cfg(target_os = "linux")]
+const P2POOL_BINARY: &'static str = "p2pool";
+
+#[cfg(target_os = "windows")]
+const XMRIG_BINARY: &'static str = "xmrig.exe";
+#[cfg(target_os = "macos")]
+const XMRIG_BINARY: &'static str = "XMRig";
+#[cfg(target_os = "linux")]
+const XMRIG_BINARY: &'static str = "xmrig";
 
 // Some fake Curl/Wget user-agents because GitHub API requires one and a Tor browser
 // user-agent might be fingerprintable without all the associated headers.
@@ -226,7 +251,7 @@ impl Update {
 	// Get a temporary random folder for package download contents
 	// This used to use [std::env::temp_dir()] but there were issues
 	// using [std::fs::rename()] on tmpfs -> disk (Invalid cross-device link (os error 18)).
-	// So, uses the [Gupax] binary directory as a base, something like [/home/hinto/gupax/gupax_SG4xsDdVmr]
+	// So, uses the [Gupax] binary directory as a base, something like [/home/hinto/gupax/gupax_tmp_SG4xsDdVmr]
 	pub fn get_tmp_dir() -> Result<String, anyhow::Error> {
 		let rand_string: String = thread_rng()
 			.sample_iter(&Alphanumeric)
@@ -235,9 +260,9 @@ impl Update {
 			.collect();
 		let base = crate::get_exe_dir()?;
 		#[cfg(target_os = "windows")]
-		let tmp_dir = format!("{}{}{}{}", base, r"\gupax_", rand_string, r"\");
+		let tmp_dir = format!("{}{}{}{}", base, r"\gupax_tmp_", rand_string, r"\");
 		#[cfg(target_family = "unix")]
-		let tmp_dir = format!("{}{}{}{}", base, "/gupax_", rand_string, "/");
+		let tmp_dir = format!("{}{}{}{}", base, "/gupax_tmp_", rand_string, "/");
 		info!("Update | Temporary directory ... {}", tmp_dir);
 		Ok(tmp_dir)
 	}
@@ -281,7 +306,7 @@ impl Update {
 	// 5. extract, upgrade
 
 	#[tokio::main]
-	pub async fn start(update: Arc<Mutex<Self>>, mut version: Version) -> Result<(), anyhow::Error> {
+	pub async fn start(update: Arc<Mutex<Self>>, og_ver: Arc<Mutex<Version>>, state_ver: Arc<Mutex<Version>>) -> Result<(), anyhow::Error> {
 		//---------------------------------------------------------------------------------------------------- Init
 		*update.lock().unwrap().updating.lock().unwrap() = true;
 		// Set timer
@@ -408,28 +433,30 @@ impl Update {
 			match pkg.name {
 				Gupax  => {
 					if new_ver == GUPAX_VERSION {
-						info!("Update | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), GUPAX_VERSION);
+						info!("Update | {} {} == {} ... SKIPPING", pkg.name, GUPAX_VERSION, new_ver);
 					} else {
-						info!("Update | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), GUPAX_VERSION);
-						new_pkgs.push(format!("\nGupax {}  ➡  {}", GUPAX_VERSION, pkg.new_ver.lock().unwrap()));
+						info!("Update | {} {} != {} ... ADDING", pkg.name, GUPAX_VERSION, new_ver);
+						new_pkgs.push(format!("\nGupax {}  ➡  {}", GUPAX_VERSION, new_ver));
 						vec3.push(pkg);
 					}
 				}
 				P2pool => {
-					if new_ver == version.p2pool {
-						info!("Update | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), version.p2pool);
+					let old_ver = og_ver.lock().unwrap().p2pool.lock().unwrap().to_owned();
+					if old_ver == new_ver {
+						info!("Update | {} {} == {} ... SKIPPING", pkg.name, old_ver, new_ver);
 					} else {
-						info!("Update | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), version.p2pool);
-						new_pkgs.push(format!("\nP2Pool {}  ➡  {}", version.p2pool, pkg.new_ver.lock().unwrap()));
+						info!("Update | {} {} != {} ... ADDING", pkg.name, old_ver, new_ver);
+						new_pkgs.push(format!("\nP2Pool {}  ➡  {}", old_ver, new_ver));
 						vec3.push(pkg);
 					}
 				}
 				Xmrig  => {
-					if new_ver == GUPAX_VERSION {
-						info!("Update | {} {} == {} ... SKIPPING", pkg.name, pkg.new_ver.lock().unwrap(), version.xmrig);
+					let old_ver = og_ver.lock().unwrap().xmrig.lock().unwrap().to_owned();
+					if old_ver == new_ver {
+						info!("Update | {} {} == {} ... SKIPPING", pkg.name, old_ver, new_ver);
 					} else {
-						info!("Update | {} {} != {} ... ADDING", pkg.name, pkg.new_ver.lock().unwrap(), version.xmrig);
-						new_pkgs.push(format!("\nXMRig {}  ➡  {}", version.xmrig, pkg.new_ver.lock().unwrap()));
+						info!("Update | {} {} != {} ... ADDING", pkg.name, old_ver, new_ver);
+						new_pkgs.push(format!("\nXMRig {}  ➡  {}", old_ver, new_ver));
 						vec3.push(pkg);
 					}
 				}
@@ -522,14 +549,13 @@ impl Update {
 		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_EXTRACT, new_pkgs);
 		info!("Update | {}", EXTRACT);
 		for pkg in vec4.iter() {
-			let tmp = tmp_dir.to_owned() + &pkg.name.to_string();
 			if pkg.name == Name::Gupax {
+				let tmp = tmp_dir.to_owned() + GUPAX_BINARY;
 				#[cfg(target_family = "unix")]
-				use std::os::unix::fs::OpenOptionsExt;
-				#[cfg(target_family = "unix")]
-				std::fs::OpenOptions::new().create(true).write(true).mode(0o770).open(&tmp)?;
+				std::fs::OpenOptions::new().create(true).write(true).mode(0o750).open(&tmp)?;
 				std::fs::write(tmp, pkg.bytes.lock().unwrap().as_ref())?;
 			} else {
+				let tmp = tmp_dir.to_owned() + &pkg.name.to_string();
 				#[cfg(target_os = "windows")]
 				ZipArchive::extract(&mut ZipArchive::new(std::io::Cursor::new(pkg.bytes.lock().unwrap().as_ref()))?, tmp)?;
 				#[cfg(target_family = "unix")]
@@ -553,46 +579,55 @@ impl Update {
 			let entry = entry?.clone();
 			let basename = entry.file_name().to_str().ok_or(anyhow::Error::msg("WalkDir basename failed"))?;
 			match basename {
-				"Gupax" => {
+				GUPAX_BINARY => {
 					let path = update.lock().unwrap().path_gupax.clone();
 					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path);
+					// Unix can replace running binaries no problem (they're loading into memory)
+					// Windows locks binaries in place, so we must move (rename) current binary
+					// into the temp folder, then move the new binary into the old ones spot.
+					// Clearing the temp folder is now moved at startup instead at the end
+					// of this function due to this behavior, thanks Windows.
+					#[cfg(target_os = "windows")]
+					std::fs::rename(&path, tmp_dir.clone() + "gupax_old.exe")?;
 					std::fs::rename(entry.path(), path)?;
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
-				"p2pool" => {
+				P2POOL_BINARY => {
 					let path = update.lock().unwrap().path_p2pool.clone();
 					let path = std::path::Path::new(&path);
 					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path.display());
 					std::fs::create_dir_all(path.parent().ok_or(anyhow::Error::msg("P2Pool path failed"))?)?;
 					std::fs::rename(entry.path(), path)?;
-					version.p2pool = Pkg::get_new_pkg_version(P2pool, &vec4)?;
+					*og_ver.lock().unwrap().p2pool.lock().unwrap() = Pkg::get_new_pkg_version(P2pool, &vec4)?;
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
-				"xmrig" => {
+				XMRIG_BINARY => {
 					let path = update.lock().unwrap().path_xmrig.clone();
 					let path = std::path::Path::new(&path);
 					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path.display());
 					std::fs::create_dir_all(path.parent().ok_or(anyhow::Error::msg("XMRig path failed"))?)?;
 					std::fs::rename(entry.path(), path)?;
-					version.xmrig = Pkg::get_new_pkg_version(Xmrig, &vec4)?;
+					*og_ver.lock().unwrap().xmrig.lock().unwrap() = Pkg::get_new_pkg_version(Xmrig, &vec4)?;
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
 				_ => (),
 			}
 		}
 
+		// Remove tmp dir (on Unix)
+		#[cfg(target_family = "unix")]
 		info!("Update | Removing temporary directory ... {}", tmp_dir);
+		#[cfg(target_family = "unix")]
 		std::fs::remove_dir_all(&tmp_dir)?;
+
 		let seconds = now.elapsed().as_secs();
-		info!("Update ... Seconds elapsed: [{}s]", seconds);
-		info!("Update ... OK ... 100%");
+		info!("Update | Seconds elapsed ... [{}s]", seconds);
 		match seconds {
 			0 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 0 seconds... Do you have 10Gbit internet or something...?!{}", MSG_SUCCESS, new_pkgs),
 			1 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 1 second... Wow!{}", MSG_SUCCESS, new_pkgs),
 			_ => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took {} seconds.{}", MSG_SUCCESS, seconds, new_pkgs),
 		}
 		*update.lock().unwrap().prog.lock().unwrap() = 100.0;
-		*update.lock().unwrap().updating.lock().unwrap() = false;
 		Ok(())
 	}
 }
