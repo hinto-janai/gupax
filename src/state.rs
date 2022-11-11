@@ -61,6 +61,8 @@ impl State {
 			p2pool: P2pool {
 				simple: true,
 				mini: true,
+				auto_node: true,
+				auto_select: true,
 				out_peers: 10,
 				in_peers: 10,
 				log_level: 3,
@@ -311,6 +313,8 @@ pub struct Gupax {
 pub struct P2pool {
 	pub simple: bool,
 	pub mini: bool,
+	pub auto_node: bool,
+	pub auto_select: bool,
 	pub out_peers: u16,
 	pub in_peers: u16,
 	pub log_level: u8,

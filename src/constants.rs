@@ -69,13 +69,19 @@ pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed
 pub const GUPAX_PATH_P2POOL: &'static str = "The location of the P2Pool binary, both absolute and relative paths are accepted";
 pub const GUPAX_PATH_XMRIG: &'static str = "The location of the XMRig binary, both absolute and relative paths are accepted";
 // P2Pool
-pub const P2POOL_MAIN: &'static str = "The P2Pool main-chain. This P2Pool finds shares faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
-pub const P2POOL_MINI: &'static str = "The P2Pool mini-chain. This P2Pool finds shares slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
+pub const P2POOL_MAIN: &'static str = "Use the P2Pool main-chain. This P2Pool finds shares faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
+pub const P2POOL_MINI: &'static str = "Use the P2Pool mini-chain. This P2Pool finds shares slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
 pub const P2POOL_OUT: &'static str = "How many out-bound peers (you connecting to others) to connect to?";
 pub const P2POOL_IN: &'static str = "How many in-bound peers (others connecting to you) to connect to?";
 pub const P2POOL_LOG: &'static str = "Verbosity of the console log";
 pub const P2POOL_COMMUNITY: &'static str = "Connect to a community trusted Monero node: This is convenient because you don't have to download the Monero blockchain but it comes at the cost of privacy";
 pub const P2POOL_MANUAL: &'static str = "Manually specify your own Monero node settings";
+pub const P2POOL_AUTO_NODE: &'static str = "Automatically ping the community Monero nodes at Gupax startup";
+pub const P2POOL_AUTO_SELECT: &'static str = "Automatically select the fastest community Monero node after pinging";
+pub const P2POOL_SELECT_FASTEST: &'static str = "Select the fastest community Monero node";
+pub const P2POOL_PING: &'static str = "Ping the built-in community Monero nodes";
+pub const P2POOL_ADDRESS: &'static str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet for P2Pool mining; wallet addresses are public on P2Pool!";
+
 // XMRig
 pub const XMRIG_P2POOL: &'static str = "Mine to your own P2Pool instance (localhost:3333)";
 pub const XMRIG_MANUAL: &'static str = "Manually specify where to mine to";

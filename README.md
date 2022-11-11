@@ -88,11 +88,10 @@ https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e
 * A Monero node/wallet
 
 ## Build
-Windows/macOS/Linux:
 ```
 cargo build --release
 ```
-On macOS, if you want the binary to have an icon in `Finder`, you must install [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle) and compile uwith:
+On macOS, if you want the binary to have an icon in `Finder`, you must install [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle) and compile with:
 ```
 cargo bundle --release
 ```

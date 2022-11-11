@@ -34,6 +34,9 @@ use eframe::{egui,NativeOptions};
 use log::*;
 use env_logger::{Builder,WriteStyle};
 
+// Regex
+use regex::Regex;
+
 // std
 use std::io::Write;
 use std::process::exit;
@@ -64,9 +67,7 @@ pub struct App {
 	tab: Tab, // What tab are we on?
 	quit: bool, // Was the quit button clicked?
 	quit_confirm: bool, // Was the quit confirmed?
-	ping: bool, // Was the ping button clicked?
-	pinging: Arc<Mutex<bool>>, // Is a ping in progress?
-	node: Arc<Mutex<NodeStruct>>, // Data on community nodes
+	ping: Arc<Mutex<Ping>>, // Ping data found in [node.rs]
 	width: f32, // Top-level width
 	height: f32, // Top-level height
 	// State
@@ -88,9 +89,10 @@ pub struct App {
 	dir: String, // Directory [Gupax] binary is in
 	resolution: Vec2, // Frame resolution
 	os: &'static str, // OS
-	version: String, // Gupax version
+	version: &'static str, // Gupax version
 	name_version: String, // [Gupax vX.X.X]
 	banner: RetainedImage, // Gupax banner image
+	addr_regex: Regex, // [4.*] Monero Address Regex
 }
 
 impl App {
@@ -108,11 +110,9 @@ impl App {
 			tab: Tab::default(),
 			quit: false,
 			quit_confirm: false,
-			ping: false,
-			pinging: Arc::new(Mutex::new(false)),
+			ping: Arc::new(Mutex::new(Ping::new())),
 			width: 1280.0,
 			height: 720.0,
-			node: Arc::new(Mutex::new(NodeStruct::default())),
 			og: Arc::new(Mutex::new(State::default())),
 			state: State::default(),
 			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
@@ -126,9 +126,10 @@ impl App {
 			dir: "".to_string(),
 			resolution: Vec2::new(1280.0, 720.0),
 			os: OS,
-			version: format!("{}", GUPAX_VERSION),
+			version: GUPAX_VERSION,
 			name_version: format!("Gupax {}", GUPAX_VERSION),
-			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).expect("oops"),
+			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
+			addr_regex: Regex::new("^4[A-Za-z1-9]+$").unwrap(),
 		};
 		// Apply arg state
 		let mut app = parse_args(app);
@@ -188,21 +189,15 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 	let scale = width / 26.666;
 	let mut style = (*ctx.style()).clone();
 	style.text_styles = [
-//		(Small, FontId::new(10.0, Proportional)),
-//		(Body, FontId::new(25.0, Proportional)),
-//		(Button, FontId::new(25.0, Proportional)),
-//		(Monospace, FontId::new(25.0, Proportional)),
-//		(Heading, FontId::new(30.0, Proportional)),
-//		(Name("Tab".into()), FontId::new(50.0, Proportional)),
-//		(Name("Bottom".into()), FontId::new(25.0, Proportional)),
 		(Small, FontId::new(scale/3.0, Proportional)),
 		(Body, FontId::new(scale/2.0, Proportional)),
 		(Button, FontId::new(scale/2.0, Proportional)),
-		(Monospace, FontId::new(scale/2.0, Proportional)),
+		(Monospace, FontId::new(scale/2.0, egui::FontFamily::Monospace)),
 		(Heading, FontId::new(scale/1.5, Proportional)),
 		(Name("Tab".into()), FontId::new(scale*1.2, Proportional)),
 		(Name("Bottom".into()), FontId::new(scale/2.0, Proportional)),
 	].into();
+//	style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
 //	style.spacing.slider_width = scale;
 //	style.spacing.text_edit_width = scale;
 //	style.spacing.button_padding = Vec2::new(scale/2.0, scale/2.0);
@@ -210,6 +205,14 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 	ctx.set_pixels_per_point(1.0);
 	ctx.request_repaint();
 }
+
+//fn init_color(ctx: &egui::Context) {
+//	let mut style = (*ctx.style()).clone();
+//	style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
+//	style.visuals.selection.bg_fill = Color32::from_rgb(255, 125, 50);
+//	style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
+//	ctx.set_style(style);
+//}
 
 fn init_logger() {
 //	#[cfg(debug_assertions)]
@@ -395,6 +398,9 @@ impl eframe::App for App {
 		// *-------*
 		// | DEBUG |
 		// *-------*
+//		crate::node::ping();
+//		std::process::exit(0);
+//		init_color(ctx);
 
 		// This sets the top level Ui dimensions.
 		// Used as a reference for other uis.
@@ -413,6 +419,11 @@ impl eframe::App for App {
 		// contains Arc<Mutex>'s that cannot be compared easily.
 		// They don't need to be compared anyway.
 		let og = self.og.lock().unwrap().clone();
+		// The [P2Pool Node] selection needs to be the same
+		// for both [State] and [Og] because of [Auto-select]
+		// Wrapping [node] within an [Arc<Mutex>] is a lot more work
+		// so sending it into the [Ping] thread is not viable.
+		self.state.p2pool.node = self.og.lock().unwrap().p2pool.node;
 		if og.gupax != self.state.gupax || og.p2pool != self.state.p2pool || og.xmrig != self.state.xmrig {
 			self.diff = true;
 		} else {
@@ -503,10 +514,7 @@ impl eframe::App for App {
 					ui.style_mut().override_text_style = Some(Name("Tab".into()));
 					ui.style_mut().visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
 					ui.style_mut().visuals.selection.bg_fill = Color32::from_rgb(255, 120, 120);
-					ui.style_mut().visuals.selection.stroke = Stroke {
-						width: 5.0,
-						color: Color32::from_rgb(255, 255, 255),
-					};
+					ui.style_mut().visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
 					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::About, "About")).clicked() { self.tab = Tab::About; }
 					ui.separator();
 					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::Status, "Status")).clicked() { self.tab = Tab::Status; }
@@ -523,103 +531,112 @@ impl eframe::App for App {
 
 		// Bottom: app info + state/process buttons
 		egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-			let width = self.width/8.0;
 			let height = self.height/18.0;
 			ui.style_mut().override_text_style = Some(Name("Bottom".into()));
 			ui.horizontal(|ui| {
 				ui.group(|ui| {
+					// [Gupax Version] + [OS] + [P2Pool on/off] + [XMRig on/off]
+					let width = ((self.width/2.0)/4.0)-(SPACE*2.0);
 					ui.add_sized([width, height], Label::new(&*self.name_version));
 					ui.separator();
 					ui.add_sized([width, height], Label::new(self.os));
 					ui.separator();
-					ui.add_sized([width/1.5, height], Label::new("P2Pool"));
 					if self.p2pool {
-						ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(100, 230, 100))));
+						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(Color32::from_rgb(100, 230, 100))));
 					} else {
-						ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(230, 50, 50))));
+						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(Color32::from_rgb(230, 50, 50))));
 					}
 					ui.separator();
-					ui.add_sized([width/1.5, height], Label::new("XMRig"));
 					if self.xmrig {
-							ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(100, 230, 100))));
+						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(Color32::from_rgb(100, 230, 100))));
 					} else {
-							ui.add_sized([width/4.0, height], Label::new(RichText::new("⏺").color(Color32::from_rgb(230, 50, 50))));
+						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(Color32::from_rgb(230, 50, 50))));
 					}
 				});
 
 				ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-					ui.group(|ui| {
-						if self.diff == false {
-							ui.set_enabled(false)
-						}
-						let width = width / 2.0;
-						if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() {
-							self.og.lock().unwrap().gupax = self.state.gupax.clone();
-							self.og.lock().unwrap().p2pool = self.state.p2pool.clone();
-							self.og.lock().unwrap().xmrig = self.state.xmrig.clone();
-							self.og.lock().unwrap().save();
-						}
-						if ui.add_sized([width, height], egui::Button::new("Reset")).on_hover_text("Reset changes").clicked() {
-							self.state.gupax = self.og.lock().unwrap().gupax.clone();
-							self.state.p2pool = self.og.lock().unwrap().p2pool.clone();
-							self.state.xmrig = self.og.lock().unwrap().xmrig.clone();
-						}
-					});
-
-					let width = (ui.available_width() / 3.0) - 6.2;
-					match self.tab {
-						Tab::P2pool => {
-							ui.group(|ui| {
-								if self.p2pool {
-									if ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() { self.p2pool = false; }
-									if ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() { self.p2pool = false; }
-									ui.add_enabled_ui(false, |ui| {
-										ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start P2Pool");
-									});
-								} else {
-									ui.add_enabled_ui(false, |ui| {
-										ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart P2Pool");
-										ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop P2Pool");
-									});
-									if ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start P2Pool").clicked() { self.p2pool = true; }
-								}
-							});
-						}
-						Tab::Xmrig => {
-							ui.group(|ui| {
-								if self.xmrig {
-									if ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart XMRig").clicked() { self.xmrig = false; }
-									if ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop XMRig").clicked() { self.xmrig = false; }
-									ui.add_enabled_ui(false, |ui| {
-										ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start XMRig");
-									});
-								} else {
-									ui.add_enabled_ui(false, |ui| {
-										ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart XMRig");
-										ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop XMRig");
-									});
-									if ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start XMRig").clicked() { self.xmrig = true; }
-								}
-							});
-						}
-						_ => (),
+				// [Start/Stop/Restart] + [Simple/Advanced] + [Save/Reset]
+				let width = (ui.available_width()/3.0)-(SPACE*3.0);
+				ui.group(|ui| {
+					if self.diff == false {
+						ui.set_enabled(false)
+					}
+					let width = width / 2.0;
+					if ui.add_sized([width, height], egui::Button::new("Reset")).on_hover_text("Reset changes").clicked() {
+						self.state.gupax = self.og.lock().unwrap().gupax.clone();
+						self.state.p2pool = self.og.lock().unwrap().p2pool.clone();
+						self.state.xmrig = self.og.lock().unwrap().xmrig.clone();
+					}
+					if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() {
+						self.og.lock().unwrap().gupax = self.state.gupax.clone();
+						self.og.lock().unwrap().p2pool = self.state.p2pool.clone();
+						self.og.lock().unwrap().xmrig = self.state.xmrig.clone();
+						self.og.lock().unwrap().save();
 					}
 				});
+
+				match self.tab {
+					Tab::P2pool => {
+						ui.group(|ui| {
+							let width = width / 1.5;
+							if ui.add_sized([width, height], egui::SelectableLabel::new(!self.state.p2pool.simple, "Advanced")).clicked() {
+								self.state.p2pool.simple = false;
+							}
+							ui.separator();
+							if ui.add_sized([width, height], egui::SelectableLabel::new(self.state.p2pool.simple, "Simple")).clicked() {
+								self.state.p2pool.simple = true;
+							}
+						});
+						ui.group(|ui| {
+							let width = (ui.available_width()/3.0)-5.0;
+							if self.p2pool {
+								if ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() { self.p2pool = false; }
+								if ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() { self.p2pool = false; }
+								ui.add_enabled_ui(false, |ui| {
+									ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start P2Pool");
+								});
+							} else {
+								ui.add_enabled_ui(false, |ui| {
+									ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart P2Pool");
+									ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop P2Pool");
+								});
+								if ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start P2Pool").clicked() { self.p2pool = true; }
+							}
+						});
+					}
+					Tab::Xmrig => {
+						ui.group(|ui| {
+							let width = width / 1.5;
+							if ui.add_sized([width, height], egui::SelectableLabel::new(!self.state.xmrig.simple, "Advanced")).clicked() {
+								self.state.xmrig.simple = false;
+							}
+							ui.separator();
+							if ui.add_sized([width, height], egui::SelectableLabel::new(self.state.xmrig.simple, "Simple")).clicked() {
+								self.state.xmrig.simple = true;
+							}
+						});
+						ui.group(|ui| {
+							let width = (ui.available_width()/3.0)-5.0;
+							if self.xmrig {
+								if ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart XMRig").clicked() { self.xmrig = false; }
+								if ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop XMRig").clicked() { self.xmrig = false; }
+								ui.add_enabled_ui(false, |ui| {
+									ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start XMRig");
+								});
+							} else {
+								ui.add_enabled_ui(false, |ui| {
+									ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart XMRig");
+									ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop XMRig");
+								});
+								if ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start XMRig").clicked() { self.xmrig = true; }
+							}
+						});
+					}
+					_ => (),
+				}
+			});
 			});
 		});
-
-		// If ping was pressed, start thread
-		if self.ping {
-			self.ping = false;
-			self.pinging = Arc::new(Mutex::new(true));
-			let node_clone = Arc::clone(&self.node);
-			let pinging_clone = Arc::clone(&self.pinging);
-			thread::spawn(move|| {
-				let result = NodeStruct::ping();
-				*node_clone.lock().unwrap() = result.nodes;
-				*pinging_clone.lock().unwrap() = false;
-			});
-		}
 
 		// Middle panel, contents of the [Tab]
 		egui::CentralPanel::default().show(ctx, |ui| {
@@ -655,7 +672,7 @@ impl eframe::App for App {
 					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, self.width, self.height, ctx, ui);
 				}
 				Tab::P2pool => {
-					P2pool::show(&mut self.state.p2pool, self.width, self.height, ctx, ui);
+					P2pool::show(&mut self.state.p2pool, &self.og, self.p2pool, &self.ping, &self.addr_regex, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
 					Xmrig::show(&mut self.state.xmrig, self.width, self.height, ctx, ui);

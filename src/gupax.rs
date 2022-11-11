@@ -17,7 +17,8 @@
 
 use std::path::Path;
 use crate::{App,State};
-use egui::WidgetType::Button;
+use egui::TextStyle::Monospace;
+use egui::RichText;
 use crate::constants::*;
 use crate::state::{Gupax,Version};
 use crate::update::*;
@@ -73,7 +74,7 @@ impl Gupax {
 					ui.set_enabled(updating);
 					let prog = *update.lock().unwrap().prog.lock().unwrap();
 					let msg = format!("{}\n{}{}", *update.lock().unwrap().msg.lock().unwrap(), prog, "%");
-					ui.add_sized([width, height*1.4], egui::Label::new(msg));
+					ui.add_sized([width, height*1.4], egui::Label::new(RichText::text_style(RichText::new(msg), Monospace)));
 					let height = height/2.0;
 					if updating {
 						ui.add_sized([width, height], egui::Spinner::new().size(height));
