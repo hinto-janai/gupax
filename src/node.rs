@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+use crate::State;
 use serde::{Serialize,Deserialize};
 use std::time::{Instant,Duration};
 use std::collections::HashMap;
@@ -214,7 +215,7 @@ pub fn format_enum(id: NodeEnum) -> String {
 // timeout = BLACK
 // default = GRAY
 use crate::NodeEnum::*;
-pub fn ping(ping: Arc<Mutex<Ping>>) -> PingResult {
+pub fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) {
 	// Start ping
 	ping.lock().unwrap().pinging = true;
 	ping.lock().unwrap().prog = 0.0;
@@ -320,10 +321,15 @@ pub fn ping(ping: Arc<Mutex<Ping>>) -> PingResult {
 	let info = format!("Fastest node: {}ms ... {} @ {}", best_ms, fastest, enum_to_ip(fastest));
 	let percent = (100.0 - ping.lock().unwrap().prog) / 2.0;
 	info!("Ping | {}", info);
+	ping.lock().unwrap().nodes = nodes;
+	ping.lock().unwrap().fastest = fastest;
 	ping.lock().unwrap().prog = 100.0;
 	ping.lock().unwrap().msg = info;
 	ping.lock().unwrap().pinging = false;
 	ping.lock().unwrap().pinged = true;
+	if og.lock().unwrap().p2pool.auto_select {
+		og.lock().unwrap().p2pool.node = fastest;
+		og.lock().unwrap().save();
+	}
 	info!("Ping ... OK");
-	PingResult { nodes, fastest }
 }

@@ -89,17 +89,10 @@ impl P2pool {
 		ui.set_enabled(!ping.lock().unwrap().pinging);
 		if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
 			let ping = Arc::clone(&ping);
-			let og_clone = Arc::clone(og);
-			ping.lock().unwrap().pinging = true;
+			let og = Arc::clone(og);
 			thread::spawn(move|| {
 				info!("Spawning ping thread...");
-				let ping_result = crate::node::ping(ping.clone());
-				ping.lock().unwrap().nodes = ping_result.nodes;
-				ping.lock().unwrap().fastest = ping_result.fastest;
-				if og_clone.lock().unwrap().p2pool.auto_select {
-					og_clone.lock().unwrap().p2pool.node = ping_result.fastest;
-					og_clone.lock().unwrap().save();
-				}
+				crate::node::ping(ping, og);
 			});
 		}});
 
@@ -125,7 +118,7 @@ impl P2pool {
 
 		ui.group(|ui| {
 		ui.horizontal(|ui| {
-			let width = (width/2.0)-(SPACE*1.5);
+			let width = (width/2.0)-(SPACE*1.75);
 			// [Auto-node] + [Auto-select]
 			let mut style = (*ctx.style()).clone();
 			style.spacing.icon_width_inner = height/1.5;
@@ -140,23 +133,18 @@ impl P2pool {
 		// [Address]
 		let height = ui.available_height();
 		ui.horizontal(|ui| {
-			let width = width / 100.0;
-			ui.add_sized([width*6.0, height], Label::new("Address"));
 			if self.address.is_empty() {
-				ui.add_sized([width, height], Label::new(RichText::new("➖").color(Color32::LIGHT_GRAY)));
+				ui.add_sized([width, text_edit], Label::new(RichText::new("Monero Payout Address ➖").color(Color32::LIGHT_GRAY)));
 			} else if self.address.len() == 95 && Regex::is_match(addr_regex, &self.address) {
-				ui.add_sized([width, height], Label::new(RichText::new("✔").color(Color32::from_rgb(100, 230, 100))));
+				ui.add_sized([width, text_edit], Label::new(RichText::new("Monero Payout Address ✔").color(Color32::from_rgb(100, 230, 100))));
 			} else {
-				ui.add_sized([width, height], Label::new(RichText::new("❌").color(Color32::from_rgb(230, 50, 50))));
+				ui.add_sized([width, text_edit], Label::new(RichText::new("Monero Payout Address ❌").color(Color32::from_rgb(230, 50, 50))));
 			}
-			ui.spacing_mut().text_edit_width = (width*9.0)-(SPACE*2.5);
-			ui.style_mut().override_text_style = Some(Monospace);
-			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.address), "4...")).on_hover_text(P2POOL_ADDRESS);
 		});
-//		ui.horizontal(|ui| {
-//			ui.add_sized([width, height/2.0], Label::new("Address:"));
-//			ui.add_sized([width, height], TextEdit::multiline(&mut self.address));
-//		})});
+		ui.spacing_mut().text_edit_width = (width)-(SPACE*3.0);
+		ui.style_mut().override_text_style = Some(Monospace);
+		ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.address), "4...")).on_hover_text(P2POOL_ADDRESS);
+
 	// [Advanced]
 	} else {
 		// TODO:
