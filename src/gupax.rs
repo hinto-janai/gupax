@@ -17,24 +17,29 @@
 
 use std::path::Path;
 use crate::{App,State};
-use egui::TextStyle::Monospace;
-use egui::RichText;
+use egui::{
+	TextStyle::Monospace,
+	Checkbox,
+	RichText,
+	Label,
+	Color32,
+};
 use crate::constants::*;
-use crate::state::{Gupax,Version};
+use crate::disk::{Gupax,Version};
 use crate::update::*;
 use std::thread;
 use std::sync::{Arc,Mutex};
 use log::*;
 
 impl Gupax {
-	pub fn show(state: &mut Gupax, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
 				// because I need to use [ui.set_enabled]s, but I can't
 				// find a way to use a [ui.xxx()] with [ui.add_sized()].
 				// I have to pick one. This one seperates them though.
-				let height = height/6.0;
+				let height = height/8.0;
 				let width = width - SPACE;
 				let updating = *update.lock().unwrap().updating.lock().unwrap();
 				ui.vertical(|ui| {
@@ -87,36 +92,62 @@ impl Gupax {
 
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
-					let width = (width - SPACE*9.8)/5.0;
-					let height = height/2.5;
+					let width = (width - SPACE*7.5)/4.0;
+					let height = height/8.0;
 					let mut style = (*ctx.style()).clone();
-					style.spacing.icon_width_inner = width / 6.0;
-					style.spacing.icon_width = width / 4.0;
+					style.spacing.icon_width_inner = width / 8.0;
+					style.spacing.icon_width = width / 6.0;
 					style.spacing.icon_spacing = 20.0;
 					ctx.set_style(style);
-					let height = height/2.5;
-					ui.add_sized([width, height], egui::Checkbox::new(&mut state.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
+					ui.add_sized([width, height], egui::Checkbox::new(&mut self.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
 					ui.separator();
-					ui.add_sized([width, height], egui::Checkbox::new(&mut state.auto_node, "Auto-node")).on_hover_text(GUPAX_AUTO_NODE);
+					ui.add_sized([width, height], egui::Checkbox::new(&mut self.update_via_tor, "Update via Tor")).on_hover_text(GUPAX_UPDATE_VIA_TOR);
 					ui.separator();
-					ui.add_sized([width, height], egui::Checkbox::new(&mut state.update_via_tor, "Update via Tor")).on_hover_text(GUPAX_UPDATE_VIA_TOR);
+					ui.add_sized([width, height], egui::Checkbox::new(&mut self.ask_before_quit, "Ask before quit")).on_hover_text(GUPAX_ASK_BEFORE_QUIT);
 					ui.separator();
-					ui.add_sized([width, height], egui::Checkbox::new(&mut state.ask_before_quit, "Ask before quit")).on_hover_text(GUPAX_ASK_BEFORE_QUIT);
-					ui.separator();
-					ui.add_sized([width, height], egui::Checkbox::new(&mut state.save_before_quit, "Save before quit")).on_hover_text(GUPAX_SAVE_BEFORE_QUIT);
+					ui.add_sized([width, height], egui::Checkbox::new(&mut self.save_before_quit, "Save before quit")).on_hover_text(GUPAX_SAVE_BEFORE_QUIT);
 			});
 		});
 		ui.add_space(SPACE);
 
+		ui.style_mut().override_text_style = Some(Monospace);
+		let height = height/20.0;
+		let text_edit = (ui.available_width()/10.0)-SPACE;
 		ui.horizontal(|ui| {
-			ui.label("P2Pool binary path:");
+			if self.p2pool_path.is_empty() {
+				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ➖").color(Color32::LIGHT_GRAY)));
+			} else {
+				match crate::disk::into_absolute_path(self.p2pool_path.clone()) {
+					Ok(path) => {
+						if path.is_file() {
+							ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ✔").color(Color32::from_rgb(100, 230, 100))))
+						} else {
+							ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(Color32::from_rgb(230, 50, 50))))
+						}
+					},
+					_ => ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(Color32::from_rgb(230, 50, 50)))),
+				};
+			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
-			ui.text_edit_singleline(&mut state.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
+			ui.text_edit_singleline(&mut self.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
 		});
 		ui.horizontal(|ui| {
-			ui.label("XMRig binary path: ");
+			if self.xmrig_path.is_empty() {
+				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ➖").color(Color32::LIGHT_GRAY)));
+			} else {
+				match crate::disk::into_absolute_path(self.xmrig_path.clone()) {
+					Ok(path) => {
+						if path.is_file() {
+							ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ✔").color(Color32::from_rgb(100, 230, 100))))
+						} else {
+							ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(Color32::from_rgb(230, 50, 50))))
+						}
+					},
+					_ => ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(Color32::from_rgb(230, 50, 50)))),
+				};
+			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
-			ui.text_edit_singleline(&mut state.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
+			ui.text_edit_singleline(&mut self.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
 		});
 	}
 }

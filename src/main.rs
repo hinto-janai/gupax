@@ -49,14 +49,14 @@ use std::path::PathBuf;
 mod ferris;
 mod constants;
 mod node;
-mod state;
+mod disk;
 mod about;
 mod status;
 mod gupax;
 mod p2pool;
 mod xmrig;
 mod update;
-use {ferris::*,constants::*,node::*,state::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*,update::*};
+use {ferris::*,constants::*,node::*,disk::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*,update::*};
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
 // The state of the outer main [App].
@@ -74,6 +74,7 @@ pub struct App {
 	og: Arc<Mutex<State>>, // og = Old state to compare against
 	state: State, // state = Working state (current settings)
 	update: Arc<Mutex<Update>>, // State for update data [update.rs]
+	node_vec: Vec<(String, Node)>, // Manual Node database
 	diff: bool, // This bool indicates state changes
 	// Process/update state:
 	// Doesn't make sense to save this on disk
@@ -92,7 +93,7 @@ pub struct App {
 	version: &'static str, // Gupax version
 	name_version: String, // [Gupax vX.X.X]
 	banner: RetainedImage, // Gupax banner image
-	addr_regex: Regex, // [4.*] Monero Address Regex
+	regex: Regexes, // Custom Struct holding pre-made [Regex]'s
 }
 
 impl App {
@@ -113,9 +114,10 @@ impl App {
 			ping: Arc::new(Mutex::new(Ping::new())),
 			width: 1280.0,
 			height: 720.0,
-			og: Arc::new(Mutex::new(State::default())),
-			state: State::default(),
+			og: Arc::new(Mutex::new(State::new())),
+			state: State::new(),
 			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
+			node_vec: Node::new_vec(),
 			diff: false,
 			p2pool: false,
 			xmrig: false,
@@ -129,7 +131,7 @@ impl App {
 			version: GUPAX_VERSION,
 			name_version: format!("Gupax {}", GUPAX_VERSION),
 			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
-			addr_regex: Regex::new("^4[A-Za-z1-9]+$").unwrap(),
+			regex: Regexes::new(),
 		};
 		// Apply arg state
 		let mut app = parse_args(app);
@@ -151,6 +153,8 @@ impl App {
 			};
 		}
 		app.state = app.og.lock().unwrap().clone();
+		// Get node list
+		app.node_vec = Node::get().unwrap();
 		// Handle max threads
 		app.og.lock().unwrap().xmrig.max_threads = num_cpus::get();
 		let current = app.og.lock().unwrap().xmrig.current_threads;
@@ -167,7 +171,7 @@ impl App {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- Enum + Impl
+//---------------------------------------------------------------------------------------------------- [Tab] Enum + Impl
 // The tabs inside [App].
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Tab {
@@ -184,6 +188,28 @@ impl Default for Tab {
     }
 }
 
+//---------------------------------------------------------------------------------------------------- [Regexes] struct
+#[derive(Clone, Debug)]
+struct Regexes {
+	name: Regex,
+	address: Regex,
+	ipv4: Regex,
+	domain: Regex,
+	port: Regex,
+}
+
+impl Regexes {
+	fn new() -> Self {
+		Regexes {
+			name: Regex::new("^[A-Za-z0-9-_]+( [A-Za-z0-9-_]+)*$").unwrap(),
+			address: Regex::new("^4[A-Za-z1-9]+$").unwrap(), // This still needs to check for (l, I, o, 0)
+			ipv4: Regex::new(r#"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$"#).unwrap(),
+			domain: Regex::new(r#"^(([a-zA-Z]{1})|([a-zA-Z]{1}[a-zA-Z]{1})|([a-zA-Z]{1}[0-9]{1})|([0-9]{1}[a-zA-Z]{1})|([a-zA-Z0-9][a-zA-Z0-9-_]{1,61}[a-zA-Z0-9]))\.([a-zA-Z]{2,6}|[a-zA-Z0-9-]{2,30}\.[a-zA-Z]{2,3})$"#).unwrap(),
+			port: Regex::new(r#"^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"#).unwrap(),
+		}
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- Init functions
 fn init_text_styles(ctx: &egui::Context, width: f32) {
 	let scale = width / 26.666;
@@ -196,6 +222,7 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 		(Heading, FontId::new(scale/1.5, Proportional)),
 		(Name("Tab".into()), FontId::new(scale*1.2, Proportional)),
 		(Name("Bottom".into()), FontId::new(scale/2.0, Proportional)),
+		(Name("MonospaceSmall".into()), FontId::new(scale/2.5, egui::FontFamily::Monospace)),
 	].into();
 //	style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
 //	style.spacing.slider_width = scale;
@@ -301,7 +328,9 @@ fn init_auto(app: &App) {
 	}
 
 	// [Auto-Ping]
-	if app.og.lock().unwrap().p2pool.auto_node {
+	let auto_node = app.og.lock().unwrap().p2pool.auto_node;
+	let simple = app.og.lock().unwrap().p2pool.simple;
+	if auto_node && simple {
 		let ping = Arc::clone(&app.ping);
 		let og = Arc::clone(&app.og);
 		thread::spawn(move|| {
@@ -323,7 +352,7 @@ fn parse_args(mut app: App) -> App {
 		match arg.as_str() {
 			"-h"|"--help"    => { println!("{}", ARG_HELP); exit(0); },
 			"-v"|"--version" => {
-				println!("Gupax {} (OS: {}, Commit: {})\n\n{}", GUPAX_VERSION, OS_NAME, &COMMIT[..40], ARG_COPYRIGHT);
+				println!("Gupax {} [OS: {}, Commit: {}]\n\n{}", GUPAX_VERSION, OS_NAME, &COMMIT[..40], ARG_COPYRIGHT);
 				exit(0);
 			},
 			"-f"|"--ferris" => { println!("{}", FERRIS); exit(0); },
@@ -333,9 +362,11 @@ fn parse_args(mut app: App) -> App {
 	// Everything else
 	for arg in args {
 		match arg.as_str() {
+			"-l"|"--node-list"  => { info!("Printing node list..."); print_disk_file(File::Node); }
+			"-s"|"--state"      => { info!("Printing state..."); print_disk_file(File::State); }
 			"-n"|"--no-startup" => { info!("Disabling startup..."); app.startup = false; }
-			"-r"|"--reset" => { info!("Resetting state..."); app.reset = true; }
-			_ => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
+			"-r"|"--reset"      => { info!("Resetting state..."); app.reset = true; }
+			_                   => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
 		}
 	}
 	app
@@ -371,6 +402,18 @@ pub fn clean_dir() -> Result<(), anyhow::Error> {
 		}
 	}
 	Ok(())
+}
+
+// Print disk files to console
+fn print_disk_file(file: File) {
+	let path = match get_file_path(file) {
+		Ok(path) => path,
+		Err(e) => { error!("{}", e); exit(1); },
+	};
+	match std::fs::read_to_string(&path) {
+		Ok(string) => { println!("{}", string); exit(0); },
+		Err(e) => { error!("{}", e); exit(1); },
+	}
 }
 
 //---------------------------------------------------------------------------------------------------- [App] frame for [Panic] situations
@@ -560,7 +603,7 @@ impl eframe::App for App {
 		// Top: Tabs
 		egui::TopBottomPanel::top("top").show(ctx, |ui| {
 			let width = (self.width - (SPACE*10.0))/5.0;
-			let height = self.height/10.0;
+			let height = self.height/12.0;
 			ui.group(|ui| {
 			    ui.add_space(4.0);
 				ui.horizontal(|ui| {
@@ -584,7 +627,7 @@ impl eframe::App for App {
 
 		// Bottom: app info + state/process buttons
 		egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-			let height = self.height/18.0;
+			let height = self.height/20.0;
 			ui.style_mut().override_text_style = Some(Name("Bottom".into()));
 			ui.horizontal(|ui| {
 				ui.group(|ui| {
@@ -632,11 +675,11 @@ impl eframe::App for App {
 					Tab::P2pool => {
 						ui.group(|ui| {
 							let width = width / 1.5;
-							if ui.add_sized([width, height], egui::SelectableLabel::new(!self.state.p2pool.simple, "Advanced")).clicked() {
+							if ui.add_sized([width, height], egui::SelectableLabel::new(!self.state.p2pool.simple, "Advanced")).on_hover_text(P2POOL_ADVANCED).clicked() {
 								self.state.p2pool.simple = false;
 							}
 							ui.separator();
-							if ui.add_sized([width, height], egui::SelectableLabel::new(self.state.p2pool.simple, "Simple")).clicked() {
+							if ui.add_sized([width, height], egui::SelectableLabel::new(self.state.p2pool.simple, "Simple")).on_hover_text(P2POOL_SIMPLE).clicked() {
 								self.state.p2pool.simple = true;
 							}
 						});
@@ -725,7 +768,7 @@ impl eframe::App for App {
 					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, self.width, self.height, ctx, ui);
 				}
 				Tab::P2pool => {
-					P2pool::show(&mut self.state.p2pool, &self.og, self.p2pool, &self.ping, &self.addr_regex, self.width, self.height, ctx, ui);
+					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, self.p2pool, &self.ping, &self.regex, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
 					Xmrig::show(&mut self.state.xmrig, self.width, self.height, ctx, ui);

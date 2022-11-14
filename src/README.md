@@ -8,12 +8,12 @@
 | File/Folder    | Purpose |
 |----------------|---------|
 | `constants.rs` | General constants needed in Gupax
+| `disk.rs`      | Code for writing to disk: `state.toml`, `nodes.toml`; This holds the structs for mutable [State]
 | `ferris.rs`    | Cute crab `--ferris`
 | `gupax.rs`     | `Gupax` tab
 | `main.rs`      | `App/Tab/State` + misc functions
 | `node.rs`      | Community node feature
 | `p2pool.rs`    | `P2Pool` tab
-| `state.rs`     | `gupax.toml` config code. This holds the structs representing tabs with mutable state (Gupax/P2Pool/XMRig)
 | `status.rs`    | `Status` tab
 | `update.rs`    | Update code for the `Gupax` tab
 | `xmrig.rs`     | `XMRig` tab

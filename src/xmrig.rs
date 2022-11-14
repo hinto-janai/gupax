@@ -21,7 +21,7 @@ use std::str::FromStr;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use num_cpus;
 use crate::constants::*;
-use crate::state::Xmrig;
+use crate::disk::Xmrig;
 
 impl Xmrig {
 	pub fn show(&mut self, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
