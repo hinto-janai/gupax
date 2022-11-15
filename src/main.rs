@@ -82,7 +82,7 @@ pub struct App {
 	p2pool: bool, // Is p2pool online?
 	xmrig: bool, // Is xmrig online?
 	// State from [--flags]
-	startup: bool,
+	no_startup: bool,
 	reset: bool,
 	// Static stuff
 	now: Instant, // Internal timer
@@ -121,7 +121,7 @@ impl App {
 			diff: false,
 			p2pool: false,
 			xmrig: false,
-			startup: true,
+			no_startup: false,
 			reset: false,
 			now: Instant::now(),
 			exe: "".to_string(),
@@ -289,7 +289,12 @@ fn init_options() -> NativeOptions {
 }
 
 fn init_auto(app: &App) {
-	info!("Starting init_auto()...");
+	if app.no_startup {
+		info!("[--no-startup] flag passed, skipping init_auto()...");
+		return
+	} else {
+		info!("Starting init_auto()...");
+	}
 	// [Auto-Update]
 	if app.state.gupax.auto_update {
 		let path_p2pool = app.og.lock().unwrap().gupax.absolute_p2pool_path.display().to_string();
@@ -364,7 +369,7 @@ fn parse_args(mut app: App) -> App {
 		match arg.as_str() {
 			"-l"|"--node-list"  => { info!("Printing node list..."); print_disk_file(File::Node); }
 			"-s"|"--state"      => { info!("Printing state..."); print_disk_file(File::State); }
-			"-n"|"--no-startup" => { info!("Disabling startup..."); app.startup = false; }
+			"-n"|"--no-startup" => { info!("Disabling startup..."); app.no_startup = true; }
 			"-r"|"--reset"      => { info!("Resetting state..."); app.reset = true; }
 			_                   => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
 		}
@@ -388,12 +393,14 @@ pub fn get_exe_dir() -> Result<String, std::io::Error> {
 	}
 }
 
-// Clean any [gupax_tmp.*] directories
+// Clean any [gupax_update_.*] directories
+// The trailing random bits must be exactly 10 alphanumeric characters
 pub fn clean_dir() -> Result<(), anyhow::Error> {
+	let regex = Regex::new("^gupax_update_[A-Za-z0-9]{10}$").unwrap();
 	for entry in std::fs::read_dir(get_exe_dir()?)? {
 		let entry = entry?;
 		if ! entry.path().is_dir() { continue }
-		if entry.file_name().to_str().ok_or(anyhow::Error::msg("Basename failed"))?.starts_with("gupax_update_") {
+		if Regex::is_match(&regex, entry.file_name().to_str().ok_or(anyhow::Error::msg("Basename failed"))?) {
 			let path = entry.path();
 			match std::fs::remove_dir_all(&path) {
 				Ok(_) => info!("Remove [{}] ... OK", path.display()),

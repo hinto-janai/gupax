@@ -245,7 +245,7 @@ impl Update {
 	// Get a temporary random folder for package download contents
 	// This used to use [std::env::temp_dir()] but there were issues
 	// using [std::fs::rename()] on tmpfs -> disk (Invalid cross-device link (os error 18)).
-	// So, uses the [Gupax] binary directory as a base, something like [/home/hinto/gupax/gupax_tmp_SG4xsDdVmr]
+	// So, uses the [Gupax] binary directory as a base, something like [/home/hinto/gupax/gupax_update_SG4xsDdVmr]
 	pub fn get_tmp_dir() -> Result<String, anyhow::Error> {
 		let rand_string: String = thread_rng()
 			.sample_iter(&Alphanumeric)
