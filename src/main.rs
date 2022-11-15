@@ -50,13 +50,12 @@ mod ferris;
 mod constants;
 mod node;
 mod disk;
-mod about;
 mod status;
 mod gupax;
 mod p2pool;
 mod xmrig;
 mod update;
-use {ferris::*,constants::*,node::*,disk::*,about::*,status::*,gupax::*,p2pool::*,xmrig::*,update::*};
+use {ferris::*,constants::*,node::*,disk::*,status::*,gupax::*,p2pool::*,xmrig::*,update::*};
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
 // The state of the outer main [App].
@@ -74,8 +73,14 @@ pub struct App {
 	og: Arc<Mutex<State>>, // og = Old state to compare against
 	state: State, // state = Working state (current settings)
 	update: Arc<Mutex<Update>>, // State for update data [update.rs]
+	og_node_vec: Vec<(String, Node)>, // Manual Node database
 	node_vec: Vec<(String, Node)>, // Manual Node database
 	diff: bool, // This bool indicates state changes
+	// Error State
+	// These values are essentially global variables that
+	// indicate if an error message needs to be displayed
+	// (it takes up the whole screen with [error_msg] and buttons for ok/quit/etc)
+	error_state: ErrorState,
 	// Process/update state:
 	// Doesn't make sense to save this on disk
 	// so it's represented as a bool here.
@@ -92,7 +97,7 @@ pub struct App {
 	os: &'static str, // OS
 	version: &'static str, // Gupax version
 	name_version: String, // [Gupax vX.X.X]
-	banner: RetainedImage, // Gupax banner image
+	image: Images, // Custom Struct holding pre-compiled bytes of [Images]
 	regex: Regexes, // Custom Struct holding pre-made [Regex]'s
 }
 
@@ -117,8 +122,10 @@ impl App {
 			og: Arc::new(Mutex::new(State::new())),
 			state: State::new(),
 			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
+			og_node_vec: Node::new_vec(),
 			node_vec: Node::new_vec(),
 			diff: false,
+			error_state: ErrorState::new(),
 			p2pool: false,
 			xmrig: false,
 			no_startup: false,
@@ -130,7 +137,7 @@ impl App {
 			os: OS,
 			version: GUPAX_VERSION,
 			name_version: format!("Gupax {}", GUPAX_VERSION),
-			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
+			image: Images::new(),
 			regex: Regexes::new(),
 		};
 		// Apply arg state
@@ -188,6 +195,58 @@ impl Default for Tab {
     }
 }
 
+//---------------------------------------------------------------------------------------------------- [ErrorState] struct
+pub struct ErrorState {
+	error: bool, // Is there an error?
+	msg: String, // What message to display?
+	image: RetainedImage, // Which ferris to display?
+	buttons: ErrorButtons, // Which buttons to display?
+}
+
+impl ErrorState {
+	pub fn new() -> Self {
+		Self {
+			error: false,
+			msg: String::new(),
+			image: RetainedImage::from_image_bytes("banner.png", FERRIS_ERROR).unwrap(),
+			buttons: ErrorButtons::Okay,
+		}
+	}
+
+	// Convenience function to set the [App] error state
+	pub fn set(mut self, new: Self) {
+		self = new;
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- [ErrorButtons] enum
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum ErrorButtons {
+	YesNo,
+	YesQuit,
+	Okay,
+	Quit,
+}
+
+//---------------------------------------------------------------------------------------------------- [Images] struct
+struct Images {
+	banner: RetainedImage,
+	oops: RetainedImage,
+	error: RetainedImage,
+	panic: RetainedImage,
+}
+
+impl Images {
+	fn new() -> Self {
+		Self {
+			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
+			oops: RetainedImage::from_image_bytes("banner.png", FERRIS_OOPS).unwrap(),
+			error: RetainedImage::from_image_bytes("banner.png", FERRIS_ERROR).unwrap(),
+			panic: RetainedImage::from_image_bytes("banner.png", FERRIS_PANIC).unwrap(),
+		}
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- [Regexes] struct
 #[derive(Clone, Debug)]
 struct Regexes {
@@ -223,6 +282,7 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 		(Name("Tab".into()), FontId::new(scale*1.2, Proportional)),
 		(Name("Bottom".into()), FontId::new(scale/2.0, Proportional)),
 		(Name("MonospaceSmall".into()), FontId::new(scale/2.5, egui::FontFamily::Monospace)),
+		(Name("MonospaceLarge".into()), FontId::new(scale/1.5, egui::FontFamily::Monospace)),
 	].into();
 //	style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
 //	style.spacing.slider_width = scale;
@@ -347,6 +407,25 @@ fn init_auto(app: &App) {
 	}
 }
 
+fn reset() {
+	let mut code = 0;
+	info!("Resetting [state.toml]...");
+	match State::create_new() {
+		Ok(_)  => info!("Resetting [state.toml] ... OK"),
+		Err(e) => { error!("Resetting [state.toml] ... FAIL ... {}", e); code = 1; },
+	}
+	info!("Resetting [node.toml]...");
+	match Node::create_new() {
+		Ok(_)  => info!("Resetting [node.toml] ... OK"),
+		Err(e) => { error!("Resetting [node.toml] ... FAIL ... {}", e); code = 1; },
+	}
+	match code {
+		0 => println!("\nGupax files were reset successfully."),
+		_ => println!("\nGupax files reset FAILED."),
+	}
+	exit(code);
+}
+
 //---------------------------------------------------------------------------------------------------- Misc functions
 fn parse_args(mut app: App) -> App {
 	info!("Parsing CLI arguments...");
@@ -360,7 +439,7 @@ fn parse_args(mut app: App) -> App {
 				println!("Gupax {} [OS: {}, Commit: {}]\n\n{}", GUPAX_VERSION, OS_NAME, &COMMIT[..40], ARG_COPYRIGHT);
 				exit(0);
 			},
-			"-f"|"--ferris" => { println!("{}", FERRIS); exit(0); },
+			"-f"|"--ferris" => { println!("{}", FERRIS_ANSI); exit(0); },
 			_ => (),
 		}
 	}
@@ -369,8 +448,8 @@ fn parse_args(mut app: App) -> App {
 		match arg.as_str() {
 			"-l"|"--node-list"  => { info!("Printing node list..."); print_disk_file(File::Node); }
 			"-s"|"--state"      => { info!("Printing state..."); print_disk_file(File::State); }
-			"-n"|"--no-startup" => { info!("Disabling startup..."); app.no_startup = true; }
-			"-r"|"--reset"      => { info!("Resetting state..."); app.reset = true; }
+			"-r"|"--reset"      => { reset(); }
+			"-n"|"--no-startup" => { app.no_startup = true; }
 			_                   => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
 		}
 	}
@@ -517,21 +596,52 @@ impl eframe::App for App {
             frame.set_fullscreen(!info.window_info.fullscreen);
         }
 
-		// If no state diff (og == state), compare and enable if found.
-		// The struct fields are compared directly because [Version]
-		// contains Arc<Mutex>'s that cannot be compared easily.
-		// They don't need to be compared anyway.
-		let og = self.og.lock().unwrap().clone();
+		// If there's an error, display [ErrorState] on the whole screen until user responds
+		if self.error_state.error {
+			egui::CentralPanel::default().show(ctx, |ui| {
+			ui.vertical_centered(|ui| {
+				// Set width/height/font
+				let width = self.width;
+				let height = self.height/4.0;
+				ui.style_mut().override_text_style = Some(Name("MonospaceLarge".into()));
+				self.error_state.image.show_max_size(ui, Vec2::new(width, height));
+
+				ui.add_sized([width, height], Label::new("--- Gupax has encountered an error ---"));
+				ui.add_sized([width, height], Label::new(&self.error_state.msg));
+				use ErrorButtons::*;
+				let height = ui.available_height();
+				match self.error_state.buttons {
+					YesNo   => {
+						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() { self.error_state = ErrorState::new(); }
+						if ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { exit(1); }
+					},
+					YesQuit => {
+						if ui.add_sized([width, height/2.0], egui::Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); }
+						if ui.add_sized([width, height/2.0], egui::Button::new("Quit")).clicked() { exit(1); }
+					},
+					Okay    => if ui.add_sized([width, height], egui::Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); },
+					Quit    => if ui.add_sized([width, height], egui::Button::new("Quit")).clicked() { exit(1); },
+				}
+			})});
+			return
+		}
+
 		// The [P2Pool Node] selection needs to be the same
 		// for both [State] and [Og] because of [Auto-select]
 		// Wrapping [node] within an [Arc<Mutex>] is a lot more work
 		// so sending it into the [Ping] thread is not viable.
 		self.state.p2pool.node = self.og.lock().unwrap().p2pool.node;
-		if og.gupax != self.state.gupax || og.p2pool != self.state.p2pool || og.xmrig != self.state.xmrig {
+		// Compare [og == state] and the [node_vec] and enable diff if found.
+		// The struct fields are compared directly because [Version]
+		// contains Arc<Mutex>'s that cannot be compared easily.
+		// They don't need to be compared anyway.
+		let og = self.og.lock().unwrap();
+		if og.gupax != self.state.gupax || og.p2pool != self.state.p2pool || og.xmrig != self.state.xmrig || self.og_node_vec != self.node_vec {
 			self.diff = true;
 		} else {
 			self.diff = false;
 		}
+		drop(og);
 
 		// Close confirmation.
 		if self.quit {
@@ -661,20 +771,22 @@ impl eframe::App for App {
 				// [Start/Stop/Restart] + [Simple/Advanced] + [Save/Reset]
 				let width = (ui.available_width()/3.0)-(SPACE*3.0);
 				ui.group(|ui| {
-					if self.diff == false {
-						ui.set_enabled(false)
-					}
+					ui.set_enabled(self.diff);
 					let width = width / 2.0;
 					if ui.add_sized([width, height], egui::Button::new("Reset")).on_hover_text("Reset changes").clicked() {
-						self.state.gupax = self.og.lock().unwrap().gupax.clone();
-						self.state.p2pool = self.og.lock().unwrap().p2pool.clone();
-						self.state.xmrig = self.og.lock().unwrap().xmrig.clone();
+						let og = self.og.lock().unwrap().clone();
+						self.state.gupax = og.gupax;
+						self.state.p2pool = og.p2pool;
+						self.state.xmrig = og.xmrig;
+						self.node_vec = self.og_node_vec.clone();
 					}
 					if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() {
-						self.og.lock().unwrap().gupax = self.state.gupax.clone();
-						self.og.lock().unwrap().p2pool = self.state.p2pool.clone();
-						self.og.lock().unwrap().xmrig = self.state.xmrig.clone();
-						self.og.lock().unwrap().save();
+						let mut og = self.og.lock().unwrap();
+						og.gupax = self.state.gupax.clone();
+						og.p2pool = self.state.p2pool.clone();
+						og.xmrig = self.state.xmrig.clone();
+						self.state.save();
+						self.og_node_vec = self.node_vec.clone();
 					}
 				});
 
@@ -752,7 +864,7 @@ impl eframe::App for App {
 					ui.add_space(10.0);
 					ui.vertical_centered(|ui| {
 						// Display [Gupax] banner at max, 1/4 the available length
-						self.banner.show_max_size(ui, Vec2::new(self.width, self.height/4.0));
+						self.image.banner.show_max_size(ui, Vec2::new(self.width, self.height/4.0));
 						ui.label("Gupax is a cross-platform GUI for mining");
 						ui.hyperlink_to("[Monero]", "https://www.github.com/monero-project/monero");
 						ui.label("on the decentralized");

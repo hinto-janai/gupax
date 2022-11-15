@@ -205,7 +205,6 @@ impl State {
 		info!("State | Creating new default...");
 		let new = Self::new();
 		let path = get_file_path(File::State)?;
-		println!("{:#?}", new);
 		let string = match toml::ser::to_string(&new) {
 				Ok(o) => { info!("State | Serialization ... OK"); o },
 				Err(e) => { error!("State | Couldn't serialize default file: {}", e); return Err(TomlError::Serialize(e)) },
