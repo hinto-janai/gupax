@@ -302,7 +302,12 @@ impl P2pool {
 					let mut n = 0;
 					for (name, _) in node_vec.iter() {
 						if *name == self.selected_name {
-							self.selected_name = node_vec[n-1].0.clone();
+							// If deleting [0], make selected = [1]
+							// instead of attempting to [0-1] (panic!)
+							match n {
+								0 => self.selected_name = node_vec[1].0.clone(),
+								_ => self.selected_name = node_vec[n-1].0.clone(),
+							};
 							node_vec.remove(n);
 							break
 						}
