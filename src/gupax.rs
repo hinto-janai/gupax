@@ -15,11 +15,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use std::path::Path;
-use crate::{App,State};
+use crate::State;
 use egui::{
 	TextStyle::Monospace,
-	Checkbox,
 	RichText,
 	Label,
 	Color32,
@@ -86,7 +84,7 @@ impl Gupax {
 					} else {
 						ui.add_sized([width, height], egui::Label::new("..."));
 					}
-					ui.add_sized([width, height], egui::ProgressBar::new((update.lock().unwrap().prog.lock().unwrap().round() / 100.0)));
+					ui.add_sized([width, height], egui::ProgressBar::new(update.lock().unwrap().prog.lock().unwrap().round() / 100.0));
 				});
 		});
 

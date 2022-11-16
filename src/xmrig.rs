@@ -15,18 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::App;
-use monero::util::address::Address;
-use std::str::FromStr;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use num_cpus;
 use crate::constants::*;
 use crate::disk::Xmrig;
 
 impl Xmrig {
 	pub fn show(&mut self, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 		let height = ui.available_height() / 10.0;
-		let mut width = ui.available_width() - 10.0;
+		let width = ui.available_width() - 10.0;
 		ui.group(|ui| {
 			ui.add_sized([width, height*4.0], egui::TextEdit::multiline(&mut "".to_owned()));
 			ui.add_sized([width, 30.0], egui::TextEdit::singleline(&mut "".to_owned()));
@@ -70,7 +65,7 @@ impl Xmrig {
 
 //		ui.group(|ui| {
 			if self.simple == false { ui.set_enabled(false); }
-			let width = (width/4.0);
+			let width = width/4.0;
 			ui.horizontal(|ui| {
 				ui.add_sized([width/8.0, height/8.0], egui::Label::new("Pool IP:"));
 				ui.spacing_mut().text_edit_width = ui.available_width() - 35.0;

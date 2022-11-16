@@ -19,11 +19,8 @@ use crate::State;
 use serde::{Serialize,Deserialize};
 use std::time::{Instant,Duration};
 use std::collections::HashMap;
-use std::error::Error;
-use std::thread;
 use std::sync::{Arc,Mutex};
 use egui::Color32;
-use rand::Rng;
 use log::*;
 use reqwest::blocking::ClientBuilder;
 
@@ -273,7 +270,7 @@ pub fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) {
 			let http = "http://".to_string() + &**ip + "/json_rpc";
 			match client.post(http).json(&get_info).send() {
 				Ok(_) => mid += now.elapsed(),
-				Err(err) => {
+				Err(_) => {
 					mid += timeout_sec;
 					timeout += 1;
 					let error = format!("Timeout [{}/3] ... {:#?} ... {}", timeout, id, ip);
@@ -319,7 +316,6 @@ pub fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) {
 		}
 	}
 	let info = format!("Fastest node: {}ms ... {} @ {}", best_ms, fastest, enum_to_ip(fastest));
-	let percent = (100.0 - ping.lock().unwrap().prog) / 2.0;
 	info!("Ping | {}", info);
 	ping.lock().unwrap().nodes = nodes;
 	ping.lock().unwrap().fastest = fastest;

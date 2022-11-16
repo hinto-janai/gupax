@@ -3,48 +3,6 @@
 version = 3
 
 [[package]]
-name = "Gupax"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "arti-client",
- "arti-hyper",
- "bytes",
- "chrono",
- "dirs",
- "eframe",
- "egui",
- "egui_extras",
- "env_logger 0.9.3",
- "figment",
- "flate2",
- "hex-literal",
- "hyper",
- "hyper-tls",
- "image",
- "log",
- "monero",
- "num-format",
- "num_cpus",
- "rand 0.8.5",
- "regex",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.10.6",
- "tar",
- "tls-api",
- "tls-api-native-tls",
- "tokio",
- "toml",
- "tor-rtcompat",
- "walkdir",
- "winres",
- "zip",
-]
-
-[[package]]
 name = "ab_glyph"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1820,6 +1778,48 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3da5951a1569dbab865c6f2a863efafff193a93caf05538d193e9e3816d21696"
 dependencies = [
  "gl_generator",
+]
+
+[[package]]
+name = "gupax"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "arti-client",
+ "arti-hyper",
+ "bytes",
+ "chrono",
+ "dirs",
+ "eframe",
+ "egui",
+ "egui_extras",
+ "env_logger 0.9.3",
+ "figment",
+ "flate2",
+ "hex-literal",
+ "hyper",
+ "hyper-tls",
+ "image",
+ "log",
+ "monero",
+ "num-format",
+ "num_cpus",
+ "rand 0.8.5",
+ "regex",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.6",
+ "tar",
+ "tls-api",
+ "tls-api-native-tls",
+ "tokio",
+ "toml",
+ "tor-rtcompat",
+ "walkdir",
+ "winres",
+ "zip",
 ]
 
 [[package]]

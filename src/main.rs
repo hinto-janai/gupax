@@ -20,11 +20,10 @@
 
 //---------------------------------------------------------------------------------------------------- Imports
 // egui/eframe
-use egui::Ui;
 use egui::TextStyle::*;
 use egui::color::Color32;
 use egui::FontFamily::Proportional;
-use egui::{FontId,Label,RichText,Stroke,Vec2,Pos2};
+use egui::{FontId,Label,RichText,Stroke,Vec2};
 use egui::special_emojis::GITHUB;
 use egui::{Key,Modifiers};
 use egui_extras::RetainedImage;
@@ -36,7 +35,7 @@ use env_logger::{Builder,WriteStyle};
 
 // Regex
 use regex::Regex;
-
+ 
 // std
 use std::io::Write;
 use std::process::exit;
@@ -55,7 +54,7 @@ mod gupax;
 mod p2pool;
 mod xmrig;
 mod update;
-use {ferris::*,constants::*,node::*,disk::*,status::*,gupax::*,p2pool::*,xmrig::*,update::*};
+use {ferris::*,constants::*,node::*,disk::*,status::*,update::*};
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
 // The state of the outer main [App].
@@ -64,7 +63,6 @@ use {ferris::*,constants::*,node::*,disk::*,status::*,gupax::*,p2pool::*,xmrig::
 pub struct App {
 	// Misc state
 	tab: Tab, // What tab are we on?
-//	quit: bool, // Was the quit confirmed?
 	ping: Arc<Mutex<Ping>>, // Ping data found in [node.rs]
 	width: f32, // Top-level width
 	height: f32, // Top-level height
@@ -114,7 +112,6 @@ impl App {
 	fn new() -> Self {
 		let app = Self {
 			tab: Tab::default(),
-//			quit: false,
 			ping: Arc::new(Mutex::new(Ping::new())),
 			width: 1280.0,
 			height: 720.0,
@@ -268,12 +265,12 @@ impl Images {
 
 //---------------------------------------------------------------------------------------------------- [Regexes] struct
 #[derive(Clone, Debug)]
-struct Regexes {
-	name: Regex,
-	address: Regex,
-	ipv4: Regex,
-	domain: Regex,
-	port: Regex,
+pub struct Regexes {
+	pub name: Regex,
+	pub address: Regex,
+	pub ipv4: Regex,
+	pub domain: Regex,
+	pub port: Regex,
 }
 
 impl Regexes {
@@ -478,7 +475,7 @@ fn parse_args(mut app: App) -> App {
 // Get absolute [Gupax] binary path
 pub fn get_exe() -> Result<String, std::io::Error> {
 	match std::env::current_exe() {
-		Ok(mut path) => { Ok(path.display().to_string()) },
+		Ok(path) => { Ok(path.display().to_string()) },
 		Err(err) => { error!("Couldn't get exe basepath PATH"); return Err(err) },
 	}
 }
@@ -558,7 +555,7 @@ impl Panic {
 }
 
 impl eframe::App for Panic {
-	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+	fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 		egui::CentralPanel::default().show(ctx, |ui| {
 			let width = ui.available_width();
 			let height = ui.available_height();

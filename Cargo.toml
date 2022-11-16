@@ -1,5 +1,5 @@
 [package]
-name = "Gupax"
+name = "gupax"
 version = "0.2.0"
 authors = ["hinto-janaiyo <hinto.janaiyo@protonmail.com>"]
 description = "GUI for P2Pool+XMRig"

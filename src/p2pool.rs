@@ -16,17 +16,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	App,
 	Regexes,
 	constants::*,
 	disk::*,
 	node::*
 };
 use egui::{
-	TextEdit,SelectableLabel,ComboBox,Label,FontId,Button,Color32,RichText,Slider,Checkbox,
+	TextEdit,SelectableLabel,ComboBox,Label,Button,Color32,RichText,Slider,
 	TextStyle::*,
-	FontFamily::Proportional,
-	TextBuffer,
 };
 use std::sync::{Arc,Mutex};
 use std::thread;
@@ -303,7 +300,7 @@ impl P2pool {
 			});
 			ui.horizontal(|ui| {
 				ui.set_enabled(node_vec_len > 1);
-				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", P2POOL_ADD, self.selected_index, self.selected_name, node_vec_len);
+				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", P2POOL_DELETE, self.selected_index, self.selected_name, node_vec_len);
 				if ui.add_sized([width, text_edit], Button::new("Delete")).on_hover_text(text).clicked() {
 					let mut n = 0;
 					for (name, _) in node_vec.iter() {

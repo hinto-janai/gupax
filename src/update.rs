@@ -27,32 +27,28 @@
 use anyhow::{anyhow,Error};
 use arti_client::{TorClient,TorClientConfig};
 use arti_hyper::*;
-use arti_hyper::*;
 use crate::constants::GUPAX_VERSION;
 //use crate::{Name::*,State};
 use crate::disk::*;
 use crate::update::Name::*;
-use hyper::{Client,Body,Request};
-use hyper::header::HeaderValue;
-use hyper_tls::HttpsConnector;
-use hyper::header::LOCATION;
+use hyper::{
+	Client,Body,Request,
+	header::{HeaderValue,LOCATION},
+};
 use log::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Serialize,Deserialize};
-use std::io::{Read,Write};
 use std::path::PathBuf;
 use std::sync::{Arc,Mutex};
-use std::time::Duration;
 use tls_api::{TlsConnector, TlsConnectorBuilder};
-use tokio::io::{AsyncReadExt,AsyncWriteExt};
 use tokio::task::JoinHandle;
 use walkdir::WalkDir;
 
 #[cfg(target_os = "windows")]
 use zip::ZipArchive;
-#[cfg(target_family = "unix")]
-use std::os::unix::fs::OpenOptionsExt;
+//#[cfg(target_family = "unix")]
+//use std::os::unix::fs::OpenOptionsExt;
 
 //---------------------------------------------------------------------------------------------------- Constants
 // Package naming schemes:
@@ -323,9 +319,9 @@ impl Update {
 		let prog = update.lock().unwrap().prog.clone();
 		let msg = update.lock().unwrap().msg.clone();
 		let mut vec = vec![
-			Pkg::new(Gupax, &tmp_dir, prog.clone(), msg.clone()),
-			Pkg::new(P2pool, &tmp_dir, prog.clone(), msg.clone()),
-			Pkg::new(Xmrig, &tmp_dir, prog.clone(), msg.clone()),
+			Pkg::new(Gupax),
+			Pkg::new(P2pool),
+			Pkg::new(Xmrig),
 		];
 
 		// Generate fake user-agent
@@ -365,15 +361,14 @@ impl Update {
 			let mut handles: Vec<JoinHandle<Result<(), anyhow::Error>>> = vec![];
 			for pkg in vec.iter() {
 				// Clone data before sending to async
-				let name = pkg.name.clone();
 				let new_ver = Arc::clone(&pkg.new_ver);
 				let client = client.clone();
 				let link = pkg.link_metadata.to_string();
 				// Send to async
 				let handle: JoinHandle<Result<(), anyhow::Error>> = tokio::spawn(async move {
 					match client {
-						ClientEnum::Tor(t) => Pkg::get_metadata(name, new_ver, t, link, user_agent).await,
-						ClientEnum::Https(h) => Pkg::get_metadata(name, new_ver, h, link, user_agent).await,
+						ClientEnum::Tor(t) => Pkg::get_metadata(new_ver, t, link, user_agent).await,
+						ClientEnum::Https(h) => Pkg::get_metadata(new_ver, h, link, user_agent).await,
 					}
 				});
 				handles.push(handle);
@@ -419,8 +414,6 @@ impl Update {
 		//---------------------------------------------------------------------------------------------------- Compare
 		*update.lock().unwrap().msg.lock().unwrap() = MSG_COMPARE.to_string();
 		info!("Update | {}", COMPARE);
-		let prog = update.lock().unwrap().prog.clone();
-		let msg = update.lock().unwrap().msg.clone();
 		let mut vec3 = vec![];
 		let mut new_pkgs = vec![];
 		for pkg in vec2.iter() {
@@ -479,7 +472,6 @@ impl Update {
 			let mut handles: Vec<JoinHandle<Result<(), anyhow::Error>>> = vec![];
 			for pkg in vec3.iter() {
 				// Clone data before async
-				let name = pkg.name.clone();
 				let bytes = Arc::clone(&pkg.bytes);
 				let client = client.clone();
 				let version = pkg.new_ver.lock().unwrap();
@@ -495,8 +487,8 @@ impl Update {
 				info!("Update | {} ... {}", pkg.name, link);
 				let handle: JoinHandle<Result<(), anyhow::Error>> = tokio::spawn(async move {
 					match client {
-						ClientEnum::Tor(t) => Pkg::get_bytes(name, bytes, t, link, user_agent).await,
-						ClientEnum::Https(h) => Pkg::get_bytes(name, bytes, h, link, user_agent).await,
+						ClientEnum::Tor(t) => Pkg::get_bytes(bytes, t, link, user_agent).await,
+						ClientEnum::Https(h) => Pkg::get_bytes(bytes, h, link, user_agent).await,
 					}
 				});
 				handles.push(handle);
@@ -640,16 +632,12 @@ pub struct Pkg {
 	link_prefix: &'static str,
 	link_suffix: &'static str,
 	link_extension: &'static str,
-	tmp_dir: String,
-	prog: Arc<Mutex<f32>>,
-	msg: Arc<Mutex<String>>,
 	bytes: Arc<Mutex<hyper::body::Bytes>>,
-	old_ver: String,
 	new_ver: Arc<Mutex<String>>,
 }
 
 impl Pkg {
-	pub fn new(name: Name, tmp_dir: &String, prog: Arc<Mutex<f32>>, msg: Arc<Mutex<String>>) -> Self {
+	pub fn new(name: Name) -> Self {
 		let link_metadata = match name {
 			Gupax => GUPAX_METADATA,
 			P2pool => P2POOL_METADATA,
@@ -676,11 +664,7 @@ impl Pkg {
 			link_prefix,
 			link_suffix,
 			link_extension,
-			tmp_dir: tmp_dir.to_string(),
-			prog,
-			msg,
 			bytes: Arc::new(Mutex::new(bytes::Bytes::new())),
-			old_ver: String::new(),
 			new_ver: Arc::new(Mutex::new(String::new())),
 		}
 	}
@@ -706,9 +690,9 @@ impl Pkg {
 
 	// Get metadata using [Generic hyper::client<C>] & [Request]
 	// and change [version, prog] under an Arc<Mutex>
-	async fn get_metadata<C>(name: Name, new_ver: Arc<Mutex<String>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), Error>
+	async fn get_metadata<C>(new_ver: Arc<Mutex<String>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), Error>
 	where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
-		let request = Pkg::get_request(link.clone(), user_agent)?;
+		let request = Pkg::get_request(link, user_agent)?;
 		let mut response = client.request(request).await?;
 		let body = hyper::body::to_bytes(response.body_mut()).await?;
 		let body: TagName = serde_json::from_slice(&body)?;
@@ -718,9 +702,9 @@ impl Pkg {
 
 	// Takes a [Request], fills the appropriate [Pkg]
 	// [bytes] field with the [Archive/Standalone]
-	async fn get_bytes<C>(name: Name, bytes: Arc<Mutex<bytes::Bytes>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), anyhow::Error>
+	async fn get_bytes<C>(bytes: Arc<Mutex<bytes::Bytes>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), anyhow::Error>
 	where C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
-		let request = Self::get_request(link.clone(), user_agent)?;
+		let request = Self::get_request(link, user_agent)?;
 		let mut response = client.request(request).await?;
 		// GitHub sends a 302 redirect, so we must follow
 		// the [Location] header... only if Reqwest had custom

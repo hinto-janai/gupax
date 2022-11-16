@@ -30,18 +30,18 @@
 //   ├─ Version/
 //      ├─ ...
 
-use std::{fs,env};
-use std::fmt::Display;
-use std::path::{Path,PathBuf};
-use std::result::Result;
-use std::sync::{Arc,Mutex};
-use std::collections::{HashMap,BTreeMap};
-use std::fmt::Write;
+use std::{
+	fs,
+	fmt::Display,
+	path::PathBuf,
+	result::Result,
+	sync::{Arc,Mutex},
+	fmt::Write,
+};
 use serde::{Serialize,Deserialize};
 use figment::Figment;
 use figment::providers::{Format,Toml};
 use crate::constants::*;
-use anyhow::Error;
 use log::*;
 
 //---------------------------------------------------------------------------------------------------- General functions for all [File]'s
@@ -55,8 +55,8 @@ pub fn get_os_data_path() -> Result<PathBuf, TomlError> {
 	// Linux   | $XDG_DATA_HOME or $HOME/.local/share | /home/alice/.local/state
 	// macOS   | $HOME/Library/Application Support    | /Users/Alice/Library/Application Support
 	// Windows | {FOLDERID_RoamingAppData}            | C:\Users\Alice\AppData\Roaming
-	let mut path = match dirs::data_dir() {
-		Some(mut path) => {
+	let path = match dirs::data_dir() {
+		Some(path) => {
 			info!("OS | Data path ... OK");
 			path
 		},
@@ -205,7 +205,7 @@ impl State {
 			Ok(string) => string,
 			// Create
 			_ => {
-				let new = Self::create_new()?;
+				Self::create_new()?;
 				read_to_string(file, &path)?
 			},
 		};
@@ -352,7 +352,7 @@ impl Node {
 			Ok(string) => string,
 			// Create
 			_ => {
-				let new = Self::create_new()?;
+				Self::create_new()?;
 				read_to_string(file, &path)?
 			},
 		};
