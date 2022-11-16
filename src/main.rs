@@ -35,7 +35,7 @@ use env_logger::{Builder,WriteStyle};
 
 // Regex
 use regex::Regex;
- 
+
 // std
 use std::io::Write;
 use std::process::exit;
@@ -63,13 +63,13 @@ use {ferris::*,constants::*,node::*,disk::*,status::*,update::*};
 pub struct App {
 	// Misc state
 	tab: Tab, // What tab are we on?
-	ping: Arc<Mutex<Ping>>, // Ping data found in [node.rs]
 	width: f32, // Top-level width
 	height: f32, // Top-level height
 	// State
 	og: Arc<Mutex<State>>, // og = Old state to compare against
 	state: State, // state = Working state (current settings)
 	update: Arc<Mutex<Update>>, // State for update data [update.rs]
+	ping: Arc<Mutex<Ping>>, // Ping data found in [node.rs]
 	og_node_vec: Vec<(String, Node)>, // Manual Node database
 	node_vec: Vec<(String, Node)>, // Manual Node database
 	diff: bool, // This bool indicates state changes
@@ -678,11 +678,6 @@ impl eframe::App for App {
 			return
 		}
 
-		// The [P2Pool Node] selection needs to be the same
-		// for both [State] and [Og] because of [Auto-select]
-		// Wrapping [node] within an [Arc<Mutex>] is a lot more work
-		// so sending it into the [Ping] thread is not viable.
-		self.state.p2pool.node = self.og.lock().unwrap().p2pool.node;
 		// Compare [og == state] and the [node_vec] and enable diff if found.
 		// The struct fields are compared directly because [Version]
 		// contains Arc<Mutex>'s that cannot be compared easily.

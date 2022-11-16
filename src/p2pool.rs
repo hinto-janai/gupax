@@ -84,6 +84,22 @@ impl P2pool {
 		let height = height / 6.0;
 		ui.spacing_mut().slider_width = width - 8.0;
 		ui.spacing_mut().icon_width = width / 25.0;
+
+		// [Auto-select] if we haven't already.
+		// Using [Arc<Mutex<Ping>>] as an intermediary here
+		// saves me the hassle of wrapping [state: State] completely
+		// and [.lock().unwrap()]ing it everywhere.
+		// Two atomic bools = enough to represent this data
+		if self.auto_select {
+			let mut ping = ping.lock().unwrap();
+			// If we haven't auto_selected yet, auto-select and turn it off
+			if ping.auto_selected == false {
+				self.node = ping.fastest;
+				ping.auto_selected = true;
+			}
+			drop(ping);
+		}
+
 		ui.vertical(|ui| {
 		ui.horizontal(|ui| {
 			// [Ping List]
@@ -91,15 +107,17 @@ impl P2pool {
 			let ip = enum_to_ip(id);
 			let mut ms = 0;
 			let mut color = Color32::LIGHT_GRAY;
-			for data in ping.lock().unwrap().nodes.iter() {
-				if data.id == id {
-					ms = data.ms;
-					color = data.color;
-					break
+			if ping.lock().unwrap().pinged {
+				for data in ping.lock().unwrap().nodes.iter() {
+					if data.id == id {
+						ms = data.ms;
+						color = data.color;
+						break
+					}
 				}
 			}
 			let text = RichText::new(format!(" ⏺ {}ms | {} | {}", ms, id, ip)).color(color);
-			ComboBox::from_id_source("nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
+			ComboBox::from_id_source("community_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
 				for data in ping.lock().unwrap().nodes.iter() {
 					let ms = crate::node::format_ms(data.ms);
 					let id = crate::node::format_enum(data.id);
@@ -115,13 +133,11 @@ impl P2pool {
 		let width = (width/2.0)-4.0;
 		// [Select fastest node]
 		if ui.add_sized([width, height], Button::new("Select fastest node")).on_hover_text(P2POOL_SELECT_FASTEST).clicked() {
-			let pinged = ping.lock().unwrap().pinged;
-			let fastest = ping.lock().unwrap().fastest;
-			if pinged && og.lock().unwrap().p2pool.node != fastest {
-				og.lock().unwrap().p2pool.node = ping.lock().unwrap().fastest;
-				og.lock().unwrap().save();
+			if ping.lock().unwrap().pinged {
+				self.node = ping.lock().unwrap().fastest;
 			}
 		}
+
 		// [Ping Button]
 		ui.set_enabled(!ping.lock().unwrap().pinging);
 		if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
@@ -267,7 +283,7 @@ impl P2pool {
 			ui.spacing_mut().icon_width = width / 25.0;
 			// [Ping List]
 			let text = RichText::new(format!("{}. {} | {}", self.selected_index, self.selected_name, self.selected_ip));
-			ComboBox::from_id_source("nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
+			ComboBox::from_id_source("manual_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
 				let mut n = 1;
 				for (name, node) in node_vec.iter() {
 					let text = RichText::text_style(RichText::new(format!("{}. {}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", n, name, node.ip, node.rpc, node.zmq)), Monospace);
@@ -275,7 +291,6 @@ impl P2pool {
 						self.selected_index = n;
 						self.selected_name = name.clone();
 					}
-//					ui.selectable_value(&mut self.selected_name, name.clone(), text);
 					n += 1;
 				}
 			});

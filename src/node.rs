@@ -96,6 +96,7 @@ pub struct Ping {
 	pub msg: String,
 	pub prog: f32,
 	pub pinged: bool,
+	pub auto_selected: bool,
 }
 
 impl Ping {
@@ -107,14 +108,9 @@ impl Ping {
 			msg: "No ping in progress".to_string(),
 			prog: 0.0,
 			pinged: false,
+			auto_selected: true,
 		}
 	}
-}
-
-#[derive(Debug)]
-pub struct PingResult {
-	pub nodes: Vec<NodeData>,
-	pub fastest: NodeEnum,
 }
 
 //---------------------------------------------------------------------------------------------------- IP <-> Enum functions
@@ -317,15 +313,16 @@ pub fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) {
 	}
 	let info = format!("Fastest node: {}ms ... {} @ {}", best_ms, fastest, enum_to_ip(fastest));
 	info!("Ping | {}", info);
-	ping.lock().unwrap().nodes = nodes;
-	ping.lock().unwrap().fastest = fastest;
-	ping.lock().unwrap().prog = 100.0;
-	ping.lock().unwrap().msg = info;
-	ping.lock().unwrap().pinging = false;
-	ping.lock().unwrap().pinged = true;
+	let mut guard = ping.lock().unwrap();
+		guard.nodes = nodes;
+		guard.fastest = fastest;
+		guard.prog = 100.0;
+		guard.msg = info;
+		guard.pinging = false;
+		guard.pinged = true;
+		drop(guard);
 	if og.lock().unwrap().p2pool.auto_select {
-		og.lock().unwrap().p2pool.node = fastest;
-		og.lock().unwrap().save();
+		ping.lock().unwrap().auto_selected = false;
 	}
 	info!("Ping ... OK");
 }
