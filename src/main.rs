@@ -159,21 +159,23 @@ impl App {
 				Err(err) => { panic_main(err.to_string()); exit(1); },
 			};
 		}
-		app.state = app.og.lock().unwrap().clone();
+		let mut og = app.og.lock().unwrap(); // Lock [og]
+		app.state = og.clone();
 		// Get node list
 		app.node_vec = Node::get().unwrap();
 		// Handle max threads
-		app.og.lock().unwrap().xmrig.max_threads = num_cpus::get();
-		let current = app.og.lock().unwrap().xmrig.current_threads;
-		let max = app.og.lock().unwrap().xmrig.max_threads;
+		og.xmrig.max_threads = num_cpus::get();
+		let current = og.xmrig.current_threads;
+		let max = og.xmrig.max_threads;
 		if current > max {
-			app.og.lock().unwrap().xmrig.current_threads = max;
+			og.xmrig.current_threads = max;
 		}
 		// Apply TOML values to [Update]
-		let p2pool_path = app.og.lock().unwrap().gupax.absolute_p2pool_path.clone();
-		let xmrig_path = app.og.lock().unwrap().gupax.absolute_xmrig_path.clone();
-		let tor = app.og.lock().unwrap().gupax.update_via_tor;
+		let p2pool_path = og.gupax.absolute_p2pool_path.clone();
+		let xmrig_path = og.gupax.absolute_xmrig_path.clone();
+		let tor = og.gupax.update_via_tor;
 		app.update = Arc::new(Mutex::new(Update::new(app.exe.clone(), p2pool_path, xmrig_path, tor)));
+		drop(og); // Unlock [og]
 		app
 	}
 }
@@ -554,16 +556,18 @@ impl eframe::App for Panic {
 
 //---------------------------------------------------------------------------------------------------- Main [App] frame
 fn main() {
+	let now = Instant::now();
 	init_logger();
 	let options = init_options();
 	match clean_dir() {
 		Ok(_) => info!("Temporary folder cleanup ... OK"),
 		Err(e) => warn!("Could not cleanup [gupax_tmp] folders: {}", e),
 	}
-	let app = App::new();
-	let name = app.name_version.clone();
+	let mut app = App::new();
+	app.now = now;
 	init_auto(&app);
-	eframe::run_native(&name, options, Box::new(|cc| Box::new(App::cc(cc, app))),);
+	info!("Initialization DONE ... {} seconds", now.elapsed().as_secs_f32());
+	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 
 impl eframe::App for App {

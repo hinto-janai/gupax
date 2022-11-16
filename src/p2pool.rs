@@ -269,12 +269,17 @@ impl P2pool {
 			ui.spacing_mut().slider_width = width - 8.0;
 			ui.spacing_mut().icon_width = width / 25.0;
 			// [Ping List]
-			let text = RichText::new(format!("{} | {}", self.selected_name, self.selected_ip));
+			let text = RichText::new(format!("{}. {} | {}", self.selected_index, self.selected_name, self.selected_ip));
 			ComboBox::from_id_source("nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
+				let mut n = 1;
 				for (name, node) in node_vec.iter() {
-					let text = RichText::text_style(RichText::new(format!("{}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", name, node.ip, node.rpc, node.zmq)), Monospace);
-					ui.selectable_value(&mut self.selected_name, name.clone(), text);
-//					println!("{}", value.ip);
+					let text = RichText::text_style(RichText::new(format!("{}. {}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", n, name, node.ip, node.rpc, node.zmq)), Monospace);
+					if ui.add(SelectableLabel::new(self.selected_name == *name, text)).clicked() {
+						self.selected_index = n;
+						self.selected_name = name.clone();
+					}
+//					ui.selectable_value(&mut self.selected_name, name.clone(), text);
+					n += 1;
 				}
 			});
 			// [Add] + [Delete]
@@ -284,8 +289,8 @@ impl P2pool {
 				for (name, _) in node_vec.iter() {
 					if *name == self.name { exists = true; }
 				}
-				ui.set_enabled(!incorrect_input && !exists && node_vec_len < 100);
-				let text = format!("{}\n      Max amount of nodes: 100\n      Current amount: [{}/100]", P2POOL_ADD, node_vec_len);
+				ui.set_enabled(!incorrect_input && !exists && node_vec_len < 1000);
+				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", P2POOL_ADD, self.selected_index, self.selected_name, node_vec_len);
 				if ui.add_sized([width, text_edit], Button::new("Add")).on_hover_text(text).clicked() {
 					let node = Node {
 						ip: self.ip.clone(),
@@ -297,7 +302,7 @@ impl P2pool {
 			});
 			ui.horizontal(|ui| {
 				ui.set_enabled(node_vec_len > 1);
-				let text = format!("{}\n      Max amount of nodes: 100\n      Current amount: [{}/100]", P2POOL_DELETE, node_vec_len);
+				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", P2POOL_ADD, self.selected_index, self.selected_name, node_vec_len);
 				if ui.add_sized([width, text_edit], Button::new("Delete")).on_hover_text(text).clicked() {
 					let mut n = 0;
 					for (name, _) in node_vec.iter() {
@@ -305,10 +310,11 @@ impl P2pool {
 							// If deleting [0], make selected = [1]
 							// instead of attempting to [0-1] (panic!)
 							match n {
-								0 => self.selected_name = node_vec[1].0.clone(),
-								_ => self.selected_name = node_vec[n-1].0.clone(),
+								0 => { self.selected_name = node_vec[1].0.clone(); self.selected_index = 1; },
+								_ => { self.selected_name = node_vec[n-1].0.clone(); self.selected_index = n as u16; },
 							};
 							node_vec.remove(n);
+							info!("Node | Removed index [{}. {}]", n+1, self.selected_name);
 							break
 						}
 						n += 1;

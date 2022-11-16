@@ -35,7 +35,7 @@ use std::fmt::Display;
 use std::path::{Path,PathBuf};
 use std::result::Result;
 use std::sync::{Arc,Mutex};
-use std::collections::HashMap;
+use std::collections::{HashMap,BTreeMap};
 use std::fmt::Write;
 use serde::{Serialize,Deserialize};
 use figment::Figment;
@@ -68,7 +68,7 @@ pub fn get_file_path(file: File) -> Result<PathBuf, TomlError> {
 	// Create directory
 	fs::create_dir_all(&path)?;
 	path.push(name);
-	info!("{:?} path ... {}", file, path.display());
+	info!("{:?} | Path ... {}", file, path.display());
 	Ok(path)
 }
 
@@ -139,6 +139,7 @@ impl State {
 				ip: "localhost".to_string(),
 				rpc: "18081".to_string(),
 				zmq: "18083".to_string(),
+				selected_index: 1,
 				selected_name: "Local Monero Node".to_string(),
 				selected_ip: "localhost".to_string(),
 				selected_rpc: "18081".to_string(),
@@ -167,7 +168,7 @@ impl State {
 	pub fn from_string(string: String) -> Result<Self, TomlError> {
 		match toml::de::from_str(&string) {
 			Ok(state) => {
-				info!("State parse ... OK");
+				info!("State | Parse ... OK");
 				print_toml(&string);
 				Ok(state)
 			}
@@ -284,10 +285,9 @@ impl Node {
 
 	// Convert [String] to [Node] Vec
 	pub fn from_string(string: String) -> Result<Vec<(String, Self)>, TomlError> {
-		let nodes: HashMap<String, Node> = match toml::de::from_str(&string) {
+		let nodes: toml::map::Map<String, toml::Value> = match toml::de::from_str(&string) {
 			Ok(map) => {
 				info!("Node | Parse ... OK");
-				print_toml(&string);
 				map
 			}
 			Err(err) => {
@@ -298,7 +298,13 @@ impl Node {
 		let size = nodes.keys().len();
 		let mut vec = Vec::with_capacity(size);
 		for (key, values) in nodes.iter() {
-			vec.push((key.clone(), values.clone()));
+//			println!("{:#?}", values.get("ip")); std::process::exit(0);
+			let node = Node {
+				ip: values.get("ip").unwrap().as_str().unwrap().to_string(),
+				rpc: values.get("rpc").unwrap().as_str().unwrap().to_string(),
+				zmq: values.get("zmq").unwrap().as_str().unwrap().to_string(),
+			};
+			vec.push((key.clone(), node));
 		}
 		Ok(vec)
 	}
@@ -509,6 +515,7 @@ pub struct P2pool {
 	pub ip: String,
 	pub rpc: String,
 	pub zmq: String,
+	pub selected_index: u16,
 	pub selected_name: String,
 	pub selected_ip: String,
 	pub selected_rpc: String,
