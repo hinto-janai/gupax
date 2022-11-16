@@ -60,11 +60,11 @@ pub const HUGEPAGES_1GB: bool = true;
 
 // Tooltips
 // Gupax
-pub const GUPAX_UPDATE: &'static str = "Check for update on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
+pub const GUPAX_UPDATE: &'static str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
 pub const GUPAX_AUTO_UPDATE: &'static str = "Automatically check for updates at startup";
 pub const GUPAX_UPDATE_VIA_TOR: &'static str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
 pub const GUPAX_AUTO_NODE: &'static str = "Automatically ping the community Monero nodes and select the fastest at startup for P2Pool";
-pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting if processes are still alive or if an update is in progress";
+pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting Gupax";
 pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed settings before quitting";
 pub const GUPAX_PATH_P2POOL: &'static str = "The location of the P2Pool binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 pub const GUPAX_PATH_XMRIG: &'static str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
@@ -94,9 +94,9 @@ r#"Use advanced settings:
     - Out/In peer setting
     - Log level setting"#;
 pub const P2POOL_NAME: &'static str = "Add a unique name to identify this node; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
-pub const P2POOL_NODE_IP: &'static str = "Specify the Monero Node IP to connect to with P2Pool; Max length = 255 characters";
-pub const P2POOL_RPC_PORT: &'static str = "Specify the RPC port of the Monero node; [0-65535]";
-pub const P2POOL_ZMQ_PORT: &'static str = "Specify the ZMQ port of the Monero node; [0-65535]";
+pub const P2POOL_NODE_IP: &'static str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
+pub const P2POOL_RPC_PORT: &'static str = "Specify the RPC port of the Monero node; [1-65535]";
+pub const P2POOL_ZMQ_PORT: &'static str = "Specify the ZMQ port of the Monero node; [1-65535]";
 pub const P2POOL_ADD: &'static str = "Add the current values to the list";
 pub const P2POOL_DELETE: &'static str = "Delete the currently selected node";
 pub const P2POOL_CLEAR: &'static str = "Clear all current values";

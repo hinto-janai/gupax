@@ -50,11 +50,24 @@ use log::*;
 // create_new()         | Write a default TOML Struct into the appropriate file (in OS data path)
 // into_absolute_path() | Convert relative -> absolute path
 
-pub fn get_file_path(file: File) -> Result<PathBuf, TomlError> {
+pub fn get_os_data_path() -> Result<PathBuf, TomlError> {
 	// Get OS data folder
 	// Linux   | $XDG_DATA_HOME or $HOME/.local/share | /home/alice/.local/state
 	// macOS   | $HOME/Library/Application Support    | /Users/Alice/Library/Application Support
 	// Windows | {FOLDERID_RoamingAppData}            | C:\Users\Alice\AppData\Roaming
+	let mut path = match dirs::data_dir() {
+		Some(mut path) => {
+			info!("OS | Data path ... OK");
+			path
+		},
+		None => { error!("OS | Data path ... FAIL"); return Err(TomlError::Path(PATH_ERROR.to_string())) },
+	};
+	// Create directory
+	fs::create_dir_all(&path)?;
+	Ok(path)
+}
+
+pub fn get_file_path(file: File) -> Result<PathBuf, TomlError> {
 	let name = File::name(&file);
 
 	let mut path = match dirs::data_dir() {
@@ -217,22 +230,22 @@ impl State {
 
 	// Save [State] onto disk file [gupax.toml]
 	pub fn save(&mut self) -> Result<(), TomlError> {
-		info!("Saving {:?} to disk...", self);
+		info!("State | Saving to disk...");
 		let path = get_file_path(File::State)?;
 		// Convert path to absolute
 		self.gupax.absolute_p2pool_path = into_absolute_path(self.gupax.p2pool_path.clone())?;
 		self.gupax.absolute_xmrig_path = into_absolute_path(self.gupax.xmrig_path.clone())?;
 		let string = match toml::ser::to_string(&self) {
 			Ok(string) => {
-				info!("TOML parse ... OK");
+				info!("State | Parse ... OK");
 				print_toml(&string);
 				string
 			},
-			Err(err) => { error!("Couldn't parse TOML into string"); return Err(TomlError::Serialize(err)) },
+			Err(err) => { error!("State | Couldn't parse TOML into string ... FAIL"); return Err(TomlError::Serialize(err)) },
 		};
 		match fs::write(path, string) {
-			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
-			Err(err) => { error!("Couldn't overwrite TOML file"); return Err(TomlError::Io(err)) },
+			Ok(_) => { info!("State | Save ... OK"); Ok(()) },
+			Err(err) => { error!("State | Couldn't overwrite TOML file ... FAIL"); return Err(TomlError::Io(err)) },
 		}
 	}
 

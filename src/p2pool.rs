@@ -298,6 +298,7 @@ impl P2pool {
 						zmq: self.zmq.clone(),
 					};
 					node_vec.push((self.name.clone(), node));
+					info!("Node | Added [index: {}, name: \"{}\", ip: \"{}\", rpc: {}, zmq: {}]", node_vec_len+1, self.name, self.ip, self.rpc, self.zmq);
 				}
 			});
 			ui.horizontal(|ui| {
@@ -314,7 +315,7 @@ impl P2pool {
 								_ => { self.selected_name = node_vec[n-1].0.clone(); self.selected_index = n as u16; },
 							};
 							node_vec.remove(n);
-							info!("Node | Removed index [{}. {}]", n+1, self.selected_name);
+							info!("Node | Deleted [index: {}, name: \"{}\", ip: \"{}\", rpc: {}, zmq: {}]", n+1, self.selected_name, self.selected_ip, self.selected_rpc, self.selected_zmq);
 							break
 						}
 						n += 1;

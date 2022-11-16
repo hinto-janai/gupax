@@ -64,8 +64,7 @@ use {ferris::*,constants::*,node::*,disk::*,status::*,gupax::*,p2pool::*,xmrig::
 pub struct App {
 	// Misc state
 	tab: Tab, // What tab are we on?
-	quit: bool, // Was the quit button clicked?
-	quit_confirm: bool, // Was the quit confirmed?
+//	quit: bool, // Was the quit confirmed?
 	ping: Arc<Mutex<Ping>>, // Ping data found in [node.rs]
 	width: f32, // Top-level width
 	height: f32, // Top-level height
@@ -95,9 +94,10 @@ pub struct App {
 	dir: String, // Directory [Gupax] binary is in
 	resolution: Vec2, // Frame resolution
 	os: &'static str, // OS
+	os_data_path: PathBuf, // OS data path (e.g: ~/.local/share/gupax)
 	version: &'static str, // Gupax version
 	name_version: String, // [Gupax vX.X.X]
-	image: Images, // Custom Struct holding pre-compiled bytes of [Images]
+	img: Images, // Custom Struct holding pre-compiled bytes of [Images]
 	regex: Regexes, // Custom Struct holding pre-made [Regex]'s
 }
 
@@ -114,8 +114,7 @@ impl App {
 	fn new() -> Self {
 		let app = Self {
 			tab: Tab::default(),
-			quit: false,
-			quit_confirm: false,
+//			quit: false,
 			ping: Arc::new(Mutex::new(Ping::new())),
 			width: 1280.0,
 			height: 720.0,
@@ -135,9 +134,10 @@ impl App {
 			dir: "".to_string(),
 			resolution: Vec2::new(1280.0, 720.0),
 			os: OS,
+			os_data_path: PathBuf::new(),
 			version: GUPAX_VERSION,
 			name_version: format!("Gupax {}", GUPAX_VERSION),
-			image: Images::new(),
+			img: Images::new(),
 			regex: Regexes::new(),
 		};
 		// Apply arg state
@@ -149,6 +149,11 @@ impl App {
 		};
 		// Get exe directory path
 		app.dir = match get_exe_dir() {
+			Ok(dir) => dir,
+			Err(err) => { panic_main(err.to_string()); exit(1); },
+		};
+		// Get OS data path
+		app.os_data_path = match get_os_data_path() {
 			Ok(dir) => dir,
 			Err(err) => { panic_main(err.to_string()); exit(1); },
 		};
@@ -200,8 +205,8 @@ impl Default for Tab {
 //---------------------------------------------------------------------------------------------------- [ErrorState] struct
 pub struct ErrorState {
 	error: bool, // Is there an error?
-	msg: String, // What message to display?
-	image: RetainedImage, // Which ferris to display?
+	msg: &'static str, // What message to display?
+	ferris: ErrorFerris, // Which ferris to display?
 	buttons: ErrorButtons, // Which buttons to display?
 }
 
@@ -209,25 +214,37 @@ impl ErrorState {
 	pub fn new() -> Self {
 		Self {
 			error: false,
-			msg: String::new(),
-			image: RetainedImage::from_image_bytes("banner.png", FERRIS_ERROR).unwrap(),
+			msg: "Unknown Error",
+			ferris: ErrorFerris::Oops,
 			buttons: ErrorButtons::Okay,
 		}
 	}
 
 	// Convenience function to set the [App] error state
-	pub fn set(mut self, new: Self) {
-		self = new;
+	pub fn set(&mut self, error: bool, msg: &'static str, ferris: ErrorFerris, buttons: ErrorButtons) {
+		*self = Self {
+			error,
+			msg,
+			ferris,
+			buttons,
+		};
 	}
 }
 
 //---------------------------------------------------------------------------------------------------- [ErrorButtons] enum
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum ErrorButtons {
+pub enum ErrorButtons {
 	YesNo,
-	YesQuit,
+	StayQuit,
 	Okay,
 	Quit,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ErrorFerris {
+	Oops,
+	Error,
+	Panic,
 }
 
 //---------------------------------------------------------------------------------------------------- [Images] struct
@@ -242,9 +259,9 @@ impl Images {
 	fn new() -> Self {
 		Self {
 			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
-			oops: RetainedImage::from_image_bytes("banner.png", FERRIS_OOPS).unwrap(),
-			error: RetainedImage::from_image_bytes("banner.png", FERRIS_ERROR).unwrap(),
-			panic: RetainedImage::from_image_bytes("banner.png", FERRIS_PANIC).unwrap(),
+			oops: RetainedImage::from_image_bytes("oops.png", FERRIS_OOPS).unwrap(),
+			error: RetainedImage::from_image_bytes("error.png", FERRIS_ERROR).unwrap(),
+			panic: RetainedImage::from_image_bytes("panic.png", FERRIS_PANIC).unwrap(),
 		}
 	}
 }
@@ -566,15 +583,23 @@ fn main() {
 	let mut app = App::new();
 	app.now = now;
 	init_auto(&app);
-	info!("Initialization DONE ... {} seconds", now.elapsed().as_secs_f32());
+	info!("Init ... DONE ... Took [{}] seconds", now.elapsed().as_secs_f32());
 	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 
 impl eframe::App for App {
+//	pub fn new() -> Self {
+//		Self {
+//			error: false,
+//			msg: String::new(),
+//			image: RetainedImage::from_image_bytes("banner.png", FERRIS_ERROR).unwrap(),
+//			buttons: ErrorButtons::Okay,
+//		}
+//	}
 	fn on_close_event(&mut self) -> bool {
-		self.quit = true;
-		if self.og.lock().unwrap().gupax.ask_before_quit {
-			self.quit_confirm
+		if self.state.gupax.ask_before_quit {
+			self.error_state.set(true, "", ErrorFerris::Oops, ErrorButtons::StayQuit);
+			false
 		} else {
 			true
 		}
@@ -608,23 +633,49 @@ impl eframe::App for App {
 				let width = self.width;
 				let height = self.height/4.0;
 				ui.style_mut().override_text_style = Some(Name("MonospaceLarge".into()));
-				self.error_state.image.show_max_size(ui, Vec2::new(width, height));
 
-				ui.add_sized([width, height], Label::new("--- Gupax has encountered an error ---"));
-				ui.add_sized([width, height], Label::new(&self.error_state.msg));
+				// Display ferris
+				use ErrorFerris::*;
+				let ferris = match self.error_state.ferris {
+					Oops => &self.img.oops,
+					Error => &self.img.error,
+					Panic => &self.img.panic,
+				};
+				ferris.show_max_size(ui, Vec2::new(width, height));
+
+				// Error/Quit screen
+				match self.error_state.buttons {
+					StayQuit => {
+						let mut text = "--- Are you sure you want to quit? ---".to_string();
+						if *self.update.lock().unwrap().updating.lock().unwrap() { text = format!("{}\nUpdate is in progress...!", text); }
+						if self.p2pool { text = format!("{}\nP2Pool is online...!", text); }
+						if self.xmrig { text = format!("{}\nXMRig is online...!", text); }
+						ui.add_sized([width, height], Label::new(text))
+					},
+					_ => ui.add_sized([width, height], Label::new("--- Gupax has encountered an error! ---")),
+				};
+				ui.add_sized([width, height], Label::new(self.error_state.msg));
 				use ErrorButtons::*;
 				let height = ui.available_height();
+
+				// Capture [Esc] key
+				let esc = ctx.input_mut().consume_key(Modifiers::NONE, Key::Escape);
+
 				match self.error_state.buttons {
 					YesNo   => {
 						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() { self.error_state = ErrorState::new(); }
-						if ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { exit(1); }
+						// If [Esc] was pressed, assume [No]
+				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { exit(0); }
 					},
-					YesQuit => {
-						if ui.add_sized([width, height/2.0], egui::Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); }
-						if ui.add_sized([width, height/2.0], egui::Button::new("Quit")).clicked() { exit(1); }
+					StayQuit => {
+						// If [Esc] was pressed, assume [Stay]
+				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("Stay")).clicked() {
+							self.error_state = ErrorState::new();
+						}
+						if ui.add_sized([width, height/2.0], egui::Button::new("Quit")).clicked() { exit(0); }
 					},
-					Okay    => if ui.add_sized([width, height], egui::Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); },
-					Quit    => if ui.add_sized([width, height], egui::Button::new("Quit")).clicked() { exit(1); },
+					Okay => if esc || ui.add_sized([width, height], egui::Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); },
+					Quit => if ui.add_sized([width, height], egui::Button::new("Quit")).clicked() { exit(0); },
 				}
 			})});
 			return
@@ -647,80 +698,6 @@ impl eframe::App for App {
 		}
 		drop(og);
 
-		// Close confirmation.
-		if self.quit {
-			// If [ask_before_quit == true]
-			if self.og.lock().unwrap().gupax.ask_before_quit {
-				egui::TopBottomPanel::bottom("quit").show(ctx, |ui| {
-					let width = self.width;
-					let height = self.height/8.0;
-					ui.group(|ui| {
-						if ui.add_sized([width, height], egui::Button::new("Yes")).clicked() {
-							if self.og.lock().unwrap().gupax.save_before_quit {
-								if self.diff {
-									info!("Saving before quit...");
-									match self.state.save() {
-										Err(err) => { error!("{}", err); exit(1); },
-										_ => (),
-									};
-								} else {
-									info!("No changed detected, not saving...");
-								}
-							}
-							info!("Quit confirmation = yes ... goodbye!");
-							exit(0);
-						} else if ui.add_sized([width, height], egui::Button::new("No")).clicked() {
-							self.quit = false;
-						}
-					});
-				});
-				egui::CentralPanel::default().show(ctx, |ui| {
-					let width = self.width;
-					let height = ui.available_height();
-					let ten = height/10.0;
-					// Detect processes or update
-					ui.add_space(ten);
-					if *self.update.lock().unwrap().updating.lock().unwrap() || self.p2pool || self.xmrig {
-						ui.add_sized([width, height/4.0], Label::new("Are you sure you want to quit?"));
-						if *self.update.lock().unwrap().updating.lock().unwrap() { ui.add_sized([width, ten], Label::new("Update is in progress...!")); }
-						if self.p2pool { ui.add_sized([width, ten], Label::new("P2Pool is online...!")); }
-						if self.xmrig { ui.add_sized([width, ten], Label::new("XMRig is online...!")); }
-					// Else, just quit
-					} else {
-						if self.og.lock().unwrap().gupax.save_before_quit {
-							if self.diff {
-								info!("Saving before quit...");
-								match self.state.save() {
-									Err(err) => { error!("{}", err); exit(1); },
-									_ => (),
-								};
-							} else {
-								info!("No changed detected, not saving...");
-							}
-						}
-						info!("No processes or update in progress ... goodbye!");
-						exit(0);
-					}
-				});
-			// Else, quit (save if [save_before_quit == true]
-			} else {
-				if self.og.lock().unwrap().gupax.save_before_quit {
-					if self.diff {
-						info!("Saving before quit...");
-						match self.state.save() {
-							Err(err) => { error!("{}", err); exit(1); },
-							_ => (),
-						};
-					} else {
-						info!("No changed detected, not saving...");
-					}
-				}
-				info!("Quit confirmation = yes ... goodbye!");
-				exit(0);
-			}
-			return
-		}
-
 		// Top: Tabs
 		egui::TopBottomPanel::top("top").show(ctx, |ui| {
 			let width = (self.width - (SPACE*10.0))/5.0;
@@ -728,10 +705,11 @@ impl eframe::App for App {
 			ui.group(|ui| {
 			    ui.add_space(4.0);
 				ui.horizontal(|ui| {
-					ui.style_mut().override_text_style = Some(Name("Tab".into()));
-					ui.style_mut().visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
-					ui.style_mut().visuals.selection.bg_fill = Color32::from_rgb(255, 120, 120);
-					ui.style_mut().visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
+					let style = ui.style_mut();
+					style.override_text_style = Some(Name("Tab".into()));
+					style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
+					style.visuals.selection.bg_fill = Color32::from_rgb(255, 120, 120);
+					style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
 					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::About, "About")).clicked() { self.tab = Tab::About; }
 					ui.separator();
 					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::Status, "Status")).clicked() { self.tab = Tab::Status; }
@@ -868,7 +846,7 @@ impl eframe::App for App {
 					ui.add_space(10.0);
 					ui.vertical_centered(|ui| {
 						// Display [Gupax] banner at max, 1/4 the available length
-						self.image.banner.show_max_size(ui, Vec2::new(self.width, self.height/4.0));
+						self.img.banner.show_max_size(ui, Vec2::new(self.width, self.height/4.0));
 						ui.label("Gupax is a cross-platform GUI for mining");
 						ui.hyperlink_to("[Monero]", "https://www.github.com/monero-project/monero");
 						ui.label("on the decentralized");
