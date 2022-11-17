@@ -29,8 +29,33 @@ use std::thread;
 use std::sync::{Arc,Mutex};
 use log::*;
 
+//---------------------------------------------------------------------------------------------------- FileWindow
+// Struct for writing/reading the path state.
+// The opened file picker is started in a new
+// thread so main() needs to be in sync.
+pub struct FileWindow {
+	thread: bool, // Is there already a FileWindow thread?
+	picked_p2pool: bool, // Did the user pick a path for p2pool?
+	picked_xmrig: bool, // Did the user pick a path for xmrig?
+	p2pool_path: String, // The picked p2pool path
+	xmrig_path: String, // The picked p2pool path
+}
+
+impl FileWindow {
+	pub fn new() -> Arc<Mutex<Self>> {
+		Arc::new(Mutex::new(Self {
+			thread: false,
+			picked_p2pool: false,
+			picked_xmrig: false,
+			p2pool_path: String::new(),
+			xmrig_path: String::new(),
+		}))
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- Gupax
 impl Gupax {
-	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
@@ -127,6 +152,21 @@ impl Gupax {
 				};
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
+			if ui.button("Select File").clicked() {
+				if file_window.lock().unwrap().thread == false {
+					let file_window = Arc::clone(file_window);
+					thread::spawn(move|| {
+						match rfd::FileDialog::new().set_title("Select P2Pool Binary for Gupax").pick_file() {
+							Some(path) => {
+								info!("Gupax | [{}] path selected for P2Pool", path.display());
+								file_window.lock().unwrap().p2pool_path = path.display().to_string();
+								file_window.lock().unwrap().picked_p2pool = true;
+							},
+							None => info!("Gupax | No path selected for P2Pool"),
+						};
+					});
+				}
+			}
 			ui.text_edit_singleline(&mut self.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
 		});
 		ui.horizontal(|ui| {
@@ -145,7 +185,26 @@ impl Gupax {
 				};
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
+			if ui.button("Select File").clicked() {
+				if file_window.lock().unwrap().thread == false {
+					let file_window = Arc::clone(file_window);
+					thread::spawn(move|| {
+						match rfd::FileDialog::new().set_title("Select XMRig Binary for Gupax").pick_file() {
+							Some(path) => {
+								info!("Gupax | [{}] path selected for XMRig", path.display());
+								file_window.lock().unwrap().xmrig_path = path.display().to_string();
+								file_window.lock().unwrap().picked_xmrig = true;
+							},
+							None => info!("Gupax | No path selected for XMRig"),
+						};
+					});
+				}
+			}
 			ui.text_edit_singleline(&mut self.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
 		});
+		let mut guard = file_window.lock().unwrap();
+		if guard.picked_p2pool { self.p2pool_path = guard.p2pool_path.clone(); guard.picked_p2pool = false; }
+		if guard.picked_xmrig { self.xmrig_path = guard.xmrig_path.clone(); guard.picked_xmrig = false; }
+		drop(guard);
 	}
 }

@@ -54,7 +54,7 @@ mod gupax;
 mod p2pool;
 mod xmrig;
 mod update;
-use {ferris::*,constants::*,node::*,disk::*,status::*,update::*};
+use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*};
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
 // The state of the outer main [App].
@@ -69,6 +69,7 @@ pub struct App {
 	og: Arc<Mutex<State>>, // og = Old state to compare against
 	state: State, // state = Working state (current settings)
 	update: Arc<Mutex<Update>>, // State for update data [update.rs]
+	file_window: Arc<Mutex<FileWindow>>, // State for the path selector in [Gupax]
 	ping: Arc<Mutex<Ping>>, // Ping data found in [node.rs]
 	og_node_vec: Vec<(String, Node)>, // Manual Node database
 	node_vec: Vec<(String, Node)>, // Manual Node database
@@ -110,6 +111,7 @@ impl App {
 	}
 
 	fn new() -> Self {
+		info!("Initializing App Struct...");
 		let app = Self {
 			tab: Tab::default(),
 			ping: Arc::new(Mutex::new(Ping::new())),
@@ -118,6 +120,7 @@ impl App {
 			og: Arc::new(Mutex::new(State::new())),
 			state: State::new(),
 			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
+			file_window: FileWindow::new(),
 			og_node_vec: Node::new_vec(),
 			node_vec: Node::new_vec(),
 			diff: false,
@@ -178,6 +181,7 @@ impl App {
 		let tor = og.gupax.update_via_tor;
 		app.update = Arc::new(Mutex::new(Update::new(app.exe.clone(), p2pool_path, xmrig_path, tor)));
 		drop(og); // Unlock [og]
+		info!("App ... OK");
 		app
 	}
 }
@@ -861,7 +865,7 @@ impl eframe::App for App {
 					Status::show(self, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, self.width, self.height, ctx, ui);
+					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, &self.file_window, self.width, self.height, ctx, ui);
 				}
 				Tab::P2pool => {
 					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, self.p2pool, &self.ping, &self.regex, self.width, self.height, ctx, ui);

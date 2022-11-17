@@ -73,7 +73,7 @@ pub fn get_file_path(file: File) -> Result<PathBuf, TomlError> {
 	let mut path = match dirs::data_dir() {
 		Some(mut path) => {
 			path.push(DIRECTORY);
-			info!("OS data path ... OK");
+			info!("OS | Data path ... OK");
 			path
 		},
 		None => { error!("Couldn't get OS PATH for data"); return Err(TomlError::Path(PATH_ERROR.to_string())) },

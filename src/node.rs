@@ -34,12 +34,12 @@ pub const CAKE: &'static str = "xmr-node.cakewallet.com:18081";
 pub const CAKE_EU: &'static str = "xmr-node-eu.cakewallet.com:18081";
 pub const CAKE_UK: &'static str = "xmr-node-uk.cakewallet.com:18081";
 pub const CAKE_US: &'static str = "xmr-node-usa-east.cakewallet.com:18081";
+pub const FEATHER_1: &'static str = "selsta1.featherwallet.net:18081";
+pub const FEATHER_2: &'static str = "selsta2.featherwallet.net:18081";
 pub const MAJESTICBANK_IS: &'static str = "node.majesticbank.is:18089";
 pub const MAJESTICBANK_SU: &'static str = "node.majesticbank.su:18089";
 pub const MONERUJO: &'static str = "nodex.monerujo.io:18081";
 pub const RINO: &'static str = "node.community.rino.io:18081";
-pub const SELSTA_1: &'static str = "selsta1.featherwallet.net:18081";
-pub const SELSTA_2: &'static str = "selsta2.featherwallet.net:18081";
 pub const SETH: &'static str = "node.sethforprivacy.com:18089";
 pub const SUPPORTXMR: &'static str = "node.supportxmr.com:18081";
 pub const SUPPORTXMR_IR: &'static str = "node.supportxmr.ir:18081";
@@ -47,14 +47,14 @@ pub const SINGAPORE: &'static str = "singapore.node.xmr.pm:18089";
 pub const XMRVSBEAST: &'static str = "p2pmd.xmrvsbeast.com:18081";
 
 pub const NODE_IPS: [&'static str; 16] = [
-	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,MAJESTICBANK_IS,MAJESTICBANK_SU,MONERUJO,
-	RINO,SELSTA_1,SELSTA_2,SETH,SUPPORTXMR,SUPPORTXMR_IR,SINGAPORE,XMRVSBEAST,
+	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,MAJESTICBANK_IS,MAJESTICBANK_SU,
+	MONERUJO,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,SINGAPORE,XMRVSBEAST,
 ];
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum NodeEnum {
 	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,Monerujo,
-	Rino,Selsta1,Selsta2,Seth,SupportXmr,SupportXmrIr,Singapore,XmrVsBeast,
+	Rino,Feather1,Feather2,Seth,SupportXmr,SupportXmrIr,Singapore,XmrVsBeast,
 }
 
 impl std::fmt::Display for NodeEnum {
@@ -122,12 +122,12 @@ pub fn ip_to_enum(ip: &'static str) -> NodeEnum {
 		CAKE_EU         => CakeEu,
 		CAKE_UK         => CakeUk,
 		CAKE_US         => CakeUs,
+		FEATHER_1       => Feather1,
+		FEATHER_2       => Feather2,
 		MAJESTICBANK_IS => MajesticBankIs,
 		MAJESTICBANK_SU => MajesticBankSu,
 		MONERUJO        => Monerujo,
 		RINO            => Rino,
-		SELSTA_1        => Selsta1,
-		SELSTA_2        => Selsta2,
 		SETH            => Seth,
 		SINGAPORE       => Singapore,
 		SUPPORTXMR      => SupportXmr,
@@ -143,12 +143,12 @@ pub fn enum_to_ip(node: NodeEnum) -> &'static str {
 		CakeEu         => CAKE_EU,
 		CakeUk         => CAKE_UK,
 		CakeUs         => CAKE_US,
+		Feather1       => FEATHER_1,
+		Feather2       => FEATHER_2,
 		MajesticBankIs => MAJESTICBANK_IS,
 		MajesticBankSu => MAJESTICBANK_SU,
 		Monerujo       => MONERUJO,
 		Rino           => RINO,
-		Selsta1        => SELSTA_1,
-		Selsta2        => SELSTA_2,
 		Seth           => SETH,
 		Singapore      => SINGAPORE,
 		SupportXmr     => SUPPORTXMR,
@@ -237,24 +237,7 @@ pub fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) {
 
 	for ip in NODE_IPS.iter() {
 		// Match IP
-		let id = match *ip {
-			C3POOL          => C3pool,
-			CAKE            => Cake,
-			CAKE_EU         => CakeEu,
-			CAKE_UK         => CakeUk,
-			CAKE_US         => CakeUs,
-			MAJESTICBANK_IS => MajesticBankIs,
-			MAJESTICBANK_SU => MajesticBankSu,
-			MONERUJO        => Monerujo,
-			RINO            => Rino,
-			SELSTA_1        => Selsta1,
-			SELSTA_2        => Selsta2,
-			SETH            => Seth,
-			SINGAPORE       => Singapore,
-			SUPPORTXMR      => SupportXmr,
-			SUPPORTXMR_IR   => SupportXmrIr,
-			_ => XmrVsBeast,
-		};
+		let id = ip_to_enum(ip);
 		// Misc
 		let mut timeout = 0;
 		let mut mid = Duration::new(0, 0);
