@@ -643,15 +643,18 @@ impl eframe::App for App {
 				// Error/Quit screen
 				match self.error_state.buttons {
 					StayQuit => {
-						let mut text = "--- Are you sure you want to quit? ---".to_string();
+						let mut text = "".to_string();
 						if *self.update.lock().unwrap().updating.lock().unwrap() { text = format!("{}\nUpdate is in progress...!", text); }
 						if self.p2pool { text = format!("{}\nP2Pool is online...!", text); }
 						if self.xmrig { text = format!("{}\nXMRig is online...!", text); }
+						ui.add_sized([width, height], Label::new("--- Are you sure you want to quit? ---"));
 						ui.add_sized([width, height], Label::new(text))
 					},
-					_ => ui.add_sized([width, height], Label::new("--- Gupax has encountered an error! ---")),
+					_ => {
+						ui.add_sized([width, height], Label::new("--- Gupax has encountered an error! ---"));
+						ui.add_sized([width, height], Label::new(self.error_state.msg))
+					},
 				};
-				ui.add_sized([width, height], Label::new(self.error_state.msg));
 				use ErrorButtons::*;
 				let height = ui.available_height();
 

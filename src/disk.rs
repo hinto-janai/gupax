@@ -171,6 +171,7 @@ impl State {
 				address: String::with_capacity(95),
 			},
 			version: Arc::new(Mutex::new(Version {
+				gupax: Arc::new(Mutex::new(GUPAX_VERSION.to_string())),
 				p2pool: Arc::new(Mutex::new(P2POOL_VERSION.to_string())),
 				xmrig: Arc::new(Mutex::new(XMRIG_VERSION.to_string())),
 			})),
@@ -551,6 +552,7 @@ pub struct Xmrig {
 
 #[derive(Clone,Debug,Deserialize,Serialize)]
 pub struct Version {
+	pub gupax: Arc<Mutex<String>>,
 	pub p2pool: Arc<Mutex<String>>,
 	pub xmrig: Arc<Mutex<String>>,
 }

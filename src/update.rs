@@ -418,40 +418,41 @@ impl Update {
 		let mut new_pkgs = vec![];
 		for pkg in vec2.iter() {
 			let new_ver = pkg.new_ver.lock().unwrap().to_owned();
+			let diff;
+			let old_ver;
+			let name;
 			match pkg.name {
 				Gupax  => {
-					if new_ver == GUPAX_VERSION {
-						info!("Update | {} {} == {} ... SKIPPING", pkg.name, GUPAX_VERSION, new_ver);
-					} else {
-						info!("Update | {} {} != {} ... ADDING", pkg.name, GUPAX_VERSION, new_ver);
-						new_pkgs.push(format!("\nGupax {}  ➡  {}", GUPAX_VERSION, new_ver));
-						vec3.push(pkg);
-					}
+					old_ver = og_ver.lock().unwrap().gupax.lock().unwrap().to_string();
+					// Compare against the built-in compiled version as well as a in-memory version
+					// that gets updated during an update. This prevents the updater always thinking
+					// there's a new Gupax update since the user didnt restart and is still technically
+					// using the old version (even though the underlying binary was updated).
+					diff = old_ver != new_ver && GUPAX_VERSION != new_ver;
+					name = "Gupax";
 				}
 				P2pool => {
-					let old_ver = og_ver.lock().unwrap().p2pool.lock().unwrap().to_owned();
-					if old_ver == new_ver {
-						info!("Update | {} {} == {} ... SKIPPING", pkg.name, old_ver, new_ver);
-					} else {
-						info!("Update | {} {} != {} ... ADDING", pkg.name, old_ver, new_ver);
-						new_pkgs.push(format!("\nP2Pool {}  ➡  {}", old_ver, new_ver));
-						vec3.push(pkg);
-					}
+					old_ver = og_ver.lock().unwrap().p2pool.lock().unwrap().to_string();
+					diff = old_ver != new_ver;
+					name = "P2Pool";
 				}
 				Xmrig  => {
-					let old_ver = og_ver.lock().unwrap().xmrig.lock().unwrap().to_owned();
-					if old_ver == new_ver {
-						info!("Update | {} {} == {} ... SKIPPING", pkg.name, old_ver, new_ver);
-					} else {
-						info!("Update | {} {} != {} ... ADDING", pkg.name, old_ver, new_ver);
-						new_pkgs.push(format!("\nXMRig {}  ➡  {}", old_ver, new_ver));
-						vec3.push(pkg);
-					}
+					old_ver = og_ver.lock().unwrap().xmrig.lock().unwrap().to_string();
+					diff = old_ver != new_ver;
+					name = "XMRig";
 				}
+			}
+			if diff {
+				info!("Update | {} {} != {} ... ADDING", pkg.name, old_ver, new_ver);
+				new_pkgs.push(format!("\n{} {}  ->  {}", name, old_ver, new_ver));
+				vec3.push(pkg);
+			} else {
+				info!("Update | {} {} == {} ... SKIPPING", pkg.name, old_ver, new_ver);
 			}
 		}
 		*update.lock().unwrap().prog.lock().unwrap() += 5.0;
 		info!("Update | Compare ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
+
 		// Return if 0 (all packages up-to-date)
 		// Get amount of packages to divide up the percentage increases
 		let pkg_amount = vec3.len() as f32;
@@ -576,6 +577,7 @@ impl Update {
 					std::fs::rename(&path, tmp_windows)?;
 					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path);
 					std::fs::rename(entry.path(), path)?;
+					*og_ver.lock().unwrap().gupax.lock().unwrap() = Pkg::get_new_pkg_version(Gupax, &vec4)?;
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
 				P2POOL_BINARY => {
