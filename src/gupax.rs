@@ -152,20 +152,21 @@ impl Gupax {
 				};
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
-			if ui.button("Select File").clicked() {
-				if file_window.lock().unwrap().thread == false {
-					let file_window = Arc::clone(file_window);
-					thread::spawn(move|| {
-						match rfd::FileDialog::new().set_title("Select P2Pool Binary for Gupax").pick_file() {
-							Some(path) => {
-								info!("Gupax | [{}] path selected for P2Pool", path.display());
-								file_window.lock().unwrap().p2pool_path = path.display().to_string();
-								file_window.lock().unwrap().picked_p2pool = true;
-							},
-							None => info!("Gupax | No path selected for P2Pool"),
-						};
-					});
-				}
+			ui.set_enabled(!file_window.lock().unwrap().thread);
+			if ui.button("Select").on_hover_text(GUPAX_SELECT).clicked() {
+				file_window.lock().unwrap().thread = true;
+				let file_window = Arc::clone(file_window);
+				thread::spawn(move|| {
+					match rfd::FileDialog::new().set_title("Select P2Pool Binary for Gupax").pick_file() {
+						Some(path) => {
+							info!("Gupax | [{}] path selected for P2Pool", path.display());
+							file_window.lock().unwrap().p2pool_path = path.display().to_string();
+							file_window.lock().unwrap().picked_p2pool = true;
+						},
+						None => info!("Gupax | No path selected for P2Pool"),
+					};
+					file_window.lock().unwrap().thread = false;
+				});
 			}
 			ui.text_edit_singleline(&mut self.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
 		});
@@ -185,20 +186,21 @@ impl Gupax {
 				};
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
-			if ui.button("Select File").clicked() {
-				if file_window.lock().unwrap().thread == false {
-					let file_window = Arc::clone(file_window);
-					thread::spawn(move|| {
-						match rfd::FileDialog::new().set_title("Select XMRig Binary for Gupax").pick_file() {
-							Some(path) => {
-								info!("Gupax | [{}] path selected for XMRig", path.display());
-								file_window.lock().unwrap().xmrig_path = path.display().to_string();
-								file_window.lock().unwrap().picked_xmrig = true;
-							},
-							None => info!("Gupax | No path selected for XMRig"),
-						};
-					});
-				}
+			ui.set_enabled(!file_window.lock().unwrap().thread);
+			if ui.button("Select").on_hover_text(GUPAX_SELECT).clicked() {
+				file_window.lock().unwrap().thread = true;
+				let file_window = Arc::clone(file_window);
+				thread::spawn(move|| {
+					match rfd::FileDialog::new().set_title("Select XMRig Binary for Gupax").pick_file() {
+						Some(path) => {
+							info!("Gupax | [{}] path selected for XMRig", path.display());
+							file_window.lock().unwrap().xmrig_path = path.display().to_string();
+							file_window.lock().unwrap().picked_xmrig = true;
+						},
+						None => info!("Gupax | No path selected for XMRig"),
+					};
+					file_window.lock().unwrap().thread = false;
+				});
 			}
 			ui.text_edit_singleline(&mut self.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
 		});

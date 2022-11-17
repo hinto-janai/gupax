@@ -59,6 +59,7 @@ pub const GUPAX_AUTO_UPDATE: &'static str = "Automatically check for updates at 
 pub const GUPAX_UPDATE_VIA_TOR: &'static str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
 pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting Gupax";
 pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed settings before quitting";
+pub const GUPAX_SELECT: &'static str = "Open a file explorer to select a file";
 pub const GUPAX_PATH_P2POOL: &'static str = "The location of the P2Pool binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 pub const GUPAX_PATH_XMRIG: &'static str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 // P2Pool
