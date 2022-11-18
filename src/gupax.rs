@@ -187,7 +187,7 @@ impl Gupax {
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);
-			if ui.button("Open	").on_hover_text(GUPAX_SELECT).clicked() {
+			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				file_window.lock().unwrap().thread = true;
 				let file_window = Arc::clone(file_window);
 				thread::spawn(move|| {

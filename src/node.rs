@@ -69,7 +69,7 @@ impl std::fmt::Display for NodeEnum {
 }
 
 //---------------------------------------------------------------------------------------------------- Node data
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeData {
 	pub id: NodeEnum,
 	pub ip: &'static str,
@@ -119,6 +119,7 @@ impl Ping {
 }
 
 //---------------------------------------------------------------------------------------------------- IP <-> Enum functions
+use crate::NodeEnum::*;
 // Function for returning IP/Enum
 pub fn ip_to_enum(ip: &'static str) -> NodeEnum {
 	match ip {
@@ -193,11 +194,29 @@ pub fn format_enum(id: NodeEnum) -> String {
 }
 
 //---------------------------------------------------------------------------------------------------- Main Ping function
+// This is for pinging the community nodes to
+// find the fastest/slowest one for the user.
+// The process:
+//   - Send [get_info] JSON-RPC request over HTTP to all IPs
+//   - Measure each request in milliseconds
+//   - Timeout on requests over 5 seconds
+//   - Add data to appropriate struct
+//   - Sorting fastest to lowest is automatic (fastest nodes return ... the fastest)
+//
+// This used to be done 3x linearly but after testing, sending a single
+// JSON-RPC call to all IPs asynchronously resulted in the same data.
+//
+// <300ms  = GREEN
+// <1000ms = YELLOW
+// >1000ms = RED
+// timeout = BLACK
+// default = GRAY
 #[tokio::main]
-pub async fn start(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) -> Result<Vec<NodeData>, anyhow::Error> {
+pub async fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) -> Result<(), anyhow::Error> {
 	// Start ping
 	ping.lock().unwrap().pinging = true;
 	ping.lock().unwrap().prog = 0.0;
+	let percent = (100.0 / ((NODE_IPS.len()) as f32)).floor();
 
 	// Create HTTP client
 	let info = format!("{}", "Creating HTTP Client");
@@ -208,175 +227,65 @@ pub async fn start(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) -> Result<Vec<
 	// Random User Agent
 	let rand_user_agent = crate::Pkg::get_user_agent();
 	// Handle vector
-//	let mut handles: Vec<tokio::task::JoinHandle<Result<NodeData, anyhow::Error>>> = vec![];
 	let mut handles = vec![];
+	let node_vec = Arc::new(Mutex::new(Vec::new()));
 
 	for ip in NODE_IPS {
 		let client = client.clone();
+		let ping = Arc::clone(&ping);
+		let node_vec = Arc::clone(&node_vec);
 		let request = hyper::Request::builder()
 			.method("POST")
 			.uri("http://".to_string() + ip + "/json_rpc")
 			.header("User-Agent", rand_user_agent)
 			.body(hyper::Body::from(r#"{"jsonrpc":"2.0","id":"0","method":"get_info"}"#))
 			.unwrap();
-		let handle = tokio::spawn(async move { response(client, request, ip).await });
-//		let handle: tokio::task::JoinHandle<Result<NodeData, anyhow::Error>> = tokio::spawn(async move { response(client, request, ip).await });
+		let handle = tokio::spawn(async move { response(client, request, ip, ping, percent, node_vec).await });
 		handles.push(handle);
 	}
 
-	let mut node_vec = vec![];
 	for handle in handles {
-		match handle.await {
-			Ok(data) => match data { Ok(data) => node_vec.push(data), _ => return Err(anyhow::Error::msg("fail")) },
-			_ => return Err(anyhow::Error::msg("fail")),
-		};
+		handle.await;
 	}
+	let node_vec = node_vec.lock().unwrap().clone();
 
-	Ok(node_vec)
+	let info = format!("Fastest node: {}ms ... {} @ {}", node_vec[0].ms, node_vec[0].id, node_vec[0].ip);
+	info!("Ping | {}", info);
+	let mut ping = ping.lock().unwrap();
+		ping.fastest = node_vec[0].id;
+		ping.nodes = node_vec;
+		ping.prog = 100.0;
+		ping.msg = info;
+		ping.pinging = false;
+		ping.pinged = true;
+		ping.auto_selected = false;
+		drop(ping);
+	Ok(())
 }
 
-async fn response(client: hyper::client::Client<hyper::client::HttpConnector>, request: hyper::Request<hyper::Body>, ip: &'static str) -> Result<NodeData, anyhow::Error> {
+async fn response(client: hyper::client::Client<hyper::client::HttpConnector>, request: hyper::Request<hyper::Body>, ip: &'static str, ping: Arc<Mutex<Ping>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
+	let id = ip_to_enum(ip);
 	let now = Instant::now();
-	let response = tokio::time::timeout(Duration::from_secs(5), client.request(request)).await?;
-	let ms = now.elapsed().as_millis();
-	let mut color = Color32::BLACK;
+	let ms;
+	match tokio::time::timeout(Duration::from_secs(5), client.request(request)).await {
+		Ok(_) => ms = now.elapsed().as_millis(),
+		Err(e) => { warn!("Ping | {}: {} ... FAIL ... {}", id, ip, e); ms = 5000; },
+	};
+	let color;
 	if ms < 300 {
-		// GREEN
-		color = Color32::from_rgb(100, 230, 100);
+		color = Color32::from_rgb(100, 230, 100); // GREEN
 	} else if ms < 1000 {
-		// YELLOW
-		color = Color32::from_rgb(230, 230, 100);
+		color = Color32::from_rgb(230, 230, 100); // YELLOW
 	} else if ms < 5000 {
-		// RED
-		color = Color32::from_rgb(230, 50, 50);
+		color = Color32::from_rgb(230, 50, 50); // RED
+	} else {
+		color = Color32::BLACK;
 	}
-	Ok(NodeData {
-		id: ip_to_enum(ip),
-		ip,
-		ms,
-		color,
-	})
-}
-
-
-// This is for pinging the community nodes to
-// find the fastest/slowest one for the user.
-// The process:
-//   - Send 3 [get_info] JSON-RPC requests over HTTP
-//   - Measure each request in milliseconds as [u128]
-//   - Timeout on requests over 5 seconds
-//   - Calculate average time
-//   - Add data to appropriate struct
-//   - Sort fastest to lowest
-//   - Return [PingResult] (data and fastest node)
-//
-// This is done linearly since per IP since
-// multi-threading might affect performance.
-//
-// <300ms  = GREEN
-// <1000ms = YELLOW
-// >1000ms = RED
-// timeout = BLACK
-// default = GRAY
-use crate::NodeEnum::*;
-pub fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) {
-	// Start ping
-	ping.lock().unwrap().pinging = true;
-	ping.lock().unwrap().prog = 0.0;
-	let info = format!("{}", "Creating HTTPS Client");
+	let info = format!("{}ms ... {}: {}", ms, id, ip);
 	info!("Ping | {}", info);
-	ping.lock().unwrap().msg = info;
-	let percent = (100 / (NODE_IPS.len() - 1)) as f32 / 3.0;
-
-	// Create Node vector
-	let mut nodes = Vec::new();
-
-	// Create JSON request
-	let mut get_info = HashMap::new();
-	get_info.insert("jsonrpc", "2.0");
-	get_info.insert("id", "0");
-	get_info.insert("method", "get_info");
-
-	// Misc Settings
-	let mut vec: Vec<(NodeEnum, u128)> = Vec::new();
-
-	// Create HTTP Client
-	let timeout_sec = Duration::from_millis(5000);
-	let client = ClientBuilder::new();
-	let client = ClientBuilder::timeout(client, timeout_sec);
-	let client = ClientBuilder::build(client).unwrap();
-
-	for ip in NODE_IPS.iter() {
-		// Match IP
-		let id = ip_to_enum(ip);
-		// Misc
-		let mut timeout = 0;
-		let mut mid = Duration::new(0, 0);
-
-		// Start JSON-RPC request
-		for i in 1..=3 {
-			ping.lock().unwrap().msg = format!("{}: {} [{}/3]", id, ip, i);
-			let now = Instant::now();
-			let http = "http://".to_string() + &**ip + "/json_rpc";
-			match client.post(http).json(&get_info).send() {
-				Ok(_) => mid += now.elapsed(),
-				Err(_) => {
-					mid += timeout_sec;
-					timeout += 1;
-					let error = format!("Timeout [{}/3] ... {:#?} ... {}", timeout, id, ip);
-					error!("Ping | {}", error);
-					ping.lock().unwrap().msg = error;
-				},
-			};
-			ping.lock().unwrap().prog += percent;
-		}
-
-		// Calculate average
-		let ms = mid.as_millis() / 3;
-		vec.push((id, ms));
-		let info = format!("{}ms ... {}: {}", ms, id, ip);
-		info!("Ping | {}", info);
-		ping.lock().unwrap().msg = format!("{}", info);
-		let color: Color32;
-		if timeout == 3 {
-			color = Color32::BLACK;
-		} else if ms >= 1000 {
-			// RED
-			color = Color32::from_rgb(230, 50, 50);
-		} else if ms >= 300 {
-			// YELLOW
-			color = Color32::from_rgb(230, 230, 100);
-		} else {
-			// GREEN
-			color = Color32::from_rgb(100, 230, 100);
-		}
-		nodes.push(NodeData { id, ip, ms, color })
-	}
-
-	let percent = (100.0 - ping.lock().unwrap().prog) / 2.0;
-	ping.lock().unwrap().prog += percent;
-	ping.lock().unwrap().msg = "Calculating fastest node".to_string();
-	// Calculate fastest out of all nodes
-	let mut fastest: NodeEnum = vec[0].0;
-	let mut best_ms: u128 = vec[0].1;
-	for (id, ms) in vec.iter() {
-		if ms < &best_ms {
-			fastest = *id;
-			best_ms = *ms;
-		}
-	}
-	let info = format!("Fastest node: {}ms ... {} @ {}", best_ms, fastest, enum_to_ip(fastest));
-	info!("Ping | {}", info);
-	let mut guard = ping.lock().unwrap();
-		guard.nodes = nodes;
-		guard.fastest = fastest;
-		guard.prog = 100.0;
-		guard.msg = info;
-		guard.pinging = false;
-		guard.pinged = true;
-		drop(guard);
-	if og.lock().unwrap().p2pool.auto_select {
-		ping.lock().unwrap().auto_selected = false;
-	}
-	info!("Ping ... OK");
+	let mut ping = ping.lock().unwrap();
+	ping.msg = info;
+	ping.prog += percent;
+	drop(ping);
+	node_vec.lock().unwrap().push(NodeData { id: ip_to_enum(ip), ip, ms, color, });
 }

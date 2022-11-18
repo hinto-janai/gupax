@@ -141,11 +141,20 @@ impl P2pool {
 		// [Ping Button]
 		ui.set_enabled(!ping.lock().unwrap().pinging);
 		if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
-			let ping = Arc::clone(&ping);
+			let ping1 = Arc::clone(&ping);
+			let ping2 = Arc::clone(&ping);
 			let og = Arc::clone(og);
 			thread::spawn(move|| {
 				info!("Spawning ping thread...");
-				crate::node::ping(ping, og);
+				match crate::node::ping(ping1, og) {
+					Ok(_) => info!("Ping ... OK"),
+					Err(err) => {
+						error!("Ping ... FAIL ... {}", err);
+						ping2.lock().unwrap().pinged = false;
+						ping2.lock().unwrap().msg = err.to_string();
+					},
+				};
+				ping2.lock().unwrap().pinging = false;
 			});
 		}});
 
