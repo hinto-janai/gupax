@@ -22,6 +22,11 @@ use std::collections::HashMap;
 use std::sync::{Arc,Mutex};
 use egui::Color32;
 use log::*;
+//use hyper::{
+//	Client,Body,Request,
+//	header::{HeaderValue,LOCATION},
+//};
+
 use reqwest::blocking::ClientBuilder;
 
 //---------------------------------------------------------------------------------------------------- Node list
@@ -75,7 +80,7 @@ pub struct NodeData {
 impl NodeData {
 	pub fn new_vec() -> Vec<Self> {
 		let mut vec = Vec::new();
-		for ip in NODE_IPS.iter() {
+		for ip in NODE_IPS {
 			vec.push(Self {
 				id: ip_to_enum(ip),
 				ip,
@@ -188,6 +193,72 @@ pub fn format_enum(id: NodeEnum) -> String {
 }
 
 //---------------------------------------------------------------------------------------------------- Main Ping function
+#[tokio::main]
+pub async fn start(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) -> Result<Vec<NodeData>, anyhow::Error> {
+	// Start ping
+	ping.lock().unwrap().pinging = true;
+	ping.lock().unwrap().prog = 0.0;
+
+	// Create HTTP client
+	let info = format!("{}", "Creating HTTP Client");
+	ping.lock().unwrap().msg = info;
+	let client: hyper::client::Client<hyper::client::HttpConnector> = hyper::Client::builder()
+		.build(hyper::client::HttpConnector::new());
+
+	// Random User Agent
+	let rand_user_agent = crate::Pkg::get_user_agent();
+	// Handle vector
+//	let mut handles: Vec<tokio::task::JoinHandle<Result<NodeData, anyhow::Error>>> = vec![];
+	let mut handles = vec![];
+
+	for ip in NODE_IPS {
+		let client = client.clone();
+		let request = hyper::Request::builder()
+			.method("POST")
+			.uri("http://".to_string() + ip + "/json_rpc")
+			.header("User-Agent", rand_user_agent)
+			.body(hyper::Body::from(r#"{"jsonrpc":"2.0","id":"0","method":"get_info"}"#))
+			.unwrap();
+		let handle = tokio::spawn(async move { response(client, request, ip).await });
+//		let handle: tokio::task::JoinHandle<Result<NodeData, anyhow::Error>> = tokio::spawn(async move { response(client, request, ip).await });
+		handles.push(handle);
+	}
+
+	let mut node_vec = vec![];
+	for handle in handles {
+		match handle.await {
+			Ok(data) => match data { Ok(data) => node_vec.push(data), _ => return Err(anyhow::Error::msg("fail")) },
+			_ => return Err(anyhow::Error::msg("fail")),
+		};
+	}
+
+	Ok(node_vec)
+}
+
+async fn response(client: hyper::client::Client<hyper::client::HttpConnector>, request: hyper::Request<hyper::Body>, ip: &'static str) -> Result<NodeData, anyhow::Error> {
+	let now = Instant::now();
+	let response = tokio::time::timeout(Duration::from_secs(5), client.request(request)).await?;
+	let ms = now.elapsed().as_millis();
+	let mut color = Color32::BLACK;
+	if ms < 300 {
+		// GREEN
+		color = Color32::from_rgb(100, 230, 100);
+	} else if ms < 1000 {
+		// YELLOW
+		color = Color32::from_rgb(230, 230, 100);
+	} else if ms < 5000 {
+		// RED
+		color = Color32::from_rgb(230, 50, 50);
+	}
+	Ok(NodeData {
+		id: ip_to_enum(ip),
+		ip,
+		ms,
+		color,
+	})
+}
+
+
 // This is for pinging the community nodes to
 // find the fastest/slowest one for the user.
 // The process:

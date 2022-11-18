@@ -673,7 +673,7 @@ impl Pkg {
 
 	//---------------------------------------------------------------------------------------------------- Pkg functions
 	// Generate fake [User-Agent] HTTP header
-	fn get_user_agent() -> &'static str {
+	pub fn get_user_agent() -> &'static str {
 		let rand = thread_rng().gen_range(0..50);
 		let user_agent = FAKE_USER_AGENT[rand];
 		info!("Update | Randomly selecting User-Agent ({}/50) ... {}", rand, user_agent);

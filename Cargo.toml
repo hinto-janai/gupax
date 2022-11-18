@@ -30,6 +30,7 @@ figment = { version = "0.10.8", features = ["toml"] }
 flate2 = "1.0"
 hex-literal = "0.3.4"
 hyper = "0.14.20"
+#hyper = { version = "0.14.20", features = ["full"] }
 hyper-tls = "0.5.0"
 image = { version = "0.24.4", features = ["png"] }
 log = "0.4.17"
