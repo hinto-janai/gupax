@@ -90,6 +90,7 @@ pub const P2POOL_NODE_IP: &'static str = "Specify the Monero Node IP to connect 
 pub const P2POOL_RPC_PORT: &'static str = "Specify the RPC port of the Monero node; [1-65535]";
 pub const P2POOL_ZMQ_PORT: &'static str = "Specify the ZMQ port of the Monero node; [1-65535]";
 pub const P2POOL_ADD: &'static str = "Add the current values to the list";
+pub const P2POOL_SAVE: &'static str = "Save the current values to the already existing entry";
 pub const P2POOL_DELETE: &'static str = "Delete the currently selected node";
 pub const P2POOL_CLEAR: &'static str = "Clear all current values";
 

@@ -291,56 +291,95 @@ impl P2pool {
 			ui.spacing_mut().slider_width = width - 8.0;
 			ui.spacing_mut().icon_width = width / 25.0;
 			// [Ping List]
-			let text = RichText::new(format!("{}. {} | {}", self.selected_index, self.selected_name, self.selected_ip));
+			let text = RichText::new(format!("{}. {}", self.selected_index, self.selected_name));
 			ComboBox::from_id_source("manual_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
 				let mut n = 1;
 				for (name, node) in node_vec.iter() {
 					let text = RichText::text_style(RichText::new(format!("{}. {}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", n, name, node.ip, node.rpc, node.zmq)), Monospace);
 					if ui.add(SelectableLabel::new(self.selected_name == *name, text)).clicked() {
 						self.selected_index = n;
+						let node = node.clone();
 						self.selected_name = name.clone();
+						self.selected_ip = node.ip.clone();
+						self.selected_rpc = node.rpc.clone();
+						self.selected_zmq = node.zmq.clone();
+						self.name = name.clone();
+						self.ip = node.ip;
+						self.rpc = node.rpc;
+						self.zmq = node.zmq;
 					}
 					n += 1;
 				}
 			});
-			// [Add] + [Delete]
+			// [Add/Save]
 			let node_vec_len = node_vec.len();
-			ui.horizontal(|ui| {
-				let mut exists = false;
-				for (name, _) in node_vec.iter() {
-					if *name == self.name { exists = true; }
+			let mut exists = false;
+			let mut save_diff = true;
+			let mut existing_index = 0;
+			for (name, node) in node_vec.iter() {
+				if *name == self.name {
+					exists = true;
+					if self.ip == node.ip && self.rpc == node.rpc && self.zmq == node.zmq {
+						save_diff = false;
+					}
+					break
 				}
-				ui.set_enabled(!incorrect_input && !exists && node_vec_len < 1000);
-				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", P2POOL_ADD, self.selected_index, self.selected_name, node_vec_len);
-				if ui.add_sized([width, text_edit], Button::new("Add")).on_hover_text(text).clicked() {
-					let node = Node {
-						ip: self.ip.clone(),
-						rpc: self.rpc.clone(),
-						zmq: self.zmq.clone(),
-					};
-					node_vec.push((self.name.clone(), node));
-					info!("Node | Added [index: {}, name: \"{}\", ip: \"{}\", rpc: {}, zmq: {}]", node_vec_len+1, self.name, self.ip, self.rpc, self.zmq);
+				existing_index += 1;
+			}
+			ui.horizontal(|ui| {
+				let text;
+				if exists { text = P2POOL_SAVE } else { text = P2POOL_ADD }
+				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", text, self.selected_index, self.selected_name, node_vec_len);
+				// If the node already exists, show [Save] and mutate the already existing node
+				if exists {
+					ui.set_enabled(save_diff);
+					if ui.add_sized([width, text_edit], Button::new("Save")).on_hover_text(text).clicked() {
+						let node = Node {
+							ip: self.ip.clone(),
+							rpc: self.rpc.clone(),
+							zmq: self.zmq.clone(),
+						};
+						node_vec[existing_index as usize].1 = node;
+						info!("Node | S | [index: {}, name: \"{}\", ip: \"{}\", rpc: {}, zmq: {}]", existing_index+1, self.name, self.ip, self.rpc, self.zmq);
+					}
+				// Else, add to the list
+				} else {
+					ui.set_enabled(!incorrect_input && node_vec_len < 1000);
+					if ui.add_sized([width, text_edit], Button::new("Add")).on_hover_text(text).clicked() {
+						let node = Node {
+							ip: self.ip.clone(),
+							rpc: self.rpc.clone(),
+							zmq: self.zmq.clone(),
+						};
+						node_vec.push((self.name.clone(), node));
+						self.selected_index = (node_vec_len+1) as u16;
+						self.selected_name = self.name.clone();
+						self.selected_ip = self.ip.clone();
+						self.selected_rpc = self.rpc.clone();
+						self.selected_zmq = self.zmq.clone();
+						info!("Node | A | [index: {}, name: \"{}\", ip: \"{}\", rpc: {}, zmq: {}]", node_vec_len+1, self.name, self.ip, self.rpc, self.zmq);
+					}
 				}
 			});
+			// [Delete]
 			ui.horizontal(|ui| {
 				ui.set_enabled(node_vec_len > 1);
 				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", P2POOL_DELETE, self.selected_index, self.selected_name, node_vec_len);
 				if ui.add_sized([width, text_edit], Button::new("Delete")).on_hover_text(text).clicked() {
-					let mut n = 0;
-					for (name, _) in node_vec.iter() {
-						if *name == self.selected_name {
-							// If deleting [0], make selected = [1]
-							// instead of attempting to [0-1] (panic!)
-							match n {
-								0 => { self.selected_name = node_vec[1].0.clone(); self.selected_index = 1; },
-								_ => { self.selected_name = node_vec[n-1].0.clone(); self.selected_index = n as u16; },
-							};
-							node_vec.remove(n);
-							info!("Node | Deleted [index: {}, name: \"{}\", ip: \"{}\", rpc: {}, zmq: {}]", n+1, self.selected_name, self.selected_ip, self.selected_rpc, self.selected_zmq);
-							break
-						}
-						n += 1;
-					}
+					let new_index = self.selected_index-1;
+					let new_name = node_vec[(new_index-1) as usize].0.clone();
+					let new_node = node_vec[(new_index-1) as usize].1.clone();
+					self.selected_index = new_index;
+					self.selected_name = new_name.clone();
+					self.selected_ip = new_node.ip.clone();
+					self.selected_rpc = new_node.rpc.clone();
+					self.selected_zmq = new_node.zmq.clone();
+					self.name = new_name;
+					self.ip = new_node.ip;
+					self.rpc = new_node.rpc;
+					self.zmq = new_node.zmq;
+					node_vec.remove(self.selected_index as usize);
+					info!("Node | D | [index: {}, name: \"{}\", ip: \"{}\", rpc: {}, zmq: {}]", self.selected_index, self.selected_name, self.selected_ip, self.selected_rpc, self.selected_zmq);
 				}
 			});
 			ui.horizontal(|ui| {

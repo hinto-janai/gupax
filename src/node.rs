@@ -248,7 +248,7 @@ pub async fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) -> Result<(), a
 	}
 
 	for handle in handles {
-		handle.await;
+		handle.await?;
 	}
 	let node_vec = node_vec.lock().unwrap().clone();
 
