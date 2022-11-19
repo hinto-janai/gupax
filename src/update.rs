@@ -270,11 +270,12 @@ impl Update {
 	//     ClientEnum::Tor(T)   => get_reponse(... T ...)
 	//     ClientEnum::Https(H) => get_reponse(... H ...)
 	//
-	pub async fn get_client(tor: bool) -> Result<ClientEnum, anyhow::Error> {
+	pub fn get_client(tor: bool) -> Result<ClientEnum, anyhow::Error> {
 		if tor {
-			// This one below is non-async, but it doesn't bootstrap immediately.
-//			let tor = TorClient::builder().bootstrap_behavior(arti_client::BootstrapBehavior::OnDemand).create_unbootstrapped()?;
-			let tor = TorClient::create_bootstrapped(TorClientConfig::default()).await?;
+			// This one below is non-async, and doesn't bootstrap immediately.
+			let tor = TorClient::builder().bootstrap_behavior(arti_client::BootstrapBehavior::OnDemand).create_unbootstrapped()?;
+			// Below is async, bootstraps immediately but has issues when recreating the circuit
+//			let tor = TorClient::create_bootstrapped(TorClientConfig::default()).await?;
 			let tls = tls_api_native_tls::TlsConnector::builder()?.build()?;
 		    let connector = ArtiHttpConnector::new(tor, tls);
 			let client = ClientEnum::Tor(Client::builder().build(connector));
@@ -296,7 +297,7 @@ impl Update {
 	// 5. extract, upgrade
 
 	#[tokio::main]
-	pub async fn start(update: Arc<Mutex<Self>>, og_ver: Arc<Mutex<Version>>, state_ver: Arc<Mutex<Version>>) -> Result<(), anyhow::Error> {
+	pub async fn start(update: Arc<Mutex<Self>>, og: Arc<Mutex<State>>, state_ver: Arc<Mutex<Version>>) -> Result<(), anyhow::Error> {
 		//---------------------------------------------------------------------------------------------------- Init
 		*update.lock().unwrap().updating.lock().unwrap() = true;
 		// Set timer
@@ -337,7 +338,7 @@ impl Update {
 		let prog = *update.lock().unwrap().prog.lock().unwrap();
 		info!("Update | {}", update.lock().unwrap().msg.lock().unwrap());
 		let tor = update.lock().unwrap().tor;
-		let client = Self::get_client(tor).await?;
+		let mut client = Self::get_client(tor)?;
 		*update.lock().unwrap().prog.lock().unwrap() += 5.0;
 		info!("Update | Init ... OK ... {}%", prog);
 
@@ -351,7 +352,7 @@ impl Update {
 		// 3. Iterate over all [pkg.new_ver], check if empty
 		// 4. If not empty, move [pkg] to different vec
 		// 5. At end, if original vec isn't empty, that means something failed
-		// 6. Redo loop [3] times, with the original vec (that now only has the failed pkgs)
+		// 6. Redo loop [3] times (rebuild circuit if using Tor), with the original vec (that now only has the failed pkgs)
 		//
 		// This logic was originally in the [Pkg::get_metadata()]
 		// function itself but for some reason, it was getting skipped over,
@@ -403,6 +404,12 @@ impl Update {
 				vec.remove(index);
 			}
 			if vec.is_empty() { break }
+			// Some Tor exit nodes seem to be blocked by GitHub's API,
+			// so recreate the circuit every loop.
+			if tor {
+				info!("Update | Recreating Tor client...");
+				client = Self::get_client(tor)?;
+			}
 		}
 		if vec.is_empty() {
 			info!("Update | Metadata ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
@@ -423,21 +430,21 @@ impl Update {
 			let name;
 			match pkg.name {
 				Gupax  => {
-					old_ver = og_ver.lock().unwrap().gupax.lock().unwrap().to_string();
 					// Compare against the built-in compiled version as well as a in-memory version
 					// that gets updated during an update. This prevents the updater always thinking
 					// there's a new Gupax update since the user didnt restart and is still technically
 					// using the old version (even though the underlying binary was updated).
+					old_ver = og.lock().unwrap().version.lock().unwrap().gupax.clone();
 					diff = old_ver != new_ver && GUPAX_VERSION != new_ver;
 					name = "Gupax";
 				}
 				P2pool => {
-					old_ver = og_ver.lock().unwrap().p2pool.lock().unwrap().to_string();
+					old_ver = og.lock().unwrap().version.lock().unwrap().p2pool.clone();
 					diff = old_ver != new_ver;
 					name = "P2Pool";
 				}
 				Xmrig  => {
-					old_ver = og_ver.lock().unwrap().xmrig.lock().unwrap().to_string();
+					old_ver = og.lock().unwrap().version.lock().unwrap().xmrig.clone();
 					diff = old_ver != new_ver;
 					name = "XMRig";
 				}
@@ -577,7 +584,7 @@ impl Update {
 					std::fs::rename(&path, tmp_windows)?;
 					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path);
 					std::fs::rename(entry.path(), path)?;
-					*og_ver.lock().unwrap().gupax.lock().unwrap() = Pkg::get_new_pkg_version(Gupax, &vec4)?;
+					og.lock().unwrap().version.lock().unwrap().gupax = Pkg::get_new_pkg_version(Gupax, &vec4)?;
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
 				P2POOL_BINARY => {
@@ -586,7 +593,7 @@ impl Update {
 					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path.display());
 					std::fs::create_dir_all(path.parent().ok_or(anyhow::Error::msg("P2Pool path failed"))?)?;
 					std::fs::rename(entry.path(), path)?;
-					*og_ver.lock().unwrap().p2pool.lock().unwrap() = Pkg::get_new_pkg_version(P2pool, &vec4)?;
+					og.lock().unwrap().version.lock().unwrap().p2pool = Pkg::get_new_pkg_version(P2pool, &vec4)?;
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
 				XMRIG_BINARY => {
@@ -595,7 +602,7 @@ impl Update {
 					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path.display());
 					std::fs::create_dir_all(path.parent().ok_or(anyhow::Error::msg("XMRig path failed"))?)?;
 					std::fs::rename(entry.path(), path)?;
-					*og_ver.lock().unwrap().xmrig.lock().unwrap() = Pkg::get_new_pkg_version(Xmrig, &vec4)?;
+					og.lock().unwrap().version.lock().unwrap().xmrig = Pkg::get_new_pkg_version(Xmrig, &vec4)?;
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
 				_ => (),
@@ -611,7 +618,7 @@ impl Update {
 		let seconds = now.elapsed().as_secs();
 		info!("Update | Seconds elapsed ... [{}s]", seconds);
 		match seconds {
-			0 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 0 seconds... Do you have 10Gbit internet or something...?!{}", MSG_SUCCESS, new_pkgs),
+			0 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 0 seconds... What...?!{}", MSG_SUCCESS, new_pkgs),
 			1 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 1 second... Wow!{}", MSG_SUCCESS, new_pkgs),
 			_ => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took {} seconds.{}", MSG_SUCCESS, seconds, new_pkgs),
 		}

@@ -72,13 +72,12 @@ impl Gupax {
 						update.lock().unwrap().path_xmrig = og.lock().unwrap().gupax.absolute_xmrig_path.display().to_string();
 						update.lock().unwrap().tor = og.lock().unwrap().gupax.update_via_tor;
 						let og = Arc::clone(&og);
-						let og_ver = Arc::clone(&og.lock().unwrap().version);
 						let state_ver = Arc::clone(&state_ver);
 						let update = Arc::clone(&update);
 						let update_thread = Arc::clone(&update);
 						thread::spawn(move|| {
 							info!("Spawning update thread...");
-							match Update::start(update_thread, og_ver.clone(), state_ver.clone()) {
+							match Update::start(update_thread, og.clone(), state_ver.clone()) {
 								Err(e) => {
 									info!("Update ... FAIL ... {}", e);
 									*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);

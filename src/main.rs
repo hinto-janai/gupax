@@ -384,13 +384,12 @@ fn init_auto(app: &App) {
 		app.update.lock().unwrap().path_xmrig = path_xmrig;
 		app.update.lock().unwrap().tor = tor;
 		let og = Arc::clone(&app.og);
-		let og_ver = Arc::clone(&app.og.lock().unwrap().version);
 		let state_ver = Arc::clone(&app.state.version);
 		let update = Arc::clone(&app.update);
 		let update_thread = Arc::clone(&app.update);
 		thread::spawn(move|| {
 			info!("Spawning update thread...");
-			match Update::start(update_thread, og_ver.clone(), state_ver.clone()) {
+			match Update::start(update_thread, og.clone(), state_ver.clone()) {
 				Err(e) => {
 					info!("Update ... FAIL ... {}", e);
 					*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);

@@ -67,11 +67,12 @@ With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/X
 | Monerujo       | nodex.monerujo.io                | 18081    |
 | Rino           | node.community.rino.io           | 18081    |
 | Seth           | node.sethforprivacy.com          | 18089    |
-| Singapore      | node.supportxmr.com              | 18081    |
-| SupportXmr     | node.supportxmr.ir               | 18081    |
-| SupportXmrIr   | singapore.node.xmr.pm            | 18089    |
+| Singapore      | singapore.node.xmr               | 18081    |
+| SupportXmr     | node.supportxmr.com              | 18081    |
+| SupportXmrIr   | node.supportxmr.ir               | 18089    |
 | XmrVsBeast     | p2pmd.xmrvsbeast.com             | 18081    |
-**Note: All have ZMQ port on 18083**
+
+*Note: All have ZMQ port on 18083*
 
 ## Demo
 https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e-ac65-3a339b96a9d2.mp4
