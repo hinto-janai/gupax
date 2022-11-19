@@ -4,6 +4,7 @@
 
 ## Contents
 * [What is Monero, P2Pool, XMRig, and Gupax?](##what-is-monero-p2pool-xmrig-and-gupax)
+* [Community Monero Nodes](#community-monero-nodes)
 * [Demo](#Demo)
 * [Implementation](#Implementation)
 * [Planned](#Planned)
@@ -50,6 +51,27 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 ![stack.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/diagram.png)
 
 With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/XMRig on the other, it is (hopefully) very easy for anyone to start mining Monero at **max hashrate in a decentralized, permissionless, and trustless manner**.
+
+## Community Monero Nodes
+| Name           | IP/Domain                        | RPC Port |
+|----------------|----------------------------------|----------|
+| C3pool         | node.c3pool.com                  | 18081    |
+| Cake           | xmr-node.cakewallet.com          | 18081    |
+| CakeEu         | xmr-node-eu.cakewallet.com       | 18081    |
+| CakeUk         | xmr-node-uk.cakewallet.com       | 18081    |
+| CakeUs         | xmr-node-usa-east.cakewallet.com | 18081    |
+| Feather1       | selsta1.featherwallet.net        | 18081    |
+| Feather2       | selsta2.featherwallet.net        | 18081    |
+| MajesticBankIs | node.majesticbank.is             | 18089    |
+| MajesticBankSu | node.majesticbank.su             | 18089    |
+| Monerujo       | nodex.monerujo.io                | 18081    |
+| Rino           | node.community.rino.io           | 18081    |
+| Seth           | node.sethforprivacy.com          | 18089    |
+| Singapore      | node.supportxmr.com              | 18081    |
+| SupportXmr     | node.supportxmr.ir               | 18081    |
+| SupportXmrIr   | singapore.node.xmr.pm            | 18089    |
+| XmrVsBeast     | p2pmd.xmrvsbeast.com             | 18081    |
+**Note: All have ZMQ port on 18083**
 
 ## Demo
 https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e-ac65-3a339b96a9d2.mp4

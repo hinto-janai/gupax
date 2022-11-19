@@ -8,11 +8,11 @@
 | File/Folder    | Purpose |
 |----------------|---------|
 | `constants.rs` | General constants needed in Gupax
-| `disk.rs`      | Code for writing to disk: `state.toml`, `nodes.toml`; This holds the structs for mutable [State]
-| `ferris.rs`    | Cute crab `--ferris`
+| `disk.rs`      | Code for writing to disk: `state.toml`, `node.toml`; This holds the structs for mutable [State]
+| `ferris.rs`    | Cute crab bytes
 | `gupax.rs`     | `Gupax` tab
-| `main.rs`      | `App/Tab/State` + misc functions
-| `node.rs`      | Community node feature
+| `main.rs`      | `App/Tab/State` + misc data/functions
+| `node.rs`      | Community node ping code for the `P2Pool` simple tab
 | `p2pool.rs`    | `P2Pool` tab
 | `status.rs`    | `Status` tab
 | `update.rs`    | Update code for the `Gupax` tab
@@ -22,29 +22,27 @@
 This is how Gupax works internally when starting up, divided into 3 sections.
 
 1. **INIT**
-	- Initialize custom console logging with `log`, `env_logger` || *warn!*
-	- Initialize misc data (structs, text styles, thread count, images, etc) || *panic!*
-	- Check for admin privilege (for XMRig) || *warn!*
-	- Attempt to read `gupax.toml` || *warn!*, *initialize config with default options*
+	- Initialize custom console logging with `log`, `env_logger`
+	- Initialize misc data (structs, text styles, thread count, images, etc)
+	- Check for admin privilege (for XMRig)
+	- Start initializing main `App` struct
+	- Parse command arguments
+	- Attempt to read disk files `state.toml`, `node.toml`
 	- If errors were found, pop-up window
 	
 2. **AUTO**
-	- If `auto_update` == `true`, pop-up auto-updating window || *info!*, *skip auto-update*
-	- Multi-threaded GitHub API check on Gupax -> P2Pool -> XMRig || *warn!*, *skip auto-update*
-	- Multi-threaded download if current version != new version || *warn!*, *skip auto-update*
-	- After download, atomically replace current binaries with new || *warn!*, *skip auto-update*
-	- Update version metadata || *warn!*, *skip auto-update*
-	- If `auto_select` == `true`, ping community nodes and select fastest one || *warn!*
+	- If `auto_update` == `true`, spawn auto-updating thread
+	- If `auto_select` == `true`, spawn community node ping thread
 
 3. **MAIN**
-	- All data must be initialized at this point, either via `gupax.toml` or default options || *panic!*
-	- Start `App` frame || *panic!*
-	- Write state to `gupax.toml` on user clicking `Save` (after checking input for correctness) || *warn!*
-	- If `ask_before_quit` == `true`, check for running processes, unsaved state, and update connections before quitting
+	- All data should be initialized at this point, either via `state.toml` or default options
+	- Start `App` frame
+	- Do `App` stuff
+	- If `ask_before_quit` == `true`, ask before quitting
 	- Kill processes, kill connections, exit
 
 ## State
-Internal state is saved in the "OS data folder" as `gupax.toml`, using the [TOML](https://github.com/toml-lang/toml) format. If the version can't be parsed (not in the `vX.X.X` or `vX.X` format), the auto-updater will be skipped. [If not found, a default `gupax.toml` file will be created with `State::default`.](https://github.com/hinto-janaiyo/gupax/blob/main/src/state.rs) Gupax will `panic!` if `gupax.toml` has IO or parsing issues.
+Internal state is saved in the "OS data folder" as `state.toml`, using the [TOML](https://github.com/toml-lang/toml) format. If not found, a default `state.toml` file will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error window.
 
 | OS       | Data Folder                              | Example                                                   |
 |----------|----------------------------------------- |-----------------------------------------------------------|
@@ -57,8 +55,7 @@ Every frame, the max available `[width, height]` are calculated, and those are u
 
 ```
 Main [App] outer frame (default: [1280.0, 720.0])
-├─ Inner frame (1264.0, 704.0)
-   ├─ TopPanel     = [width: (max-90.0)/5.0, height: max/10.0]
-   ├─ BottomPanel  = [width: max, height: max/18.0]
-   ├─ CentralPanel = [width: (max/8.0), height: the rest
+   ├─ TopPanel     = height: 1/12th
+   ├─ BottomPanel  = height: 1/20th
+   ├─ CentralPanel = height: the rest
 ```

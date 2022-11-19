@@ -213,6 +213,9 @@ pub fn format_enum(id: NodeEnum) -> String {
 // default = GRAY
 #[tokio::main]
 pub async fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) -> Result<(), anyhow::Error> {
+	// Timer
+	let now = Instant::now();
+
 	// Start ping
 	ping.lock().unwrap().pinging = true;
 	ping.lock().unwrap().prog = 0.0;
@@ -251,6 +254,7 @@ pub async fn ping(ping: Arc<Mutex<Ping>>, og: Arc<Mutex<State>>) -> Result<(), a
 
 	let info = format!("Fastest node: {}ms ... {} @ {}", node_vec[0].ms, node_vec[0].id, node_vec[0].ip);
 	info!("Ping | {}", info);
+	info!("Ping | Took [{}] seconds...", now.elapsed().as_secs_f32());
 	let mut ping = ping.lock().unwrap();
 		ping.fastest = node_vec[0].id;
 		ping.nodes = node_vec;
@@ -267,9 +271,18 @@ async fn response(client: hyper::client::Client<hyper::client::HttpConnector>, r
 	let id = ip_to_enum(ip);
 	let now = Instant::now();
 	let ms;
+	let info;
 	match tokio::time::timeout(Duration::from_secs(5), client.request(request)).await {
-		Ok(_) => ms = now.elapsed().as_millis(),
-		Err(e) => { warn!("Ping | {}: {} ... FAIL ... {}", id, ip, e); ms = 5000; },
+		Ok(_) => {
+			ms = now.elapsed().as_millis();
+			info = format!("{}ms ... {}: {}", ms, id, ip);
+			info!("Ping | {}", info)
+		},
+		Err(e) => {
+			ms = 5000;
+			info = format!("{}ms ... {}: {}", ms, id, ip);
+			warn!("Ping | {}", info)
+		},
 	};
 	let color;
 	if ms < 300 {
@@ -281,8 +294,6 @@ async fn response(client: hyper::client::Client<hyper::client::HttpConnector>, r
 	} else {
 		color = Color32::BLACK;
 	}
-	let info = format!("{}ms ... {}: {}", ms, id, ip);
-	info!("Ping | {}", info);
 	let mut ping = ping.lock().unwrap();
 	ping.msg = info;
 	ping.prog += percent;
