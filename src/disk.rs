@@ -325,12 +325,12 @@ impl Node {
 
 	// Convert [Vec<(String, Self)>] into [String]
 	// that can be written as a proper TOML file
-	pub fn into_string(vec: Vec<(String, Self)>) -> String {
+	pub fn to_string(vec: &Vec<(String, Self)>) -> String {
 		let mut toml = String::new();
 		for (key, value) in vec.iter() {
 			write!(
 				toml,
-				"[\'{}\']\nip = {:#?}\nrpc = {:#?}\nzmq = {:#?}\n",
+				"[\'{}\']\nip = {:#?}\nrpc = {:#?}\nzmq = {:#?}\n\n",
 				key,
 				value.ip,
 				value.rpc,
@@ -367,33 +367,23 @@ impl Node {
 		info!("Node | Creating new default...");
 		let new = Self::new_vec();
 		let path = get_file_path(File::Node)?;
-		let string = Self::into_string(Self::new_vec());
+		let string = Self::to_string(&Self::new_vec());
 		fs::write(&path, &string)?;
 		info!("Node | Write ... OK");
 		Ok(new)
 	}
 
-//	// Save [State] onto disk file [gupax.toml]
-//	pub fn save(&mut self) -> Result<(), TomlError> {
-//		info!("Saving {:?} to disk...", self);
-//		let path = get_file_path(File::State)?;
-//		// Convert path to absolute
-//		self.gupax.absolute_p2pool_path = into_absolute_path(self.gupax.p2pool_path.clone())?;
-//		self.gupax.absolute_xmrig_path = into_absolute_path(self.gupax.xmrig_path.clone())?;
-//		let string = match toml::ser::to_string(&self) {
-//			Ok(string) => {
-//				info!("TOML parse ... OK");
-//				print_toml(&string);
-//				string
-//			},
-//			Err(err) => { error!("Couldn't parse TOML into string"); return Err(TomlError::Serialize(err)) },
-//		};
-//		match fs::write(path, string) {
-//			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
-//			Err(err) => { error!("Couldn't overwrite TOML file"); return Err(TomlError::Io(err)) },
-//		}
-//	}
-//
+	// Save [Node] onto disk file [node.toml]
+	pub fn save(vec: &Vec<(String, Self)>) -> Result<(), TomlError> {
+		info!("Node | Saving to disk...");
+		let path = get_file_path(File::Node)?;
+		let string = Self::to_string(vec);
+		match fs::write(path, string) {
+			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
+			Err(err) => { error!("Couldn't overwrite TOML file"); return Err(TomlError::Io(err)) },
+		}
+	}
+
 //	// Take [Self] as input, merge it with whatever the current [default] is,
 //	// leaving behind old keys+values and updating [default] with old valid ones.
 //	// Automatically overwrite current file.

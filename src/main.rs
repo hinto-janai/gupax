@@ -167,13 +167,29 @@ impl App {
 		let mut og = app.og.lock().unwrap(); // Lock [og]
 		app.state = og.clone();
 		// Get node list
-		app.node_vec = Node::get().unwrap();
+		app.og_node_vec = Node::get().unwrap();
+		app.node_vec = app.og_node_vec.clone();
 		// Handle max threads
 		og.xmrig.max_threads = num_cpus::get();
 		let current = og.xmrig.current_threads;
 		let max = og.xmrig.max_threads;
 		if current > max {
 			og.xmrig.current_threads = max;
+		}
+		// Handle [node_vec] overflow
+		if og.p2pool.selected_index > app.og_node_vec.len() as u16 {
+			warn!("App | Overflowing manual node index [{} > {}], resetting to 1", og.p2pool.selected_index, app.og_node_vec.len());
+			let (name, node) = app.og_node_vec[0].clone();
+			og.p2pool.selected_index = 1;
+			og.p2pool.selected_name = name.clone();
+			og.p2pool.selected_ip = node.ip.clone();
+			og.p2pool.selected_rpc = node.rpc.clone();
+			og.p2pool.selected_zmq = node.rpc.clone();
+			app.state.p2pool.selected_index = 1;
+			app.state.p2pool.selected_name = name;
+			app.state.p2pool.selected_ip = node.ip;
+			app.state.p2pool.selected_rpc = node.rpc;
+			app.state.p2pool.selected_zmq = node.zmq;
 		}
 		// Apply TOML values to [Update]
 		let p2pool_path = og.gupax.absolute_p2pool_path.clone();
@@ -516,7 +532,7 @@ fn print_disk_file(file: File) {
 		Err(e) => { error!("{}", e); exit(1); },
 	};
 	match std::fs::read_to_string(&path) {
-		Ok(string) => { println!("{}", string); exit(0); },
+		Ok(string) => { print!("{}", string); exit(0); },
 		Err(e) => { error!("{}", e); exit(1); },
 	}
 }
@@ -765,8 +781,9 @@ impl eframe::App for App {
 						og.gupax = self.state.gupax.clone();
 						og.p2pool = self.state.p2pool.clone();
 						og.xmrig = self.state.xmrig.clone();
-						self.state.save();
 						self.og_node_vec = self.node_vec.clone();
+						self.state.save();
+						Node::save(&self.og_node_vec);
 					}
 				});
 
