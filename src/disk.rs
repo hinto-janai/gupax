@@ -179,7 +179,7 @@ impl State {
 	}
 
 	// Convert [String] to [State]
-	pub fn from_string(string: String) -> Result<Self, TomlError> {
+	pub fn from_string(string: &String) -> Result<Self, TomlError> {
 		match toml::de::from_str(&string) {
 			Ok(state) => {
 				info!("State | Parse ... OK");
@@ -187,7 +187,7 @@ impl State {
 				Ok(state)
 			}
 			Err(err) => {
-				error!("State | String -> State ... FAIL ... {}", err);
+				warn!("State | String -> State ... FAIL ... {}", err);
 				Err(TomlError::Deserialize(err))
 			},
 		}
@@ -207,11 +207,20 @@ impl State {
 			// Create
 			_ => {
 				Self::create_new()?;
-				read_to_string(file, &path)?
+				match read_to_string(file, &path) {
+					Ok(s) => s,
+					Err(e) => return Err(e),
+				}
 			},
 		};
-		// Deserialize
-		Self::from_string(string)
+		// Deserialize, attempt merge if failed
+		match Self::from_string(&string) {
+			Ok(s) => Ok(s),
+			Err(e) => {
+				warn!("State | Attempting merge...");
+				Self::merge(string)
+			},
+		}
 	}
 
 	// Completely overwrite current [state.toml]
@@ -250,22 +259,17 @@ impl State {
 		}
 	}
 
-	// Take [Self] as input, merge it with whatever the current [default] is,
+	// Take [String] as input, merge it with whatever the current [default] is,
 	// leaving behind old keys+values and updating [default] with old valid ones.
 	// Automatically overwrite current file.
-	pub fn merge(old: &Self) -> Result<Self, TomlError> {
-		info!("Starting TOML merge...");
-		let old = match toml::ser::to_string(&old) {
-			Ok(string) => { info!("Old TOML parse ... OK"); string },
-			Err(err) => { error!("Couldn't parse old TOML into string"); return Err(TomlError::Serialize(err)) },
-		};
+	pub fn merge(old: String) -> Result<Self, TomlError> {
 		let default = match toml::ser::to_string(&Self::new()) {
-			Ok(string) => { info!("Default TOML parse ... OK"); string },
-			Err(err) => { error!("Couldn't parse default TOML into string"); return Err(TomlError::Serialize(err)) },
+			Ok(string) => { info!("State | Default TOML parse ... OK"); string },
+			Err(err) => { error!("State | Couldn't parse default TOML into string"); return Err(TomlError::Serialize(err)) },
 		};
 		let mut new: Self = match Figment::new().merge(Toml::string(&old)).merge(Toml::string(&default)).extract() {
-			Ok(new) => { info!("TOML merge ... OK"); new },
-			Err(err) => { error!("Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
+			Ok(new) => { info!("State | TOML merge ... OK"); new },
+			Err(err) => { error!("State | Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
 		};
 		// Attempt save
 		Self::save(&mut new)?;
@@ -298,7 +302,7 @@ impl Node {
 	}
 
 	// Convert [String] to [Node] Vec
-	pub fn from_string(string: String) -> Result<Vec<(String, Self)>, TomlError> {
+	pub fn from_string_to_vec(string: &String) -> Result<Vec<(String, Self)>, TomlError> {
 		let nodes: toml::map::Map<String, toml::Value> = match toml::de::from_str(&string) {
 			Ok(map) => {
 				info!("Node | Parse ... OK");
@@ -312,7 +316,6 @@ impl Node {
 		let size = nodes.keys().len();
 		let mut vec = Vec::with_capacity(size);
 		for (key, values) in nodes.iter() {
-//			println!("{:#?}", values.get("ip")); std::process::exit(0);
 			let node = Node {
 				ip: values.get("ip").unwrap().as_str().unwrap().to_string(),
 				rpc: values.get("rpc").unwrap().as_str().unwrap().to_string(),
@@ -357,8 +360,8 @@ impl Node {
 				read_to_string(file, &path)?
 			},
 		};
-		// Deserialize
-		Self::from_string(string)
+		// Deserialize, attempt merge if failed
+		Self::from_string_to_vec(&string)
 	}
 
 	// Completely overwrite current [node.toml]
@@ -380,26 +383,19 @@ impl Node {
 		let string = Self::to_string(vec);
 		match fs::write(path, string) {
 			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
-			Err(err) => { error!("Couldn't overwrite TOML file"); return Err(TomlError::Io(err)) },
+			Err(err) => { error!("Couldn't overwrite TOML file"); Err(TomlError::Io(err)) },
 		}
 	}
 
-//	// Take [Self] as input, merge it with whatever the current [default] is,
-//	// leaving behind old keys+values and updating [default] with old valid ones.
-//	// Automatically overwrite current file.
-//	pub fn merge(old: &Self) -> Result<Self, TomlError> {
-//		info!("Starting TOML merge...");
-//		let old = match toml::ser::to_string(&old) {
-//			Ok(string) => { info!("Old TOML parse ... OK"); string },
-//			Err(err) => { error!("Couldn't parse old TOML into string"); return Err(TomlError::Serialize(err)) },
-//		};
+//	pub fn merge(old: &String) -> Result<Self, TomlError> {
+//		info!("Node | Starting TOML merge...");
 //		let default = match toml::ser::to_string(&Self::new()) {
-//			Ok(string) => { info!("Default TOML parse ... OK"); string },
-//			Err(err) => { error!("Couldn't parse default TOML into string"); return Err(TomlError::Serialize(err)) },
+//			Ok(string) => { info!("Node | Default TOML parse ... OK"); string },
+//			Err(err) => { error!("Node | Couldn't parse default TOML into string"); return Err(TomlError::Serialize(err)) },
 //		};
 //		let mut new: Self = match Figment::new().merge(Toml::string(&old)).merge(Toml::string(&default)).extract() {
-//			Ok(new) => { info!("TOML merge ... OK"); new },
-//			Err(err) => { error!("Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
+//			Ok(new) => { info!("Node | TOML merge ... OK"); new },
+//			Err(err) => { error!("Node | Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
 //		};
 //		// Attempt save
 //		Self::save(&mut new)?;
@@ -408,15 +404,24 @@ impl Node {
 }
 
 //---------------------------------------------------------------------------------------------------- Custom Error [TomlError]
+#[derive(Debug)]
+pub enum TomlError {
+	Io(std::io::Error),
+	Path(String),
+	Serialize(toml::ser::Error),
+	Deserialize(toml::de::Error),
+	Merge(figment::Error),
+}
+
 impl Display for TomlError {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 		use TomlError::*;
 		match self {
-			Io(err)          => write!(f, "{}: {} | {}", ERROR, self, err),
-			Path(err)        => write!(f, "{}: {} | {}", ERROR, self, err),
-			Serialize(err)   => write!(f, "{}: {} | {}", ERROR, self, err),
-			Deserialize(err) => write!(f, "{}: {} | {}", ERROR, self, err),
-			Merge(err)       => write!(f, "{}: {} | {}", ERROR, self, err),
+			Io(err)          => write!(f, "{}: IO | {}", ERROR, err),
+			Path(err)        => write!(f, "{}: Path | {}", ERROR, err),
+			Serialize(err)   => write!(f, "{}: Serialize | {}", ERROR, err),
+			Deserialize(err) => write!(f, "{}: Deserialize | {}", ERROR, err),
+			Merge(err)       => write!(f, "{}: Merge | {}", ERROR, err),
 		}
 	}
 }
@@ -446,16 +451,6 @@ pub const DEFAULT_P2POOL_PATH: &'static str = "p2pool/p2pool";
 pub const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
 #[cfg(target_family = "unix")]
 pub const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
-
-//---------------------------------------------------------------------------------------------------- Error Enum
-#[derive(Debug)]
-pub enum TomlError {
-	Io(std::io::Error),
-	Path(String),
-	Serialize(toml::ser::Error),
-	Deserialize(toml::de::Error),
-	Merge(figment::Error),
-}
 
 //---------------------------------------------------------------------------------------------------- [File] Enum (for matching which file)
 #[derive(Clone,Copy,Eq,PartialEq,Debug,Deserialize,Serialize)]

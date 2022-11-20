@@ -332,7 +332,7 @@ impl P2pool {
 				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", text, self.selected_index, self.selected_name, node_vec_len);
 				// If the node already exists, show [Save] and mutate the already existing node
 				if exists {
-					ui.set_enabled(save_diff);
+					ui.set_enabled(!incorrect_input && save_diff);
 					if ui.add_sized([width, text_edit], Button::new("Save")).on_hover_text(text).clicked() {
 						let node = Node {
 							ip: self.ip.clone(),

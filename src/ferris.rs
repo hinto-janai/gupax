@@ -17,10 +17,10 @@
 
 // Some images of ferris in byte form for error messages, etc
 
+pub const FERRIS_HAPPY: &[u8] = include_bytes!("../images/ferris/happy.png");
 pub const FERRIS_OOPS: &[u8] = include_bytes!("../images/ferris/oops.png");
 pub const FERRIS_ERROR: &[u8] = include_bytes!("../images/ferris/error.png");
 pub const FERRIS_PANIC: &[u8] = include_bytes!("../images/ferris/panic.png"); // This isnt technically ferris but its ok since its spooky
-
 
 
 

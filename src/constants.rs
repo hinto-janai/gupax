@@ -85,7 +85,7 @@ r#"Use advanced settings:
     - P2Pool Main/Mini selection
     - Out/In peer setting
     - Log level setting"#;
-pub const P2POOL_NAME: &'static str = "Add a unique name to identify this node; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const P2POOL_NAME: &'static str = "Add a unique name to identify this node; Only [A-Za-z0-9-_] and spaces allowed, if the name already exists, the current settings will be saved to the already existing entry; Max length = 30 characters";
 pub const P2POOL_NODE_IP: &'static str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const P2POOL_RPC_PORT: &'static str = "Specify the RPC port of the Monero node; [1-65535]";
 pub const P2POOL_ZMQ_PORT: &'static str = "Specify the ZMQ port of the Monero node; [1-65535]";
@@ -106,15 +106,17 @@ pub const XMRIG_PRIORITY: &'static str = "Set process priority (0 idle, 2 normal
 
 // CLI argument messages
 pub const ARG_HELP: &'static str =
-r#"USAGE: ./gupax [--flags]
+r#"USAGE: ./gupax [--flag]
 
-    -h | --help         Print this help message
-    -v | --version      Print version and build info
-    -l | --node-list    Print the manual node list
-    -s | --state        Print Gupax state
-    -n | --no-startup   Disable all auto-startup settings for this instance
-    -r | --reset        Reset all Gupax state and the manual node list
-    -f | --ferris       Print an extremely cute crab
+    --help         Print this help message
+    --version      Print version and build info
+    --state        Print Gupax state
+    --nodes        Print the manual node list
+    --no-startup   Disable all auto-startup settings for this instance
+    --reset-state  Reset all Gupax state (your settings)
+    --reset-nodes  Reset the manual node list in the [P2Pool] tab
+    --reset-all    Reset both the state and the manual node list
+    --ferris       Print an extremely cute crab
 
 To view more detailed console debug information, start Gupax with
 the environment variable [RUST_LOG] set to a log level like so:

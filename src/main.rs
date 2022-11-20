@@ -86,7 +86,6 @@ pub struct App {
 	xmrig: bool, // Is xmrig online?
 	// State from [--flags]
 	no_startup: bool,
-	reset: bool,
 	// Static stuff
 	now: Instant, // Internal timer
 	exe: String, // Path for [Gupax] binary
@@ -128,7 +127,6 @@ impl App {
 			p2pool: false,
 			xmrig: false,
 			no_startup: false,
-			reset: false,
 			now: Instant::now(),
 			exe: "".to_string(),
 			dir: "".to_string(),
@@ -157,18 +155,42 @@ impl App {
 			Ok(dir) => dir,
 			Err(err) => { panic_main(err.to_string()); exit(1); },
 		};
-		// Read disk state if no [--reset] arg
-		if app.reset == false {
-			app.og = match State::get() {
-				Ok(toml) => Arc::new(Mutex::new(toml)),
-				Err(err) => { panic_main(err.to_string()); exit(1); },
-			};
-		}
-		let mut og = app.og.lock().unwrap(); // Lock [og]
-		app.state = og.clone();
-		// Get node list
-		app.og_node_vec = Node::get().unwrap();
+		// Read disk state
+		use TomlError::*;
+		app.state = match State::get() {
+			Ok(toml) => toml,
+			Err(err) => {
+				error!("State ... {}", err);
+				match err {
+					Io(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+				};
+				State::new()
+			},
+		};
+		app.og = Arc::new(Mutex::new(app.state.clone()));
+		// Read node list
+		app.og_node_vec = match Node::get() {
+			Ok(toml) => toml,
+			Err(err) => {
+				error!("Node ... {}", err);
+				match err {
+					Io(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+				};
+				Node::new_vec()
+			},
+		};
 		app.node_vec = app.og_node_vec.clone();
+
+
+		let mut og = app.og.lock().unwrap(); // Lock [og]
 		// Handle max threads
 		og.xmrig.max_threads = num_cpus::get();
 		let current = og.xmrig.current_threads;
@@ -222,7 +244,7 @@ impl Default for Tab {
 //---------------------------------------------------------------------------------------------------- [ErrorState] struct
 pub struct ErrorState {
 	error: bool, // Is there an error?
-	msg: &'static str, // What message to display?
+	msg: String, // What message to display?
 	ferris: ErrorFerris, // Which ferris to display?
 	buttons: ErrorButtons, // Which buttons to display?
 }
@@ -231,17 +253,17 @@ impl ErrorState {
 	pub fn new() -> Self {
 		Self {
 			error: false,
-			msg: "Unknown Error",
+			msg: "Unknown Error".to_string(),
 			ferris: ErrorFerris::Oops,
 			buttons: ErrorButtons::Okay,
 		}
 	}
 
 	// Convenience function to set the [App] error state
-	pub fn set(&mut self, error: bool, msg: &'static str, ferris: ErrorFerris, buttons: ErrorButtons) {
+	pub fn set(&mut self, error: bool, msg: impl Into<String>, ferris: ErrorFerris, buttons: ErrorButtons) {
 		*self = Self {
 			error,
-			msg,
+			msg: msg.into(),
 			ferris,
 			buttons,
 		};
@@ -253,12 +275,15 @@ impl ErrorState {
 pub enum ErrorButtons {
 	YesNo,
 	StayQuit,
+	ResetState,
+	ResetNode,
 	Okay,
 	Quit,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ErrorFerris {
+	Happy,
 	Oops,
 	Error,
 	Panic,
@@ -267,6 +292,7 @@ pub enum ErrorFerris {
 //---------------------------------------------------------------------------------------------------- [Images] struct
 struct Images {
 	banner: RetainedImage,
+	happy: RetainedImage,
 	oops: RetainedImage,
 	error: RetainedImage,
 	panic: RetainedImage,
@@ -276,6 +302,7 @@ impl Images {
 	fn new() -> Self {
 		Self {
 			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
+			happy: RetainedImage::from_image_bytes("happy.png", FERRIS_HAPPY).unwrap(),
 			oops: RetainedImage::from_image_bytes("oops.png", FERRIS_OOPS).unwrap(),
 			error: RetainedImage::from_image_bytes("error.png", FERRIS_ERROR).unwrap(),
 			panic: RetainedImage::from_image_bytes("panic.png", FERRIS_PANIC).unwrap(),
@@ -388,6 +415,9 @@ fn init_auto(app: &App) {
 	if app.no_startup {
 		info!("[--no-startup] flag passed, skipping init_auto()...");
 		return
+	} else if app.error_state.error {
+		info!("App error detected, skipping init_auto()...");
+		return
 	} else {
 		info!("Starting init_auto()...");
 	}
@@ -442,17 +472,31 @@ fn init_auto(app: &App) {
 	}
 }
 
-fn reset() {
-	let mut code = 0;
+fn reset_state() -> Result<(), TomlError> {
 	info!("Resetting [state.toml]...");
 	match State::create_new() {
-		Ok(_)  => info!("Resetting [state.toml] ... OK"),
-		Err(e) => { error!("Resetting [state.toml] ... FAIL ... {}", e); code = 1; },
+		Ok(_)  => { info!("Resetting [state.toml] ... OK"); Ok(()) },
+		Err(e) => { error!("Resetting [state.toml] ... FAIL ... {}", e); Err(e) },
 	}
+}
+
+fn reset_nodes() -> Result<(), TomlError> {
 	info!("Resetting [node.toml]...");
 	match Node::create_new() {
-		Ok(_)  => info!("Resetting [node.toml] ... OK"),
-		Err(e) => { error!("Resetting [node.toml] ... FAIL ... {}", e); code = 1; },
+		Ok(_)  => { info!("Resetting [node.toml] ... OK"); Ok(()) },
+		Err(e) => { error!("Resetting [node.toml] ... FAIL ... {}", e); Err(e) },
+	}
+}
+
+fn reset() {
+	let mut code = 0;
+	match reset_state() {
+		Ok(_) => (),
+		Err(_) => code = 1,
+	}
+	match reset_nodes() {
+		Ok(_) => (),
+		Err(_) => code = 1,
 	}
 	match code {
 		0 => println!("\nGupax files were reset successfully."),
@@ -469,23 +513,25 @@ fn parse_args(mut app: App) -> App {
 	// [help/version], exit early
 	for arg in &args {
 		match arg.as_str() {
-			"-h"|"--help"    => { println!("{}", ARG_HELP); exit(0); },
-			"-v"|"--version" => {
+			"--help"    => { println!("{}", ARG_HELP); exit(0); },
+			"--version" => {
 				println!("Gupax {} [OS: {}, Commit: {}]\n\n{}", GUPAX_VERSION, OS_NAME, &COMMIT[..40], ARG_COPYRIGHT);
 				exit(0);
 			},
-			"-f"|"--ferris" => { println!("{}", FERRIS_ANSI); exit(0); },
+			"--ferris" => { println!("{}", FERRIS_ANSI); exit(0); },
 			_ => (),
 		}
 	}
 	// Everything else
 	for arg in args {
 		match arg.as_str() {
-			"-l"|"--node-list"  => { info!("Printing node list..."); print_disk_file(File::Node); }
-			"-s"|"--state"      => { info!("Printing state..."); print_disk_file(File::State); }
-			"-r"|"--reset"      => { reset(); }
-			"-n"|"--no-startup" => { app.no_startup = true; }
-			_                   => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
+			"--nodes"       => { info!("Printing node list..."); print_disk_file(File::Node); }
+			"--state"       => { info!("Printing state..."); print_disk_file(File::State); }
+			"--reset-state" => if let Ok(()) = reset_state() { exit(0) } else { exit(1) },
+			"--reset-nodes" => if let Ok(()) = reset_nodes() { exit(0) } else { exit(1) },
+			"--reset-all"   => reset(),
+			"--no-startup"  => app.no_startup = true,
+			_               => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
 		}
 	}
 	app
@@ -604,14 +650,6 @@ fn main() {
 }
 
 impl eframe::App for App {
-//	pub fn new() -> Self {
-//		Self {
-//			error: false,
-//			msg: String::new(),
-//			image: RetainedImage::from_image_bytes("banner.png", FERRIS_ERROR).unwrap(),
-//			buttons: ErrorButtons::Okay,
-//		}
-//	}
 	fn on_close_event(&mut self) -> bool {
 		if self.state.gupax.ask_before_quit {
 			self.error_state.set(true, "", ErrorFerris::Oops, ErrorButtons::StayQuit);
@@ -652,8 +690,10 @@ impl eframe::App for App {
 
 				// Display ferris
 				use ErrorFerris::*;
+				use ErrorButtons::*;
 				let ferris = match self.error_state.ferris {
-					Oops => &self.img.oops,
+					Happy => &self.img.happy,
+					Oops  => &self.img.oops,
 					Error => &self.img.error,
 					Panic => &self.img.panic,
 				};
@@ -669,12 +709,23 @@ impl eframe::App for App {
 						ui.add_sized([width, height], Label::new("--- Are you sure you want to quit? ---"));
 						ui.add_sized([width, height], Label::new(text))
 					},
+					ResetState => {
+						ui.add_sized([width, height], Label::new(format!("--- Gupax has encountered an error! ---\n{}", &self.error_state.msg)));
+						ui.add_sized([width, height], Label::new("Reset Gupax state? (Your settings)"))
+					},
+					ResetNode  => {
+						ui.add_sized([width, height], Label::new(format!("--- Gupax has encountered an error! ---\n{}", &self.error_state.msg)));
+						ui.add_sized([width, height], Label::new("Reset the manual node list?"))
+					},
 					_ => {
-						ui.add_sized([width, height], Label::new("--- Gupax has encountered an error! ---"));
-						ui.add_sized([width, height], Label::new(self.error_state.msg))
+						match self.error_state.ferris {
+							Panic => ui.add_sized([width, height], Label::new("--- Gupax has encountered an un-recoverable error! ---")),
+							Happy => ui.add_sized([width, height], Label::new("--- Success! ---")),
+							_ => ui.add_sized([width, height], Label::new("--- Gupax has encountered an error! ---")),
+						};
+						ui.add_sized([width, height], Label::new(&self.error_state.msg))
 					},
 				};
-				use ErrorButtons::*;
 				let height = ui.available_height();
 
 				// Capture [Esc] key
@@ -693,8 +744,47 @@ impl eframe::App for App {
 						}
 						if ui.add_sized([width, height/2.0], egui::Button::new("Quit")).clicked() { exit(0); }
 					},
+					// This code handles the [state.toml/node.toml] resetting, [panic!]'ing if it errors once more
+					// Another error after this either means an IO error or permission error, which Gupax can't fix.
+					// [Yes/No] buttons
+					ResetState => {
+						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() {
+							match reset_state() {
+								Ok(_)  => {
+									match State::get() {
+										Ok(s) => {
+											self.state = s;
+											self.og = Arc::new(Mutex::new(self.state.clone()));
+											self.error_state.set(true, "State read OK", ErrorFerris::Happy, ErrorButtons::Okay);
+										},
+										Err(e) => self.error_state.set(true, format!("State read fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+									}
+								},
+								Err(e) => self.error_state.set(true, format!("State reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+							};
+						}
+				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { self.error_state = ErrorState::new() }
+					},
+					ResetNode => {
+						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() {
+							match reset_nodes() {
+								Ok(_)  => {
+									match Node::get() {
+										Ok(s) => {
+											self.node_vec = s;
+											self.og_node_vec = self.node_vec.clone();
+											self.error_state.set(true, "Node read OK", ErrorFerris::Happy, ErrorButtons::Okay);
+										},
+										Err(e) => self.error_state.set(true, format!("Node read fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+									}
+								},
+								Err(e) => self.error_state.set(true, format!("Node reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+							};
+						}
+				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { self.error_state = ErrorState::new() }
+					},
 					Okay => if esc || ui.add_sized([width, height], egui::Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); },
-					Quit => if ui.add_sized([width, height], egui::Button::new("Quit")).clicked() { exit(0); },
+					Quit => if ui.add_sized([width, height], egui::Button::new("Quit")).clicked() { exit(1); },
 				}
 			})});
 			return
@@ -777,13 +867,21 @@ impl eframe::App for App {
 						self.node_vec = self.og_node_vec.clone();
 					}
 					if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() {
-						let mut og = self.og.lock().unwrap();
-						og.gupax = self.state.gupax.clone();
-						og.p2pool = self.state.p2pool.clone();
-						og.xmrig = self.state.xmrig.clone();
-						self.og_node_vec = self.node_vec.clone();
-						self.state.save();
-						Node::save(&self.og_node_vec);
+						match self.state.save() {
+							Ok(_) => {
+								let mut og = self.og.lock().unwrap();
+								og.gupax = self.state.gupax.clone();
+								og.p2pool = self.state.p2pool.clone();
+								og.xmrig = self.state.xmrig.clone();
+							},
+							Err(e) => {
+								self.error_state.set(true, format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::Okay);
+							},
+						};
+						match Node::save(&self.og_node_vec) {
+							Ok(_) => self.og_node_vec = self.node_vec.clone(),
+							Err(e) => self.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::Okay),
+						};
 					}
 				});
 
@@ -872,7 +970,7 @@ impl eframe::App for App {
 
 						ui.add_space(ui.available_height()/2.0);
 						ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui");
-						ui.hyperlink_to(format!("{} {}", GITHUB, "Gupax made by hinto-janaiyo"), "https://www.github.com/hinto-janaiyo/gupax");
+						ui.hyperlink_to(format!("{} {}", GITHUB, "Made by hinto-janaiyo"), "https://gupax.io");
 						ui.label("egui is licensed under MIT & Apache-2.0");
 						ui.label("Gupax, P2Pool, and XMRig are licensed under GPLv3");
 					});

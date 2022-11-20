@@ -27,8 +27,6 @@ use log::*;
 //	header::{HeaderValue,LOCATION},
 //};
 
-use reqwest::blocking::ClientBuilder;
-
 //---------------------------------------------------------------------------------------------------- Node list
 // Community Monerod nodes. All of these have ZMQ on 18083.
 // Adding/removing nodes will need changes to pretty
