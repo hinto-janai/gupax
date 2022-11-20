@@ -184,6 +184,7 @@ impl App {
 					Path(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Serialize(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Deserialize(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Merge(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
 				};
 				State::new()
@@ -200,6 +201,7 @@ impl App {
 					Path(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Serialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Deserialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Merge(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
 				};
 				Node::new_vec()

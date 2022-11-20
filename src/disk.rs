@@ -314,7 +314,7 @@ impl Node {
 
 	// Convert [Vec<(String, Self)>] into [String]
 	// that can be written as a proper TOML file
-	pub fn to_string(vec: &Vec<(String, Self)>) -> String {
+	pub fn to_string(vec: &Vec<(String, Self)>) -> Result<String, TomlError> {
 		let mut toml = String::new();
 		for (key, value) in vec.iter() {
 			write!(
@@ -324,9 +324,9 @@ impl Node {
 				value.ip,
 				value.rpc,
 				value.zmq,
-			);
+			)?;
 		}
-		toml
+		Ok(toml)
 	}
 
 	// Combination of multiple functions:
@@ -354,7 +354,7 @@ impl Node {
 	pub fn create_new(path: &PathBuf) -> Result<Vec<(String, Self)>, TomlError> {
 		info!("Node | Creating new default...");
 		let new = Self::new_vec();
-		let string = Self::to_string(&Self::new_vec());
+		let string = Self::to_string(&Self::new_vec())?;
 		fs::write(&path, &string)?;
 		info!("Node | Write ... OK");
 		Ok(new)
@@ -363,7 +363,7 @@ impl Node {
 	// Save [Node] onto disk file [node.toml]
 	pub fn save(vec: &Vec<(String, Self)>, path: &PathBuf) -> Result<(), TomlError> {
 		info!("Node | Saving to disk...");
-		let string = Self::to_string(vec);
+		let string = Self::to_string(vec)?;
 		match fs::write(path, string) {
 			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
 			Err(err) => { error!("Couldn't overwrite TOML file"); Err(TomlError::Io(err)) },
@@ -394,6 +394,7 @@ pub enum TomlError {
 	Serialize(toml::ser::Error),
 	Deserialize(toml::de::Error),
 	Merge(figment::Error),
+	Format(std::fmt::Error),
 }
 
 impl Display for TomlError {
@@ -405,6 +406,7 @@ impl Display for TomlError {
 			Serialize(err)   => write!(f, "{}: Serialize | {}", ERROR, err),
 			Deserialize(err) => write!(f, "{}: Deserialize | {}", ERROR, err),
 			Merge(err)       => write!(f, "{}: Merge | {}", ERROR, err),
+			Format(err)      => write!(f, "{}: Format | {}", ERROR, err),
 		}
 	}
 }
@@ -412,6 +414,12 @@ impl Display for TomlError {
 impl From<std::io::Error> for TomlError {
 	fn from(err: std::io::Error) -> Self {
 		TomlError::Io(err)
+	}
+}
+
+impl From<std::fmt::Error> for TomlError {
+	fn from(err: std::fmt::Error) -> Self {
+		TomlError::Format(err)
 	}
 }
 
