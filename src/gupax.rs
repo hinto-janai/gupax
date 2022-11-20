@@ -25,8 +25,11 @@ use egui::{
 use crate::constants::*;
 use crate::disk::{Gupax,Version};
 use crate::update::*;
-use std::thread;
-use std::sync::{Arc,Mutex};
+use std::{
+	thread,
+	sync::{Arc,Mutex},
+	path::PathBuf,
+};
 use log::*;
 
 //---------------------------------------------------------------------------------------------------- FileWindow
@@ -55,7 +58,7 @@ impl FileWindow {
 
 //---------------------------------------------------------------------------------------------------- Gupax
 impl Gupax {
-	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, state_path: &PathBuf, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
@@ -75,6 +78,7 @@ impl Gupax {
 						let state_ver = Arc::clone(&state_ver);
 						let update = Arc::clone(&update);
 						let update_thread = Arc::clone(&update);
+						let state_path = state_path.clone();
 						thread::spawn(move|| {
 							info!("Spawning update thread...");
 							match Update::start(update_thread, og.clone(), state_ver.clone()) {
@@ -84,7 +88,7 @@ impl Gupax {
 								},
 								_ => {
 									info!("Update | Saving state...");
-									match State::save(&mut og.lock().unwrap()) {
+									match State::save(&mut og.lock().unwrap(), &state_path) {
 										Ok(_) => info!("Update ... OK"),
 										Err(e) => {
 											warn!("Update | Saving state ... FAIL ... {}", e);

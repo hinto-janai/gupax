@@ -50,39 +50,25 @@ use log::*;
 // create_new()         | Write a default TOML Struct into the appropriate file (in OS data path)
 // into_absolute_path() | Convert relative -> absolute path
 
-pub fn get_os_data_path() -> Result<PathBuf, TomlError> {
+pub fn get_gupax_data_path() -> Result<PathBuf, TomlError> {
 	// Get OS data folder
-	// Linux   | $XDG_DATA_HOME or $HOME/.local/share | /home/alice/.local/state
-	// macOS   | $HOME/Library/Application Support    | /Users/Alice/Library/Application Support
-	// Windows | {FOLDERID_RoamingAppData}            | C:\Users\Alice\AppData\Roaming
-	let path = match dirs::data_dir() {
-		Some(path) => {
-			info!("OS | Data path ... OK");
-			path
-		},
-		None => { error!("OS | Data path ... FAIL"); return Err(TomlError::Path(PATH_ERROR.to_string())) },
-	};
-	// Create directory
-	fs::create_dir_all(&path)?;
-	Ok(path)
-}
-
-pub fn get_file_path(file: File) -> Result<PathBuf, TomlError> {
-	let name = File::name(&file);
-
-	let mut path = match dirs::data_dir() {
+	// Linux   | $XDG_DATA_HOME or $HOME/.local/share/gupax  | /home/alice/.local/state/gupax
+	// macOS   | $HOME/Library/Application Support/Gupax     | /Users/Alice/Library/Application Support/Gupax
+	// Windows | {FOLDERID_RoamingAppData}\Gupax             | C:\Users\Alice\AppData\Roaming\Gupax
+	match dirs::data_dir() {
 		Some(mut path) => {
 			path.push(DIRECTORY);
-			info!("OS | Data path ... OK");
-			path
+			info!("OS | Data path ... OK ... {}", path.display());
+			Ok(path)
 		},
-		None => { error!("Couldn't get OS PATH for data"); return Err(TomlError::Path(PATH_ERROR.to_string())) },
-	};
+		None => { error!("OS | Data path ... FAIL"); Err(TomlError::Path(PATH_ERROR.to_string())) },
+	}
+}
+
+pub fn create_gupax_dir(path: PathBuf) -> Result<(), TomlError> {
 	// Create directory
 	fs::create_dir_all(&path)?;
-	path.push(name);
-	info!("{:?} | Path ... {}", file, path.display());
-	Ok(path)
+	Ok(())
 }
 
 // Convert a [File] path to a [String]
@@ -198,15 +184,14 @@ impl State {
 	//      |_ Create a default file if not found
 	//   2. Deserialize [String] into a proper [Struct]
 	//      |_ Attempt to merge if deserialization fails
-	pub fn get() -> Result<Self, TomlError> {
+	pub fn get(path: &PathBuf) -> Result<Self, TomlError> {
 		// Read
 		let file = File::State;
-		let path = get_file_path(file)?;
 		let string = match read_to_string(file, &path) {
 			Ok(string) => string,
 			// Create
 			_ => {
-				Self::create_new()?;
+				Self::create_new(path)?;
 				match read_to_string(file, &path) {
 					Ok(s) => s,
 					Err(e) => return Err(e),
@@ -218,17 +203,16 @@ impl State {
 			Ok(s) => Ok(s),
 			Err(e) => {
 				warn!("State | Attempting merge...");
-				Self::merge(string)
+				Self::merge(string, path)
 			},
 		}
 	}
 
 	// Completely overwrite current [state.toml]
 	// with a new default version, and return [Self].
-	pub fn create_new() -> Result<Self, TomlError> {
+	pub fn create_new(path: &PathBuf) -> Result<Self, TomlError> {
 		info!("State | Creating new default...");
 		let new = Self::new();
-		let path = get_file_path(File::State)?;
 		let string = match toml::ser::to_string(&new) {
 				Ok(o) => { info!("State | Serialization ... OK"); o },
 				Err(e) => { error!("State | Couldn't serialize default file: {}", e); return Err(TomlError::Serialize(e)) },
@@ -239,9 +223,8 @@ impl State {
 	}
 
 	// Save [State] onto disk file [gupax.toml]
-	pub fn save(&mut self) -> Result<(), TomlError> {
+	pub fn save(&mut self, path: &PathBuf) -> Result<(), TomlError> {
 		info!("State | Saving to disk...");
-		let path = get_file_path(File::State)?;
 		// Convert path to absolute
 		self.gupax.absolute_p2pool_path = into_absolute_path(self.gupax.p2pool_path.clone())?;
 		self.gupax.absolute_xmrig_path = into_absolute_path(self.gupax.xmrig_path.clone())?;
@@ -262,7 +245,7 @@ impl State {
 	// Take [String] as input, merge it with whatever the current [default] is,
 	// leaving behind old keys+values and updating [default] with old valid ones.
 	// Automatically overwrite current file.
-	pub fn merge(old: String) -> Result<Self, TomlError> {
+	pub fn merge(old: String, path: &PathBuf) -> Result<Self, TomlError> {
 		let default = match toml::ser::to_string(&Self::new()) {
 			Ok(string) => { info!("State | Default TOML parse ... OK"); string },
 			Err(err) => { error!("State | Couldn't parse default TOML into string"); return Err(TomlError::Serialize(err)) },
@@ -272,7 +255,7 @@ impl State {
 			Err(err) => { error!("State | Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
 		};
 		// Attempt save
-		Self::save(&mut new)?;
+		Self::save(&mut new, path)?;
 		Ok(new)
 	}
 }
@@ -348,15 +331,14 @@ impl Node {
 	//      |_ Create a default file if not found
 	//   2. Deserialize [String] into a proper [Struct]
 	//      |_ Attempt to merge if deserialization fails
-	pub fn get() -> Result<Vec<(String, Self)>, TomlError> {
+	pub fn get(path: &PathBuf) -> Result<Vec<(String, Self)>, TomlError> {
 		// Read
 		let file = File::Node;
-		let path = get_file_path(file)?;
 		let string = match read_to_string(file, &path) {
 			Ok(string) => string,
 			// Create
 			_ => {
-				Self::create_new()?;
+				Self::create_new(path)?;
 				read_to_string(file, &path)?
 			},
 		};
@@ -366,10 +348,9 @@ impl Node {
 
 	// Completely overwrite current [node.toml]
 	// with a new default version, and return [Vec<String, Self>].
-	pub fn create_new() -> Result<Vec<(String, Self)>, TomlError> {
+	pub fn create_new(path: &PathBuf) -> Result<Vec<(String, Self)>, TomlError> {
 		info!("Node | Creating new default...");
 		let new = Self::new_vec();
-		let path = get_file_path(File::Node)?;
 		let string = Self::to_string(&Self::new_vec());
 		fs::write(&path, &string)?;
 		info!("Node | Write ... OK");
@@ -377,9 +358,8 @@ impl Node {
 	}
 
 	// Save [Node] onto disk file [node.toml]
-	pub fn save(vec: &Vec<(String, Self)>) -> Result<(), TomlError> {
+	pub fn save(vec: &Vec<(String, Self)>, path: &PathBuf) -> Result<(), TomlError> {
 		info!("Node | Saving to disk...");
-		let path = get_file_path(File::Node)?;
 		let string = Self::to_string(vec);
 		match fs::write(path, string) {
 			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
@@ -439,7 +419,7 @@ const PATH_ERROR: &'static str = "PATH for state directory could not be not foun
 #[cfg(target_os = "windows")]
 const DIRECTORY: &'static str = r#"Gupax\"#;
 #[cfg(target_os = "macos")]
-const DIRECTORY: &'static str = "com.github.hinto-janaiyo.gupax/";
+const DIRECTORY: &'static str = "Gupax/";
 #[cfg(target_os = "linux")]
 const DIRECTORY: &'static str = "gupax/";
 

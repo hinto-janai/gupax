@@ -37,12 +37,14 @@ use env_logger::{Builder,WriteStyle};
 use regex::Regex;
 
 // std
-use std::io::Write;
-use std::process::exit;
-use std::sync::{Arc,Mutex};
-use std::{thread,env};
-use std::time::Instant;
-use std::path::PathBuf;
+use std::{
+	io::Write,
+	process::exit,
+	sync::{Arc,Mutex},
+	{thread,env},
+	time::Instant,
+	path::PathBuf,
+};
 
 // Modules
 mod ferris;
@@ -93,6 +95,8 @@ pub struct App {
 	resolution: Vec2, // Frame resolution
 	os: &'static str, // OS
 	os_data_path: PathBuf, // OS data path (e.g: ~/.local/share/gupax)
+	state_path: PathBuf, // State file path
+	node_path: PathBuf, // Node file path
 	version: &'static str, // Gupax version
 	name_version: String, // [Gupax vX.X.X]
 	img: Images, // Custom Struct holding pre-compiled bytes of [Images]
@@ -111,7 +115,7 @@ impl App {
 
 	fn new() -> Self {
 		info!("Initializing App Struct...");
-		let app = Self {
+		let mut app = Self {
 			tab: Tab::default(),
 			ping: Arc::new(Mutex::new(Ping::new())),
 			width: 1280.0,
@@ -128,68 +132,82 @@ impl App {
 			xmrig: false,
 			no_startup: false,
 			now: Instant::now(),
-			exe: "".to_string(),
-			dir: "".to_string(),
+			exe: String::new(),
+			dir: String::new(),
 			resolution: Vec2::new(1280.0, 720.0),
 			os: OS,
 			os_data_path: PathBuf::new(),
+			state_path: PathBuf::new(),
+			node_path: PathBuf::new(),
 			version: GUPAX_VERSION,
 			name_version: format!("Gupax {}", GUPAX_VERSION),
 			img: Images::new(),
 			regex: Regexes::new(),
 		};
-		// Apply arg state
-		let mut app = parse_args(app);
+		//---------------------------------------------------------------------------------------------------- App init data that *could* panic
+		let mut panic = String::new();
 		// Get exe path
 		app.exe = match get_exe() {
 			Ok(exe) => exe,
-			Err(err) => { panic_main(err.to_string()); exit(1); },
+			Err(e) => { panic = format!("get_exe(): {}", e); app.error_state.set(panic.clone(), ErrorFerris::Panic, ErrorButtons::Quit); String::new() },
 		};
 		// Get exe directory path
 		app.dir = match get_exe_dir() {
 			Ok(dir) => dir,
-			Err(err) => { panic_main(err.to_string()); exit(1); },
+			Err(e) => { panic = format!("get_exe_dir(): {}", e); app.error_state.set(panic.clone(), ErrorFerris::Panic, ErrorButtons::Quit); String::new() },
 		};
 		// Get OS data path
-		app.os_data_path = match get_os_data_path() {
+		app.os_data_path = match get_gupax_data_path() {
 			Ok(dir) => dir,
-			Err(err) => { panic_main(err.to_string()); exit(1); },
+			Err(e) => { panic = format!("get_os_data_path(): {}", e); app.error_state.set(panic.clone(), ErrorFerris::Panic, ErrorButtons::Quit); PathBuf::new() },
 		};
+
+		// Set [state.toml/node.toml] path
+		app.state_path = app.os_data_path.clone();
+		app.state_path.push("state.toml");
+		app.node_path = app.os_data_path.clone();
+		app.node_path.push("node.toml");
+
+		// Apply arg state
+		// It's not safe to [--reset] if any of the previous variables
+		// are unset (null path), so make sure we just abort if the [panic] String contains something.
+		let mut app = parse_args(app, panic);
+
 		// Read disk state
 		use TomlError::*;
-		app.state = match State::get() {
+		app.state = match State::get(&app.state_path) {
 			Ok(toml) => toml,
 			Err(err) => {
 				error!("State ... {}", err);
 				match err {
-					Io(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Path(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Serialize(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Deserialize(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Merge(e) => app.error_state.set(true, format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					Io(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
 				};
 				State::new()
 			},
 		};
 		app.og = Arc::new(Mutex::new(app.state.clone()));
 		// Read node list
-		app.og_node_vec = match Node::get() {
+		app.og_node_vec = match Node::get(&app.node_path) {
 			Ok(toml) => toml,
 			Err(err) => {
 				error!("Node ... {}", err);
 				match err {
-					Io(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Path(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Serialize(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Deserialize(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Merge(e) => app.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					Io(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
 				};
 				Node::new_vec()
 			},
 		};
 		app.node_vec = app.og_node_vec.clone();
 
-
+		//----------------------------------------------------------------------------------------------------
 		let mut og = app.og.lock().unwrap(); // Lock [og]
 		// Handle max threads
 		og.xmrig.max_threads = num_cpus::get();
@@ -259,10 +277,20 @@ impl ErrorState {
 		}
 	}
 
-	// Convenience function to set the [App] error state
-	pub fn set(&mut self, error: bool, msg: impl Into<String>, ferris: ErrorFerris, buttons: ErrorButtons) {
+	// Convenience function to enable the [App] error state
+	pub fn set(&mut self, msg: impl Into<String>, ferris: ErrorFerris, buttons: ErrorButtons) {
+		if self.error {
+			// If a panic error is already set, return
+			if self.ferris == ErrorFerris::Panic { return }
+			// If we shouldn't be overriding the current error, return
+			match self.buttons {
+				ErrorButtons::YesNo => (), // Not important
+				ErrorButtons::Okay => (), // Not important
+				_ => return, // Overwrite, Quits, etc
+			}
+		}
 		*self = Self {
-			error,
+			error: true,
 			msg: msg.into(),
 			ferris,
 			buttons,
@@ -433,6 +461,7 @@ fn init_auto(app: &App) {
 		let state_ver = Arc::clone(&app.state.version);
 		let update = Arc::clone(&app.update);
 		let update_thread = Arc::clone(&app.update);
+		let state_path = app.state_path.clone();
 		thread::spawn(move|| {
 			info!("Spawning update thread...");
 			match Update::start(update_thread, og.clone(), state_ver.clone()) {
@@ -442,7 +471,7 @@ fn init_auto(app: &App) {
 				},
 				_ => {
 					info!("Update | Saving state...");
-					match State::save(&mut og.lock().unwrap()) {
+					match State::save(&mut og.lock().unwrap(), &state_path) {
 						Ok(_) => info!("Update ... OK"),
 						Err(e) => {
 							warn!("Update | Saving state ... FAIL ... {}", e);
@@ -472,41 +501,47 @@ fn init_auto(app: &App) {
 	}
 }
 
-fn reset_state() -> Result<(), TomlError> {
+fn reset_state(path: &PathBuf) -> Result<(), TomlError> {
 	info!("Resetting [state.toml]...");
-	match State::create_new() {
+	match State::create_new(path) {
 		Ok(_)  => { info!("Resetting [state.toml] ... OK"); Ok(()) },
 		Err(e) => { error!("Resetting [state.toml] ... FAIL ... {}", e); Err(e) },
 	}
 }
 
-fn reset_nodes() -> Result<(), TomlError> {
+fn reset_nodes(path: &PathBuf) -> Result<(), TomlError> {
 	info!("Resetting [node.toml]...");
-	match Node::create_new() {
+	match Node::create_new(path) {
 		Ok(_)  => { info!("Resetting [node.toml] ... OK"); Ok(()) },
 		Err(e) => { error!("Resetting [node.toml] ... FAIL ... {}", e); Err(e) },
 	}
 }
 
-fn reset() {
+fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf) {
 	let mut code = 0;
-	match reset_state() {
+	// Attempt to remove directory first
+	info!("OS data path ... {}", path.display());
+	match std::fs::remove_dir_all(path) {
+		Ok(_) => info!("Removing OS data path ... OK"),
+		Err(e) => { error!("Removing OS data path ... FAIL ... {}", e); code = 1; },
+	}
+	match reset_state(state) {
 		Ok(_) => (),
 		Err(_) => code = 1,
 	}
-	match reset_nodes() {
+	match reset_nodes(node) {
 		Ok(_) => (),
 		Err(_) => code = 1,
 	}
 	match code {
-		0 => println!("\nGupax files were reset successfully."),
-		_ => println!("\nGupax files reset FAILED."),
+		0 => println!("\nGupax reset ... OK"),
+		_ => println!("\nGupax reset ... FAIL"),
 	}
 	exit(code);
 }
 
 //---------------------------------------------------------------------------------------------------- Misc functions
-fn parse_args(mut app: App) -> App {
+fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 	info!("Parsing CLI arguments...");
 	let mut args: Vec<String> = env::args().collect();
 	if args.len() == 1 { info!("No args ... OK"); return app } else { args.remove(0); info!("Args ... {:?}", args); }
@@ -522,14 +557,21 @@ fn parse_args(mut app: App) -> App {
 			_ => (),
 		}
 	}
+	// Abort on panic
+	let panic = panic.into();
+	if ! panic.is_empty() {
+		info!("[Gupax error] {}", panic);
+		exit(1);
+	}
+
 	// Everything else
 	for arg in args {
 		match arg.as_str() {
-			"--nodes"       => { info!("Printing node list..."); print_disk_file(File::Node); }
-			"--state"       => { info!("Printing state..."); print_disk_file(File::State); }
-			"--reset-state" => if let Ok(()) = reset_state() { exit(0) } else { exit(1) },
-			"--reset-nodes" => if let Ok(()) = reset_nodes() { exit(0) } else { exit(1) },
-			"--reset-all"   => reset(),
+			"--state"       => { info!("Printing state..."); print_disk_file(&app.state_path); }
+			"--nodes"       => { info!("Printing node list..."); print_disk_file(&app.node_path); }
+			"--reset-state" => if let Ok(()) = reset_state(&app.state_path) { exit(0) } else { exit(1) },
+			"--reset-nodes" => if let Ok(()) = reset_nodes(&app.node_path) { exit(0) } else { exit(1) },
+			"--reset-all"   => reset(&app.os_data_path, &app.state_path, &app.node_path),
 			"--no-startup"  => app.no_startup = true,
 			_               => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
 		}
@@ -541,7 +583,7 @@ fn parse_args(mut app: App) -> App {
 pub fn get_exe() -> Result<String, std::io::Error> {
 	match std::env::current_exe() {
 		Ok(path) => { Ok(path.display().to_string()) },
-		Err(err) => { error!("Couldn't get exe basepath PATH"); return Err(err) },
+		Err(err) => { error!("Couldn't get absolute Gupax PATH"); return Err(err) },
 	}
 }
 
@@ -572,11 +614,7 @@ pub fn clean_dir() -> Result<(), anyhow::Error> {
 }
 
 // Print disk files to console
-fn print_disk_file(file: File) {
-	let path = match get_file_path(file) {
-		Ok(path) => path,
-		Err(e) => { error!("{}", e); exit(1); },
-	};
+fn print_disk_file(path: &PathBuf) {
 	match std::fs::read_to_string(&path) {
 		Ok(string) => { print!("{}", string); exit(0); },
 		Err(e) => { error!("{}", e); exit(1); },
@@ -652,7 +690,7 @@ fn main() {
 impl eframe::App for App {
 	fn on_close_event(&mut self) -> bool {
 		if self.state.gupax.ask_before_quit {
-			self.error_state.set(true, "", ErrorFerris::Oops, ErrorButtons::StayQuit);
+			self.error_state.set("", ErrorFerris::Oops, ErrorButtons::StayQuit);
 			false
 		} else {
 			true
@@ -749,36 +787,36 @@ impl eframe::App for App {
 					// [Yes/No] buttons
 					ResetState => {
 						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() {
-							match reset_state() {
+							match reset_state(&self.state_path) {
 								Ok(_)  => {
-									match State::get() {
+									match State::get(&self.state_path) {
 										Ok(s) => {
 											self.state = s;
 											self.og = Arc::new(Mutex::new(self.state.clone()));
-											self.error_state.set(true, "State read OK", ErrorFerris::Happy, ErrorButtons::Okay);
+											self.error_state.set("State read OK", ErrorFerris::Happy, ErrorButtons::Okay);
 										},
-										Err(e) => self.error_state.set(true, format!("State read fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+										Err(e) => self.error_state.set(format!("State read fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 									}
 								},
-								Err(e) => self.error_state.set(true, format!("State reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+								Err(e) => self.error_state.set(format!("State reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 							};
 						}
 				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { self.error_state = ErrorState::new() }
 					},
 					ResetNode => {
 						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() {
-							match reset_nodes() {
+							match reset_nodes(&self.node_path) {
 								Ok(_)  => {
-									match Node::get() {
+									match Node::get(&self.node_path) {
 										Ok(s) => {
 											self.node_vec = s;
 											self.og_node_vec = self.node_vec.clone();
-											self.error_state.set(true, "Node read OK", ErrorFerris::Happy, ErrorButtons::Okay);
+											self.error_state.set("Node read OK", ErrorFerris::Happy, ErrorButtons::Okay);
 										},
-										Err(e) => self.error_state.set(true, format!("Node read fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+										Err(e) => self.error_state.set(format!("Node read fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 									}
 								},
-								Err(e) => self.error_state.set(true, format!("Node reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+								Err(e) => self.error_state.set(format!("Node reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 							};
 						}
 				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { self.error_state = ErrorState::new() }
@@ -867,7 +905,7 @@ impl eframe::App for App {
 						self.node_vec = self.og_node_vec.clone();
 					}
 					if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() {
-						match self.state.save() {
+						match State::save(&mut self.state, &self.state_path) {
 							Ok(_) => {
 								let mut og = self.og.lock().unwrap();
 								og.gupax = self.state.gupax.clone();
@@ -875,12 +913,12 @@ impl eframe::App for App {
 								og.xmrig = self.state.xmrig.clone();
 							},
 							Err(e) => {
-								self.error_state.set(true, format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::Okay);
+								self.error_state.set(format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::Okay);
 							},
 						};
-						match Node::save(&self.og_node_vec) {
+						match Node::save(&self.og_node_vec, &self.node_path) {
 							Ok(_) => self.og_node_vec = self.node_vec.clone(),
-							Err(e) => self.error_state.set(true, format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::Okay),
+							Err(e) => self.error_state.set(format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::Okay),
 						};
 					}
 				});
@@ -979,7 +1017,7 @@ impl eframe::App for App {
 					Status::show(self, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, &self.file_window, self.width, self.height, ctx, ui);
+					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, &self.file_window, &self.state_path, self.width, self.height, ctx, ui);
 				}
 				Tab::P2pool => {
 					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, self.p2pool, &self.ping, &self.regex, self.width, self.height, ctx, ui);
