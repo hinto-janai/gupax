@@ -71,34 +71,7 @@ impl Gupax {
 				ui.vertical(|ui| {
 					ui.set_enabled(!updating);
 					if ui.add_sized([width, height], egui::Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
-						update.lock().unwrap().path_p2pool = og.lock().unwrap().gupax.absolute_p2pool_path.display().to_string();
-						update.lock().unwrap().path_xmrig = og.lock().unwrap().gupax.absolute_xmrig_path.display().to_string();
-						update.lock().unwrap().tor = og.lock().unwrap().gupax.update_via_tor;
-						let og = Arc::clone(&og);
-						let state_ver = Arc::clone(&state_ver);
-						let update = Arc::clone(&update);
-						let update_thread = Arc::clone(&update);
-						let state_path = state_path.clone();
-						thread::spawn(move|| {
-							info!("Spawning update thread...");
-							match Update::start(update_thread, og.clone(), state_ver.clone()) {
-								Err(e) => {
-									info!("Update ... FAIL ... {}", e);
-									*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
-								},
-								_ => {
-									info!("Update | Saving state...");
-									match State::save(&mut og.lock().unwrap(), &state_path) {
-										Ok(_) => info!("Update ... OK"),
-										Err(e) => {
-											warn!("Update | Saving state ... FAIL ... {}", e);
-											*update.lock().unwrap().msg.lock().unwrap() = format!("Saving new versions into state failed");
-										},
-									};
-								}
-							};
-							*update.lock().unwrap().updating.lock().unwrap() = false;
-						});
+						Update::spawn_thread(og, update, state_ver, state_path);
 					}
 				});
 				ui.vertical(|ui| {

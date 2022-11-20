@@ -288,6 +288,41 @@ impl Update {
 		}
 	}
 
+	// Intermediate function that spawns a new thread
+	// which starts the async [start()] function that
+	// actually contains the code. This is so that everytime
+	// an update needs to happen (Gupax tab, auto-update), the
+	// code only needs to be edited once, here.
+	pub fn spawn_thread(og: &Arc<Mutex<State>>, update: &Arc<Mutex<Update>>, state_ver: &Arc<Mutex<Version>>, state_path: &PathBuf) {
+		update.lock().unwrap().path_p2pool = og.lock().unwrap().gupax.absolute_p2pool_path.display().to_string();
+		update.lock().unwrap().path_xmrig = og.lock().unwrap().gupax.absolute_xmrig_path.display().to_string();
+		update.lock().unwrap().tor = og.lock().unwrap().gupax.update_via_tor;
+		let og = Arc::clone(&og);
+		let state_ver = Arc::clone(&state_ver);
+		let update = Arc::clone(&update);
+		let state_path = state_path.clone();
+		std::thread::spawn(move|| {
+			info!("Spawning update thread...");
+			match Update::start(update.clone(), og.clone(), state_ver.clone()) {
+				Err(e) => {
+					info!("Update ... FAIL ... {}", e);
+					*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
+				},
+				_ => {
+					info!("Update | Saving state...");
+					match State::save(&mut og.lock().unwrap(), &state_path) {
+						Ok(_) => info!("Update ... OK"),
+						Err(e) => {
+							warn!("Update | Saving state ... FAIL ... {}", e);
+							*update.lock().unwrap().msg.lock().unwrap() = format!("Saving new versions into state failed");
+						},
+					};
+				}
+			};
+			*update.lock().unwrap().updating.lock().unwrap() = false;
+		});
+	}
+
 	// Download process:
 	// 0. setup tor, client, http, etc
 	// 1. fill vector with all enums
@@ -295,7 +330,6 @@ impl Update {
 	// 3. if current == version, remove from vec
 	// 4. loop over vec, download links
 	// 5. extract, upgrade
-
 	#[tokio::main]
 	pub async fn start(update: Arc<Mutex<Self>>, og: Arc<Mutex<State>>, state_ver: Arc<Mutex<Version>>) -> Result<(), anyhow::Error> {
 		//---------------------------------------------------------------------------------------------------- Init

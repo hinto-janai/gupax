@@ -59,16 +59,19 @@ pub fn get_gupax_data_path() -> Result<PathBuf, TomlError> {
 		Some(mut path) => {
 			path.push(DIRECTORY);
 			info!("OS | Data path ... OK ... {}", path.display());
+			create_gupax_dir(&path)?;
 			Ok(path)
 		},
 		None => { error!("OS | Data path ... FAIL"); Err(TomlError::Path(PATH_ERROR.to_string())) },
 	}
 }
 
-pub fn create_gupax_dir(path: PathBuf) -> Result<(), TomlError> {
+pub fn create_gupax_dir(path: &PathBuf) -> Result<(), TomlError> {
 	// Create directory
-	fs::create_dir_all(&path)?;
-	Ok(())
+	match fs::create_dir_all(path) {
+		Ok(_) => { info!("OS | Create data path ... OK"); Ok(()) },
+		Err(e) => { error!("OS | Create data path ... FAIL ... {}", e); Err(TomlError::Io(e)) },
+	}
 }
 
 // Convert a [File] path to a [String]

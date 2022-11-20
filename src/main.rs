@@ -440,6 +440,7 @@ fn init_options() -> NativeOptions {
 }
 
 fn init_auto(app: &App) {
+	// Return early if [--no-startup] was not passed
 	if app.no_startup {
 		info!("[--no-startup] flag passed, skipping init_auto()...");
 		return
@@ -449,39 +450,10 @@ fn init_auto(app: &App) {
 	} else {
 		info!("Starting init_auto()...");
 	}
+
 	// [Auto-Update]
 	if app.state.gupax.auto_update {
-		let path_p2pool = app.og.lock().unwrap().gupax.absolute_p2pool_path.display().to_string();
-		let path_xmrig = app.og.lock().unwrap().gupax.absolute_xmrig_path.display().to_string();
-		let tor = app.og.lock().unwrap().gupax.update_via_tor;
-		app.update.lock().unwrap().path_p2pool = path_p2pool;
-		app.update.lock().unwrap().path_xmrig = path_xmrig;
-		app.update.lock().unwrap().tor = tor;
-		let og = Arc::clone(&app.og);
-		let state_ver = Arc::clone(&app.state.version);
-		let update = Arc::clone(&app.update);
-		let update_thread = Arc::clone(&app.update);
-		let state_path = app.state_path.clone();
-		thread::spawn(move|| {
-			info!("Spawning update thread...");
-			match Update::start(update_thread, og.clone(), state_ver.clone()) {
-				Err(e) => {
-					info!("Update ... FAIL ... {}", e);
-					*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
-				},
-				_ => {
-					info!("Update | Saving state...");
-					match State::save(&mut og.lock().unwrap(), &state_path) {
-						Ok(_) => info!("Update ... OK"),
-						Err(e) => {
-							warn!("Update | Saving state ... FAIL ... {}", e);
-							*update.lock().unwrap().msg.lock().unwrap() = format!("Saving new versions into state failed");
-						},
-					};
-				}
-			};
-			*update.lock().unwrap().updating.lock().unwrap() = false;
-		});
+		Update::spawn_thread(&app.og, &app.update, &app.state.version, &app.state_path);
 	} else {
 		info!("Skipping auto-update...");
 	}
@@ -490,12 +462,7 @@ fn init_auto(app: &App) {
 	let auto_node = app.og.lock().unwrap().p2pool.auto_node;
 	let simple = app.og.lock().unwrap().p2pool.simple;
 	if auto_node && simple {
-		let ping = Arc::clone(&app.ping);
-		let og = Arc::clone(&app.og);
-		thread::spawn(move|| {
-			info!("Spawning ping thread...");
-			crate::node::ping(ping, og);
-		});
+		Ping::spawn_thread(&app.ping, &app.og)
 	} else {
 		info!("Skipping auto-ping...");
 	}
