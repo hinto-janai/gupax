@@ -6,12 +6,17 @@ description = "GUI for P2Pool+XMRig"
 documentation = "https://github.com/hinto-janaiyo/gupax"
 edition = "2021"
 
+[profile.release]
+debug = false
+strip = "symbols"
+codegen-units = 1
+lto = true
+
 [dependencies]
 anyhow = "1.0.65"
-arti-client = "0.7.0"
+arti-client = { version = "0.7.0", features = ["static"] }
 arti-hyper = "0.7.0"
 bytes = "1.2.1"
-chrono = "0.4.22"
 dirs = "4.0.0"
 eframe = "0.19.0"
 egui = "0.19.0"
@@ -27,27 +32,20 @@ egui_extras = { version = "0.19.0", features = ["image"] }
 #egui_extras = { path = "external/egui/crates/egui_extras", features = ["image"] }
 env_logger = "0.9.1"
 figment = { version = "0.10.8", features = ["toml"] }
-flate2 = "1.0"
-hex-literal = "0.3.4"
 hyper = "0.14.20"
-#hyper = { version = "0.14.20", features = ["full"] }
 hyper-tls = "0.5.0"
 image = { version = "0.24.4", features = ["png"] }
 log = "0.4.17"
-monero = "0.18.0"
 num_cpus = "1.13.1"
 num-format = "0.4.0"
 rand = "0.8.5"
-regex = "1.6.0"
-#reqwest = { version = "0.11.12", features = ["blocking", "json"] }
+regex = { version = "1.6.0", default-features = false, features = ["perf"] }
 rfd = "0.10.0"
-rusqlite = { version = "0.28.0", features = ["bundled"] }
 serde = { version = "1.0.145", features = ["rc", "derive"] }
 serde_json = "1.0"
-sha2 = "0.10.6"
 tls-api = "0.9.0"
 tls-api-native-tls = "0.9.0"
-tokio = { version = "1.21.2", features = ["full"] }
+tokio = { version = "1.21.2", features = ["rt", "time", "macros"] }
 toml = { version = "0.5.9", features = ["preserve_order"] }
 tor-rtcompat = "0.7.0"
 walkdir = "2.3.2"
@@ -55,10 +53,7 @@ walkdir = "2.3.2"
 # Unix dependencies
 [target.'cfg(unix)'.dependencies]
 tar = "0.4.38"
-
-# Bundle OpenSSL for Linux
-[target.'cfg(linux)'.dependencies]
-openssl = { version = "*", features = ["vendored"] }
+flate2 = "1.0"
 
 # Windows dependencies
 [target.'cfg(windows)'.dependencies]

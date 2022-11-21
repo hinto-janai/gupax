@@ -56,7 +56,10 @@ pub const OS_NAME: &'static str = "Linux";
 // Gupax
 pub const GUPAX_UPDATE: &'static str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
 pub const GUPAX_AUTO_UPDATE: &'static str = "Automatically check for updates at startup";
+#[cfg(not(target_os = "macos"))]
 pub const GUPAX_UPDATE_VIA_TOR: &'static str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
+#[cfg(target_os = "macos")] // Arti library has issues on macOS
+pub const GUPAX_UPDATE_VIA_TOR: &'static str = "WARNING: This option is unstable on macOS. Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
 pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting Gupax";
 pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed settings before quitting";
 pub const GUPAX_SELECT: &'static str = "Open a file explorer to select a file";

@@ -120,7 +120,10 @@ impl State {
 				auto_node: true,
 				ask_before_quit: true,
 				save_before_quit: true,
+				#[cfg(not(target_os = "macos"))]
 				update_via_tor: true,
+				#[cfg(target_os = "macos")] // Arti library has issues on macOS
+				update_via_tor: false,
 				p2pool_path: DEFAULT_P2POOL_PATH.to_string(),
 				xmrig_path: DEFAULT_XMRIG_PATH.to_string(),
 				absolute_p2pool_path: into_absolute_path(DEFAULT_P2POOL_PATH.to_string()).unwrap(),
@@ -141,7 +144,7 @@ impl State {
 				ip: "localhost".to_string(),
 				rpc: "18081".to_string(),
 				zmq: "18083".to_string(),
-				selected_index: 1,
+				selected_index: 0,
 				selected_name: "Local Monero Node".to_string(),
 				selected_ip: "localhost".to_string(),
 				selected_rpc: "18081".to_string(),
@@ -204,7 +207,7 @@ impl State {
 		// Deserialize, attempt merge if failed
 		match Self::from_string(&string) {
 			Ok(s) => Ok(s),
-			Err(e) => {
+			Err(_) => {
 				warn!("State | Attempting merge...");
 				Self::merge(string, path)
 			},
@@ -442,15 +445,6 @@ pub enum File {
 	Node,
 }
 
-impl File {
-	fn name(&self) -> &'static str {
-		match *self {
-			Self::State => "state.toml",
-			Self::Node => "node.toml",
-		}
-	}
-}
-
 //---------------------------------------------------------------------------------------------------- [Node] Struct
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub struct Node {
@@ -497,7 +491,7 @@ pub struct P2pool {
 	pub ip: String,
 	pub rpc: String,
 	pub zmq: String,
-	pub selected_index: u16,
+	pub selected_index: usize,
 	pub selected_name: String,
 	pub selected_ip: String,
 	pub selected_rpc: String,

@@ -24,7 +24,6 @@ use log::*;
 use hyper::{
 	client::HttpConnector,
 	Client,Body,Request,
-	header::{HeaderValue,LOCATION},
 };
 
 //---------------------------------------------------------------------------------------------------- Node list
@@ -293,7 +292,7 @@ impl Ping {
 				info = format!("{}ms ... {}: {}", ms, id, ip);
 				info!("Ping | {}", info)
 			},
-			Err(e) => {
+			Err(_) => {
 				ms = 5000;
 				info = format!("{}ms ... {}: {}", ms, id, ip);
 				warn!("Ping | {}", info)

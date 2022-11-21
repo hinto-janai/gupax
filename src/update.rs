@@ -228,10 +228,12 @@ impl Update {
 	//
 	pub fn get_client(tor: bool) -> Result<ClientEnum, anyhow::Error> {
 		if tor {
+			// Below is async, bootstraps immediately but has issues when recreating the circuit
+			// let tor = TorClient::create_bootstrapped(TorClientConfig::default()).await?;
 			// This one below is non-async, and doesn't bootstrap immediately.
 			let tor = TorClient::builder().bootstrap_behavior(arti_client::BootstrapBehavior::OnDemand).create_unbootstrapped()?;
-			// Below is async, bootstraps immediately but has issues when recreating the circuit
-//			let tor = TorClient::create_bootstrapped(TorClientConfig::default()).await?;
+			// This makes sure the Tor circuit is different each time
+			let tor = TorClient::isolated_client(&tor);
 			let tls = tls_api_native_tls::TlsConnector::builder()?.build()?;
 		    let connector = ArtiHttpConnector::new(tor, tls);
 			let client = ClientEnum::Tor(Client::builder().build(connector));
@@ -375,7 +377,7 @@ impl Update {
 			let mut indexes = vec![];
 			for (index, pkg) in vec.iter().enumerate() {
 				if pkg.new_ver.lock().unwrap().is_empty() {
-					warn!("Update | {} failed, attempt [{}/3]...", pkg.name, i);
+					warn!("Update | {} failed, attempt [{}/3]...", pkg.name, i+1);
 				} else {
 					indexes.push(index);
 					vec2.push(pkg.clone());

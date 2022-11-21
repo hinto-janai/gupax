@@ -38,10 +38,10 @@ use regex::Regex;
 
 // std
 use std::{
+	env,
 	io::Write,
 	process::exit,
 	sync::{Arc,Mutex},
-	{thread,env},
 	time::Instant,
 	path::PathBuf,
 };
@@ -219,15 +219,15 @@ impl App {
 			og.xmrig.current_threads = max;
 		}
 		// Handle [node_vec] overflow
-		if og.p2pool.selected_index > app.og_node_vec.len() as u16 {
+		if og.p2pool.selected_index > app.og_node_vec.len() {
 			warn!("App | Overflowing manual node index [{} > {}], resetting to 1", og.p2pool.selected_index, app.og_node_vec.len());
 			let (name, node) = app.og_node_vec[0].clone();
-			og.p2pool.selected_index = 1;
+			og.p2pool.selected_index = 0;
 			og.p2pool.selected_name = name.clone();
 			og.p2pool.selected_ip = node.ip.clone();
 			og.p2pool.selected_rpc = node.rpc.clone();
-			og.p2pool.selected_zmq = node.rpc.clone();
-			app.state.p2pool.selected_index = 1;
+			og.p2pool.selected_zmq = node.zmq.clone();
+			app.state.p2pool.selected_index = 0;
 			app.state.p2pool.selected_name = name;
 			app.state.p2pool.selected_ip = node.ip;
 			app.state.p2pool.selected_rpc = node.rpc;
