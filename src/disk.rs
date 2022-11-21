@@ -58,7 +58,7 @@ pub fn get_gupax_data_path() -> Result<PathBuf, TomlError> {
 	match dirs::data_dir() {
 		Some(mut path) => {
 			path.push(DIRECTORY);
-			info!("OS | Data path ... OK ... {}", path.display());
+			info!("OS | Data path ... {}", path.display());
 			create_gupax_dir(&path)?;
 			Ok(path)
 		},
@@ -217,7 +217,7 @@ impl State {
 		info!("State | Creating new default...");
 		let new = Self::new();
 		let string = match toml::ser::to_string(&new) {
-				Ok(o) => { info!("State | Serialization ... OK"); o },
+				Ok(o) => o,
 				Err(e) => { error!("State | Couldn't serialize default file: {}", e); return Err(TomlError::Serialize(e)) },
 		};
 		fs::write(&path, &string)?;
@@ -265,14 +265,6 @@ impl State {
 
 //---------------------------------------------------------------------------------------------------- [Node] Impl
 impl Node {
-	pub fn new() -> Self {
-		Self {
-			ip: String::new(),
-			rpc: "18081".to_string(),
-			zmq: "18083".to_string(),
-		}
-	}
-
 	pub fn localhost() -> Self {
 		Self {
 			ip: "localhost".to_string(),

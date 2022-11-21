@@ -262,6 +262,24 @@ impl Default for Tab {
 }
 
 //---------------------------------------------------------------------------------------------------- [ErrorState] struct
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ErrorButtons {
+	YesNo,
+	StayQuit,
+	ResetState,
+	ResetNode,
+	Okay,
+	Quit,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ErrorFerris {
+	Happy,
+	Oops,
+	Error,
+	Panic,
+}
+
 pub struct ErrorState {
 	error: bool, // Is there an error?
 	msg: String, // What message to display?
@@ -298,25 +316,6 @@ impl ErrorState {
 			buttons,
 		};
 	}
-}
-
-//---------------------------------------------------------------------------------------------------- [ErrorButtons] enum
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ErrorButtons {
-	YesNo,
-	StayQuit,
-	ResetState,
-	ResetNode,
-	Okay,
-	Quit,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ErrorFerris {
-	Happy,
-	Oops,
-	Error,
-	Panic,
 }
 
 //---------------------------------------------------------------------------------------------------- [Images] struct
@@ -394,13 +393,9 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 //	ctx.set_style(style);
 //}
 
-fn init_logger() {
-//	#[cfg(debug_assertions)]
-	let filter = LevelFilter::Info;
-//	#[cfg(not(debug_assertions))]
-//	let filter = LevelFilter::Warn;
+fn init_logger(now: Instant) {
 	use env_logger::fmt::Color;
-	Builder::new().format(|buf, record| {
+	Builder::new().format(move |buf, record| {
 		let level;
 		let mut style = buf.style();
 		match record.level() {
@@ -414,12 +409,12 @@ fn init_logger() {
 			buf,
 			"[{}] [{}] [{}:{}] {}",
 			style.set_bold(true).value(level),
-			buf.style().set_dimmed(true).value(chrono::Local::now().format("%F %T%.3f")),
+			buf.style().set_dimmed(true).value(format!("{:.7}", now.elapsed().as_secs_f32())),
 			buf.style().set_dimmed(true).value(record.file().unwrap_or("???")),
 			buf.style().set_dimmed(true).value(record.line().unwrap_or(0)),
 			record.args(),
 		)
-	}).filter_level(filter).write_style(WriteStyle::Always).parse_default_env().format_timestamp_millis().init();
+	}).filter_level(LevelFilter::Info).write_style(WriteStyle::Always).parse_default_env().format_timestamp_millis().init();
 	info!("init_logger() ... OK");
 }
 
@@ -471,7 +466,6 @@ fn init_auto(app: &App) {
 }
 
 fn reset_state(path: &PathBuf) -> Result<(), TomlError> {
-	info!("Resetting [state.toml]...");
 	match State::create_new(path) {
 		Ok(_)  => { info!("Resetting [state.toml] ... OK"); Ok(()) },
 		Err(e) => { error!("Resetting [state.toml] ... FAIL ... {}", e); Err(e) },
@@ -479,7 +473,6 @@ fn reset_state(path: &PathBuf) -> Result<(), TomlError> {
 }
 
 fn reset_nodes(path: &PathBuf) -> Result<(), TomlError> {
-	info!("Resetting [node.toml]...");
 	match Node::create_new(path) {
 		Ok(_)  => { info!("Resetting [node.toml] ... OK"); Ok(()) },
 		Err(e) => { error!("Resetting [node.toml] ... FAIL ... {}", e); Err(e) },
@@ -489,10 +482,14 @@ fn reset_nodes(path: &PathBuf) -> Result<(), TomlError> {
 fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf) {
 	let mut code = 0;
 	// Attempt to remove directory first
-	info!("OS data path ... {}", path.display());
 	match std::fs::remove_dir_all(path) {
 		Ok(_) => info!("Removing OS data path ... OK"),
 		Err(e) => { error!("Removing OS data path ... FAIL ... {}", e); code = 1; },
+	}
+	// Recreate
+	match create_gupax_dir(path) {
+		Ok(_) => (),
+		Err(_) => code = 1,
 	}
 	match reset_state(state) {
 		Ok(_) => (),
@@ -538,8 +535,8 @@ fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 		match arg.as_str() {
 			"--state"       => { info!("Printing state..."); print_disk_file(&app.state_path); }
 			"--nodes"       => { info!("Printing node list..."); print_disk_file(&app.node_path); }
-			"--reset-state" => if let Ok(()) = reset_state(&app.state_path) { exit(0) } else { exit(1) },
-			"--reset-nodes" => if let Ok(()) = reset_nodes(&app.node_path) { exit(0) } else { exit(1) },
+			"--reset-state" => if let Ok(()) = reset_state(&app.state_path) { println!("\nState reset ... OK"); exit(0); } else { println!("\nState reset ... FAIL"); exit(1) },
+			"--reset-nodes" => if let Ok(()) = reset_nodes(&app.node_path) { println!("\nNode reset ... OK"); exit(0) } else { println!("\nNode reset ... FAIL"); exit(1) },
 			"--reset-all"   => reset(&app.os_data_path, &app.state_path, &app.node_path),
 			"--no-startup"  => app.no_startup = true,
 			_               => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
@@ -590,60 +587,10 @@ fn print_disk_file(path: &PathBuf) {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- [App] frame for [Panic] situations
-fn panic_main(error: String) {
-	error!("{}", error);
-	let options = Panic::options();
-	let name = format!("Gupax {}", GUPAX_VERSION);
-	eframe::run_native(&name, options, Box::new(|cc| Box::new(Panic::new(cc, error))),);
-	exit(1);
-}
-
-struct Panic { error_msg: String, }
-impl Panic {
-	fn options() -> NativeOptions {
-		let mut options = eframe::NativeOptions::default();
-		let frame = Option::from(Vec2::new(1280.0, 720.0));
-		options.min_window_size = frame;
-		options.max_window_size = frame;
-		options.initial_window_size = frame;
-		options.follow_system_theme = false;
-		options.default_theme = eframe::Theme::Dark;
-		let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read icon bytes").to_rgba8();
-		let (icon_width, icon_height) = icon.dimensions();
-		options.icon_data = Some(eframe::IconData {
-			rgba: icon.into_raw(),
-			width: icon_width,
-			height: icon_height,
-		});
-		info!("Panic::options() ... OK");
-		options
-	}
-	fn new(cc: &eframe::CreationContext<'_>, error_msg: String) -> Self {
-		let resolution = cc.integration_info.window_info.size;
-		init_text_styles(&cc.egui_ctx, resolution[0] as f32);
-		Self { error_msg }
-	}
-}
-
-impl eframe::App for Panic {
-	fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-		egui::CentralPanel::default().show(ctx, |ui| {
-			let width = ui.available_width();
-			let height = ui.available_height();
-			init_text_styles(ctx, width);
-			ui.add_sized([width, height/8.0], Label::new("Gupax has encountered a fatal error:"));
-			ui.add_sized([width, height/8.0], Label::new(&self.error_msg));
-			ui.add_sized([width, height/3.0], Label::new("Please report to: https://github.com/hinto-janaiyo/gupax/issues"));
-			ui.add_sized([width, height/3.0], egui::Button::new("Quit")).clicked() && exit(1)
-		});
-	}
-}
-
 //---------------------------------------------------------------------------------------------------- Main [App] frame
 fn main() {
 	let now = Instant::now();
-	init_logger();
+	init_logger(now);
 	let options = init_options();
 	match clean_dir() {
 		Ok(_) => info!("Temporary folder cleanup ... OK"),
@@ -652,7 +599,7 @@ fn main() {
 	let mut app = App::new();
 	app.now = now;
 	init_auto(&app);
-	info!("Init ... DONE ... Took [{}] seconds", now.elapsed().as_secs_f32());
+	info!("Init ... DONE");
 	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 

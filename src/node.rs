@@ -18,14 +18,14 @@
 use crate::State;
 use serde::{Serialize,Deserialize};
 use std::time::{Instant,Duration};
-use std::collections::HashMap;
 use std::sync::{Arc,Mutex};
 use egui::Color32;
 use log::*;
-//use hyper::{
-//	Client,Body,Request,
-//	header::{HeaderValue,LOCATION},
-//};
+use hyper::{
+	client::HttpConnector,
+	Client,Body,Request,
+	header::{HeaderValue,LOCATION},
+};
 
 //---------------------------------------------------------------------------------------------------- Node list
 // Community Monerod nodes. All of these have ZMQ on 18083.
@@ -191,7 +191,7 @@ impl Ping {
 	}
 
 	//---------------------------------------------------------------------------------------------------- Main Ping function
-	// Intermediate thread for spawning thread
+	// Intermediate function for spawning thread
 	pub fn spawn_thread(ping: &Arc<Mutex<Self>>, og: &Arc<Mutex<State>>) {
 		let ping = Arc::clone(&ping);
 		let og = Arc::clone(og);
@@ -239,8 +239,8 @@ impl Ping {
 		// Create HTTP client
 		let info = format!("{}", "Creating HTTP Client");
 		ping.lock().unwrap().msg = info;
-		let client: hyper::client::Client<hyper::client::HttpConnector> = hyper::Client::builder()
-			.build(hyper::client::HttpConnector::new());
+		let client: Client<HttpConnector> = Client::builder()
+			.build(HttpConnector::new());
 
 		// Random User Agent
 		let rand_user_agent = crate::Pkg::get_user_agent();
@@ -252,7 +252,7 @@ impl Ping {
 			let client = client.clone();
 			let ping = Arc::clone(&ping);
 			let node_vec = Arc::clone(&node_vec);
-			let request = hyper::Request::builder()
+			let request = Request::builder()
 				.method("POST")
 				.uri("http://".to_string() + ip + "/json_rpc")
 				.header("User-Agent", rand_user_agent)
@@ -282,7 +282,7 @@ impl Ping {
 		Ok(())
 	}
 
-	async fn response(client: hyper::client::Client<hyper::client::HttpConnector>, request: hyper::Request<hyper::Body>, ip: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
+	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
 		let id = ip_to_enum(ip);
 		let now = Instant::now();
 		let ms;

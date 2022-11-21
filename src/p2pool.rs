@@ -26,7 +26,6 @@ use egui::{
 	TextStyle::*,
 };
 use std::sync::{Arc,Mutex};
-use std::thread;
 use regex::Regex;
 use log::*;
 
