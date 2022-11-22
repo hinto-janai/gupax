@@ -56,6 +56,12 @@ impl FileWindow {
 	}
 }
 
+#[derive(Debug,Clone)]
+pub enum FileType {
+	P2pool,
+	Xmrig,
+}
+
 //---------------------------------------------------------------------------------------------------- Gupax
 impl Gupax {
 	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, state_path: &PathBuf, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
@@ -130,19 +136,7 @@ impl Gupax {
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
-				file_window.lock().unwrap().thread = true;
-				let file_window = Arc::clone(file_window);
-				thread::spawn(move|| {
-					match rfd::FileDialog::new().set_title("Select P2Pool Binary for Gupax").pick_file() {
-						Some(path) => {
-							info!("Gupax | [{}] path selected for P2Pool", path.display());
-							file_window.lock().unwrap().p2pool_path = path.display().to_string();
-							file_window.lock().unwrap().picked_p2pool = true;
-						},
-						None => info!("Gupax | No path selected for P2Pool"),
-					};
-					file_window.lock().unwrap().thread = false;
-				});
+				Self::spawn_file_window_thread(&file_window, FileType::P2pool);
 			}
 			ui.text_edit_singleline(&mut self.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
 		});
@@ -164,19 +158,7 @@ impl Gupax {
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
-				file_window.lock().unwrap().thread = true;
-				let file_window = Arc::clone(file_window);
-				thread::spawn(move|| {
-					match rfd::FileDialog::new().set_title("Select XMRig Binary for Gupax").pick_file() {
-						Some(path) => {
-							info!("Gupax | [{}] path selected for XMRig", path.display());
-							file_window.lock().unwrap().xmrig_path = path.display().to_string();
-							file_window.lock().unwrap().picked_xmrig = true;
-						},
-						None => info!("Gupax | No path selected for XMRig"),
-					};
-					file_window.lock().unwrap().thread = false;
-				});
+				Self::spawn_file_window_thread(&file_window, FileType::Xmrig);
 			}
 			ui.text_edit_singleline(&mut self.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
 		});
@@ -184,5 +166,28 @@ impl Gupax {
 		if guard.picked_p2pool { self.p2pool_path = guard.p2pool_path.clone(); guard.picked_p2pool = false; }
 		if guard.picked_xmrig { self.xmrig_path = guard.xmrig_path.clone(); guard.picked_xmrig = false; }
 		drop(guard);
+	}
+
+	fn spawn_file_window_thread(file_window: &Arc<Mutex<FileWindow>>, file_type: FileType) {
+		use FileType::*;
+		let name = match file_type {
+			P2pool => "P2Pool",
+			Xmrig  => "XMRig",
+		};
+		let file_window = file_window.clone();
+		file_window.lock().unwrap().thread = true;
+		thread::spawn(move|| {
+			match rfd::FileDialog::new().set_title(&format!("Select {} Binary for Gupax", name)).pick_file() {
+				Some(path) => {
+					info!("Gupax | Path selected for {} ... {}", name, path.display());
+					match file_type {
+						P2pool => { file_window.lock().unwrap().p2pool_path = path.display().to_string(); file_window.lock().unwrap().picked_p2pool = true; },
+						Xmrig  => { file_window.lock().unwrap().xmrig_path = path.display().to_string(); file_window.lock().unwrap().picked_xmrig = true; },
+					};
+				},
+				None => info!("Gupax | No path selected for {}", name),
+			};
+			file_window.lock().unwrap().thread = false;
+		});
 	}
 }
