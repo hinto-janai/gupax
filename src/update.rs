@@ -262,20 +262,23 @@ impl Update {
 		std::thread::spawn(move|| {
 			info!("Spawning update thread...");
 			match Update::start(update.clone(), og.clone(), state_ver.clone()) {
-				Err(e) => {
-					info!("Update ... FAIL ... {}", e);
-					*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
-				},
-				_ => {
+				Ok(_) => {
 					info!("Update | Saving state...");
+					let original_version = og.lock().unwrap().version.clone();
+					og.lock().unwrap().version = state_ver;
 					match State::save(&mut og.lock().unwrap(), &state_path) {
 						Ok(_) => info!("Update ... OK"),
 						Err(e) => {
 							warn!("Update | Saving state ... FAIL ... {}", e);
+							og.lock().unwrap().version = original_version;
 							*update.lock().unwrap().msg.lock().unwrap() = format!("Saving new versions into state failed");
 						},
 					};
 				}
+				Err(e) => {
+					info!("Update ... FAIL ... {}", e);
+					*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
+				},
 			};
 			*update.lock().unwrap().updating.lock().unwrap() = false;
 		});
@@ -423,17 +426,17 @@ impl Update {
 					// that gets updated during an update. This prevents the updater always thinking
 					// there's a new Gupax update since the user didnt restart and is still technically
 					// using the old version (even though the underlying binary was updated).
-					old_ver = og.lock().unwrap().version.lock().unwrap().gupax.clone();
+					old_ver = state_ver.lock().unwrap().gupax.clone();
 					diff = old_ver != new_ver && GUPAX_VERSION != new_ver;
 					name = "Gupax";
 				}
 				P2pool => {
-					old_ver = og.lock().unwrap().version.lock().unwrap().p2pool.clone();
+					old_ver = state_ver.lock().unwrap().p2pool.clone();
 					diff = old_ver != new_ver;
 					name = "P2Pool";
 				}
 				Xmrig  => {
-					old_ver = og.lock().unwrap().version.lock().unwrap().xmrig.clone();
+					old_ver = state_ver.lock().unwrap().xmrig.clone();
 					diff = old_ver != new_ver;
 					name = "XMRig";
 				}
@@ -558,40 +561,42 @@ impl Update {
 			if ! entry.file_type().is_file() { continue }
 			let basename = entry.file_name().to_str().ok_or(anyhow::Error::msg("WalkDir basename failed"))?;
 			match basename {
-				GUPAX_BINARY => {
-					// Unix can replace running binaries no problem (they're loading into memory)
+				GUPAX_BINARY|P2POOL_BINARY|XMRIG_BINARY => {
+					let name = match basename {
+						GUPAX_BINARY  => Gupax,
+						P2POOL_BINARY => P2pool,
+						_  => Xmrig,
+					};
+					let path = match name {
+						Gupax  => update.lock().unwrap().path_gupax.clone(),
+						P2pool => update.lock().unwrap().path_p2pool.clone(),
+						Xmrig  => update.lock().unwrap().path_xmrig.clone(),
+					};
+					// Unix can replace running binaries no problem (they're loaded into memory)
 					// Windows locks binaries in place, so we must move (rename) current binary
 					// into the temp folder, then move the new binary into the old ones spot.
 					// Clearing the temp folder is now moved at startup instead at the end
 					// of this function due to this behavior, thanks Windows.
-					let path = update.lock().unwrap().path_gupax.clone();
 					#[cfg(target_os = "windows")]
-					let tmp_windows = tmp_dir.clone() + "gupax_old.exe";
+					let tmp_windows = match name {
+						Gupax  => tmp_dir.clone() + "gupax_old.exe",
+						P2pool => tmp_dir.clone() + "p2pool_old.exe",
+						Xmrig  => tmp_dir.clone() + "xmrig_old.exe",
+					};
 					#[cfg(target_os = "windows")]
 					info!("Update | WINDOWS ONLY ... Moving [{}] -> [{}]", &path, tmp_windows);
 					#[cfg(target_os = "windows")]
 					std::fs::rename(&path, tmp_windows)?;
 					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path);
+					if name == P2pool || name == Xmrig {
+						std::fs::create_dir_all(std::path::Path::new(&path).parent().ok_or(anyhow::Error::msg(format!("{} path failed", name)))?)?;
+					}
 					std::fs::rename(entry.path(), path)?;
-					og.lock().unwrap().version.lock().unwrap().gupax = Pkg::get_new_pkg_version(Gupax, &vec4)?;
-					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
-				},
-				P2POOL_BINARY => {
-					let path = update.lock().unwrap().path_p2pool.clone();
-					let path = std::path::Path::new(&path);
-					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path.display());
-					std::fs::create_dir_all(path.parent().ok_or(anyhow::Error::msg("P2Pool path failed"))?)?;
-					std::fs::rename(entry.path(), path)?;
-					og.lock().unwrap().version.lock().unwrap().p2pool = Pkg::get_new_pkg_version(P2pool, &vec4)?;
-					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
-				},
-				XMRIG_BINARY => {
-					let path = update.lock().unwrap().path_xmrig.clone();
-					let path = std::path::Path::new(&path);
-					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path.display());
-					std::fs::create_dir_all(path.parent().ok_or(anyhow::Error::msg("XMRig path failed"))?)?;
-					std::fs::rename(entry.path(), path)?;
-					og.lock().unwrap().version.lock().unwrap().xmrig = Pkg::get_new_pkg_version(Xmrig, &vec4)?;
+					match name {
+						Gupax  => state_ver.lock().unwrap().gupax = Pkg::get_new_pkg_version(Gupax, &vec4)?,
+						P2pool => state_ver.lock().unwrap().p2pool = Pkg::get_new_pkg_version(P2pool, &vec4)?,
+						Xmrig  => state_ver.lock().unwrap().xmrig = Pkg::get_new_pkg_version(Xmrig, &vec4)?,
+					};
 					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
 				},
 				_ => (),
