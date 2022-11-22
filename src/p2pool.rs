@@ -337,7 +337,7 @@ impl P2pool {
 							zmq: self.zmq.clone(),
 						};
 						node_vec.push((self.name.clone(), node));
-						self.selected_index = (node_vec_len);
+						self.selected_index = node_vec_len;
 						self.selected_name = self.name.clone();
 						self.selected_ip = self.ip.clone();
 						self.selected_rpc = self.rpc.clone();

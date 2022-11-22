@@ -39,7 +39,7 @@ use log::*;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Serialize,Deserialize};
-use std::path::PathBuf;
+use std::path::{Path,PathBuf};
 use std::sync::{Arc,Mutex};
 use tls_api::{TlsConnector, TlsConnectorBuilder};
 use tokio::task::JoinHandle;
@@ -102,8 +102,10 @@ const P2POOL_EXTENSION: &'static str = "-linux-x64.tar.gz";
 const XMRIG_EXTENSION: &'static str = "-linux-static-x64.tar.gz";
 
 #[cfg(target_os = "windows")]
-const GUPAX_BINARY: &'static str = "gupax.exe";
-#[cfg(target_family = "unix")]
+const GUPAX_BINARY: &'static str = "Gupax.exe";
+#[cfg(target_os = "macos")]
+const GUPAX_BINARY: &'static str = "Gupax";
+#[cfg(target_os = "linux")]
 const GUPAX_BINARY: &'static str = "gupax";
 
 #[cfg(target_os = "windows")]
@@ -554,7 +556,9 @@ impl Update {
 		// 3b. Gupax version is builtin to binary, so no state change needed
 		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_UPGRADE, new_pkgs);
 		info!("Update | {}", UPGRADE);
-		// Just in case, create all folders
+		// If this bool doesn't get set, something has gone wrong because
+		// we _didn't_ find a binary even though we downloaded it.
+		let mut found = false;
 		for entry in WalkDir::new(tmp_dir.clone()) {
 			let entry = entry?.clone();
 			// If not a file, continue
@@ -562,6 +566,7 @@ impl Update {
 			let basename = entry.file_name().to_str().ok_or(anyhow::Error::msg("WalkDir basename failed"))?;
 			match basename {
 				GUPAX_BINARY|P2POOL_BINARY|XMRIG_BINARY => {
+					found = true;
 					let name = match basename {
 						GUPAX_BINARY  => Gupax,
 						P2POOL_BINARY => P2pool,
@@ -572,22 +577,23 @@ impl Update {
 						P2pool => update.lock().unwrap().path_p2pool.clone(),
 						Xmrig  => update.lock().unwrap().path_xmrig.clone(),
 					};
+					let path = Path::new(&path);
 					// Unix can replace running binaries no problem (they're loaded into memory)
 					// Windows locks binaries in place, so we must move (rename) current binary
 					// into the temp folder, then move the new binary into the old ones spot.
 					// Clearing the temp folder is now moved at startup instead at the end
 					// of this function due to this behavior, thanks Windows.
 					#[cfg(target_os = "windows")]
-					let tmp_windows = match name {
-						Gupax  => tmp_dir.clone() + "gupax_old.exe",
-						P2pool => tmp_dir.clone() + "p2pool_old.exe",
-						Xmrig  => tmp_dir.clone() + "xmrig_old.exe",
-					};
-					#[cfg(target_os = "windows")]
-					info!("Update | WINDOWS ONLY ... Moving [{}] -> [{}]", &path, tmp_windows);
-					#[cfg(target_os = "windows")]
-					std::fs::rename(&path, tmp_windows)?;
-					info!("Update | Moving [{}] -> [{}]", entry.path().display(), path);
+					if path.exists() {
+						let tmp_windows = match name {
+							Gupax  => tmp_dir.clone() + "gupax_old.exe",
+							P2pool => tmp_dir.clone() + "p2pool_old.exe",
+							Xmrig  => tmp_dir.clone() + "xmrig_old.exe",
+						};
+						info!("Update | WINDOWS ONLY ... Moving old [{}] -> [{}]", path.display(), tmp_windows);
+						std::fs::rename(&path, tmp_windows)?;
+					}
+					info!("Update | Moving new [{}] -> [{}]", entry.path().display(), path.display());
 					if name == P2pool || name == Xmrig {
 						std::fs::create_dir_all(std::path::Path::new(&path).parent().ok_or(anyhow::Error::msg(format!("{} path failed", name)))?)?;
 					}
@@ -602,6 +608,7 @@ impl Update {
 				_ => (),
 			}
 		}
+		if found == false { return Err(anyhow::Error::msg("Fatal error: Package binary could not be found")) }
 
 		// Remove tmp dir (on Unix)
 		#[cfg(target_family = "unix")]

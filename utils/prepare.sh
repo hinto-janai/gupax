@@ -27,7 +27,9 @@ cat << EOM > CHANGELOG.md.new
 ## Fixes
 *
 
+
 ---
+
 
 EOM
 cat CHANGELOG.md >> CHANGELOG.md.new

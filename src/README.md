@@ -1,25 +1,27 @@
 # Gupax source files
 * [Structure](#Structure)
 * [Bootstrap](#Bootstrap)
-* [State](#State)
+* [Disk](#Disk)
 * [Scale](#Scale)
+* [Naming Scheme](#naming-scheme)
 
 ## Structure
-| File/Folder    | Purpose |
-|----------------|---------|
-| `constants.rs` | General constants needed in Gupax
-| `disk.rs`      | Code for writing to disk: `state.toml`, `node.toml`; This holds the structs for mutable [State]
-| `ferris.rs`    | Cute crab bytes
-| `gupax.rs`     | `Gupax` tab
-| `main.rs`      | `App/Tab/State` + misc data/functions
-| `node.rs`      | Community node ping code for the `P2Pool` simple tab
-| `p2pool.rs`    | `P2Pool` tab
-| `status.rs`    | `Status` tab
-| `update.rs`    | Update code for the `Gupax` tab
-| `xmrig.rs`     | `XMRig` tab
+| File/Folder  | Purpose |
+|--------------|---------|
+| constants.rs | General constants needed in Gupax
+| command.rs   | Code for executing/handling P2Pool/XMRig
+| disk.rs      | Code for writing to disk: `state.toml`, `node.toml`; This holds the structs for mutable [State]
+| ferris.rs    | Cute crab bytes
+| gupax.rs     | `Gupax` tab
+| main.rs      | `App/Tab/State` + misc data/functions
+| node.rs      | Community node ping code for the `P2Pool` simple tab
+| p2pool.rs    | `P2Pool` tab
+| status.rs    | `Status` tab
+| update.rs    | Update code for the `Gupax` tab
+| xmrig.rs     | `XMRig` tab
 
 ## Bootstrap
-This is how Gupax works internally when starting up, divided into 3 sections.
+This is how Gupax works internally when starting up:
 
 1. **INIT**
 	- Initialize custom console logging with `log`, `env_logger`
@@ -41,14 +43,20 @@ This is how Gupax works internally when starting up, divided into 3 sections.
 	- If `ask_before_quit` == `true`, ask before quitting
 	- Kill processes, kill connections, exit
 
-## State
-Internal state is saved in the "OS data folder" as `state.toml`, using the [TOML](https://github.com/toml-lang/toml) format. If not found, a default `state.toml` file will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error window.
+## Disk
+Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error window.
 
-| OS       | Data Folder                              | Example                                                   |
-|----------|----------------------------------------- |-----------------------------------------------------------|
-| Windows  | `{FOLDERID_LocalAppData}`                | C:\Users\Alice\AppData\Roaming\Gupax\gupax.toml           |
-| macOS    | `$HOME`/Library/Application Support      | /Users/Alice/Library/Application Support/Gupax/gupax.toml |
-| Linux    | `$XDG_DATA_HOME` or `$HOME`/.local/share | /home/alice/.local/share/gupax/gupax.toml                 |
+| OS       | Data Folder                              | Example                                        |
+|----------|----------------------------------------- |------------------------------------------------|
+| Windows  | `{FOLDERID_LocalAppData}`                | C:\Users\Alice\AppData\Roaming\Gupax           |
+| macOS    | `$HOME`/Library/Application Support      | /Users/Alice/Library/Application Support/Gupax |
+| Linux    | `$XDG_DATA_HOME` or `$HOME`/.local/share | /home/alice/.local/share/gupax                 |
+
+The current files saved to disk:
+* `state.toml` Gupax state/settings
+* `node.toml` The manual node database used for P2Pool advanced
+
+Arti (Tor) also needs to save cache and state. It uses the same file/folder conventions (.local/arti, .cache/arti).
 
 ## Scale
 Every frame, the max available `[width, height]` are calculated, and those are used as a baseline for the Top/Bottom bars, containing the tabs and status bar. After that, all available space is given to the middle ui elements. The scale is calculated every frame so that all elements can scale immediately as the user adjusts it; this doesn't take as much CPU as you might think since frames are only rendered on user interaction. Some elements are subtracted a fixed number because the `ui.seperator()`s add some fixed space which needs to be accounted for.
@@ -59,3 +67,26 @@ Main [App] outer frame (default: [1280.0, 720.0])
    ├─ BottomPanel  = height: 1/20th
    ├─ CentralPanel = height: the rest
 ```
+
+## Naming Scheme
+This is the internal naming scheme used by Gupax when updating/creating default folders/etc:
+
+Windows:
+	- Gupax: `Gupax.exe`
+	- P2Pool: `P2Pool\p2pool.exe`
+	- XMRig: `XMRig\xmrig.exe`
+macOS:
+	- Gupax: `Gupax.app/.../Gupax` (Gupax is packaged as an `.app` on macOS)
+	- P2Pool: `p2pool/p2pool`
+	- XMRig: `xmrig/xmrig`
+Linux:
+	- Gupax: `gupax`
+	- P2Pool: `p2pool/p2pool`
+	- XMRig: `xmrig/xmrig`
+
+These have to be packaged exactly with these names because the update code is case-sensitive. If an exact match is not found, it will error.
+
+For the Gupax data folder:
+	- Windows: `Gupax`
+	- macOS: `Gupax`
+	- Linux: `gupax`

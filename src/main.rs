@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 // Hide console in Windows
-//#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 //---------------------------------------------------------------------------------------------------- Imports
 // egui/eframe
@@ -238,6 +238,9 @@ impl App {
 		let xmrig_path = og.gupax.absolute_xmrig_path.clone();
 		let tor = og.gupax.update_via_tor;
 		app.update = Arc::new(Mutex::new(Update::new(app.exe.clone(), p2pool_path, xmrig_path, tor)));
+		// Set state version as compiled in version
+		og.version.lock().unwrap().gupax = GUPAX_VERSION.to_string();
+		app.state.version.lock().unwrap().gupax = GUPAX_VERSION.to_string();
 		drop(og); // Unlock [og]
 		info!("App ... OK");
 		app
@@ -409,7 +412,7 @@ fn init_logger(now: Instant) {
 			buf,
 			"[{}] [{}] [{}:{}] {}",
 			style.set_bold(true).value(level),
-			buf.style().set_dimmed(true).value(format!("{:.7}", now.elapsed().as_secs_f32())),
+			buf.style().set_dimmed(true).value(format!("{:.3}", now.elapsed().as_secs_f32())),
 			buf.style().set_dimmed(true).value(record.file().unwrap_or("???")),
 			buf.style().set_dimmed(true).value(record.line().unwrap_or(0)),
 			record.args(),
