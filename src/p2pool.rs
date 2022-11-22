@@ -92,7 +92,7 @@ impl P2pool {
 		if self.auto_select {
 			let mut ping = ping.lock().unwrap();
 			// If we haven't auto_selected yet, auto-select and turn it off
-			if ping.auto_selected == false {
+			if ping.pinged && ping.auto_selected == false {
 				self.node = ping.fastest;
 				ping.auto_selected = true;
 			}

@@ -197,7 +197,11 @@ impl Ping {
 		std::thread::spawn(move|| {
 			info!("Spawning ping thread...");
 			match Self::ping(ping.clone(), og) {
-				Ok(_) => info!("Ping ... OK"),
+				Ok(_) => {
+					info!("Ping ... OK");
+					ping.lock().unwrap().pinged = true;
+					ping.lock().unwrap().auto_selected = false;
+				},
 				Err(err) => {
 					error!("Ping ... FAIL ... {}", err);
 					ping.lock().unwrap().pinged = false;
@@ -274,9 +278,6 @@ impl Ping {
 			ping.nodes = node_vec;
 			ping.prog = 100.0;
 			ping.msg = info;
-			ping.pinging = false;
-			ping.pinged = true;
-			ping.auto_selected = false;
 			drop(ping);
 		Ok(())
 	}
