@@ -86,6 +86,21 @@ Linux:
 
 These have to be packaged exactly with these names because the update code is case-sensitive. If an exact match is not found, it will error.
 
+```
+Package naming schemes:
+gupax  | gupax-vX.X.X-(windows|macos|linux)-x64(standalone|bundle).(zip|tar.gz)
+p2pool | p2pool-vX.X.X-(windows|macos|linux)-x64.(zip|tar.gz)
+xmrig  | xmrig-X.X.X-(msvc-win64|macos-x64|linux-static-x64).(zip|tar.gz)
+
+Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
+Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64.tar.gz
+
+Exceptions (there are always exceptions...):
+   - XMRig doesn't have a [v], so it is [xmrig-6.18.0-...]
+   - XMRig separates the hash and signature
+   - P2Pool hashes are in UPPERCASE
+```
+
 For the Gupax data folder:
 	- Windows: `Gupax`
 	- macOS: `Gupax`
