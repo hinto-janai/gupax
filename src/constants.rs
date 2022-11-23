@@ -20,6 +20,15 @@ pub const P2POOL_VERSION: &'static str = "v2.4";
 pub const XMRIG_VERSION: &'static str = "v6.18.0";
 pub const COMMIT: &'static str = include_str!("../.git/refs/heads/main");
 
+// App frame resolution, [16:10] aspect ratio, height = width * 1.6
+pub const APP_MIN_WIDTH: f32 = 768.0;
+pub const APP_MIN_HEIGHT: f32 = 480.0;
+pub const APP_MAX_WIDTH: f32 = 3456.0;
+pub const APP_MAX_HEIGHT: f32 = 2160.0;
+// Default, 1280x800
+pub const APP_DEFAULT_WIDTH: f32 = 1280.0;
+pub const APP_DEFAULT_HEIGHT: f32 = 800.0;
+
 // Use macOS shaped icon for macOS
 #[cfg(target_os = "macos")]
 pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon@2x.png");
@@ -35,6 +44,13 @@ pub const HORIZONTAL: &'static str = "------------------------------------------
 // Used for subtracting the width/height so
 // things actually line up.
 pub const SPACE: f32 = 10.0;
+
+// Some colors
+pub const RED: egui::Color32 = egui::Color32::from_rgb(230, 50, 50);
+pub const GREEN: egui::Color32 = egui::Color32::from_rgb(100, 230, 100);
+pub const YELLOW: egui::Color32 = egui::Color32::from_rgb(230, 230, 100);
+pub const LIGHT_GRAY: egui::Color32 = egui::Color32::LIGHT_GRAY;
+pub const BLACK: egui::Color32 = egui::Color32::BLACK;
 
 // OS specific
 #[cfg(target_os = "windows")]
@@ -62,9 +78,26 @@ pub const GUPAX_UPDATE_VIA_TOR: &'static str = "Update through the Tor network. 
 pub const GUPAX_UPDATE_VIA_TOR: &'static str = "WARNING: This option is unstable on macOS. Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
 pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting Gupax";
 pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed settings before quitting";
+pub const GUPAX_WIDTH: &'static str = "Set the width of the Gupax window";
+pub const GUPAX_HEIGHT: &'static str = "Set the height of the Gupax window";
+pub const GUPAX_LOCK_WIDTH: &'static str = "Automatically match the height against the width in a 16:10 ratio; aka HEIGHT = WIDTH / 1.6";
+pub const GUPAX_LOCK_HEIGHT: &'static str = "Automatically match the width against the height in a 16:10 ratio; aka WIDTH = HEIGHT * 1.6";
+pub const GUPAX_NO_LOCK: &'static str = "Allow individual selection of width and height";
+pub const GUPAX_SET: &'static str = "Set the width/height of the Gupax window to the current values";
+pub const GUPAX_SIMPLE: &'static str =
+r#"Use simple Gupax settings:
+    - Update button
+    - Basic toggles"#;
+pub const GUPAX_ADVANCED: &'static str =
+r#"Use advanced Gupax settings:
+    - Update button
+    - Basic toggles
+    - P2Pool/XMRig binary path selector
+    - Gupax resolution sliders"#;
 pub const GUPAX_SELECT: &'static str = "Open a file explorer to select a file";
 pub const GUPAX_PATH_P2POOL: &'static str = "The location of the P2Pool binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 pub const GUPAX_PATH_XMRIG: &'static str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
+
 // P2Pool
 pub const P2POOL_MAIN: &'static str = "Use the P2Pool main-chain. This P2Pool finds shares faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
 pub const P2POOL_MINI: &'static str = "Use the P2Pool mini-chain. This P2Pool finds shares slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
@@ -78,34 +111,54 @@ pub const P2POOL_PING: &'static str = "Ping the built-in community Monero nodes"
 pub const P2POOL_ADDRESS: &'static str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet for P2Pool mining; wallet addresses are public on P2Pool!";
 pub const P2POOL_COMMAND: &'static str = "Start P2Pool with these arguments and override all below settings; If the [--data-api] flag is not given, Gupax will append it to the arguments automatically so that the [Status] tab can work";
 pub const P2POOL_SIMPLE: &'static str =
-r#"Use simple settings:
+r#"Use simple P2Pool settings:
     - Remote community Monero node
     - Default P2Pool settings + Mini"#;
 pub const P2POOL_ADVANCED: &'static str =
-r#"Use advanced settings:
+r#"Use advanced P2Pool settings:
     - Overriding command arguments
-    - Manual node selection
+    - Manual node list
     - P2Pool Main/Mini selection
     - Out/In peer setting
     - Log level setting"#;
-pub const P2POOL_NAME: &'static str = "Add a unique name to identify this node; Only [A-Za-z0-9-_] and spaces allowed, if the name already exists, the current settings will be saved to the already existing entry; Max length = 30 characters";
+pub const P2POOL_NAME: &'static str = "Add a unique name to identify this node; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
 pub const P2POOL_NODE_IP: &'static str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const P2POOL_RPC_PORT: &'static str = "Specify the RPC port of the Monero node; [1-65535]";
 pub const P2POOL_ZMQ_PORT: &'static str = "Specify the ZMQ port of the Monero node; [1-65535]";
-pub const P2POOL_ADD: &'static str = "Add the current values to the list";
-pub const P2POOL_SAVE: &'static str = "Save the current values to the already existing entry";
-pub const P2POOL_DELETE: &'static str = "Delete the currently selected node";
-pub const P2POOL_CLEAR: &'static str = "Clear all current values";
+
+// Node/Pool list
+pub const LIST_ADD: &'static str = "Add the current values to the list";
+pub const LIST_SAVE: &'static str = "Save the current values to the already existing entry";
+pub const LIST_DELETE: &'static str = "Delete the currently selected entry";
+pub const LIST_CLEAR: &'static str = "Clear all current values";
 
 // XMRig
-pub const XMRIG_P2POOL: &'static str = "Mine to your own P2Pool instance (localhost:3333)";
-pub const XMRIG_MANUAL: &'static str = "Manually specify where to mine to";
+pub const XMRIG_SIMPLE: &'static str =
+r#"Use simple XMRig settings:
+	- Mine to local P2Pool (localhost:3333)
+	- CPU thread slider
+	- HTTP API @ localhost:18088"#;
+pub const XMRIG_ADVANCED: &'static str =
+r#"Use advanced XMRig settings:
+	- Overriding config file
+	- Custom payout address
+	- CPU thread slider
+	- Manual pool list
+	- TLS setting
+	- Keepalive setting
+	- Custom HTTP API IP/Port"#;
+pub const XMRIG_CONFIG: &'static str = "Start XMRig with this config file and override all below settings; If the [http-api] options are not set, the [Status] tab will not properly show XMRig stats. If they are set, Gupax will detect which automatically IP/Port you are using";
+pub const XMRIG_ADDRESS: &'static str = "Specify which Monero address to send payouts to; Must be a valid primary address (starts with 4)";
+pub const XMRIG_NAME: &'static str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const XMRIG_IP: &'static str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
+pub const XMRIG_PORT: &'static str = "Specify the port of the pool; [1-65535]";
+pub const XMRIG_RIG: &'static str = "Add a unique rig ID. This will be the name shown on the pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const XMRIG_PAUSE: &'static str = "THIS SETTING IS DISABLED IF SET TO [0]. Pause mining if user is active, resume after";
+pub const XMRIG_API_IP: &'static str = "Specify which IP to bind to for XMRig's HTTP API";
+pub const XMRIG_API_PORT: &'static str = "Specify which port to bind to for XMRig's HTTP API";
 pub const XMRIG_TLS: &'static str = "Enable SSL/TLS connections (needs pool support)";
-pub const XMRIG_HUGEPAGES_JIT: &'static str = "Enable hugepages for RandomX JIT code. Note: 1GB hugepages is automatically enabled (only available on Linux)";
-pub const XMRIG_NICEHASH: &'static str = "Enable nicehash.com support";
 pub const XMRIG_KEEPALIVE: &'static str = "Send keepalived packet to prevent timeout (needs pool support)";
 pub const XMRIG_THREADS: &'static str = "Number of CPU threads to use for mining";
-pub const XMRIG_PRIORITY: &'static str = "Set process priority (0 idle, 2 normal to 5 highest)";
 
 // CLI argument messages
 pub const ARG_HELP: &'static str =
@@ -118,7 +171,8 @@ r#"USAGE: ./gupax [--flag]
     --no-startup   Disable all auto-startup settings for this instance
     --reset-state  Reset all Gupax state (your settings)
     --reset-nodes  Reset the manual node list in the [P2Pool] tab
-    --reset-all    Reset both the state and the manual node list
+	--reset-pools  Reset the manual pool list in the [XMRig] tab
+    --reset-all    Reset the state, the manual node list, and the manual pool list
     --ferris       Print an extremely cute crab
 
 To view more detailed console debug information, start Gupax with

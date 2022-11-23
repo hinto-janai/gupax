@@ -20,12 +20,17 @@
 
 //---------------------------------------------------------------------------------------------------- Imports
 // egui/eframe
-use egui::TextStyle::*;
-use egui::color::Color32;
-use egui::FontFamily::Proportional;
-use egui::{FontId,Label,RichText,Stroke,Vec2};
-use egui::special_emojis::GITHUB;
-use egui::{Key,Modifiers};
+use egui::{
+	TextStyle::*,
+	color::Color32,
+	FontFamily::Proportional,
+	TextStyle,
+	Layout,Align,
+	FontId,Label,RichText,Stroke,Vec2,Button,SelectableLabel,
+	special_emojis::GITHUB,
+	Key,Modifiers,
+	CentralPanel,TopBottomPanel,
+};
 use egui_extras::RetainedImage;
 use eframe::{egui,NativeOptions};
 
@@ -75,6 +80,8 @@ pub struct App {
 	ping: Arc<Mutex<Ping>>, // Ping data found in [node.rs]
 	og_node_vec: Vec<(String, Node)>, // Manual Node database
 	node_vec: Vec<(String, Node)>, // Manual Node database
+	og_pool_vec: Vec<(String, Pool)>, // Manual Pool database
+	pool_vec: Vec<(String, Pool)>, // Manual Pool database
 	diff: bool, // This bool indicates state changes
 	// Error State
 	// These values are essentially global variables that
@@ -97,6 +104,7 @@ pub struct App {
 	os_data_path: PathBuf, // OS data path (e.g: ~/.local/share/gupax)
 	state_path: PathBuf, // State file path
 	node_path: PathBuf, // Node file path
+	pool_path: PathBuf, // Pool file path
 	version: &'static str, // Gupax version
 	name_version: String, // [Gupax vX.X.X]
 	img: Images, // Custom Struct holding pre-compiled bytes of [Images]
@@ -118,14 +126,16 @@ impl App {
 		let mut app = Self {
 			tab: Tab::default(),
 			ping: Arc::new(Mutex::new(Ping::new())),
-			width: 1280.0,
-			height: 720.0,
+			width: APP_DEFAULT_WIDTH,
+			height: APP_DEFAULT_HEIGHT,
 			og: Arc::new(Mutex::new(State::new())),
 			state: State::new(),
 			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
 			file_window: FileWindow::new(),
 			og_node_vec: Node::new_vec(),
 			node_vec: Node::new_vec(),
+			og_pool_vec: Pool::new_vec(),
+			pool_vec: Pool::new_vec(),
 			diff: false,
 			error_state: ErrorState::new(),
 			p2pool: false,
@@ -134,11 +144,12 @@ impl App {
 			now: Instant::now(),
 			exe: String::new(),
 			dir: String::new(),
-			resolution: Vec2::new(1280.0, 720.0),
+			resolution: Vec2::new(APP_DEFAULT_HEIGHT, APP_DEFAULT_WIDTH),
 			os: OS,
 			os_data_path: PathBuf::new(),
 			state_path: PathBuf::new(),
 			node_path: PathBuf::new(),
+			pool_path: PathBuf::new(),
 			version: GUPAX_VERSION,
 			name_version: format!("Gupax {}", GUPAX_VERSION),
 			img: Images::new(),
@@ -162,11 +173,13 @@ impl App {
 			Err(e) => { panic = format!("get_os_data_path(): {}", e); app.error_state.set(panic.clone(), ErrorFerris::Panic, ErrorButtons::Quit); PathBuf::new() },
 		};
 
-		// Set [state.toml/node.toml] path
+		// Set [*.toml] path
 		app.state_path = app.os_data_path.clone();
 		app.state_path.push("state.toml");
 		app.node_path = app.os_data_path.clone();
 		app.node_path.push("node.toml");
+		app.pool_path = app.os_data_path.clone();
+		app.pool_path.push("pool.toml");
 
 		// Apply arg state
 		// It's not safe to [--reset] if any of the previous variables
@@ -201,13 +214,29 @@ impl App {
 					Path(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Serialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Deserialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Format(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("Node file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Merge(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
 				};
 				Node::new_vec()
 			},
 		};
-		app.node_vec = app.og_node_vec.clone();
+		// Read pool list
+		app.og_pool_vec = match Pool::get(&app.pool_path) {
+			Ok(toml) => toml,
+			Err(err) => {
+				error!("Pool ... {}", err);
+				match err {
+					Io(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("Pool file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+				};
+				Pool::new_vec()
+			},
+		};
+		app.pool_vec = app.og_pool_vec.clone();
 
 		//----------------------------------------------------------------------------------------------------
 		let mut og = app.og.lock().unwrap(); // Lock [og]
@@ -232,6 +261,19 @@ impl App {
 			app.state.p2pool.selected_ip = node.ip;
 			app.state.p2pool.selected_rpc = node.rpc;
 			app.state.p2pool.selected_zmq = node.zmq;
+		}
+		// Handle [pool_vec] overflow
+		if og.xmrig.selected_index > app.og_pool_vec.len() {
+			warn!("App | Overflowing manual pool index [{} > {}], resetting to 1", og.xmrig.selected_index, app.og_pool_vec.len());
+			let (name, pool) = app.og_pool_vec[0].clone();
+			og.xmrig.selected_index = 0;
+			og.xmrig.selected_name = name.clone();
+			og.xmrig.selected_ip = pool.ip.clone();
+			og.xmrig.selected_port = pool.port.clone();
+			app.state.xmrig.selected_index = 0;
+			app.state.xmrig.selected_name = name;
+			app.state.xmrig.selected_ip = pool.ip;
+			app.state.xmrig.selected_port = pool.port;
 		}
 		// Apply TOML values to [Update]
 		let p2pool_path = og.gupax.absolute_p2pool_path.clone();
@@ -421,11 +463,11 @@ fn init_logger(now: Instant) {
 	info!("init_logger() ... OK");
 }
 
-fn init_options() -> NativeOptions {
+fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	let mut options = eframe::NativeOptions::default();
-	options.min_window_size = Option::from(Vec2::new(854.0, 480.0));
-	options.max_window_size = Option::from(Vec2::new(3180.0, 2160.0));
-	options.initial_window_size = Option::from(Vec2::new(1280.0, 720.0));
+	options.min_window_size = Some(Vec2::new(APP_MIN_WIDTH, APP_MIN_HEIGHT));
+	options.max_window_size = Some(Vec2::new(APP_MAX_WIDTH, APP_MAX_HEIGHT));
+	options.initial_window_size = initial_window_size;
 	options.follow_system_theme = false;
 	options.default_theme = eframe::Theme::Dark;
 	let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read icon bytes").to_rgba8();
@@ -594,14 +636,18 @@ fn print_disk_file(path: &PathBuf) {
 fn main() {
 	let now = Instant::now();
 	init_logger(now);
-	let options = init_options();
+	let mut app = App::new();
+	app.now = now;
+	init_auto(&app);
+	let initial_window_size = match app.state.gupax.simple {
+		true  => Some(Vec2::new(app.state.gupax.selected_width as f32, app.state.gupax.selected_height as f32)),
+		false => Some(Vec2::new(APP_DEFAULT_WIDTH, APP_DEFAULT_HEIGHT)),
+	};
+	let options = init_options(initial_window_size);
 	match clean_dir() {
 		Ok(_) => info!("Temporary folder cleanup ... OK"),
 		Err(e) => warn!("Could not cleanup [gupax_tmp] folders: {}", e),
 	}
-	let mut app = App::new();
-	app.now = now;
-	init_auto(&app);
 	info!("Init ... DONE");
 	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
@@ -626,7 +672,7 @@ impl eframe::App for App {
 
 		// This sets the top level Ui dimensions.
 		// Used as a reference for other uis.
-		egui::CentralPanel::default().show(ctx, |ui| { self.width = ui.available_width(); self.height = ui.available_height(); });
+		CentralPanel::default().show(ctx, |ui| { self.width = ui.available_width(); self.height = ui.available_height(); });
 		// This sets fonts globally depending on the width.
 		init_text_styles(ctx, self.width);
 
@@ -638,7 +684,7 @@ impl eframe::App for App {
 
 		// If there's an error, display [ErrorState] on the whole screen until user responds
 		if self.error_state.error {
-			egui::CentralPanel::default().show(ctx, |ui| {
+			CentralPanel::default().show(ctx, |ui| {
 			ui.vertical_centered(|ui| {
 				// Set width/height/font
 				let width = self.width;
@@ -690,22 +736,22 @@ impl eframe::App for App {
 
 				match self.error_state.buttons {
 					YesNo   => {
-						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() { self.error_state = ErrorState::new(); }
+						if ui.add_sized([width, height/2.0], Button::new("Yes")).clicked() { self.error_state = ErrorState::new(); }
 						// If [Esc] was pressed, assume [No]
-				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { exit(0); }
+				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { exit(0); }
 					},
 					StayQuit => {
 						// If [Esc] was pressed, assume [Stay]
-				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("Stay")).clicked() {
+				        if esc || ui.add_sized([width, height/2.0], Button::new("Stay")).clicked() {
 							self.error_state = ErrorState::new();
 						}
-						if ui.add_sized([width, height/2.0], egui::Button::new("Quit")).clicked() { exit(0); }
+						if ui.add_sized([width, height/2.0], Button::new("Quit")).clicked() { exit(0); }
 					},
 					// This code handles the [state.toml/node.toml] resetting, [panic!]'ing if it errors once more
 					// Another error after this either means an IO error or permission error, which Gupax can't fix.
 					// [Yes/No] buttons
 					ResetState => {
-						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() {
+						if ui.add_sized([width, height/2.0], Button::new("Yes")).clicked() {
 							match reset_state(&self.state_path) {
 								Ok(_)  => {
 									match State::get(&self.state_path) {
@@ -720,10 +766,10 @@ impl eframe::App for App {
 								Err(e) => self.error_state.set(format!("State reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 							};
 						}
-				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { self.error_state = ErrorState::new() }
+				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state = ErrorState::new() }
 					},
 					ResetNode => {
-						if ui.add_sized([width, height/2.0], egui::Button::new("Yes")).clicked() {
+						if ui.add_sized([width, height/2.0], Button::new("Yes")).clicked() {
 							match reset_nodes(&self.node_path) {
 								Ok(_)  => {
 									match Node::get(&self.node_path) {
@@ -738,10 +784,10 @@ impl eframe::App for App {
 								Err(e) => self.error_state.set(format!("Node reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 							};
 						}
-				        if esc || ui.add_sized([width, height/2.0], egui::Button::new("No")).clicked() { self.error_state = ErrorState::new() }
+				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state = ErrorState::new() }
 					},
-					Okay => if esc || ui.add_sized([width, height], egui::Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); },
-					Quit => if ui.add_sized([width, height], egui::Button::new("Quit")).clicked() { exit(1); },
+					Okay => if esc || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); },
+					Quit => if ui.add_sized([width, height], Button::new("Quit")).clicked() { exit(1); },
 				}
 			})});
 			return
@@ -760,7 +806,7 @@ impl eframe::App for App {
 		drop(og);
 
 		// Top: Tabs
-		egui::TopBottomPanel::top("top").show(ctx, |ui| {
+		TopBottomPanel::top("top").show(ctx, |ui| {
 			let width = (self.width - (SPACE*10.0))/5.0;
 			let height = self.height/12.0;
 			ui.group(|ui| {
@@ -771,22 +817,22 @@ impl eframe::App for App {
 					style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
 					style.visuals.selection.bg_fill = Color32::from_rgb(255, 120, 120);
 					style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
-					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::About, "About")).clicked() { self.tab = Tab::About; }
+					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).clicked() { self.tab = Tab::About; }
 					ui.separator();
-					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::Status, "Status")).clicked() { self.tab = Tab::Status; }
+					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Status, "Status")).clicked() { self.tab = Tab::Status; }
 					ui.separator();
-					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::Gupax, "Gupax")).clicked() { self.tab = Tab::Gupax; }
+					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Gupax, "Gupax")).clicked() { self.tab = Tab::Gupax; }
 					ui.separator();
-					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::P2pool, "P2Pool")).clicked() { self.tab = Tab::P2pool; }
+					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::P2pool, "P2Pool")).clicked() { self.tab = Tab::P2pool; }
 					ui.separator();
-					if ui.add_sized([width, height], egui::SelectableLabel::new(self.tab == Tab::Xmrig, "XMRig")).clicked() { self.tab = Tab::Xmrig; }
+					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Xmrig, "XMRig")).clicked() { self.tab = Tab::Xmrig; }
 				});
 				ui.add_space(4.0);
 			});
 		});
 
 		// Bottom: app info + state/process buttons
-		egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
+		TopBottomPanel::bottom("bottom").show(ctx, |ui| {
 			let height = self.height/20.0;
 			ui.style_mut().override_text_style = Some(Name("Bottom".into()));
 			ui.horizontal(|ui| {
@@ -798,32 +844,36 @@ impl eframe::App for App {
 					ui.add_sized([width, height], Label::new(self.os));
 					ui.separator();
 					if self.p2pool {
-						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(Color32::from_rgb(100, 230, 100))));
+						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(GREEN)));
 					} else {
-						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(Color32::from_rgb(230, 50, 50))));
+						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(RED)));
 					}
 					ui.separator();
 					if self.xmrig {
-						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(Color32::from_rgb(100, 230, 100))));
+						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(GREEN)));
 					} else {
-						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(Color32::from_rgb(230, 50, 50))));
+						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(RED)));
 					}
 				});
 
-				ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-				// [Start/Stop/Restart] + [Simple/Advanced] + [Save/Reset]
-				let width = (ui.available_width()/3.0)-(SPACE*3.0);
+				// [Save/Reset]
+				ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
+				let width = match self.tab {
+					Tab::Gupax => (ui.available_width()/2.0)-(SPACE*3.0),
+					_ => (ui.available_width()/3.0)-(SPACE*3.0),
+				};
 				ui.group(|ui| {
 					ui.set_enabled(self.diff);
 					let width = width / 2.0;
-					if ui.add_sized([width, height], egui::Button::new("Reset")).on_hover_text("Reset changes").clicked() {
+					if ui.add_sized([width, height], Button::new("Reset")).on_hover_text("Reset changes").clicked() {
 						let og = self.og.lock().unwrap().clone();
 						self.state.gupax = og.gupax;
 						self.state.p2pool = og.p2pool;
 						self.state.xmrig = og.xmrig;
 						self.node_vec = self.og_node_vec.clone();
+						self.pool_vec = self.og_pool_vec.clone();
 					}
-					if ui.add_sized([width, height], egui::Button::new("Save")).on_hover_text("Save changes").clicked() {
+					if ui.add_sized([width, height], Button::new("Save")).on_hover_text("Save changes").clicked() {
 						match State::save(&mut self.state, &self.state_path) {
 							Ok(_) => {
 								let mut og = self.og.lock().unwrap();
@@ -839,66 +889,83 @@ impl eframe::App for App {
 							Ok(_) => self.og_node_vec = self.node_vec.clone(),
 							Err(e) => self.error_state.set(format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::Okay),
 						};
+						match Pool::save(&self.og_pool_vec, &self.pool_path) {
+							Ok(_) => self.og_pool_vec = self.pool_vec.clone(),
+							Err(e) => self.error_state.set(format!("Pool list: {}", e), ErrorFerris::Error, ErrorButtons::Okay),
+						};
 					}
 				});
 
+				// [Simple/Advanced] + [Start/Stop/Restart]
 				match self.tab {
+					Tab::Gupax => {
+						ui.group(|ui| {
+							let width = width / 2.0;
+							if ui.add_sized([width, height], SelectableLabel::new(!self.state.gupax.simple, "Advanced")).on_hover_text(GUPAX_ADVANCED).clicked() {
+								self.state.gupax.simple = false;
+							}
+							ui.separator();
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.gupax.simple, "Simple")).on_hover_text(GUPAX_SIMPLE).clicked() {
+								self.state.gupax.simple = true;
+							}
+						});
+					},
 					Tab::P2pool => {
 						ui.group(|ui| {
 							let width = width / 1.5;
-							if ui.add_sized([width, height], egui::SelectableLabel::new(!self.state.p2pool.simple, "Advanced")).on_hover_text(P2POOL_ADVANCED).clicked() {
+							if ui.add_sized([width, height], SelectableLabel::new(!self.state.p2pool.simple, "Advanced")).on_hover_text(P2POOL_ADVANCED).clicked() {
 								self.state.p2pool.simple = false;
 							}
 							ui.separator();
-							if ui.add_sized([width, height], egui::SelectableLabel::new(self.state.p2pool.simple, "Simple")).on_hover_text(P2POOL_SIMPLE).clicked() {
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.p2pool.simple, "Simple")).on_hover_text(P2POOL_SIMPLE).clicked() {
 								self.state.p2pool.simple = true;
 							}
 						});
 						ui.group(|ui| {
 							let width = (ui.available_width()/3.0)-5.0;
 							if self.p2pool {
-								if ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() { self.p2pool = false; }
-								if ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() { self.p2pool = false; }
+								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() { self.p2pool = false; }
+								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() { self.p2pool = false; }
 								ui.add_enabled_ui(false, |ui| {
-									ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start P2Pool");
+									ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool");
 								});
 							} else {
 								ui.add_enabled_ui(false, |ui| {
-									ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart P2Pool");
-									ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop P2Pool");
+									ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool");
+									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool");
 								});
-								if ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start P2Pool").clicked() { self.p2pool = true; }
+								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() { self.p2pool = true; }
 							}
 						});
-					}
+					},
 					Tab::Xmrig => {
 						ui.group(|ui| {
 							let width = width / 1.5;
-							if ui.add_sized([width, height], egui::SelectableLabel::new(!self.state.xmrig.simple, "Advanced")).clicked() {
+							if ui.add_sized([width, height], SelectableLabel::new(!self.state.xmrig.simple, "Advanced")).on_hover_text(XMRIG_ADVANCED).clicked() {
 								self.state.xmrig.simple = false;
 							}
 							ui.separator();
-							if ui.add_sized([width, height], egui::SelectableLabel::new(self.state.xmrig.simple, "Simple")).clicked() {
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.xmrig.simple, "Simple")).on_hover_text(XMRIG_SIMPLE).clicked() {
 								self.state.xmrig.simple = true;
 							}
 						});
 						ui.group(|ui| {
 							let width = (ui.available_width()/3.0)-5.0;
 							if self.xmrig {
-								if ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart XMRig").clicked() { self.xmrig = false; }
-								if ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop XMRig").clicked() { self.xmrig = false; }
+								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() { self.xmrig = false; }
+								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() { self.xmrig = false; }
 								ui.add_enabled_ui(false, |ui| {
-									ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start XMRig");
+									ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig");
 								});
 							} else {
 								ui.add_enabled_ui(false, |ui| {
-									ui.add_sized([width, height], egui::Button::new("⟲")).on_hover_text("Restart XMRig");
-									ui.add_sized([width, height], egui::Button::new("⏹")).on_hover_text("Stop XMRig");
+									ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig");
+									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig");
 								});
-								if ui.add_sized([width, height], egui::Button::new("⏺")).on_hover_text("Start XMRig").clicked() { self.xmrig = true; }
+								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").clicked() { self.xmrig = true; }
 							}
 						});
-					}
+					},
 					_ => (),
 				}
 			});
@@ -906,11 +973,11 @@ impl eframe::App for App {
 		});
 
 		// Middle panel, contents of the [Tab]
-		egui::CentralPanel::default().show(ctx, |ui| {
+		CentralPanel::default().show(ctx, |ui| {
 			// This sets the Ui dimensions after Top/Bottom are filled
 			self.width = ui.available_width();
 			self.height = ui.available_height();
-			ui.style_mut().override_text_style = Some(egui::TextStyle::Body);
+			ui.style_mut().override_text_style = Some(TextStyle::Body);
 			match self.tab {
 				Tab::About => {
 					ui.add_space(10.0);
@@ -925,9 +992,9 @@ impl eframe::App for App {
 						ui.hyperlink_to("[XMRig]", "https://www.github.com/xmrig/xmrig");
 						ui.label("miner for max hashrate");
 
-						ui.add_space(ui.available_height()/2.0);
+						ui.add_space(ui.available_height()/1.8);
 						ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui");
-						ui.hyperlink_to(format!("{} {}", GITHUB, "Made by hinto-janaiyo"), "https://gupax.io");
+						ui.hyperlink_to(format!("{}", "Made by hinto-janaiyo"), "https://gupax.io");
 						ui.label("egui is licensed under MIT & Apache-2.0");
 						ui.label("Gupax, P2Pool, and XMRig are licensed under GPLv3");
 					});
@@ -936,13 +1003,13 @@ impl eframe::App for App {
 					Status::show(self, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, &self.file_window, &self.state_path, self.width, self.height, ctx, ui);
+					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, &self.file_window, &self.state_path, self.width, self.height, frame, ctx, ui);
 				}
 				Tab::P2pool => {
 					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, self.p2pool, &self.ping, &self.regex, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
-					Xmrig::show(&mut self.state.xmrig, self.width, self.height, ctx, ui);
+					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, self.width, self.height, ctx, ui);
 				}
 			}
 		});

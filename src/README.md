@@ -44,7 +44,7 @@ This is how Gupax works internally when starting up:
 	- Kill processes, kill connections, exit
 
 ## Disk
-Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error window.
+Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. The node/pool database cannot be merged, and if given a corrupted file, Gupax will show an un-recoverable error screen. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error window.
 
 | OS       | Data Folder                              | Example                                        |
 |----------|----------------------------------------- |------------------------------------------------|
@@ -55,6 +55,7 @@ Long-term state is saved onto the disk in the "OS data folder", using the [TOML]
 The current files saved to disk:
 * `state.toml` Gupax state/settings
 * `node.toml` The manual node database used for P2Pool advanced
+* `pool.toml` The manual pool database used for XMRig advanced
 
 Arti (Tor) also needs to save cache and state. It uses the same file/folder conventions (.local/arti, .cache/arti).
 
@@ -62,7 +63,7 @@ Arti (Tor) also needs to save cache and state. It uses the same file/folder conv
 Every frame, the max available `[width, height]` are calculated, and those are used as a baseline for the Top/Bottom bars, containing the tabs and status bar. After that, all available space is given to the middle ui elements. The scale is calculated every frame so that all elements can scale immediately as the user adjusts it; this doesn't take as much CPU as you might think since frames are only rendered on user interaction. Some elements are subtracted a fixed number because the `ui.seperator()`s add some fixed space which needs to be accounted for.
 
 ```
-Main [App] outer frame (default: [1280.0, 720.0])
+Main [App] outer frame (default: [1280.0, 800.0], 16:10 aspect ratio)
    ├─ TopPanel     = height: 1/12th
    ├─ BottomPanel  = height: 1/20th
    ├─ CentralPanel = height: the rest
@@ -72,17 +73,19 @@ Main [App] outer frame (default: [1280.0, 720.0])
 This is the internal naming scheme used by Gupax when updating/creating default folders/etc:
 
 Windows:
-	- Gupax: `Gupax.exe`
-	- P2Pool: `P2Pool\p2pool.exe`
-	- XMRig: `XMRig\xmrig.exe`
+- Gupax: `Gupax.exe`
+- P2Pool: `P2Pool\p2pool.exe`
+- XMRig: `XMRig\xmrig.exe`
+
 macOS:
-	- Gupax: `Gupax.app/.../Gupax` (Gupax is packaged as an `.app` on macOS)
-	- P2Pool: `p2pool/p2pool`
-	- XMRig: `xmrig/xmrig`
+- Gupax: `Gupax.app/.../Gupax` (Gupax is packaged as an `.app` on macOS)
+- P2Pool: `p2pool/p2pool`
+- XMRig: `xmrig/xmrig`
+
 Linux:
-	- Gupax: `gupax`
-	- P2Pool: `p2pool/p2pool`
-	- XMRig: `xmrig/xmrig`
+- Gupax: `gupax`
+- P2Pool: `p2pool/p2pool`
+- XMRig: `xmrig/xmrig`
 
 These have to be packaged exactly with these names because the update code is case-sensitive. If an exact match is not found, it will error.
 
@@ -102,6 +105,6 @@ Exceptions (there are always exceptions...):
 ```
 
 For the Gupax data folder:
-	- Windows: `Gupax`
-	- macOS: `Gupax`
-	- Linux: `gupax`
+- Windows: `Gupax`
+- macOS: `Gupax`
+- Linux: `gupax`

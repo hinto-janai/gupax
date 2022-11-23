@@ -22,7 +22,8 @@ use crate::{
 	node::*
 };
 use egui::{
-	TextEdit,SelectableLabel,ComboBox,Label,Button,Color32,RichText,Slider,
+	TextEdit,SelectableLabel,ComboBox,Label,Button,
+	Color32,RichText,Slider,Checkbox,ProgressBar,Spinner,
 	TextStyle::*,
 };
 use std::sync::{Arc,Mutex};
@@ -34,23 +35,23 @@ impl P2pool {
 	let text_edit = height / 22.0;
 	//---------------------------------------------------------------------------------------------------- Console
 	ui.group(|ui| {
-		let height = height / SPACE;
+		let height = height / 10.0;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
-		ui.add_sized([width, height*3.0], TextEdit::multiline(&mut "".to_string()));
+		ui.add_sized([width, height*3.5], TextEdit::multiline(&mut "".to_string()));
 		ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(&mut "".to_string()), r#"Type a command (e.g "help" or "status") and press Enter"#));
 	});
 
 	//---------------------------------------------------------------------------------------------------- Args
-	if ! self.simple {
-	ui.group(|ui| { ui.horizontal(|ui| {
-		let width = (width/10.0) - SPACE;
-		ui.style_mut().override_text_style = Some(Monospace);
-		ui.add_sized([width, text_edit], Label::new("Command arguments:"));
-		ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.arguments), r#"--wallet <...> --host <...>"#)).on_hover_text(P2POOL_COMMAND);
-		self.arguments.truncate(1024);
-	})});
-	ui.set_enabled(self.arguments.is_empty());
+	if self.simple == false {
+		ui.group(|ui| { ui.horizontal(|ui| {
+			let width = (width/10.0) - SPACE;
+			ui.style_mut().override_text_style = Some(Monospace);
+			ui.add_sized([width, text_edit], Label::new("Command arguments:"));
+			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.arguments), r#"--wallet <...> --host <...>"#)).on_hover_text(P2POOL_COMMAND);
+			self.arguments.truncate(1024);
+		})});
+		ui.set_enabled(self.arguments.is_empty());
 	}
 
 	//---------------------------------------------------------------------------------------------------- Address
@@ -154,11 +155,11 @@ impl P2pool {
 			ui.add_sized([width, height], Label::new(msg));
 			ui.add_space(5.0);
 			if pinging {
-				ui.add_sized([width, height], egui::Spinner::new().size(height));
+				ui.add_sized([width, height], Spinner::new().size(height));
 			} else {
-				ui.add_sized([width, height], egui::Label::new("..."));
+				ui.add_sized([width, height], Label::new("..."));
 			}
-			ui.add_sized([width, height], egui::ProgressBar::new(prog.round()/100.0));
+			ui.add_sized([width, height], ProgressBar::new(prog.round()/100.0));
 			ui.add_space(5.0);
 		});
 		});
@@ -168,13 +169,13 @@ impl P2pool {
 			let width = (width/2.0)-(SPACE*1.75);
 			// [Auto-node] + [Auto-select]
 			let mut style = (*ctx.style()).clone();
-			style.spacing.icon_width_inner = height/1.5;
-			style.spacing.icon_width = height;
+			style.spacing.icon_width_inner = width / 16.0;
+			style.spacing.icon_width = width / 6.0;
 			style.spacing.icon_spacing = 20.0;
 			ctx.set_style(style);
-			ui.add_sized([width, height], egui::Checkbox::new(&mut self.auto_select, "Auto-select")).on_hover_text(P2POOL_AUTO_SELECT);
+			ui.add_sized([width, height], Checkbox::new(&mut self.auto_select, "Auto-select")).on_hover_text(P2POOL_AUTO_SELECT);
 			ui.separator();
-			ui.add_sized([width, height], egui::Checkbox::new(&mut self.auto_node, "Auto-node")).on_hover_text(P2POOL_AUTO_NODE);
+			ui.add_sized([width, height], Checkbox::new(&mut self.auto_node, "Auto-node")).on_hover_text(P2POOL_AUTO_NODE);
 		})});
 
 	//---------------------------------------------------------------------------------------------------- Advanced
@@ -313,7 +314,7 @@ impl P2pool {
 			}
 			ui.horizontal(|ui| {
 				let text;
-				if exists { text = P2POOL_SAVE } else { text = P2POOL_ADD }
+				if exists { text = LIST_SAVE } else { text = LIST_ADD }
 				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", text, self.selected_index+1, self.selected_name, node_vec_len);
 				// If the node already exists, show [Save] and mutate the already existing node
 				if exists {
@@ -349,7 +350,7 @@ impl P2pool {
 			// [Delete]
 			ui.horizontal(|ui| {
 				ui.set_enabled(node_vec_len > 1);
-				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", P2POOL_DELETE, self.selected_index+1, self.selected_name, node_vec_len);
+				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", LIST_DELETE, self.selected_index+1, self.selected_name, node_vec_len);
 				if ui.add_sized([width, text_edit], Button::new("Delete")).on_hover_text(text).clicked() {
 					let new_name;
 					let new_node;
@@ -379,7 +380,7 @@ impl P2pool {
 			});
 			ui.horizontal(|ui| {
 				ui.set_enabled(!self.name.is_empty() || !self.ip.is_empty() || !self.rpc.is_empty() || !self.zmq.is_empty());
-				if ui.add_sized([width, text_edit], Button::new("Clear")).on_hover_text(P2POOL_CLEAR).clicked() {
+				if ui.add_sized([width, text_edit], Button::new("Clear")).on_hover_text(LIST_CLEAR).clicked() {
 					self.name.clear();
 					self.ip.clear();
 					self.rpc.clear();

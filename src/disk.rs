@@ -41,8 +41,31 @@ use std::{
 use serde::{Serialize,Deserialize};
 use figment::Figment;
 use figment::providers::{Format,Toml};
-use crate::constants::*;
+use crate::{
+	constants::*,
+	gupax::Ratio,
+};
 use log::*;
+
+//---------------------------------------------------------------------------------------------------- Const
+// State file
+const ERROR: &'static str = "Disk error";
+const PATH_ERROR: &'static str = "PATH for state directory could not be not found";
+#[cfg(target_os = "windows")]
+const DIRECTORY: &'static str = r#"Gupax\"#;
+#[cfg(target_os = "macos")]
+const DIRECTORY: &'static str = "Gupax/";
+#[cfg(target_os = "linux")]
+const DIRECTORY: &'static str = "gupax/";
+
+#[cfg(target_os = "windows")]
+pub const DEFAULT_P2POOL_PATH: &'static str = r"P2Pool\p2pool.exe";
+#[cfg(target_family = "unix")]
+pub const DEFAULT_P2POOL_PATH: &'static str = "p2pool/p2pool";
+#[cfg(target_os = "windows")]
+pub const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
+#[cfg(target_family = "unix")]
+pub const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
 
 //---------------------------------------------------------------------------------------------------- General functions for all [File]'s
 // get_file_path()      | Return absolute path to OS data path + filename
@@ -116,6 +139,7 @@ impl State {
 		if max_threads == 1 { current_threads = 1; } else { current_threads = max_threads / 2; }
 		Self {
 			gupax: Gupax {
+				simple: true,
 				auto_update: true,
 				auto_node: true,
 				ask_before_quit: true,
@@ -128,6 +152,9 @@ impl State {
 				xmrig_path: DEFAULT_XMRIG_PATH.to_string(),
 				absolute_p2pool_path: into_absolute_path(DEFAULT_P2POOL_PATH.to_string()).unwrap(),
 				absolute_xmrig_path: into_absolute_path(DEFAULT_XMRIG_PATH.to_string()).unwrap(),
+				selected_width: APP_DEFAULT_WIDTH as u16,
+				selected_height: APP_DEFAULT_HEIGHT as u16,
+				ratio: Ratio::Width,
 			},
 			p2pool: P2pool {
 				simple: true,
@@ -152,15 +179,24 @@ impl State {
 			},
 			xmrig: Xmrig {
 				simple: true,
-				tls: false,
-				nicehash: false,
-				keepalive: false,
-				hugepages_jit: true,
+				pause: 0,
+				config: String::with_capacity(100),
+				address: String::with_capacity(95),
+				name: "Local P2Pool".to_string(),
+				rig: "Gupax".to_string(),
+				ip: "localhost".to_string(),
+				port: "3333".to_string(),
+				selected_index: 0,
+				selected_name: "Local P2Pool".to_string(),
+				selected_ip: "localhost".to_string(),
+				selected_rig: "Gupax".to_string(),
+				selected_port: "3333".to_string(),
+				api_ip: "localhost".to_string(),
+				api_port: "18088".to_string(),
+				tls: true,
+				keepalive: true,
 				current_threads,
 				max_threads,
-				priority: 2,
-				pool: "localhost:3333".to_string(),
-				address: String::with_capacity(95),
 			},
 			version: Arc::new(Mutex::new(Version {
 				gupax: GUPAX_VERSION.to_string(),
@@ -381,6 +417,95 @@ impl Node {
 //	}
 }
 
+//---------------------------------------------------------------------------------------------------- [Pool] impl
+impl Pool {
+	pub fn p2pool() -> Self {
+		Self {
+			rig: "Gupax".to_string(),
+			ip: "localhost".to_string(),
+			port: "3333".to_string(),
+		}
+	}
+
+	pub fn new_vec() -> Vec<(String, Self)> {
+		let mut vec = Vec::new();
+		vec.push(("Local P2Pool".to_string(), Self::p2pool()));
+		vec
+	}
+
+	pub fn from_string_to_vec(string: &String) -> Result<Vec<(String, Self)>, TomlError> {
+		let pools: toml::map::Map<String, toml::Value> = match toml::de::from_str(&string) {
+			Ok(map) => {
+				info!("Pool | Parse ... OK");
+				map
+			}
+			Err(err) => {
+				error!("Pool | String parse ... FAIL ... {}", err);
+				return Err(TomlError::Deserialize(err))
+			},
+		};
+		let size = pools.keys().len();
+		let mut vec = Vec::with_capacity(size);
+		for (key, values) in pools.iter() {
+			let pool = Pool {
+				rig: values.get("rig").unwrap().as_str().unwrap().to_string(),
+				ip: values.get("ip").unwrap().as_str().unwrap().to_string(),
+				port: values.get("port").unwrap().as_str().unwrap().to_string(),
+			};
+			vec.push((key.clone(), pool));
+		}
+		Ok(vec)
+	}
+
+	pub fn to_string(vec: &Vec<(String, Self)>) -> Result<String, TomlError> {
+		let mut toml = String::new();
+		for (key, value) in vec.iter() {
+			write!(
+				toml,
+				"[\'{}\']\nrig = {:#?}\nip = {:#?}\nport = {:#?}\n\n",
+				key,
+				value.rig,
+				value.ip,
+				value.port,
+			)?;
+		}
+		Ok(toml)
+	}
+
+	pub fn get(path: &PathBuf) -> Result<Vec<(String, Self)>, TomlError> {
+		// Read
+		let file = File::Pool;
+		let string = match read_to_string(file, &path) {
+			Ok(string) => string,
+			// Create
+			_ => {
+				Self::create_new(path)?;
+				read_to_string(file, &path)?
+			},
+		};
+		// Deserialize
+		Self::from_string_to_vec(&string)
+	}
+
+	pub fn create_new(path: &PathBuf) -> Result<Vec<(String, Self)>, TomlError> {
+		info!("Pool | Creating new default...");
+		let new = Self::new_vec();
+		let string = Self::to_string(&Self::new_vec())?;
+		fs::write(&path, &string)?;
+		info!("Pool | Write ... OK");
+		Ok(new)
+	}
+
+	pub fn save(vec: &Vec<(String, Self)>, path: &PathBuf) -> Result<(), TomlError> {
+		info!("Pool | Saving to disk...");
+		let string = Self::to_string(vec)?;
+		match fs::write(path, string) {
+			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
+			Err(err) => { error!("Couldn't overwrite TOML file"); Err(TomlError::Io(err)) },
+		}
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- Custom Error [TomlError]
 #[derive(Debug)]
 pub enum TomlError {
@@ -418,31 +543,12 @@ impl From<std::fmt::Error> for TomlError {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- Const
-// State file
-const ERROR: &'static str = "Disk error";
-const PATH_ERROR: &'static str = "PATH for state directory could not be not found";
-#[cfg(target_os = "windows")]
-const DIRECTORY: &'static str = r#"Gupax\"#;
-#[cfg(target_os = "macos")]
-const DIRECTORY: &'static str = "Gupax/";
-#[cfg(target_os = "linux")]
-const DIRECTORY: &'static str = "gupax/";
-
-#[cfg(target_os = "windows")]
-pub const DEFAULT_P2POOL_PATH: &'static str = r"P2Pool\p2pool.exe";
-#[cfg(target_family = "unix")]
-pub const DEFAULT_P2POOL_PATH: &'static str = "p2pool/p2pool";
-#[cfg(target_os = "windows")]
-pub const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
-#[cfg(target_family = "unix")]
-pub const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
-
 //---------------------------------------------------------------------------------------------------- [File] Enum (for matching which file)
 #[derive(Clone,Copy,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum File {
-	State,
-	Node,
+	State, // state.toml -> Gupax state
+	Node, // node.toml -> P2Pool manual node selector
+	Pool, // pool.toml -> XMRig manual pool selector
 }
 
 //---------------------------------------------------------------------------------------------------- [Node] Struct
@@ -451,6 +557,14 @@ pub struct Node {
 	pub ip: String,
 	pub rpc: String,
 	pub zmq: String,
+}
+
+//---------------------------------------------------------------------------------------------------- [Pool] Struct
+#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub struct Pool {
+	pub rig: String,
+	pub ip: String,
+	pub port: String,
 }
 
 //---------------------------------------------------------------------------------------------------- [State] Struct
@@ -464,6 +578,7 @@ pub struct State {
 
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub struct Gupax {
+	pub simple: bool,
 	pub auto_update: bool,
 	pub auto_node: bool,
 	pub ask_before_quit: bool,
@@ -473,6 +588,9 @@ pub struct Gupax {
 	pub xmrig_path: String,
 	pub absolute_p2pool_path: PathBuf,
 	pub absolute_xmrig_path: PathBuf,
+	pub selected_width: u16,
+	pub selected_height: u16,
+	pub ratio: Ratio,
 }
 
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
@@ -501,15 +619,24 @@ pub struct P2pool {
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub struct Xmrig {
 	pub simple: bool,
+	pub pause: u8,
+	pub config: String,
 	pub tls: bool,
-	pub nicehash: bool,
 	pub keepalive: bool,
-	pub hugepages_jit: bool,
 	pub max_threads: usize,
 	pub current_threads: usize,
-	pub priority: u8,
-	pub pool: String,
 	pub address: String,
+	pub api_ip: String,
+	pub api_port: String,
+	pub name: String,
+	pub rig: String,
+	pub ip: String,
+	pub port: String,
+	pub selected_index: usize,
+	pub selected_name: String,
+	pub selected_rig: String,
+	pub selected_ip: String,
+	pub selected_port: String,
 }
 
 #[derive(Clone,Debug,Deserialize,Serialize)]

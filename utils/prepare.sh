@@ -36,5 +36,5 @@ cat CHANGELOG.md >> CHANGELOG.md.new
 mv -f CHANGELOG.md.new CHANGELOG.md
 
 # commit
-git add .
+git add CHANGELOG.md README.md
 git commit -m "prepare $1"

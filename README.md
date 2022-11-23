@@ -74,7 +74,7 @@ With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/X
 | SupportXmrIr   | node.supportxmr.ir               | 18089    |
 | XmrVsBeast     | p2pmd.xmrvsbeast.com             | 18081    |
 
-*Note: All have ZMQ port on 18083*
+*Note: Plowsof1 & Plowsof2 have ZMQ port on 18084, the rest are 18083*
 
 ## Demo
 https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e-ac65-3a339b96a9d2.mp4

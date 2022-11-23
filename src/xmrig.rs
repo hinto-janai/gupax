@@ -15,67 +15,372 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::constants::*;
-use crate::disk::Xmrig;
+use crate::{
+	Regexes,
+	constants::*,
+	disk::*,
+	node::*
+};
+use egui::{
+	TextEdit,SelectableLabel,ComboBox,Label,Button,RichText,Slider,Checkbox,
+	TextStyle::*,
+};
+use std::sync::{Arc,Mutex};
+use regex::Regex;
+use log::*;
 
 impl Xmrig {
-	pub fn show(&mut self, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
-		let height = ui.available_height() / 10.0;
-		let width = ui.available_width() - 10.0;
+	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	let text_edit = height / 22.0;
+	//---------------------------------------------------------------------------------------------------- Console
+	ui.group(|ui| {
+		let height = height / 10.0;
+		let width = width - SPACE;
+		ui.style_mut().override_text_style = Some(Monospace);
+		ui.add_sized([width, height*3.5], TextEdit::multiline(&mut "".to_string()));
+		ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(&mut "".to_string()), r#"Type a command (e.g "help" or "status") and press Enter"#));
+	});
+
+	//---------------------------------------------------------------------------------------------------- Config
+	if self.simple == false {
+		ui.group(|ui| { ui.horizontal(|ui| {
+			let width = (width/10.0) - SPACE;
+			ui.style_mut().override_text_style = Some(Monospace);
+			ui.add_sized([width, text_edit], Label::new("Config file:"));
+			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.config), r#"...config.json"#)).on_hover_text(XMRIG_CONFIG);
+			self.config.truncate(1024);
+		})});
+		ui.set_enabled(self.config.is_empty());
+	//---------------------------------------------------------------------------------------------------- Address
 		ui.group(|ui| {
-			ui.add_sized([width, height*4.0], egui::TextEdit::multiline(&mut "".to_owned()));
-			ui.add_sized([width, 30.0], egui::TextEdit::singleline(&mut "".to_owned()));
+			let width = width - SPACE;
+			ui.spacing_mut().text_edit_width = (width)-(SPACE*3.0);
+			ui.style_mut().override_text_style = Some(Monospace);
+			let text;
+			let color;
+			let len = format!("{:02}", self.address.len());
+			if self.address.is_empty() {
+				text = format!("Monero Address [{}/95] ➖", len);
+				color = LIGHT_GRAY;
+			} else if self.address.len() == 95 && Regex::is_match(&regex.address, &self.address) && ! self.address.contains("0") && ! self.address.contains("O") && ! self.address.contains("l") {
+				text = format!("Monero Address [{}/95] ✔", len);
+				color = GREEN;
+			} else {
+				text = format!("Monero Address [{}/95] ❌", len);
+				color = RED;
+			}
+			ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
+			ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.address), "4...")).on_hover_text(XMRIG_ADDRESS);
+			self.address.truncate(95);
 		});
+	}
 
-		let mut style = (*ctx.style()).clone();
-		let height = ui.available_height()/1.2;
-		let width = width - 15.0;
+	//---------------------------------------------------------------------------------------------------- Threads
+	if self.simple { ui.add_space(SPACE); }
+	ui.vertical(|ui| {
+		let width = width/10.0;
+		ui.spacing_mut().icon_width = width / 25.0;
 		ui.horizontal(|ui| {
-			ui.group(|ui| { ui.vertical(|ui| {
-				ui.group(|ui| { ui.horizontal(|ui| {
-					if ui.add_sized([width/2.0, height/6.0], egui::SelectableLabel::new(self.simple == false, "P2Pool Mode")).on_hover_text(XMRIG_P2POOL).clicked() { self.simple = false; };
-					if ui.add_sized([width/2.0, height/6.0], egui::SelectableLabel::new(self.simple == true, "Manual Mode")).on_hover_text(XMRIG_MANUAL).clicked() { self.simple = true; };
-				})});
-				ui.group(|ui| { ui.horizontal(|ui| {
-					let width = width - 58.0;
-					ui.add_sized([width/4.0, height/6.0], egui::Checkbox::new(&mut self.tls, "TLS Connection")).on_hover_text(XMRIG_TLS);
-					ui.separator();
-					ui.add_sized([width/4.0, height/6.0], egui::Checkbox::new(&mut self.hugepages_jit, "Hugepages JIT")).on_hover_text(XMRIG_HUGEPAGES_JIT);
-					ui.separator();
-					ui.add_sized([width/4.0, height/6.0], egui::Checkbox::new(&mut self.nicehash, "Nicehash")).on_hover_text(XMRIG_NICEHASH);
-					ui.separator();
-					ui.add_sized([width/4.0, height/6.0], egui::Checkbox::new(&mut self.keepalive, "Keepalive")).on_hover_text(XMRIG_KEEPALIVE);
-				})});
-			})});
+			ui.spacing_mut().slider_width = width*8.35;
+			ui.add_sized([width, text_edit], Label::new(format!("Threads [1-{}]:", self.max_threads)));
+			ui.add_sized([width, text_edit], Slider::new(&mut self.current_threads, 1..=self.max_threads)).on_hover_text(XMRIG_THREADS);
+		});
+		#[cfg(not(target_os = "linux"))] // Pause on active isn't supported on Linux
+		ui.horizontal(|ui| {
+			ui.spacing_mut().slider_width = width*7.7;
+			ui.add_sized([width, text_edit], Label::new(format!("Pause on active [0-255]:")));
+			ui.add_sized([width, text_edit], Slider::new(&mut self.pause, 0..=255)).on_hover_text(format!("{} [{}] seconds.", XMRIG_PAUSE, self.pause));
+		});
+	});
+
+	//---------------------------------------------------------------------------------------------------- Simple
+	let height = ui.available_height();
+	if self.simple {
+//		ui.group(|ui|
+
+//		});
+	} else {
+		let height = height / 10.0;
+		let width = ui.available_width() - 10.0;
+		let mut incorrect_input = false; // This will disable [Add/Delete] on bad input
+		// [Pool IP/Port]
+		ui.horizontal(|ui| {
+		ui.group(|ui| {
+			let width = width/10.0;
+			ui.vertical(|ui| {
+			ui.style_mut().override_text_style = Some(Monospace);
+			ui.spacing_mut().text_edit_width = width*3.32;
+			ui.horizontal(|ui| {
+				let text;
+				let color;
+				let len = format!("{:02}", self.name.len());
+				if self.name.is_empty() {
+					text = format!("Name [ {}/30 ]➖", len);
+					color = LIGHT_GRAY;
+					incorrect_input = true;
+				} else if Regex::is_match(&regex.name, &self.name) {
+					text = format!("Name [ {}/30 ]✔", len);
+					color = GREEN;
+				} else {
+					text = format!("Name [ {}/30 ]❌", len);
+					color = RED;
+					incorrect_input = true;
+				}
+				ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
+				ui.text_edit_singleline(&mut self.name).on_hover_text(XMRIG_NAME);
+				self.name.truncate(30);
+			});
+			ui.horizontal(|ui| {
+				let text;
+				let color;
+				let len = format!("{:03}", self.ip.len());
+				if self.ip.is_empty() {
+					text = format!("  IP [{}/255]➖", len);
+					color = LIGHT_GRAY;
+					incorrect_input = true;
+				} else if self.ip == "localhost" || Regex::is_match(&regex.ipv4, &self.ip) || Regex::is_match(&regex.domain, &self.ip) {
+					text = format!("  IP [{}/255]✔", len);
+					color = GREEN;
+				} else {
+					text = format!("  IP [{}/255]❌", len);
+					color = RED;
+					incorrect_input = true;
+				}
+				ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
+				ui.text_edit_singleline(&mut self.ip).on_hover_text(XMRIG_IP);
+				self.ip.truncate(255);
+			});
+			ui.horizontal(|ui| {
+				let text;
+				let color;
+				let len = self.port.len();
+				if self.port.is_empty() {
+					text = format!("Port [  {}/5  ]➖", len);
+					color = LIGHT_GRAY;
+					incorrect_input = true;
+				} else if Regex::is_match(&regex.port, &self.port) {
+					text = format!("Port [  {}/5  ]✔", len);
+					color = GREEN;
+				} else {
+					text = format!("Port [  {}/5  ]❌", len);
+					color = RED;
+					incorrect_input = true;
+				}
+				ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
+				ui.text_edit_singleline(&mut self.port).on_hover_text(XMRIG_PORT);
+				self.port.truncate(5);
+			});
+			ui.horizontal(|ui| {
+				let text;
+				let color;
+				let len = format!("{:02}", self.rig.len());
+				if self.rig.is_empty() {
+					text = format!(" Rig [ {}/30 ]➖", len);
+					color = LIGHT_GRAY;
+				} else if Regex::is_match(&regex.name, &self.name) {
+					text = format!(" Rig [ {}/30 ]✔", len);
+					color = GREEN;
+				} else {
+					text = format!(" Rig [ {}/30 ]❌", len);
+					color = RED;
+					incorrect_input = true;
+				}
+				ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
+				ui.text_edit_singleline(&mut self.rig).on_hover_text(XMRIG_RIG);
+				self.rig.truncate(30);
+			});
 		});
 
-//		ui.group(|ui| {
-			style.spacing.slider_width = ui.available_width()/1.25;
-			ctx.set_style(style);
-			ui.horizontal(|ui| {
-				ui.add_sized([width/8.0, height/8.0], egui::Label::new(format!("Threads [1-{}]:", self.max_threads)));
-				ui.add_sized([width, height/8.0], egui::Slider::new(&mut self.current_threads, 1..=self.max_threads)).on_hover_text(XMRIG_THREADS);
+		ui.vertical(|ui| {
+			let width = ui.available_width();
+			ui.add_space(1.0);
+			// [Manual node selection]
+			ui.spacing_mut().slider_width = width - 8.0;
+			ui.spacing_mut().icon_width = width / 25.0;
+			// [Ping List]
+			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
+			ComboBox::from_id_source("manual_pool").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
+				let mut n = 0;
+				for (name, pool) in pool_vec.iter() {
+					let text = RichText::text_style(RichText::new(format!("{}. {}\n    RIG: {}\n     IP: {}\n   PORT: {}\n", n+1, name, pool.rig, pool.ip, pool.port)), Monospace);
+					if ui.add(SelectableLabel::new(self.selected_name == *name, text)).clicked() {
+						self.selected_index = n;
+						let pool = pool.clone();
+						self.selected_name = name.clone();
+						self.selected_rig = pool.rig.clone();
+						self.selected_ip = pool.ip.clone();
+						self.selected_port = pool.port.clone();
+						self.name = name.clone();
+						self.rig = pool.rig;
+						self.ip = pool.ip;
+						self.port = pool.port;
+					}
+					n += 1;
+				}
 			});
+			// [Add/Save]
+			let pool_vec_len = pool_vec.len();
+			let mut exists = false;
+			let mut save_diff = true;
+			let mut existing_index = 0;
+			for (name, pool) in pool_vec.iter() {
+				if *name == self.name {
+					exists = true;
+					if self.rig == pool.rig && self.ip == pool.ip && self.port == pool.port {
+						save_diff = false;
+					}
+					break
+				}
+				existing_index += 1;
+			}
+			ui.horizontal(|ui| {
+				let text;
+				if exists { text = LIST_SAVE } else { text = LIST_ADD }
+				let text = format!("{}\n    Currently selected pool: {}. {}\n    Current amount of pools: {}/1000", text, self.selected_index+1, self.selected_name, pool_vec_len);
+				// If the pool already exists, show [Save] and mutate the already existing pool
+				if exists {
+					ui.set_enabled(!incorrect_input && save_diff);
+					if ui.add_sized([width, text_edit], Button::new("Save")).on_hover_text(text).clicked() {
+						let pool = Pool {
+							rig: self.rig.clone(),
+							ip: self.ip.clone(),
+							port: self.port.clone(),
+						};
+						pool_vec[existing_index].1 = pool;
+						info!("Node | S | [index: {}, name: \"{}\", rig: \"{}\", ip: \"{}\", pool: {}]", existing_index+1, self.name, self.rig, self.ip, self.port);
+					}
+				// Else, add to the list
+				} else {
+					ui.set_enabled(!incorrect_input && pool_vec_len < 1000);
+					if ui.add_sized([width, text_edit], Button::new("Add")).on_hover_text(text).clicked() {
+						let pool = Pool {
+							rig: self.rig.clone(),
+							ip: self.ip.clone(),
+							port: self.port.clone(),
+						};
+						pool_vec.push((self.name.clone(), pool));
+						self.selected_index = pool_vec_len;
+						self.selected_name = self.name.clone();
+						self.selected_rig = self.rig.clone();
+						self.selected_ip = self.ip.clone();
+						self.selected_port = self.port.clone();
+						info!("Node | A | [index: {}, name: \"{}\", rig: \"{}\", ip: \"{}\", port: {}]", pool_vec_len, self.name, self.rig, self.ip, self.port);
+					}
+				}
+			});
+			// [Delete]
+			ui.horizontal(|ui| {
+				ui.set_enabled(pool_vec_len > 1);
+				let text = format!("{}\n    Currently selected pool: {}. {}\n    Current amount of pools: {}/1000", LIST_DELETE, self.selected_index+1, self.selected_name, pool_vec_len);
+				if ui.add_sized([width, text_edit], Button::new("Delete")).on_hover_text(text).clicked() {
+					let new_name;
+					let new_pool;
+					match self.selected_index {
+						0 => {
+							new_name = pool_vec[1].0.clone();
+							new_pool = pool_vec[1].1.clone();
+							pool_vec.remove(0);
+						}
+						_ => {
+							pool_vec.remove(self.selected_index);
+							self.selected_index = self.selected_index-1;
+							new_name = pool_vec[self.selected_index].0.clone();
+							new_pool = pool_vec[self.selected_index].1.clone();
+						}
+					};
+					self.selected_name = new_name.clone();
+					self.selected_rig = new_pool.rig.clone();
+					self.selected_ip = new_pool.ip.clone();
+					self.selected_port = new_pool.port.clone();
+					self.name = new_name;
+					self.rig = new_pool.rig;
+					self.ip = new_pool.ip;
+					self.port = new_pool.port;
+					info!("Node | D | [index: {}, name: \"{}\", rig: \"{}\", ip: \"{}\", port: {}]", self.selected_index, self.selected_name, self.selected_rig, self.selected_ip, self.selected_port);
+				}
+			});
+			ui.horizontal(|ui| {
+				ui.set_enabled(!self.name.is_empty() || !self.ip.is_empty() || !self.port.is_empty());
+				if ui.add_sized([width, text_edit], Button::new("Clear")).on_hover_text(LIST_CLEAR).clicked() {
+					self.name.clear();
+					self.rig.clear();
+					self.ip.clear();
+					self.port.clear();
+				}
+			});
+		});
+		});
+		});
+		ui.add_space(5.0);
 
+		// [HTTP API IP/Port] + [TLS + Keepalive]
+		ui.group(|ui| { ui.horizontal(|ui| {
+		ui.vertical(|ui| {
+			let width = width/10.0;
+			ui.style_mut().override_text_style = Some(Monospace);
+			ui.spacing_mut().text_edit_width = width*2.39;
+			// HTTP API
 			ui.horizontal(|ui| {
-				ui.add_sized([width/8.0, height/8.0], egui::Label::new("CPU Priority [0-5]:"));
-				ui.add_sized([width, height/8.0], egui::Slider::new(&mut self.priority, 0..=5)).on_hover_text(XMRIG_PRIORITY);
+				let text;
+				let color;
+				let len = format!("{:03}", self.api_ip.len());
+				if self.api_ip.is_empty() {
+					text = format!("HTTP API IP   [{}/255]➖", len);
+					color = LIGHT_GRAY;
+					incorrect_input = true;
+				} else if self.api_ip == "localhost" || Regex::is_match(&regex.ipv4, &self.api_ip) || Regex::is_match(&regex.domain, &self.api_ip) {
+					text = format!("HTTP API IP   [{}/255]✔", len);
+					color = GREEN;
+				} else {
+					text = format!("HTTP API IP   [{}/255]❌", len);
+					color = RED;
+					incorrect_input = true;
+				}
+				ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
+				ui.text_edit_singleline(&mut self.api_ip).on_hover_text(XMRIG_API_IP);
+				self.api_ip.truncate(255);
 			});
-//		});
+			ui.horizontal(|ui| {
+				let text;
+				let color;
+				let len = self.port.len();
+				if self.api_port.is_empty() {
+					text = format!("HTTP API Port [  {}/5  ]➖", len);
+					color = LIGHT_GRAY;
+					incorrect_input = true;
+				} else if Regex::is_match(&regex.port, &self.api_port) {
+					text = format!("HTTP API Port [  {}/5  ]✔", len);
+					color = GREEN;
+				} else {
+					text = format!("  Port [  {}/5  ]❌", len);
+					color = RED;
+					incorrect_input = true;
+				}
+				ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
+				ui.text_edit_singleline(&mut self.api_port).on_hover_text(XMRIG_API_PORT);
+				self.api_port.truncate(5);
+			});
+		});
 
-//		ui.group(|ui| {
-			if self.simple == false { ui.set_enabled(false); }
-			let width = width/4.0;
+		ui.separator();
+
+		ui.vertical(|ui| {
+			// TLS/Keepalive
 			ui.horizontal(|ui| {
-				ui.add_sized([width/8.0, height/8.0], egui::Label::new("Pool IP:"));
-				ui.spacing_mut().text_edit_width = ui.available_width() - 35.0;
-				ui.text_edit_singleline(&mut self.pool);
+				let width = (ui.available_width()/2.0)-11.0;
+				let height = text_edit*2.0;
+				let mut style = (*ctx.style()).clone();
+				style.spacing.icon_width_inner = width / 8.0;
+				style.spacing.icon_width = width / 6.0;
+				style.spacing.icon_spacing = 20.0;
+				ctx.set_style(style);
+				ui.add_sized([width, height], Checkbox::new(&mut self.tls, "TLS Connection")).on_hover_text(XMRIG_TLS);
+				ui.separator();
+				ui.add_sized([width, height], Checkbox::new(&mut self.keepalive, "Keepalive")).on_hover_text(XMRIG_KEEPALIVE);
 			});
-			ui.horizontal(|ui| {
-				ui.add_sized([width/8.0, height/8.0], egui::Label::new("Address:"));
-				ui.spacing_mut().text_edit_width = ui.available_width() - 35.0;
-				ui.text_edit_singleline(&mut self.address);
-			});
-//		});
+		});
+		});
+		});
+	}
 	}
 }

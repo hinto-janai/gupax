@@ -15,7 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::State;
+use crate::{
+	State,
+	constants::*,
+};
 use serde::{Serialize,Deserialize};
 use std::time::{Instant,Duration};
 use std::sync::{Arc,Mutex};
@@ -41,8 +44,8 @@ pub const FEATHER_2: &'static str = "selsta2.featherwallet.net:18081";
 pub const MAJESTICBANK_IS: &'static str = "node.majesticbank.is:18089";
 pub const MAJESTICBANK_SU: &'static str = "node.majesticbank.su:18089";
 pub const MONERUJO: &'static str = "nodex.monerujo.io:18081";
-pub const PLOWSOF_1: &'static str = "node.monerodevs.org:18089";
-pub const PLOWSOF_2: &'static str = "node2.monerodevs.org:18089";
+pub const PLOWSOF_1: &'static str = "node.monerodevs.org:18089"; // ZMQ = 18084
+pub const PLOWSOF_2: &'static str = "node2.monerodevs.org:18089"; // ZMQ = 18084
 pub const RINO: &'static str = "node.community.rino.io:18081";
 pub const SETH: &'static str = "node.sethforprivacy.com:18089";
 pub const SUPPORTXMR: &'static str = "node.supportxmr.com:18081";
@@ -307,13 +310,13 @@ impl Ping {
 		};
 		let color;
 		if ms < 300 {
-			color = Color32::from_rgb(100, 230, 100); // GREEN
+			color = GREEN;
 		} else if ms < 1000 {
-			color = Color32::from_rgb(230, 230, 100); // YELLOW
+			color = YELLOW;
 		} else if ms < 5000 {
-			color = Color32::from_rgb(230, 50, 50); // RED
+			color = RED;
 		} else {
-			color = Color32::BLACK;
+			color = BLACK;
 		}
 		let mut ping = ping.lock().unwrap();
 		ping.msg = info;

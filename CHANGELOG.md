@@ -1,10 +1,35 @@
 # v0.7.0
-## Updates
-*
-
-## Fixes
-*
-
+## Prototype Release
+* Added `Simple` XMRig tab:
+	- Console
+	- Thread slider
+	- Pause on active slider (Windows/macOS only)
+* Added `Advanced` XMRig tab:
+	- Includes all simple features
+	- Manual pool database, select/add/edit/delete a custom `Name/IP/Port/RigID` (max 1000 pools), saved at:
+	    - Windows: `C:\Users\USER\AppData\Roaming\Gupax\pool.toml`
+	    - macOS: `/Users/USER/Library/Application Support/Gupax/pool.toml`
+	    - Linux: `/home/USER/.local/share/gupax/pool.toml`
+	- Overriding `config.json` option
+	- Manual Monero address option
+	- HTTP API IP/Port option
+	- TLS option
+	- Keepalive option
+* Added `Simple` Gupax tab:
+	- Package updater
+	- `Auto-update` setting
+	- `Update-via-Tor` setting
+	- `Ask-before-quit` setting
+	- `Save-before-quit` setting
+* Added `Advanced` Gupax tab:
+	- Includes all simple features
+	- P2Pool binary path selector
+	- XMRig binary path selector
+	- Gupax window width/height adjuster
+* Default resolution change `1280x720, 16:9` -> `1280x800, 16:10`
+* Added plowsof to community nodes:
+	- Plowsof1: `IP: node.monerodevs.org, RPC: 18089, ZMQ: 18084`
+	- Plowsof2: `IP: node2.monerodevs.org, RPC: 18089, ZMQ: 18084`
 
 ---
 
