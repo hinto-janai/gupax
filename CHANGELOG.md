@@ -1,3 +1,14 @@
+# v0.7.0
+## Updates
+*
+
+## Fixes
+*
+
+
+---
+
+
 ## v0.5.0
 ## Prototype Release
 * Added `Simple` P2Pool tab:
