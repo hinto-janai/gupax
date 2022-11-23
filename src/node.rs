@@ -27,7 +27,7 @@ use hyper::{
 };
 
 //---------------------------------------------------------------------------------------------------- Node list
-// Community Monerod nodes. All of these have ZMQ on 18083.
+// Community Monerod nodes. ALL BUT ONE of these have ZMQ on 18083 (plowsof pls)
 // Adding/removing nodes will need changes to pretty
 // much all the code in this file, and the code that
 // handles the actual Enum selector in the P2Pool tab.
@@ -41,6 +41,8 @@ pub const FEATHER_2: &'static str = "selsta2.featherwallet.net:18081";
 pub const MAJESTICBANK_IS: &'static str = "node.majesticbank.is:18089";
 pub const MAJESTICBANK_SU: &'static str = "node.majesticbank.su:18089";
 pub const MONERUJO: &'static str = "nodex.monerujo.io:18081";
+pub const PLOWSOF_1: &'static str = "node.monerodevs.org:18089";
+pub const PLOWSOF_2: &'static str = "node2.monerodevs.org:18089";
 pub const RINO: &'static str = "node.community.rino.io:18081";
 pub const SETH: &'static str = "node.sethforprivacy.com:18089";
 pub const SUPPORTXMR: &'static str = "node.supportxmr.com:18081";
@@ -48,15 +50,15 @@ pub const SUPPORTXMR_IR: &'static str = "node.supportxmr.ir:18081";
 pub const SINGAPORE: &'static str = "singapore.node.xmr.pm:18089";
 pub const XMRVSBEAST: &'static str = "p2pmd.xmrvsbeast.com:18081";
 
-pub const NODE_IPS: [&'static str; 16] = [
+pub const NODE_IPS: [&'static str; 18] = [
 	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,MAJESTICBANK_IS,MAJESTICBANK_SU,
-	MONERUJO,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,SINGAPORE,XMRVSBEAST,
+	MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,SINGAPORE,XMRVSBEAST,
 ];
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum NodeEnum {
-	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,Monerujo,
-	Rino,Feather1,Feather2,Seth,SupportXmr,SupportXmrIr,Singapore,XmrVsBeast,
+	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,Monerujo,Plowsof1,
+	Plowsof2,Rino,Feather1,Feather2,Seth,SupportXmr,SupportXmrIr,Singapore,XmrVsBeast,
 }
 
 impl std::fmt::Display for NodeEnum {
@@ -104,6 +106,8 @@ pub fn ip_to_enum(ip: &'static str) -> NodeEnum {
 		MAJESTICBANK_IS => MajesticBankIs,
 		MAJESTICBANK_SU => MajesticBankSu,
 		MONERUJO        => Monerujo,
+		PLOWSOF_1       => Plowsof1,
+		PLOWSOF_2       => Plowsof2,
 		RINO            => Rino,
 		SETH            => Seth,
 		SINGAPORE       => Singapore,
@@ -125,6 +129,8 @@ pub fn enum_to_ip(node: NodeEnum) -> &'static str {
 		MajesticBankIs => MAJESTICBANK_IS,
 		MajesticBankSu => MAJESTICBANK_SU,
 		Monerujo       => MONERUJO,
+		Plowsof1       => PLOWSOF_1,
+		Plowsof2       => PLOWSOF_2,
 		Rino           => RINO,
 		Seth           => SETH,
 		Singapore      => SINGAPORE,

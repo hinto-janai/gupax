@@ -65,6 +65,8 @@ With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/X
 | MajesticBankIs | node.majesticbank.is             | 18089    |
 | MajesticBankSu | node.majesticbank.su             | 18089    |
 | Monerujo       | nodex.monerujo.io                | 18081    |
+| Plowsof1       | node.monerodevs.org              | 18089    |
+| Plowsof2       | node2.monerodevs.org             | 18089    |
 | Rino           | node.community.rino.io           | 18081    |
 | Seth           | node.sethforprivacy.com          | 18089    |
 | Singapore      | singapore.node.xmr               | 18081    |
