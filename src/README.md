@@ -10,7 +10,7 @@
 |--------------|---------|
 | constants.rs | General constants needed in Gupax
 | command.rs   | Code for executing/handling P2Pool/XMRig
-| disk.rs      | Code for writing to disk: `state.toml`, `node.toml`; This holds the structs for mutable [State]
+| disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State]
 | ferris.rs    | Cute crab bytes
 | gupax.rs     | `Gupax` tab
 | main.rs      | `App/Tab/State` + misc data/functions
@@ -44,7 +44,7 @@ This is how Gupax works internally when starting up:
 	- Kill processes, kill connections, exit
 
 ## Disk
-Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. The node/pool database cannot be merged, and if given a corrupted file, Gupax will show an un-recoverable error screen. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error window.
+Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. The node/pool database cannot be merged, and if given a corrupted file, Gupax will show an un-recoverable error screen. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error screen.
 
 | OS       | Data Folder                              | Example                                        |
 |----------|----------------------------------------- |------------------------------------------------|
@@ -57,10 +57,10 @@ The current files saved to disk:
 * `node.toml` The manual node database used for P2Pool advanced
 * `pool.toml` The manual pool database used for XMRig advanced
 
-Arti (Tor) also needs to save cache and state. It uses the same file/folder conventions (.local/arti, .cache/arti).
+Arti (Tor) also needs to save cache and state. It uses the same file/folder conventions.
 
 ## Scale
-Every frame, the max available `[width, height]` are calculated, and those are used as a baseline for the Top/Bottom bars, containing the tabs and status bar. After that, all available space is given to the middle ui elements. The scale is calculated every frame so that all elements can scale immediately as the user adjusts it; this doesn't take as much CPU as you might think since frames are only rendered on user interaction. Some elements are subtracted a fixed number because the `ui.seperator()`s add some fixed space which needs to be accounted for.
+Every frame, the max available `[width, height]` are calculated, and those are used as a baseline for the Top/Bottom bars, containing the tabs and status bar. After that, all available space is given to the middle ui elements. The scale is calculated every frame so that all elements can scale immediately as the user adjusts it; this doesn't take as much CPU as you might think since frames are only rendered on user interaction. Some elements are subtracted a fixed number because the `ui.seperator()`'s add some fixed space which needs to be accounted for.
 
 ```
 Main [App] outer frame (default: [1280.0, 800.0], 16:10 aspect ratio)
@@ -89,22 +89,12 @@ Linux:
 
 These have to be packaged exactly with these names because the update code is case-sensitive. If an exact match is not found, it will error.
 
-```
 Package naming schemes:
-gupax  | gupax-vX.X.X-(windows|macos|linux)-x64(standalone|bundle).(zip|tar.gz)
-p2pool | p2pool-vX.X.X-(windows|macos|linux)-x64.(zip|tar.gz)
-xmrig  | xmrig-X.X.X-(msvc-win64|macos-x64|linux-static-x64).(zip|tar.gz)
-
-Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
-Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64.tar.gz
+- `gupax` - gupax-vX.X.X-(windows|macos|linux)-x64(standalone|bundle).(zip|tar.gz)
+- `p2pool` - p2pool-vX.X.X-(windows|macos|linux)-x64.(zip|tar.gz)
+- `xmrig` - xmrig-X.X.X-(msvc-win64|macos-x64|linux-static-x64).(zip|tar.gz)
 
 Exceptions (there are always exceptions...):
-   - XMRig doesn't have a [v], so it is [xmrig-6.18.0-...]
-   - XMRig separates the hash and signature
-   - P2Pool hashes are in UPPERCASE
-```
-
-For the Gupax data folder:
-- Windows: `Gupax`
-- macOS: `Gupax`
-- Linux: `gupax`
+- XMRig doesn't have a [v], so it is [xmrig-6.18.0-...]
+- XMRig separates the hash and signature
+- P2Pool hashes are in UPPERCASE
