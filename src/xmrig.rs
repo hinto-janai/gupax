@@ -18,14 +18,13 @@
 use crate::{
 	Regexes,
 	constants::*,
-	disk::*,
-	node::*
+	disk::*
 };
 use egui::{
 	TextEdit,SelectableLabel,ComboBox,Label,Button,RichText,Slider,Checkbox,
 	TextStyle::*,
 };
-use std::sync::{Arc,Mutex};
+
 use regex::Regex;
 use log::*;
 
@@ -42,7 +41,7 @@ impl Xmrig {
 	});
 
 	//---------------------------------------------------------------------------------------------------- Config
-	if self.simple == false {
+	if !self.simple {
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/10.0) - SPACE;
 			ui.style_mut().override_text_style = Some(Monospace);
@@ -62,7 +61,7 @@ impl Xmrig {
 			if self.address.is_empty() {
 				text = format!("Monero Address [{}/95] ➖", len);
 				color = LIGHT_GRAY;
-			} else if self.address.len() == 95 && Regex::is_match(&regex.address, &self.address) && ! self.address.contains("0") && ! self.address.contains("O") && ! self.address.contains("l") {
+			} else if self.address.len() == 95 && Regex::is_match(&regex.address, &self.address) && ! self.address.contains('0') && ! self.address.contains('O') && ! self.address.contains('l') {
 				text = format!("Monero Address [{}/95] ✔", len);
 				color = GREEN;
 			} else {
@@ -100,7 +99,7 @@ impl Xmrig {
 
 //		});
 	} else {
-		let height = height / 10.0;
+		let _height = height / 10.0;
 		let width = ui.available_width() - 10.0;
 		let mut incorrect_input = false; // This will disable [Add/Delete] on bad input
 		// [Pool IP/Port]
@@ -234,8 +233,7 @@ impl Xmrig {
 				existing_index += 1;
 			}
 			ui.horizontal(|ui| {
-				let text;
-				if exists { text = LIST_SAVE } else { text = LIST_ADD }
+				let text = if exists { LIST_SAVE } else { LIST_ADD };
 				let text = format!("{}\n    Currently selected pool: {}. {}\n    Current amount of pools: {}/1000", text, self.selected_index+1, self.selected_name, pool_vec_len);
 				// If the pool already exists, show [Save] and mutate the already existing pool
 				if exists {
@@ -283,7 +281,7 @@ impl Xmrig {
 						}
 						_ => {
 							pool_vec.remove(self.selected_index);
-							self.selected_index = self.selected_index-1;
+							self.selected_index -= 1;
 							new_name = pool_vec[self.selected_index].0.clone();
 							new_pool = pool_vec[self.selected_index].1.clone();
 						}

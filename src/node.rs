@@ -34,26 +34,26 @@ use hyper::{
 // Adding/removing nodes will need changes to pretty
 // much all the code in this file, and the code that
 // handles the actual Enum selector in the P2Pool tab.
-pub const C3POOL: &'static str = "node.c3pool.com:18081";
-pub const CAKE: &'static str = "xmr-node.cakewallet.com:18081";
-pub const CAKE_EU: &'static str = "xmr-node-eu.cakewallet.com:18081";
-pub const CAKE_UK: &'static str = "xmr-node-uk.cakewallet.com:18081";
-pub const CAKE_US: &'static str = "xmr-node-usa-east.cakewallet.com:18081";
-pub const FEATHER_1: &'static str = "selsta1.featherwallet.net:18081";
-pub const FEATHER_2: &'static str = "selsta2.featherwallet.net:18081";
-pub const MAJESTICBANK_IS: &'static str = "node.majesticbank.is:18089";
-pub const MAJESTICBANK_SU: &'static str = "node.majesticbank.su:18089";
-pub const MONERUJO: &'static str = "nodex.monerujo.io:18081";
-pub const PLOWSOF_1: &'static str = "node.monerodevs.org:18089"; // ZMQ = 18084
-pub const PLOWSOF_2: &'static str = "node2.monerodevs.org:18089"; // ZMQ = 18084
-pub const RINO: &'static str = "node.community.rino.io:18081";
-pub const SETH: &'static str = "node.sethforprivacy.com:18089";
-pub const SUPPORTXMR: &'static str = "node.supportxmr.com:18081";
-pub const SUPPORTXMR_IR: &'static str = "node.supportxmr.ir:18081";
-pub const SINGAPORE: &'static str = "singapore.node.xmr.pm:18089";
-pub const XMRVSBEAST: &'static str = "p2pmd.xmrvsbeast.com:18081";
+pub const C3POOL: &str = "node.c3pool.com:18081";
+pub const CAKE: &str = "xmr-node.cakewallet.com:18081";
+pub const CAKE_EU: &str = "xmr-node-eu.cakewallet.com:18081";
+pub const CAKE_UK: &str = "xmr-node-uk.cakewallet.com:18081";
+pub const CAKE_US: &str = "xmr-node-usa-east.cakewallet.com:18081";
+pub const FEATHER_1: &str = "selsta1.featherwallet.net:18081";
+pub const FEATHER_2: &str = "selsta2.featherwallet.net:18081";
+pub const MAJESTICBANK_IS: &str = "node.majesticbank.is:18089";
+pub const MAJESTICBANK_SU: &str = "node.majesticbank.su:18089";
+pub const MONERUJO: &str = "nodex.monerujo.io:18081";
+pub const PLOWSOF_1: &str = "node.monerodevs.org:18089"; // ZMQ = 18084
+pub const PLOWSOF_2: &str = "node2.monerodevs.org:18089"; // ZMQ = 18084
+pub const RINO: &str = "node.community.rino.io:18081";
+pub const SETH: &str = "node.sethforprivacy.com:18089";
+pub const SUPPORTXMR: &str = "node.supportxmr.com:18081";
+pub const SUPPORTXMR_IR: &str = "node.supportxmr.ir:18081";
+pub const SINGAPORE: &str = "singapore.node.xmr.pm:18089";
+pub const XMRVSBEAST: &str = "p2pmd.xmrvsbeast.com:18081";
 
-pub const NODE_IPS: [&'static str; 18] = [
+pub const NODE_IPS: [&str; 18] = [
 	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,MAJESTICBANK_IS,MAJESTICBANK_SU,
 	MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,SINGAPORE,XMRVSBEAST,
 ];
@@ -201,7 +201,7 @@ impl Ping {
 	//---------------------------------------------------------------------------------------------------- Main Ping function
 	// Intermediate function for spawning thread
 	pub fn spawn_thread(ping: &Arc<Mutex<Self>>, og: &Arc<Mutex<State>>) {
-		let ping = Arc::clone(&ping);
+		let ping = Arc::clone(ping);
 		let og = Arc::clone(og);
 		std::thread::spawn(move|| {
 			info!("Spawning ping thread...");
@@ -239,7 +239,7 @@ impl Ping {
 	// timeout = BLACK
 	// default = GRAY
 	#[tokio::main]
-	pub async fn ping(ping: Arc<Mutex<Self>>, og: Arc<Mutex<State>>) -> Result<(), anyhow::Error> {
+	pub async fn ping(ping: Arc<Mutex<Self>>, _og: Arc<Mutex<State>>) -> Result<(), anyhow::Error> {
 		// Timer
 		let now = Instant::now();
 
@@ -249,7 +249,7 @@ impl Ping {
 		let percent = (100.0 / ((NODE_IPS.len()) as f32)).floor();
 
 		// Create HTTP client
-		let info = format!("{}", "Creating HTTP Client");
+		let info = "Creating HTTP Client".to_string();
 		ping.lock().unwrap().msg = info;
 		let client: Client<HttpConnector> = Client::builder()
 			.build(HttpConnector::new());

@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub const GUPAX_VERSION: &'static str = concat!("v", env!("CARGO_PKG_VERSION"));
-pub const P2POOL_VERSION: &'static str = "v2.4";
-pub const XMRIG_VERSION: &'static str = "v6.18.0";
-pub const COMMIT: &'static str = include_str!("../.git/refs/heads/main");
+pub const GUPAX_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
+pub const P2POOL_VERSION: &str = "v2.4";
+pub const XMRIG_VERSION: &str = "v6.18.0";
+pub const COMMIT: &str = include_str!("../.git/refs/heads/main");
 
 // App frame resolution, [16:10] aspect ratio, height = width * 1.6
 pub const APP_MIN_WIDTH: f32 = 768.0;
@@ -35,9 +35,9 @@ pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon@2x.png");
 #[cfg(not(target_os = "macos"))]
 pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon.png");
 pub const BYTES_BANNER: &[u8] = include_bytes!("../images/banner.png");
-pub const P2POOL_BASE_ARGS: &'static str = "";
-pub const XMRIG_BASE_ARGS: &'static str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero";
-pub const HORIZONTAL: &'static str = "--------------------------------------------";
+pub const P2POOL_BASE_ARGS: &str = "";
+pub const XMRIG_BASE_ARGS: &str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero";
+pub const HORIZONTAL: &str = "--------------------------------------------";
 
 // This is the typical space added when using
 // [ui.separator()] or [ui.group()]
@@ -64,81 +64,81 @@ pub const OS: &'static str = " macOS";
 pub const OS_NAME: &'static str = "macOS";
 
 #[cfg(target_os = "linux")]
-pub const OS: &'static str = "🐧 Linux";
+pub const OS: &str = "🐧 Linux";
 #[cfg(target_os = "linux")]
-pub const OS_NAME: &'static str = "Linux";
+pub const OS_NAME: &str = "Linux";
 
 // Tooltips
 // Gupax
-pub const GUPAX_UPDATE: &'static str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
-pub const GUPAX_AUTO_UPDATE: &'static str = "Automatically check for updates at startup";
+pub const GUPAX_UPDATE: &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
+pub const GUPAX_AUTO_UPDATE: &str = "Automatically check for updates at startup";
 #[cfg(not(target_os = "macos"))]
-pub const GUPAX_UPDATE_VIA_TOR: &'static str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
+pub const GUPAX_UPDATE_VIA_TOR: &str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
 #[cfg(target_os = "macos")] // Arti library has issues on macOS
 pub const GUPAX_UPDATE_VIA_TOR: &'static str = "WARNING: This option is unstable on macOS. Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
-pub const GUPAX_ASK_BEFORE_QUIT: &'static str = "Ask before quitting Gupax";
-pub const GUPAX_SAVE_BEFORE_QUIT: &'static str = "Automatically save any changed settings before quitting";
-pub const GUPAX_WIDTH: &'static str = "Set the width of the Gupax window";
-pub const GUPAX_HEIGHT: &'static str = "Set the height of the Gupax window";
-pub const GUPAX_LOCK_WIDTH: &'static str = "Automatically match the height against the width in a 16:10 ratio; aka HEIGHT = WIDTH / 1.6";
-pub const GUPAX_LOCK_HEIGHT: &'static str = "Automatically match the width against the height in a 16:10 ratio; aka WIDTH = HEIGHT * 1.6";
-pub const GUPAX_NO_LOCK: &'static str = "Allow individual selection of width and height";
-pub const GUPAX_SET: &'static str = "Set the width/height of the Gupax window to the current values";
-pub const GUPAX_SIMPLE: &'static str =
+pub const GUPAX_ASK_BEFORE_QUIT: &str = "Ask before quitting Gupax";
+pub const GUPAX_SAVE_BEFORE_QUIT: &str = "Automatically save any changed settings before quitting";
+pub const GUPAX_WIDTH: &str = "Set the width of the Gupax window";
+pub const GUPAX_HEIGHT: &str = "Set the height of the Gupax window";
+pub const GUPAX_LOCK_WIDTH: &str = "Automatically match the height against the width in a 16:10 ratio; aka HEIGHT = WIDTH / 1.6";
+pub const GUPAX_LOCK_HEIGHT: &str = "Automatically match the width against the height in a 16:10 ratio; aka WIDTH = HEIGHT * 1.6";
+pub const GUPAX_NO_LOCK: &str = "Allow individual selection of width and height";
+pub const GUPAX_SET: &str = "Set the width/height of the Gupax window to the current values";
+pub const GUPAX_SIMPLE: &str =
 r#"Use simple Gupax settings:
     - Update button
     - Basic toggles"#;
-pub const GUPAX_ADVANCED: &'static str =
+pub const GUPAX_ADVANCED: &str =
 r#"Use advanced Gupax settings:
     - Update button
     - Basic toggles
     - P2Pool/XMRig binary path selector
     - Gupax resolution sliders"#;
-pub const GUPAX_SELECT: &'static str = "Open a file explorer to select a file";
-pub const GUPAX_PATH_P2POOL: &'static str = "The location of the P2Pool binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
-pub const GUPAX_PATH_XMRIG: &'static str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
+pub const GUPAX_SELECT: &str = "Open a file explorer to select a file";
+pub const GUPAX_PATH_P2POOL: &str = "The location of the P2Pool binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
+pub const GUPAX_PATH_XMRIG: &str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 
 // P2Pool
-pub const P2POOL_MAIN: &'static str = "Use the P2Pool main-chain. This P2Pool finds shares faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
-pub const P2POOL_MINI: &'static str = "Use the P2Pool mini-chain. This P2Pool finds shares slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
-pub const P2POOL_OUT: &'static str = "How many out-bound peers to connect to? (you connecting to others)";
-pub const P2POOL_IN: &'static str = "How many in-bound peers to allow? (others connecting to you)";
-pub const P2POOL_LOG: &'static str = "Verbosity of the console log";
-pub const P2POOL_AUTO_NODE: &'static str = "Automatically ping the community Monero nodes at Gupax startup";
-pub const P2POOL_AUTO_SELECT: &'static str = "Automatically select the fastest community Monero node after pinging";
-pub const P2POOL_SELECT_FASTEST: &'static str = "Select the fastest community Monero node";
-pub const P2POOL_PING: &'static str = "Ping the built-in community Monero nodes";
-pub const P2POOL_ADDRESS: &'static str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet for P2Pool mining; wallet addresses are public on P2Pool!";
-pub const P2POOL_COMMAND: &'static str = "Start P2Pool with these arguments and override all below settings; If the [--data-api] flag is not given, Gupax will append it to the arguments automatically so that the [Status] tab can work";
-pub const P2POOL_SIMPLE: &'static str =
+pub const P2POOL_MAIN: &str = "Use the P2Pool main-chain. This P2Pool finds shares faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
+pub const P2POOL_MINI: &str = "Use the P2Pool mini-chain. This P2Pool finds shares slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
+pub const P2POOL_OUT: &str = "How many out-bound peers to connect to? (you connecting to others)";
+pub const P2POOL_IN: &str = "How many in-bound peers to allow? (others connecting to you)";
+pub const P2POOL_LOG: &str = "Verbosity of the console log";
+pub const P2POOL_AUTO_NODE: &str = "Automatically ping the community Monero nodes at Gupax startup";
+pub const P2POOL_AUTO_SELECT: &str = "Automatically select the fastest community Monero node after pinging";
+pub const P2POOL_SELECT_FASTEST: &str = "Select the fastest community Monero node";
+pub const P2POOL_PING: &str = "Ping the built-in community Monero nodes";
+pub const P2POOL_ADDRESS: &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet for P2Pool mining; wallet addresses are public on P2Pool!";
+pub const P2POOL_COMMAND: &str = "Start P2Pool with these arguments and override all below settings; If the [--data-api] flag is not given, Gupax will append it to the arguments automatically so that the [Status] tab can work";
+pub const P2POOL_SIMPLE: &str =
 r#"Use simple P2Pool settings:
     - Remote community Monero node
     - Default P2Pool settings + Mini"#;
-pub const P2POOL_ADVANCED: &'static str =
+pub const P2POOL_ADVANCED: &str =
 r#"Use advanced P2Pool settings:
     - Overriding command arguments
     - Manual node list
     - P2Pool Main/Mini selection
     - Out/In peer setting
     - Log level setting"#;
-pub const P2POOL_NAME: &'static str = "Add a unique name to identify this node; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
-pub const P2POOL_NODE_IP: &'static str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
-pub const P2POOL_RPC_PORT: &'static str = "Specify the RPC port of the Monero node; [1-65535]";
-pub const P2POOL_ZMQ_PORT: &'static str = "Specify the ZMQ port of the Monero node; [1-65535]";
+pub const P2POOL_NAME: &str = "Add a unique name to identify this node; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const P2POOL_NODE_IP: &str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
+pub const P2POOL_RPC_PORT: &str = "Specify the RPC port of the Monero node; [1-65535]";
+pub const P2POOL_ZMQ_PORT: &str = "Specify the ZMQ port of the Monero node; [1-65535]";
 
 // Node/Pool list
-pub const LIST_ADD: &'static str = "Add the current values to the list";
-pub const LIST_SAVE: &'static str = "Save the current values to the already existing entry";
-pub const LIST_DELETE: &'static str = "Delete the currently selected entry";
-pub const LIST_CLEAR: &'static str = "Clear all current values";
+pub const LIST_ADD: &str = "Add the current values to the list";
+pub const LIST_SAVE: &str = "Save the current values to the already existing entry";
+pub const LIST_DELETE: &str = "Delete the currently selected entry";
+pub const LIST_CLEAR: &str = "Clear all current values";
 
 // XMRig
-pub const XMRIG_SIMPLE: &'static str =
+pub const XMRIG_SIMPLE: &str =
 r#"Use simple XMRig settings:
 	- Mine to local P2Pool (localhost:3333)
 	- CPU thread slider
 	- HTTP API @ localhost:18088"#;
-pub const XMRIG_ADVANCED: &'static str =
+pub const XMRIG_ADVANCED: &str =
 r#"Use advanced XMRig settings:
 	- Overriding config file
 	- Custom payout address
@@ -147,21 +147,21 @@ r#"Use advanced XMRig settings:
 	- TLS setting
 	- Keepalive setting
 	- Custom HTTP API IP/Port"#;
-pub const XMRIG_CONFIG: &'static str = "Start XMRig with this config file and override all below settings; If the [http-api] options are not set, the [Status] tab will not properly show XMRig stats. If they are set, Gupax will detect which automatically IP/Port you are using";
-pub const XMRIG_ADDRESS: &'static str = "Specify which Monero address to send payouts to; Must be a valid primary address (starts with 4)";
-pub const XMRIG_NAME: &'static str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
-pub const XMRIG_IP: &'static str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
-pub const XMRIG_PORT: &'static str = "Specify the port of the pool; [1-65535]";
-pub const XMRIG_RIG: &'static str = "Add a unique rig ID. This will be the name shown on the pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
-pub const XMRIG_PAUSE: &'static str = "THIS SETTING IS DISABLED IF SET TO [0]. Pause mining if user is active, resume after";
-pub const XMRIG_API_IP: &'static str = "Specify which IP to bind to for XMRig's HTTP API";
-pub const XMRIG_API_PORT: &'static str = "Specify which port to bind to for XMRig's HTTP API";
-pub const XMRIG_TLS: &'static str = "Enable SSL/TLS connections (needs pool support)";
-pub const XMRIG_KEEPALIVE: &'static str = "Send keepalived packet to prevent timeout (needs pool support)";
-pub const XMRIG_THREADS: &'static str = "Number of CPU threads to use for mining";
+pub const XMRIG_CONFIG: &str = "Start XMRig with this config file and override all below settings; If the [http-api] options are not set, the [Status] tab will not properly show XMRig stats. If they are set, Gupax will detect which automatically IP/Port you are using";
+pub const XMRIG_ADDRESS: &str = "Specify which Monero address to send payouts to; Must be a valid primary address (starts with 4)";
+pub const XMRIG_NAME: &str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const XMRIG_IP: &str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
+pub const XMRIG_PORT: &str = "Specify the port of the pool; [1-65535]";
+pub const XMRIG_RIG: &str = "Add a unique rig ID. This will be the name shown on the pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const XMRIG_PAUSE: &str = "THIS SETTING IS DISABLED IF SET TO [0]. Pause mining if user is active, resume after";
+pub const XMRIG_API_IP: &str = "Specify which IP to bind to for XMRig's HTTP API";
+pub const XMRIG_API_PORT: &str = "Specify which port to bind to for XMRig's HTTP API";
+pub const XMRIG_TLS: &str = "Enable SSL/TLS connections (needs pool support)";
+pub const XMRIG_KEEPALIVE: &str = "Send keepalived packet to prevent timeout (needs pool support)";
+pub const XMRIG_THREADS: &str = "Number of CPU threads to use for mining";
 
 // CLI argument messages
-pub const ARG_HELP: &'static str =
+pub const ARG_HELP: &str =
 r#"USAGE: ./gupax [--flag]
 
     --help         Print this help message
@@ -178,7 +178,7 @@ r#"USAGE: ./gupax [--flag]
 To view more detailed console debug information, start Gupax with
 the environment variable [RUST_LOG] set to a log level like so:
     RUST_LOG=(trace|debug|info|warn|error) ./gupax"#;
-pub const ARG_COPYRIGHT: &'static str =
+pub const ARG_COPYRIGHT: &str =
 r#"Gupax is licensed under GPLv3.
 For more information, see link below:
 <https://github.com/hinto-janaiyo/gupax>"#;

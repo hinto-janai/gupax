@@ -49,23 +49,23 @@ use log::*;
 
 //---------------------------------------------------------------------------------------------------- Const
 // State file
-const ERROR: &'static str = "Disk error";
-const PATH_ERROR: &'static str = "PATH for state directory could not be not found";
+const ERROR: &str = "Disk error";
+const PATH_ERROR: &str = "PATH for state directory could not be not found";
 #[cfg(target_os = "windows")]
 const DIRECTORY: &'static str = r#"Gupax\"#;
 #[cfg(target_os = "macos")]
 const DIRECTORY: &'static str = "Gupax/";
 #[cfg(target_os = "linux")]
-const DIRECTORY: &'static str = "gupax/";
+const DIRECTORY: &str = "gupax/";
 
 #[cfg(target_os = "windows")]
 pub const DEFAULT_P2POOL_PATH: &'static str = r"P2Pool\p2pool.exe";
 #[cfg(target_family = "unix")]
-pub const DEFAULT_P2POOL_PATH: &'static str = "p2pool/p2pool";
+pub const DEFAULT_P2POOL_PATH: &str = "p2pool/p2pool";
 #[cfg(target_os = "windows")]
 pub const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
 #[cfg(target_family = "unix")]
-pub const DEFAULT_XMRIG_PATH: &'static str = "xmrig/xmrig";
+pub const DEFAULT_XMRIG_PATH: &str = "xmrig/xmrig";
 
 //---------------------------------------------------------------------------------------------------- General functions for all [File]'s
 // get_file_path()      | Return absolute path to OS data path + filename
@@ -99,7 +99,7 @@ pub fn create_gupax_dir(path: &PathBuf) -> Result<(), TomlError> {
 
 // Convert a [File] path to a [String]
 pub fn read_to_string(file: File, path: &PathBuf) -> Result<String, TomlError> {
-	match fs::read_to_string(&path) {
+	match fs::read_to_string(path) {
 		Ok(string) => {
 			info!("{:?} | Read ... OK", file);
 			Ok(string)
@@ -111,8 +111,8 @@ pub fn read_to_string(file: File, path: &PathBuf) -> Result<String, TomlError> {
 	}
 }
 
-// Write [String] to console with [info!] surrounded by "---"
-pub fn print_toml(toml: &String) {
+// Write str to console with [info!] surrounded by "---"
+pub fn print_toml(toml: &str) {
 	info!("{}", HORIZONTAL);
 	for i in toml.lines() { info!("{}", i); }
 	info!("{}", HORIZONTAL);
@@ -135,8 +135,7 @@ pub fn into_absolute_path(path: String) -> Result<PathBuf, TomlError> {
 impl State {
 	pub fn new() -> Self {
 		let max_threads = num_cpus::get();
-		let current_threads;
-		if max_threads == 1 { current_threads = 1; } else { current_threads = max_threads / 2; }
+		let current_threads = if max_threads == 1 { 1 } else { max_threads / 2 };
 		Self {
 			gupax: Gupax {
 				simple: true,
@@ -206,12 +205,12 @@ impl State {
 		}
 	}
 
-	// Convert [String] to [State]
-	pub fn from_string(string: &String) -> Result<Self, TomlError> {
-		match toml::de::from_str(&string) {
+	// Convert [&str] to [State]
+	pub fn from_str(string: &str) -> Result<Self, TomlError> {
+		match toml::de::from_str(string) {
 			Ok(state) => {
 				info!("State | Parse ... OK");
-				print_toml(&string);
+				print_toml(string);
 				Ok(state)
 			}
 			Err(err) => {
@@ -229,19 +228,19 @@ impl State {
 	pub fn get(path: &PathBuf) -> Result<Self, TomlError> {
 		// Read
 		let file = File::State;
-		let string = match read_to_string(file, &path) {
+		let string = match read_to_string(file, path) {
 			Ok(string) => string,
 			// Create
 			_ => {
 				Self::create_new(path)?;
-				match read_to_string(file, &path) {
+				match read_to_string(file, path) {
 					Ok(s) => s,
 					Err(e) => return Err(e),
 				}
 			},
 		};
 		// Deserialize, attempt merge if failed
-		match Self::from_string(&string) {
+		match Self::from_str(&string) {
 			Ok(s) => Ok(s),
 			Err(_) => {
 				warn!("State | Attempting merge...");
@@ -259,7 +258,7 @@ impl State {
 				Ok(o) => o,
 				Err(e) => { error!("State | Couldn't serialize default file: {}", e); return Err(TomlError::Serialize(e)) },
 		};
-		fs::write(&path, &string)?;
+		fs::write(path, &string)?;
 		info!("State | Write ... OK");
 		Ok(new)
 	}
@@ -280,7 +279,7 @@ impl State {
 		};
 		match fs::write(path, string) {
 			Ok(_) => { info!("State | Save ... OK"); Ok(()) },
-			Err(err) => { error!("State | Couldn't overwrite TOML file ... FAIL"); return Err(TomlError::Io(err)) },
+			Err(err) => { error!("State | Couldn't overwrite TOML file ... FAIL"); Err(TomlError::Io(err)) },
 		}
 	}
 
@@ -313,14 +312,12 @@ impl Node {
 	}
 
 	pub fn new_vec() -> Vec<(String, Self)> {
-		let mut vec = Vec::new();
-		vec.push(("Local Monero Node".to_string(), Self::localhost()));
-		vec
+		vec![("Local Monero Node".to_string(), Self::localhost())]
 	}
 
 	// Convert [String] to [Node] Vec
-	pub fn from_string_to_vec(string: &String) -> Result<Vec<(String, Self)>, TomlError> {
-		let nodes: toml::map::Map<String, toml::Value> = match toml::de::from_str(&string) {
+	pub fn from_str_to_vec(string: &str) -> Result<Vec<(String, Self)>, TomlError> {
+		let nodes: toml::map::Map<String, toml::Value> = match toml::de::from_str(string) {
 			Ok(map) => {
 				info!("Node | Parse ... OK");
 				map
@@ -345,7 +342,7 @@ impl Node {
 
 	// Convert [Vec<(String, Self)>] into [String]
 	// that can be written as a proper TOML file
-	pub fn to_string(vec: &Vec<(String, Self)>) -> Result<String, TomlError> {
+	pub fn to_string(vec: &[(String, Self)]) -> Result<String, TomlError> {
 		let mut toml = String::new();
 		for (key, value) in vec.iter() {
 			write!(
@@ -368,16 +365,16 @@ impl Node {
 	pub fn get(path: &PathBuf) -> Result<Vec<(String, Self)>, TomlError> {
 		// Read
 		let file = File::Node;
-		let string = match read_to_string(file, &path) {
+		let string = match read_to_string(file, path) {
 			Ok(string) => string,
 			// Create
 			_ => {
 				Self::create_new(path)?;
-				read_to_string(file, &path)?
+				read_to_string(file, path)?
 			},
 		};
 		// Deserialize, attempt merge if failed
-		Self::from_string_to_vec(&string)
+		Self::from_str_to_vec(&string)
 	}
 
 	// Completely overwrite current [node.toml]
@@ -386,13 +383,13 @@ impl Node {
 		info!("Node | Creating new default...");
 		let new = Self::new_vec();
 		let string = Self::to_string(&Self::new_vec())?;
-		fs::write(&path, &string)?;
+		fs::write(path, &string)?;
 		info!("Node | Write ... OK");
 		Ok(new)
 	}
 
 	// Save [Node] onto disk file [node.toml]
-	pub fn save(vec: &Vec<(String, Self)>, path: &PathBuf) -> Result<(), TomlError> {
+	pub fn save(vec: &[(String, Self)], path: &PathBuf) -> Result<(), TomlError> {
 		info!("Node | Saving to disk...");
 		let string = Self::to_string(vec)?;
 		match fs::write(path, string) {
@@ -428,13 +425,11 @@ impl Pool {
 	}
 
 	pub fn new_vec() -> Vec<(String, Self)> {
-		let mut vec = Vec::new();
-		vec.push(("Local P2Pool".to_string(), Self::p2pool()));
-		vec
+		vec![("Local P2Pool".to_string(), Self::p2pool())]
 	}
 
-	pub fn from_string_to_vec(string: &String) -> Result<Vec<(String, Self)>, TomlError> {
-		let pools: toml::map::Map<String, toml::Value> = match toml::de::from_str(&string) {
+	pub fn from_str_to_vec(string: &str) -> Result<Vec<(String, Self)>, TomlError> {
+		let pools: toml::map::Map<String, toml::Value> = match toml::de::from_str(string) {
 			Ok(map) => {
 				info!("Pool | Parse ... OK");
 				map
@@ -457,7 +452,7 @@ impl Pool {
 		Ok(vec)
 	}
 
-	pub fn to_string(vec: &Vec<(String, Self)>) -> Result<String, TomlError> {
+	pub fn to_string(vec: &[(String, Self)]) -> Result<String, TomlError> {
 		let mut toml = String::new();
 		for (key, value) in vec.iter() {
 			write!(
@@ -475,28 +470,28 @@ impl Pool {
 	pub fn get(path: &PathBuf) -> Result<Vec<(String, Self)>, TomlError> {
 		// Read
 		let file = File::Pool;
-		let string = match read_to_string(file, &path) {
+		let string = match read_to_string(file, path) {
 			Ok(string) => string,
 			// Create
 			_ => {
 				Self::create_new(path)?;
-				read_to_string(file, &path)?
+				read_to_string(file, path)?
 			},
 		};
 		// Deserialize
-		Self::from_string_to_vec(&string)
+		Self::from_str_to_vec(&string)
 	}
 
 	pub fn create_new(path: &PathBuf) -> Result<Vec<(String, Self)>, TomlError> {
 		info!("Pool | Creating new default...");
 		let new = Self::new_vec();
 		let string = Self::to_string(&Self::new_vec())?;
-		fs::write(&path, &string)?;
+		fs::write(path, &string)?;
 		info!("Pool | Write ... OK");
 		Ok(new)
 	}
 
-	pub fn save(vec: &Vec<(String, Self)>, path: &PathBuf) -> Result<(), TomlError> {
+	pub fn save(vec: &[(String, Self)], path: &PathBuf) -> Result<(), TomlError> {
 		info!("Pool | Saving to disk...");
 		let string = Self::to_string(vec)?;
 		match fs::write(path, string) {

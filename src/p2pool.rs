@@ -31,7 +31,7 @@ use regex::Regex;
 use log::*;
 
 impl P2pool {
-	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, og: &Arc<Mutex<State>>, online: bool, ping: &Arc<Mutex<Ping>>, regex: &Regexes, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, og: &Arc<Mutex<State>>, _online: bool, ping: &Arc<Mutex<Ping>>, regex: &Regexes, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 22.0;
 	//---------------------------------------------------------------------------------------------------- Console
 	ui.group(|ui| {
@@ -43,7 +43,7 @@ impl P2pool {
 	});
 
 	//---------------------------------------------------------------------------------------------------- Args
-	if self.simple == false {
+	if !self.simple {
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/10.0) - SPACE;
 			ui.style_mut().override_text_style = Some(Monospace);
@@ -65,7 +65,7 @@ impl P2pool {
 		if self.address.is_empty() {
 			text = format!("Monero Address [{}/95] ➖", len);
 			color = Color32::LIGHT_GRAY;
-		} else if self.address.len() == 95 && Regex::is_match(&regex.address, &self.address) && ! self.address.contains("0") && ! self.address.contains("O") && ! self.address.contains("l") {
+		} else if self.address.len() == 95 && Regex::is_match(&regex.address, &self.address) && ! self.address.contains('0') && ! self.address.contains('O') && ! self.address.contains('l') {
 			text = format!("Monero Address [{}/95] ✔", len);
 			color = Color32::from_rgb(100, 230, 100);
 		} else {
@@ -93,7 +93,7 @@ impl P2pool {
 		if self.auto_select {
 			let mut ping = ping.lock().unwrap();
 			// If we haven't auto_selected yet, auto-select and turn it off
-			if ping.pinged && ping.auto_selected == false {
+			if ping.pinged && !ping.auto_selected {
 				self.node = ping.fastest;
 				ping.auto_selected = true;
 			}
@@ -132,16 +132,14 @@ impl P2pool {
 		ui.horizontal(|ui| {
 		let width = (width/2.0)-4.0;
 		// [Select fastest node]
-		if ui.add_sized([width, height], Button::new("Select fastest node")).on_hover_text(P2POOL_SELECT_FASTEST).clicked() {
-			if ping.lock().unwrap().pinged {
-				self.node = ping.lock().unwrap().fastest;
-			}
-		}
+		if ui.add_sized([width, height], Button::new("Select fastest node")).on_hover_text(P2POOL_SELECT_FASTEST).clicked() && ping.lock().unwrap().pinged {
+  				self.node = ping.lock().unwrap().fastest;
+  			}
 
 		// [Ping Button]
 		ui.set_enabled(!ping.lock().unwrap().pinging);
 		if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
-			Ping::spawn_thread(&ping, &og);
+			Ping::spawn_thread(ping, og);
 		}});
 
 		ui.vertical(|ui| {
@@ -313,8 +311,7 @@ impl P2pool {
 				existing_index += 1;
 			}
 			ui.horizontal(|ui| {
-				let text;
-				if exists { text = LIST_SAVE } else { text = LIST_ADD }
+				let text = if exists { LIST_SAVE } else { LIST_ADD };
 				let text = format!("{}\n    Currently selected node: {}. {}\n    Current amount of nodes: {}/1000", text, self.selected_index+1, self.selected_name, node_vec_len);
 				// If the node already exists, show [Save] and mutate the already existing node
 				if exists {
@@ -362,7 +359,7 @@ impl P2pool {
 						}
 						_ => {
 							node_vec.remove(self.selected_index);
-							self.selected_index = self.selected_index-1;
+							self.selected_index -= 1;
 							new_name = node_vec[self.selected_index].0.clone();
 							new_node = node_vec[self.selected_index].1.clone();
 						}
@@ -398,8 +395,8 @@ impl P2pool {
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/4.0)-SPACE;
 			let height = height + 6.0;
-			if ui.add_sized([width, height], SelectableLabel::new(self.mini == false, "P2Pool Main")).on_hover_text(P2POOL_MAIN).clicked() { self.mini = false; }
-			if ui.add_sized([width, height], SelectableLabel::new(self.mini == true, "P2Pool Mini")).on_hover_text(P2POOL_MINI).clicked() { self.mini = true; }
+			if ui.add_sized([width, height], SelectableLabel::new(!self.mini, "P2Pool Main")).on_hover_text(P2POOL_MAIN).clicked() { self.mini = false; }
+			if ui.add_sized([width, height], SelectableLabel::new(self.mini, "P2Pool Mini")).on_hover_text(P2POOL_MINI).clicked() { self.mini = true; }
 		})});
 		// [Out/In Peers] + [Log Level]
 		ui.group(|ui| { ui.vertical(|ui| {

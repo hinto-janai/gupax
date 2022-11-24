@@ -20,7 +20,7 @@ use egui::{
 	TextStyle::Monospace,
 	Checkbox,ProgressBar,Spinner,Button,Label,Slider,
 	SelectableLabel,
-	RichText,Color32,
+	RichText,
 	Vec2,
 };
 use crate::constants::*;
@@ -29,7 +29,7 @@ use crate::update::*;
 use std::{
 	thread,
 	sync::{Arc,Mutex},
-	path::PathBuf,
+	path::Path,
 };
 use log::*;
 use serde::{Serialize,Deserialize};
@@ -75,7 +75,7 @@ pub enum Ratio {
 
 //---------------------------------------------------------------------------------------------------- Gupax
 impl Gupax {
-	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, state_path: &PathBuf, width: f32, height: f32, frame: &mut eframe::Frame, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, state_path: &Path, width: f32, height: f32, frame: &mut eframe::Frame, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
@@ -150,7 +150,7 @@ impl Gupax {
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
-				Self::spawn_file_window_thread(&file_window, FileType::P2pool);
+				Self::spawn_file_window_thread(file_window, FileType::P2pool);
 			}
 			ui.text_edit_singleline(&mut self.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
 		});
@@ -172,7 +172,7 @@ impl Gupax {
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
-				Self::spawn_file_window_thread(&file_window, FileType::Xmrig);
+				Self::spawn_file_window_thread(file_window, FileType::Xmrig);
 			}
 			ui.text_edit_singleline(&mut self.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
 		});
@@ -190,12 +190,12 @@ impl Gupax {
 				Ratio::None => (),
 				Ratio::Width => {
 					let width = self.selected_width as f64;
-					let height = self.selected_height as f64;
+					let _height = self.selected_height as f64;
 					let height = (width / 1.6).round();
 					self.selected_height = height as u16;
 				},
 				Ratio::Height => {
-					let width = self.selected_width as f64;
+					let _width = self.selected_width as f64;
 					let height = self.selected_height as f64;
 					let width = (height * 1.6).round();
 					self.selected_width = width as u16;

@@ -27,7 +27,6 @@ use egui::{
 	TextStyle,
 	Layout,Align,
 	FontId,Label,RichText,Stroke,Vec2,Button,SelectableLabel,
-	special_emojis::GITHUB,
 	Key,Modifiers,
 	CentralPanel,TopBottomPanel,
 };
@@ -307,7 +306,7 @@ impl Default for Tab {
 }
 
 //---------------------------------------------------------------------------------------------------- [ErrorState] struct
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorButtons {
 	YesNo,
 	StayQuit,
@@ -317,7 +316,7 @@ pub enum ErrorButtons {
 	Quit,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorFerris {
 	Happy,
 	Oops,
@@ -441,14 +440,13 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 fn init_logger(now: Instant) {
 	use env_logger::fmt::Color;
 	Builder::new().format(move |buf, record| {
-		let level;
 		let mut style = buf.style();
-		match record.level() {
-			Level::Error => { style.set_color(Color::Red); level = "ERROR" },
-			Level::Warn => { style.set_color(Color::Yellow); level = "WARN" },
-			Level::Info => { style.set_color(Color::White); level = "INFO" },
-			Level::Debug => { style.set_color(Color::Blue); level = "DEBUG" },
-			Level::Trace => { style.set_color(Color::Magenta); level = "TRACE" },
+		let level = match record.level() {
+			Level::Error => { style.set_color(Color::Red); "ERROR" },
+			Level::Warn => { style.set_color(Color::Yellow); "WARN" },
+			Level::Info => { style.set_color(Color::White); "INFO" },
+			Level::Debug => { style.set_color(Color::Blue); "DEBUG" },
+			Level::Trace => { style.set_color(Color::Magenta); "TRACE" },
 		};
 		writeln!(
 			buf,
@@ -594,7 +592,7 @@ fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 pub fn get_exe() -> Result<String, std::io::Error> {
 	match std::env::current_exe() {
 		Ok(path) => { Ok(path.display().to_string()) },
-		Err(err) => { error!("Couldn't get absolute Gupax PATH"); return Err(err) },
+		Err(err) => { error!("Couldn't get absolute Gupax PATH"); Err(err) },
 	}
 }
 
@@ -602,7 +600,7 @@ pub fn get_exe() -> Result<String, std::io::Error> {
 pub fn get_exe_dir() -> Result<String, std::io::Error> {
 	match std::env::current_exe() {
 		Ok(mut path) => { path.pop(); Ok(path.display().to_string()) },
-		Err(err) => { error!("Couldn't get exe basepath PATH"); return Err(err) },
+		Err(err) => { error!("Couldn't get exe basepath PATH"); Err(err) },
 	}
 }
 
@@ -613,7 +611,7 @@ pub fn clean_dir() -> Result<(), anyhow::Error> {
 	for entry in std::fs::read_dir(get_exe_dir()?)? {
 		let entry = entry?;
 		if ! entry.path().is_dir() { continue }
-		if Regex::is_match(&regex, entry.file_name().to_str().ok_or(anyhow::Error::msg("Basename failed"))?) {
+		if Regex::is_match(&regex, entry.file_name().to_str().ok_or_else(|| anyhow::Error::msg("Basename failed"))?) {
 			let path = entry.path();
 			match std::fs::remove_dir_all(&path) {
 				Ok(_) => info!("Remove [{}] ... OK", path.display()),
@@ -626,7 +624,7 @@ pub fn clean_dir() -> Result<(), anyhow::Error> {
 
 // Print disk files to console
 fn print_disk_file(path: &PathBuf) {
-	match std::fs::read_to_string(&path) {
+	match std::fs::read_to_string(path) {
 		Ok(string) => { print!("{}", string); exit(0); },
 		Err(e) => { error!("{}", e); exit(1); },
 	}
@@ -994,7 +992,7 @@ impl eframe::App for App {
 
 						ui.add_space(ui.available_height()/1.8);
 						ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui");
-						ui.hyperlink_to(format!("{}", "Made by hinto-janaiyo"), "https://gupax.io");
+						ui.hyperlink_to("Made by hinto-janaiyo".to_string(), "https://gupax.io");
 						ui.label("egui is licensed under MIT & Apache-2.0");
 						ui.label("Gupax, P2Pool, and XMRig are licensed under GPLv3");
 					});

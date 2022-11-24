@@ -25,7 +25,7 @@ pub struct Status {
 }
 
 impl Status {
-	pub fn show(app: &mut App, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(_app: &mut App, _width: f32, _height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	    let color = if ui.visuals().dark_mode {
 	        Color32::from_additive_luminance(196)
 	    } else {

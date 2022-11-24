@@ -25,7 +25,7 @@
 
 //---------------------------------------------------------------------------------------------------- Imports
 use anyhow::{anyhow,Error};
-use arti_client::{TorClient,TorClientConfig};
+use arti_client::{TorClient};
 use arti_hyper::*;
 use crate::constants::GUPAX_VERSION;
 //use crate::{Name::*,State};
@@ -64,21 +64,21 @@ use zip::ZipArchive;
 //   - XMRig separates the hash and signature
 //   - P2Pool hashes are in UPPERCASE
 
-const GUPAX_METADATA: &'static str = "https://api.github.com/repos/hinto-janaiyo/gupax/releases/latest";
-const P2POOL_METADATA: &'static str = "https://api.github.com/repos/SChernykh/p2pool/releases/latest";
-const XMRIG_METADATA: &'static str = "https://api.github.com/repos/xmrig/xmrig/releases/latest";
+const GUPAX_METADATA: &str = "https://api.github.com/repos/hinto-janaiyo/gupax/releases/latest";
+const P2POOL_METADATA: &str = "https://api.github.com/repos/SChernykh/p2pool/releases/latest";
+const XMRIG_METADATA: &str = "https://api.github.com/repos/xmrig/xmrig/releases/latest";
 
-const GUPAX_PREFIX: &'static str = "https://github.com/hinto-janaiyo/gupax/releases/download/";
-const P2POOL_PREFIX: &'static str = "https://github.com/SChernykh/p2pool/releases/download/";
-const XMRIG_PREFIX: &'static str = "https://github.com/xmrig/xmrig/releases/download/";
+const GUPAX_PREFIX: &str = "https://github.com/hinto-janaiyo/gupax/releases/download/";
+const P2POOL_PREFIX: &str = "https://github.com/SChernykh/p2pool/releases/download/";
+const XMRIG_PREFIX: &str = "https://github.com/xmrig/xmrig/releases/download/";
 
-const GUPAX_SUFFIX: &'static str = "/gupax-";
-const P2POOL_SUFFIX: &'static str = "/p2pool-";
-const XMRIG_SUFFIX: &'static str = "/xmrig-";
+const GUPAX_SUFFIX: &str = "/gupax-";
+const P2POOL_SUFFIX: &str = "/p2pool-";
+const XMRIG_SUFFIX: &str = "/xmrig-";
 
-const GUPAX_HASH: &'static str = "SHA256SUMS";
-const P2POOL_HASH: &'static str = "sha256sums.txt.asc";
-const XMRIG_HASH: &'static str = "SHA256SUMS";
+const GUPAX_HASH: &str = "SHA256SUMS";
+const P2POOL_HASH: &str = "sha256sums.txt.asc";
+const XMRIG_HASH: &str = "SHA256SUMS";
 
 #[cfg(target_os = "windows")]
 const GUPAX_EXTENSION: &'static str = "-windows-x64-standalone.zip";
@@ -95,32 +95,32 @@ const P2POOL_EXTENSION: &'static str = "-macos-x64.tar.gz";
 const XMRIG_EXTENSION: &'static str = "-macos-x64.tar.gz";
 
 #[cfg(target_os = "linux")]
-const GUPAX_EXTENSION: &'static str = "-linux-x64-standalone.tar.gz";
+const GUPAX_EXTENSION: &str = "-linux-x64-standalone.tar.gz";
 #[cfg(target_os = "linux")]
-const P2POOL_EXTENSION: &'static str = "-linux-x64.tar.gz";
+const P2POOL_EXTENSION: &str = "-linux-x64.tar.gz";
 #[cfg(target_os = "linux")]
-const XMRIG_EXTENSION: &'static str = "-linux-static-x64.tar.gz";
+const XMRIG_EXTENSION: &str = "-linux-static-x64.tar.gz";
 
 #[cfg(target_os = "windows")]
 const GUPAX_BINARY: &'static str = "Gupax.exe";
 #[cfg(target_os = "macos")]
 const GUPAX_BINARY: &'static str = "Gupax";
 #[cfg(target_os = "linux")]
-const GUPAX_BINARY: &'static str = "gupax";
+const GUPAX_BINARY: &str = "gupax";
 
 #[cfg(target_os = "windows")]
 const P2POOL_BINARY: &'static str = "p2pool.exe";
 #[cfg(target_family = "unix")]
-const P2POOL_BINARY: &'static str = "p2pool";
+const P2POOL_BINARY: &str = "p2pool";
 
 #[cfg(target_os = "windows")]
 const XMRIG_BINARY: &'static str = "xmrig.exe";
 #[cfg(target_family = "unix")]
-const XMRIG_BINARY: &'static str = "xmrig";
+const XMRIG_BINARY: &str = "xmrig";
 
 // Some fake Curl/Wget user-agents because GitHub API requires one and a Tor browser
 // user-agent might be fingerprintable without all the associated headers.
-const FAKE_USER_AGENT: [&'static str; 50] = [
+const FAKE_USER_AGENT: [&str; 50] = [
 	"Wget/1.16.3","Wget/1.17","Wget/1.17.1","Wget/1.18","Wget/1.18","Wget/1.19","Wget/1.19.1","Wget/1.19.2","Wget/1.19.3","Wget/1.19.4",
 	"Wget/1.19.5","Wget/1.20","Wget/1.20.1","Wget/1.20.2","Wget/1.20.3","Wget/1.21","Wget/1.21.1","Wget/1.21.2","Wget/1.21.3",
 	"curl/7.64.1","curl/7.65.0","curl/7.65.1","curl/7.65.2","curl/7.65.3","curl/7.66.0","curl/7.67.0","curl/7.68.0","curl/7.69.0",
@@ -129,28 +129,28 @@ const FAKE_USER_AGENT: [&'static str; 50] = [
 	"curl/7.83.0","curl/7.83.1","curl/7.84.0","curl/7.85.0",
 ];
 
-const MSG_NONE: &'static str = "No update in progress";
-const MSG_START: &'static str = "Starting update";
-const MSG_TMP: &'static str = "Creating temporary directory";
-const MSG_TOR: &'static str = "Creating Tor+HTTPS client";
-const MSG_HTTPS: &'static str = "Creating HTTPS client";
-const MSG_METADATA: &'static str = "Fetching package metadata";
-const MSG_METADATA_RETRY: &'static str = "Fetching package metadata failed, attempt";
-const MSG_COMPARE: &'static str = "Compare package versions";
-const MSG_UP_TO_DATE: &'static str = "All packages already up-to-date";
-const MSG_DOWNLOAD: &'static str = "Downloading packages";
-const MSG_DOWNLOAD_RETRY: &'static str = "Downloading packages failed, attempt";
-const MSG_EXTRACT: &'static str = "Extracting packages";
-const MSG_UPGRADE: &'static str = "Upgrading packages";
-pub const MSG_SUCCESS: &'static str = "Update successful";
-pub const MSG_FAILED: &'static str = "Update failed";
+const MSG_NONE: &str = "No update in progress";
+const MSG_START: &str = "Starting update";
+const MSG_TMP: &str = "Creating temporary directory";
+const MSG_TOR: &str = "Creating Tor+HTTPS client";
+const MSG_HTTPS: &str = "Creating HTTPS client";
+const MSG_METADATA: &str = "Fetching package metadata";
+const MSG_METADATA_RETRY: &str = "Fetching package metadata failed, attempt";
+const MSG_COMPARE: &str = "Compare package versions";
+const MSG_UP_TO_DATE: &str = "All packages already up-to-date";
+const MSG_DOWNLOAD: &str = "Downloading packages";
+const MSG_DOWNLOAD_RETRY: &str = "Downloading packages failed, attempt";
+const MSG_EXTRACT: &str = "Extracting packages";
+const MSG_UPGRADE: &str = "Upgrading packages";
+pub const MSG_SUCCESS: &str = "Update successful";
+pub const MSG_FAILED: &str = "Update failed";
 
-const INIT: &'static str = "------------------- Init -------------------";
-const METADATA: &'static str = "----------------- Metadata -----------------";
-const COMPARE: &'static str = "----------------- Compare ------------------";
-const DOWNLOAD: &'static str = "----------------- Download -----------------";
-const EXTRACT: &'static str = "----------------- Extract ------------------";
-const UPGRADE: &'static str = "----------------- Upgrade ------------------";
+const INIT: &str = "------------------- Init -------------------";
+const METADATA: &str = "----------------- Metadata -----------------";
+const COMPARE: &str = "----------------- Compare ------------------";
+const DOWNLOAD: &str = "----------------- Download -----------------";
+const EXTRACT: &str = "----------------- Extract ------------------";
+const UPGRADE: &str = "----------------- Upgrade ------------------";
 
 // These two are sequential and not async so no need for a constant message.
 // The package in question will be known at runtime, so that will be printed.
@@ -239,12 +239,12 @@ impl Update {
 			let tls = tls_api_native_tls::TlsConnector::builder()?.build()?;
 		    let connector = ArtiHttpConnector::new(tor, tls);
 			let client = ClientEnum::Tor(Client::builder().build(connector));
-			return Ok(client)
+			Ok(client)
 		} else {
 			let mut connector = hyper_tls::HttpsConnector::new();
 			connector.https_only(true);
 			let client = ClientEnum::Https(Client::builder().build(connector));
-			return Ok(client)
+			Ok(client)
 		}
 	}
 
@@ -253,14 +253,14 @@ impl Update {
 	// actually contains the code. This is so that everytime
 	// an update needs to happen (Gupax tab, auto-update), the
 	// code only needs to be edited once, here.
-	pub fn spawn_thread(og: &Arc<Mutex<State>>, update: &Arc<Mutex<Update>>, state_ver: &Arc<Mutex<Version>>, state_path: &PathBuf) {
+	pub fn spawn_thread(og: &Arc<Mutex<State>>, update: &Arc<Mutex<Update>>, state_ver: &Arc<Mutex<Version>>, state_path: &Path) {
 		update.lock().unwrap().path_p2pool = og.lock().unwrap().gupax.absolute_p2pool_path.display().to_string();
 		update.lock().unwrap().path_xmrig = og.lock().unwrap().gupax.absolute_xmrig_path.display().to_string();
 		update.lock().unwrap().tor = og.lock().unwrap().gupax.update_via_tor;
-		let og = Arc::clone(&og);
-		let state_ver = Arc::clone(&state_ver);
-		let update = Arc::clone(&update);
-		let state_path = state_path.clone();
+		let og = Arc::clone(og);
+		let state_ver = Arc::clone(state_ver);
+		let update = Arc::clone(update);
+		let state_path = state_path.to_path_buf();
 		std::thread::spawn(move|| {
 			info!("Spawning update thread...");
 			match Update::start(update.clone(), og.clone(), state_ver.clone()) {
@@ -273,7 +273,7 @@ impl Update {
 						Err(e) => {
 							warn!("Update | Saving state ... FAIL ... {}", e);
 							og.lock().unwrap().version = original_version;
-							*update.lock().unwrap().msg.lock().unwrap() = format!("Saving new versions into state failed");
+							*update.lock().unwrap().msg.lock().unwrap() = "Saving new versions into state failed".to_string();
 						},
 					};
 				}
@@ -294,7 +294,7 @@ impl Update {
 	// 4. loop over vec, download links
 	// 5. extract, upgrade
 	#[tokio::main]
-	pub async fn start(update: Arc<Mutex<Self>>, og: Arc<Mutex<State>>, state_ver: Arc<Mutex<Version>>) -> Result<(), anyhow::Error> {
+	pub async fn start(update: Arc<Mutex<Self>>, _og: Arc<Mutex<State>>, state_ver: Arc<Mutex<Version>>) -> Result<(), anyhow::Error> {
 		//---------------------------------------------------------------------------------------------------- Init
 		*update.lock().unwrap().updating.lock().unwrap() = true;
 		// Set timer
@@ -352,7 +352,7 @@ impl Update {
 		// function itself but for some reason, it was getting skipped over,
 		// so the [new_ver] check is now here, in the outer scope.
 		for i in 1..=3 {
-			if i > 1 { *update.lock().unwrap().msg.lock().unwrap() = format!("{} [{}/3]", MSG_METADATA_RETRY.to_string(), i); }
+			if i > 1 { *update.lock().unwrap().msg.lock().unwrap() = format!("{} [{}/3]", MSG_METADATA_RETRY, i); }
 			let mut handles: Vec<JoinHandle<Result<(), anyhow::Error>>> = vec![];
 			for pkg in vec.iter() {
 				// Clone data before sending to async
@@ -373,10 +373,7 @@ impl Update {
 				// Two [??] will send the error.
 				// We don't actually want to return the error here since we
 				// prefer looping and retrying over immediately erroring out.
-				match handle.await? {
-					Err(e) => warn!("Update | {}", e),
-					_ => (),
-				}
+				if let Err(e) = handle.await? { warn!("Update | {}", e) }
 			}
 			// Check for empty version
 			let mut indexes = vec![];
@@ -470,22 +467,20 @@ impl Update {
 		info!("Update | {}", DOWNLOAD);
 		let mut vec4 = vec![];
 		for i in 1..=3 {
-			if i > 1 { *update.lock().unwrap().msg.lock().unwrap() = format!("{} [{}/3]{}", MSG_DOWNLOAD_RETRY.to_string(), i, new_pkgs); }
+			if i > 1 { *update.lock().unwrap().msg.lock().unwrap() = format!("{} [{}/3]{}", MSG_DOWNLOAD_RETRY, i, new_pkgs); }
 			let mut handles: Vec<JoinHandle<Result<(), anyhow::Error>>> = vec![];
 			for pkg in vec3.iter() {
 				// Clone data before async
 				let bytes = Arc::clone(&pkg.bytes);
 				let client = client.clone();
 				let version = pkg.new_ver.lock().unwrap();
-				let link;
 				// Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
 				// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64-standalone
 				// XMRig doesn't have a [v], so slice it out
-				if pkg.name == Name::Xmrig {
-					link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version[1..] + &pkg.link_extension;
-				} else {
-					link = pkg.link_prefix.to_string() + &version + &pkg.link_suffix + &version + &pkg.link_extension;
-				}
+				let link = match pkg.name {
+					Name::Xmrig => pkg.link_prefix.to_string() + &version + pkg.link_suffix + &version[1..] + pkg.link_extension,
+					_ => pkg.link_prefix.to_string() + &version + pkg.link_suffix + &version + pkg.link_extension,
+				};
 				info!("Update | {} ... {}", pkg.name, link);
 				let handle: JoinHandle<Result<(), anyhow::Error>> = tokio::spawn(async move {
 					match client {
@@ -497,10 +492,7 @@ impl Update {
 			}
 			// Handle await
 			for handle in handles {
-				match handle.await? {
-					Err(e) => warn!("Update | {}", e),
-					_ => (),
-				}
+				if let Err(e) = handle.await? { warn!("Update | {}", e) }
 			}
 			// Check for empty bytes
 			let mut indexes = vec![];
@@ -534,11 +526,10 @@ impl Update {
 		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_EXTRACT, new_pkgs);
 		info!("Update | {}", EXTRACT);
 		for pkg in vec4.iter() {
-			let tmp;
-			match pkg.name {
-				Name::Gupax => tmp = tmp_dir.to_owned() + GUPAX_BINARY,
-				_ => tmp = tmp_dir.to_owned() + &pkg.name.to_string(),
-			}
+			let tmp = match pkg.name {
+				Name::Gupax => tmp_dir.to_owned() + GUPAX_BINARY,
+				_ => tmp_dir.to_owned() + &pkg.name.to_string(),
+			};
 			#[cfg(target_os = "windows")]
 			ZipArchive::extract(&mut ZipArchive::new(std::io::Cursor::new(pkg.bytes.lock().unwrap().as_ref()))?, tmp)?;
 			#[cfg(target_family = "unix")]
@@ -563,7 +554,7 @@ impl Update {
 			let entry = entry?.clone();
 			// If not a file, continue
 			if ! entry.file_type().is_file() { continue }
-			let basename = entry.file_name().to_str().ok_or(anyhow::Error::msg("WalkDir basename failed"))?;
+			let basename = entry.file_name().to_str().ok_or_else(|| anyhow::Error::msg("WalkDir basename failed"))?;
 			match basename {
 				GUPAX_BINARY|P2POOL_BINARY|XMRIG_BINARY => {
 					found = true;
@@ -595,7 +586,7 @@ impl Update {
 					}
 					info!("Update | Moving new [{}] -> [{}]", entry.path().display(), path.display());
 					if name == P2pool || name == Xmrig {
-						std::fs::create_dir_all(std::path::Path::new(&path).parent().ok_or(anyhow::Error::msg(format!("{} path failed", name)))?)?;
+						std::fs::create_dir_all(std::path::Path::new(&path).parent().ok_or_else(|| anyhow::Error::msg(format!("{} path failed", name)))?)?;
 					}
 					std::fs::rename(entry.path(), path)?;
 					match name {
@@ -608,7 +599,7 @@ impl Update {
 				_ => (),
 			}
 		}
-		if found == false { return Err(anyhow::Error::msg("Fatal error: Package binary could not be found")) }
+		if !found { return Err(anyhow::Error::msg("Fatal error: Package binary could not be found")) }
 
 		// Remove tmp dir (on Unix)
 		#[cfg(target_family = "unix")]
@@ -706,7 +697,7 @@ impl Pkg {
 		let mut response = client.request(request).await?;
 		let body = hyper::body::to_bytes(response.body_mut()).await?;
 		let body: TagName = serde_json::from_slice(&body)?;
-		*new_ver.lock().unwrap() = body.tag_name.clone();
+		*new_ver.lock().unwrap() = body.tag_name;
 		Ok(())
 	}
 
@@ -730,7 +721,7 @@ impl Pkg {
 
 	// Take in a [Name] and [Vec] of [Pkg]s, find
 	// that [Name]'s corresponding new version.
-	fn get_new_pkg_version(name: Name, vec: &Vec<&Pkg>) -> Result<String, Error> {
+	fn get_new_pkg_version(name: Name, vec: &[&Pkg]) -> Result<String, Error> {
 		for pkg in vec.iter() {
 			if pkg.name == name {
 				return Ok(pkg.new_ver.lock().unwrap().to_string())
