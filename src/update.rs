@@ -27,10 +27,12 @@
 use anyhow::{anyhow,Error};
 use arti_client::{TorClient};
 use arti_hyper::*;
-use crate::constants::GUPAX_VERSION;
-//use crate::{Name::*,State};
-use crate::disk::*;
-use crate::update::Name::*;
+use crate::{
+	constants::GUPAX_VERSION,
+	disk::*,
+	update::Name::*,
+	ErrorState,ErrorFerris,ErrorButtons,
+};
 use hyper::{
 	Client,Body,Request,
 	header::{HeaderValue,LOCATION},
@@ -81,18 +83,18 @@ const P2POOL_HASH: &str = "sha256sums.txt.asc";
 const XMRIG_HASH: &str = "SHA256SUMS";
 
 #[cfg(target_os = "windows")]
-const GUPAX_EXTENSION: &'static str = "-windows-x64-standalone.zip";
+const GUPAX_EXTENSION: &str = "-windows-x64-standalone.zip";
 #[cfg(target_os = "windows")]
-const P2POOL_EXTENSION: &'static str = "-windows-x64.zip";
+const P2POOL_EXTENSION: &str = "-windows-x64.zip";
 #[cfg(target_os = "windows")]
-const XMRIG_EXTENSION: &'static str = "-msvc-win64.zip";
+const XMRIG_EXTENSION: &str = "-msvc-win64.zip";
 
 #[cfg(target_os = "macos")]
-const GUPAX_EXTENSION: &'static str = "-macos-x64-standalone.tar.gz";
+const GUPAX_EXTENSION: &str = "-macos-x64-standalone.tar.gz";
 #[cfg(target_os = "macos")]
-const P2POOL_EXTENSION: &'static str = "-macos-x64.tar.gz";
+const P2POOL_EXTENSION: &str = "-macos-x64.tar.gz";
 #[cfg(target_os = "macos")]
-const XMRIG_EXTENSION: &'static str = "-macos-x64.tar.gz";
+const XMRIG_EXTENSION: &str = "-macos-x64.tar.gz";
 
 #[cfg(target_os = "linux")]
 const GUPAX_EXTENSION: &str = "-linux-x64-standalone.tar.gz";
@@ -102,21 +104,31 @@ const P2POOL_EXTENSION: &str = "-linux-x64.tar.gz";
 const XMRIG_EXTENSION: &str = "-linux-static-x64.tar.gz";
 
 #[cfg(target_os = "windows")]
-const GUPAX_BINARY: &'static str = "Gupax.exe";
+const GUPAX_BINARY: &str = "Gupax.exe";
 #[cfg(target_os = "macos")]
-const GUPAX_BINARY: &'static str = "Gupax";
+const GUPAX_BINARY: &str = "Gupax";
 #[cfg(target_os = "linux")]
 const GUPAX_BINARY: &str = "gupax";
 
 #[cfg(target_os = "windows")]
-const P2POOL_BINARY: &'static str = "p2pool.exe";
+const P2POOL_BINARY: &str = "p2pool.exe";
 #[cfg(target_family = "unix")]
 const P2POOL_BINARY: &str = "p2pool";
 
 #[cfg(target_os = "windows")]
-const XMRIG_BINARY: &'static str = "xmrig.exe";
+const XMRIG_BINARY: &str = "xmrig.exe";
 #[cfg(target_family = "unix")]
 const XMRIG_BINARY: &str = "xmrig";
+
+#[cfg(target_os = "windows")]
+const ACCEPTABLE_XMRIG: [&str; 4] = ["XMRIG.exe", "XMRig.exe", "Xmrig.exe", "xmrig.exe"];
+#[cfg(target_family = "unix")]
+const ACCEPTABLE_XMRIG: [&str; 4] = ["XMRIG", "XMRig", "Xmrig", "xmrig"];
+
+#[cfg(target_os = "windows")]
+const ACCEPTABLE_P2POOL: [&str; 4] = ["P2POOL.exe", "P2Pool.exe", "P2pool.exe", "p2pool.exe"];
+#[cfg(target_family = "unix")]
+const ACCEPTABLE_P2POOL: [&str; 4] = ["P2POOL", "P2Pool", "P2pool", "p2pool"];
 
 // Some fake Curl/Wget user-agents because GitHub API requires one and a Tor browser
 // user-agent might be fingerprintable without all the associated headers.
@@ -253,14 +265,70 @@ impl Update {
 	// actually contains the code. This is so that everytime
 	// an update needs to happen (Gupax tab, auto-update), the
 	// code only needs to be edited once, here.
-	pub fn spawn_thread(og: &Arc<Mutex<State>>, update: &Arc<Mutex<Update>>, state_ver: &Arc<Mutex<Version>>, state_path: &Path) {
-		update.lock().unwrap().path_p2pool = og.lock().unwrap().gupax.absolute_p2pool_path.display().to_string();
-		update.lock().unwrap().path_xmrig = og.lock().unwrap().gupax.absolute_xmrig_path.display().to_string();
-		update.lock().unwrap().tor = og.lock().unwrap().gupax.update_via_tor;
+	pub fn spawn_thread(og: &Arc<Mutex<State>>, gupax: &crate::disk::Gupax, state_path: &Path, update: &Arc<Mutex<Update>>, error_state: &mut ErrorState) {
+		// Check P2Pool path for safety
+		// Attempt relative to absolute path
+		let p2pool_path = match into_absolute_path(gupax.p2pool_path.clone()) {
+			Ok(p) => p,
+			Err(e) => { error_state.set("Provided P2Pool path could not be turned into an absolute path", ErrorFerris::Error, ErrorButtons::Okay); return; },
+		};
+		// Attempt to get basename
+		let file = match p2pool_path.file_name() {
+			Some(p) => {
+				// Attempt to turn into str
+				match p.to_str() {
+					Some(p) => p,
+					None => { error_state.set("Provided P2Pool path could not be turned into a UTF-8 string (are you using non-English characters?)", ErrorFerris::Error, ErrorButtons::Okay); return; },
+				}
+			},
+			None => { error_state.set("Provided P2Pool path could not be found", ErrorFerris::Error, ErrorButtons::Okay); return; },
+		};
+		// If it doesn't look like [P2Pool], its probably a bad move
+		// to overwrite it with an update, so set an error.
+		// Doesnt seem like you can [match] on array indexes
+		// so that explains the ridiculous if/else.
+		if file == ACCEPTABLE_P2POOL[0] || file == ACCEPTABLE_P2POOL[1] || file == ACCEPTABLE_P2POOL[2] || file == ACCEPTABLE_P2POOL[3] {
+			info!("Update | Using P2Pool path: [{}]", p2pool_path.display());
+		} else {
+			warn!("Update | Aborting update, incorrect P2Pool path: [{}]", file);
+			let text = format!("Provided P2Pool path seems incorrect. Not starting update for safety.\nTry one of these: {:?}", ACCEPTABLE_P2POOL);
+			error_state.set(text, ErrorFerris::Error, ErrorButtons::Okay);
+			return;
+		}
+
+		// Check XMRig path for safety
+		let xmrig_path = match into_absolute_path(gupax.xmrig_path.clone()) {
+			Ok(p) => p,
+			Err(e) => { error_state.set("Provided XMRig path could not be turned into an absolute path", ErrorFerris::Error, ErrorButtons::Okay); return; },
+		};
+		let file = match xmrig_path.file_name() {
+			Some(p) => {
+				// Attempt to turn into str
+				match p.to_str() {
+					Some(p) => p,
+					None => { error_state.set("Provided XMRig path could not be turned into a UTF-8 string (are you using non-English characters?)", ErrorFerris::Error, ErrorButtons::Okay); return; },
+				}
+			},
+			None => { error_state.set("Provided XMRig path could not be found", ErrorFerris::Error, ErrorButtons::Okay); return; },
+		};
+		if file == ACCEPTABLE_XMRIG[0] || file == ACCEPTABLE_XMRIG[1] || file == ACCEPTABLE_XMRIG[2] || file == ACCEPTABLE_XMRIG[3] {
+			info!("Update | Using XMRig path: [{}]", xmrig_path.display());
+		} else {
+			warn!("Update | Aborting update, incorrect XMRig path: [{}]", file);
+			let text = format!("Provided XMRig path seems incorrect. Not starting update for safety.\nTry one of these: {:?}", ACCEPTABLE_XMRIG);
+			error_state.set(text, ErrorFerris::Error, ErrorButtons::Okay);
+			return;
+		}
+
+		update.lock().unwrap().path_p2pool = p2pool_path.display().to_string();
+		update.lock().unwrap().path_xmrig = xmrig_path.display().to_string();
+		update.lock().unwrap().tor = gupax.update_via_tor;
+
+		// Clone before thread spawn
 		let og = Arc::clone(og);
-		let state_ver = Arc::clone(state_ver);
-		let update = Arc::clone(update);
+		let state_ver = Arc::clone(&og.lock().unwrap().version);
 		let state_path = state_path.to_path_buf();
+		let update = Arc::clone(update);
 		std::thread::spawn(move|| {
 			info!("Spawning update thread...");
 			match Update::start(update.clone(), og.clone(), state_ver.clone()) {

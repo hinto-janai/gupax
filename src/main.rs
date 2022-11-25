@@ -479,7 +479,7 @@ fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	options
 }
 
-fn init_auto(app: &App) {
+fn init_auto(app: &mut App) {
 	// Return early if [--no-startup] was not passed
 	if app.no_startup {
 		info!("[--no-startup] flag passed, skipping init_auto()...");
@@ -493,7 +493,7 @@ fn init_auto(app: &App) {
 
 	// [Auto-Update]
 	if app.state.gupax.auto_update {
-		Update::spawn_thread(&app.og, &app.update, &app.state.version, &app.state_path);
+		Update::spawn_thread(&app.og, &app.state.gupax, &app.state_path, &app.update, &mut app.error_state);
 	} else {
 		info!("Skipping auto-update...");
 	}
@@ -636,7 +636,7 @@ fn main() {
 	init_logger(now);
 	let mut app = App::new();
 	app.now = now;
-	init_auto(&app);
+	init_auto(&mut app);
 	let initial_window_size = match app.state.gupax.simple {
 		true  => Some(Vec2::new(app.state.gupax.selected_width as f32, app.state.gupax.selected_height as f32)),
 		false => Some(Vec2::new(APP_DEFAULT_WIDTH, APP_DEFAULT_HEIGHT)),
@@ -1001,7 +1001,7 @@ impl eframe::App for App {
 					Status::show(self, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, &self.og, &self.state.version, &self.update, &self.file_window, &self.state_path, self.width, self.height, frame, ctx, ui);
+					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, self.width, self.height, frame, ctx, ui);
 				}
 				Tab::P2pool => {
 					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, self.p2pool, &self.ping, &self.regex, self.width, self.height, ctx, ui);

@@ -23,9 +23,12 @@ use egui::{
 	RichText,
 	Vec2,
 };
-use crate::constants::*;
-use crate::disk::{Gupax,Version};
-use crate::update::*;
+use crate::{
+	constants::*,
+	disk::{Gupax,Version},
+	update::*,
+	ErrorState,ErrorFerris,ErrorButtons,
+};
 use std::{
 	thread,
 	sync::{Arc,Mutex},
@@ -75,7 +78,7 @@ pub enum Ratio {
 
 //---------------------------------------------------------------------------------------------------- Gupax
 impl Gupax {
-	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_ver: &Arc<Mutex<Version>>, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, state_path: &Path, width: f32, height: f32, frame: &mut eframe::Frame, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_path: &Path, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, error_state: &mut ErrorState, width: f32, height: f32, frame: &mut eframe::Frame, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
@@ -88,7 +91,7 @@ impl Gupax {
 				ui.vertical(|ui| {
 					ui.set_enabled(!updating);
 					if ui.add_sized([width, height], Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
-						Update::spawn_thread(og, update, state_ver, state_path);
+						Update::spawn_thread(og, &self, state_path, update, error_state);
 					}
 				});
 				ui.vertical(|ui| {
