@@ -341,7 +341,7 @@ impl Xmrig {
 			ui.horizontal(|ui| {
 				let text;
 				let color;
-				let len = self.port.len();
+				let len = self.api_port.len();
 				if self.api_port.is_empty() {
 					text = format!("HTTP API Port [  {}/5  ]➖", len);
 					color = LIGHT_GRAY;
@@ -350,7 +350,7 @@ impl Xmrig {
 					text = format!("HTTP API Port [  {}/5  ]✔", len);
 					color = GREEN;
 				} else {
-					text = format!("  Port [  {}/5  ]❌", len);
+					text = format!("HTTP API Port [  {}/5  ]❌", len);
 					color = RED;
 					incorrect_input = true;
 				}
@@ -367,11 +367,11 @@ impl Xmrig {
 			ui.horizontal(|ui| {
 				let width = (ui.available_width()/2.0)-11.0;
 				let height = text_edit*2.0;
-				let mut style = (*ctx.style()).clone();
-				style.spacing.icon_width_inner = width / 8.0;
-				style.spacing.icon_width = width / 6.0;
-				style.spacing.icon_spacing = 20.0;
-				ctx.set_style(style);
+//				let mut style = (*ctx.style()).clone();
+//				style.spacing.icon_width_inner = width / 8.0;
+//				style.spacing.icon_width = width / 6.0;
+//				style.spacing.icon_spacing = 20.0;
+//				ctx.set_style(style);
 				ui.add_sized([width, height], Checkbox::new(&mut self.tls, "TLS Connection")).on_hover_text(XMRIG_TLS);
 				ui.separator();
 				ui.add_sized([width, height], Checkbox::new(&mut self.keepalive, "Keepalive")).on_hover_text(XMRIG_KEEPALIVE);

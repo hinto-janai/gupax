@@ -113,11 +113,11 @@ impl Gupax {
 			ui.group(|ui| {
 					let width = (width - SPACE*7.5)/4.0;
 					let height = height/8.0;
-					let mut style = (*ctx.style()).clone();
-					style.spacing.icon_width_inner = width / 8.0;
-					style.spacing.icon_width = width / 6.0;
-					style.spacing.icon_spacing = 20.0;
-					ctx.set_style(style);
+//					let mut style = (*ctx.style()).clone();
+//					style.spacing.icon_width_inner = width / 8.0;
+//					style.spacing.icon_width = width / 6.0;
+//					style.spacing.icon_spacing = 20.0;
+//					ctx.set_style(style);
 					ui.add_sized([width, height], Checkbox::new(&mut self.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
 					ui.separator();
 					ui.add_sized([width, height], Checkbox::new(&mut self.update_via_tor, "Update via Tor")).on_hover_text(GUPAX_UPDATE_VIA_TOR);

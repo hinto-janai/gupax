@@ -71,6 +71,12 @@ pub struct App {
 	tab: Tab, // What tab are we on?
 	width: f32, // Top-level width
 	height: f32, // Top-level height
+	// This is a one time trigger so [init_text_styles()] isn't
+	// called 60x a second when resizing the window. Instead,
+	// it only gets called if this bool is true and the user
+	// is hovering over egui (ctx.is_pointer_over_area()).
+	must_resize: bool,
+	first_frame: bool, // Is this the very first frame?
 	// State
 	og: Arc<Mutex<State>>, // og = Old state to compare against
 	state: State, // state = Working state (current settings)
@@ -127,6 +133,8 @@ impl App {
 			ping: Arc::new(Mutex::new(Ping::new())),
 			width: APP_DEFAULT_WIDTH,
 			height: APP_DEFAULT_HEIGHT,
+			must_resize: false,
+			first_frame: true,
 			og: Arc::new(Mutex::new(State::new())),
 			state: State::new(),
 			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
@@ -420,22 +428,13 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 		(Name("MonospaceSmall".into()), FontId::new(scale/2.5, egui::FontFamily::Monospace)),
 		(Name("MonospaceLarge".into()), FontId::new(scale/1.5, egui::FontFamily::Monospace)),
 	].into();
-//	style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
-//	style.spacing.slider_width = scale;
-//	style.spacing.text_edit_width = scale;
-//	style.spacing.button_padding = Vec2::new(scale/2.0, scale/2.0);
+	style.spacing.icon_width_inner = width / 35.0;
+	style.spacing.icon_width = width / 25.0;
+	style.spacing.icon_spacing = 20.0;
 	ctx.set_style(style);
 	ctx.set_pixels_per_point(1.0);
 	ctx.request_repaint();
 }
-
-//fn init_color(ctx: &egui::Context) {
-//	let mut style = (*ctx.style()).clone();
-//	style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
-//	style.visuals.selection.bg_fill = Color32::from_rgb(255, 125, 50);
-//	style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
-//	ctx.set_style(style);
-//}
 
 fn init_logger(now: Instant) {
 	use env_logger::fmt::Color;
@@ -508,6 +507,7 @@ fn init_auto(app: &mut App) {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- Reset functions
 fn reset_state(path: &PathBuf) -> Result<(), TomlError> {
 	match State::create_new(path) {
 		Ok(_)  => { info!("Resetting [state.toml] ... OK"); Ok(()) },
@@ -676,15 +676,28 @@ impl eframe::App for App {
 		// *-------*
 		// | DEBUG |
 		// *-------*
-//		crate::node::ping();
-//		std::process::exit(0);
-//		init_color(ctx);
 
 		// This sets the top level Ui dimensions.
 		// Used as a reference for other uis.
-		CentralPanel::default().show(ctx, |ui| { self.width = ui.available_width(); self.height = ui.available_height(); });
-		// This sets fonts globally depending on the width.
-		init_text_styles(ctx, self.width);
+		CentralPanel::default().show(ctx, |ui| {
+			let available_width = ui.available_width();
+			if self.width != available_width {
+				self.width = available_width;
+				self.must_resize = true;
+			};
+			self.height = ui.available_height();
+		});
+		// This resizes fonts/buttons/etc globally depending on the width.
+		// This is separate from the [self.width != available_width] logic above
+		// because placing [init_text_styles()] above would mean calling it 60x a second
+		// while the user was readjusting the frame. It's a pretty heavy operation and looks
+		// buggy when calling it that many times. Looking for a [must_resize] in addtion to
+		// checking if the user is hovering over the app means that we only have call it once.
+		if self.must_resize && ctx.is_pointer_over_area(){
+			info!("App | Resizing frame to match new internal resolution: [{}x{}]", self.width, self.height);
+			init_text_styles(ctx, self.width);
+			self.must_resize = false;
+		}
 
 		// If [F11] was pressed, reverse [fullscreen] bool
         if ctx.input_mut().consume_key(Modifiers::NONE, Key::F11) {

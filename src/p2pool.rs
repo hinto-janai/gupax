@@ -166,11 +166,11 @@ impl P2pool {
 		ui.horizontal(|ui| {
 			let width = (width/2.0)-(SPACE*1.75);
 			// [Auto-node] + [Auto-select]
-			let mut style = (*ctx.style()).clone();
-			style.spacing.icon_width_inner = width / 16.0;
-			style.spacing.icon_width = width / 6.0;
-			style.spacing.icon_spacing = 20.0;
-			ctx.set_style(style);
+//			let mut style = (*ctx.style()).clone();
+//			style.spacing.icon_width_inner = width / 16.0;
+//			style.spacing.icon_width = width / 6.0;
+//			style.spacing.icon_spacing = 20.0;
+//			ctx.set_style(style);
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_select, "Auto-select")).on_hover_text(P2POOL_AUTO_SELECT);
 			ui.separator();
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_node, "Auto-node")).on_hover_text(P2POOL_AUTO_NODE);
