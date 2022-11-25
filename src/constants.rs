@@ -171,7 +171,7 @@ r#"USAGE: ./gupax [--flag]
     --no-startup   Disable all auto-startup settings for this instance
     --reset-state  Reset all Gupax state (your settings)
     --reset-nodes  Reset the manual node list in the [P2Pool] tab
-	--reset-pools  Reset the manual pool list in the [XMRig] tab
+    --reset-pools  Reset the manual pool list in the [XMRig] tab
     --reset-all    Reset the state, the manual node list, and the manual pool list
     --ferris       Print an extremely cute crab
 

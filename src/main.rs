@@ -522,7 +522,14 @@ fn reset_nodes(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
-fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf) {
+fn reset_pools(path: &PathBuf) -> Result<(), TomlError> {
+	match Pool::create_new(path) {
+		Ok(_)  => { info!("Resetting [pool.toml] ... OK"); Ok(()) },
+		Err(e) => { error!("Resetting [pool.toml] ... FAIL ... {}", e); Err(e) },
+	}
+}
+
+fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf) {
 	let mut code = 0;
 	// Attempt to remove directory first
 	match std::fs::remove_dir_all(path) {
@@ -542,9 +549,13 @@ fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf) {
 		Ok(_) => (),
 		Err(_) => code = 1,
 	}
+	match reset_pools(pool) {
+		Ok(_) => (),
+		Err(_) => code = 1,
+	}
 	match code {
 		0 => println!("\nGupax reset ... OK"),
-		_ => println!("\nGupax reset ... FAIL"),
+		_ => eprintln!("\nGupax reset ... FAIL"),
 	}
 	exit(code);
 }
@@ -578,11 +589,12 @@ fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 		match arg.as_str() {
 			"--state"       => { info!("Printing state..."); print_disk_file(&app.state_path); }
 			"--nodes"       => { info!("Printing node list..."); print_disk_file(&app.node_path); }
-			"--reset-state" => if let Ok(()) = reset_state(&app.state_path) { println!("\nState reset ... OK"); exit(0); } else { println!("\nState reset ... FAIL"); exit(1) },
-			"--reset-nodes" => if let Ok(()) = reset_nodes(&app.node_path) { println!("\nNode reset ... OK"); exit(0) } else { println!("\nNode reset ... FAIL"); exit(1) },
-			"--reset-all"   => reset(&app.os_data_path, &app.state_path, &app.node_path),
+			"--reset-state" => if let Ok(()) = reset_state(&app.state_path) { println!("\nState reset ... OK"); exit(0); } else { eprintln!("\nState reset ... FAIL"); exit(1) },
+			"--reset-nodes" => if let Ok(()) = reset_nodes(&app.node_path) { println!("\nNode reset ... OK"); exit(0) } else { eprintln!("\nNode reset ... FAIL"); exit(1) },
+			"--reset-pools" => if let Ok(()) = reset_pools(&app.pool_path) { println!("\nPool reset ... OK"); exit(0) } else { eprintln!("\nPool reset ... FAIL"); exit(1) },
+			"--reset-all"   => reset(&app.os_data_path, &app.state_path, &app.node_path, &app.pool_path),
 			"--no-startup"  => app.no_startup = true,
-			_               => { eprintln!("[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
+			_               => { eprintln!("\n[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
 		}
 	}
 	app
