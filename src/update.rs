@@ -270,7 +270,7 @@ impl Update {
 		// Attempt relative to absolute path
 		let p2pool_path = match into_absolute_path(gupax.p2pool_path.clone()) {
 			Ok(p) => p,
-			Err(e) => { error_state.set("Provided P2Pool path could not be turned into an absolute path", ErrorFerris::Error, ErrorButtons::Okay); return; },
+			Err(e) => { error_state.set(format!("Provided P2Pool path could not be turned into an absolute path: {}", e), ErrorFerris::Error, ErrorButtons::Okay); return; },
 		};
 		// Attempt to get basename
 		let file = match p2pool_path.file_name() {
@@ -299,7 +299,7 @@ impl Update {
 		// Check XMRig path for safety
 		let xmrig_path = match into_absolute_path(gupax.xmrig_path.clone()) {
 			Ok(p) => p,
-			Err(e) => { error_state.set("Provided XMRig path could not be turned into an absolute path", ErrorFerris::Error, ErrorButtons::Okay); return; },
+			Err(e) => { error_state.set(format!("Provided XMRig path could not be turned into an absolute path: {}", e), ErrorFerris::Error, ErrorButtons::Okay); return; },
 		};
 		let file = match xmrig_path.file_name() {
 			Some(p) => {

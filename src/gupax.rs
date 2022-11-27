@@ -25,9 +25,9 @@ use egui::{
 };
 use crate::{
 	constants::*,
-	disk::{Gupax,Version},
+	disk::Gupax,
 	update::*,
-	ErrorState,ErrorFerris,ErrorButtons,
+	ErrorState,
 };
 use std::{
 	thread,
