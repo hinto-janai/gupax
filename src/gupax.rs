@@ -28,6 +28,7 @@ use crate::{
 	disk::Gupax,
 	update::*,
 	ErrorState,
+	Restart,
 };
 use std::{
 	thread,
@@ -78,7 +79,7 @@ pub enum Ratio {
 
 //---------------------------------------------------------------------------------------------------- Gupax
 impl Gupax {
-	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_path: &Path, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, error_state: &mut ErrorState, width: f32, height: f32, frame: &mut eframe::Frame, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_path: &Path, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, error_state: &mut ErrorState, restart: &Arc<Mutex<Restart>>, width: f32, height: f32, frame: &mut eframe::Frame, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
@@ -91,7 +92,7 @@ impl Gupax {
 				ui.vertical(|ui| {
 					ui.set_enabled(!updating);
 					if ui.add_sized([width, height], Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
-						Update::spawn_thread(og, &self, state_path, update, error_state);
+						Update::spawn_thread(og, &self, state_path, update, error_state, restart);
 					}
 				});
 				ui.vertical(|ui| {

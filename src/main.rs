@@ -88,6 +88,10 @@ pub struct App {
 	og_pool_vec: Vec<(String, Pool)>, // Manual Pool database
 	pool_vec: Vec<(String, Pool)>, // Manual Pool database
 	diff: bool, // This bool indicates state changes
+	// Restart state:
+	// If Gupax updated itself, this represents that the
+	// user should (but isn't required to) restart Gupax.
+	restart: Arc<Mutex<Restart>>,
 	// Error State
 	// These values are essentially global variables that
 	// indicate if an error message needs to be displayed
@@ -143,6 +147,7 @@ impl App {
 			node_vec: Node::new_vec(),
 			og_pool_vec: Pool::new_vec(),
 			pool_vec: Pool::new_vec(),
+			restart: Arc::new(Mutex::new(Restart::No)),
 			diff: false,
 			error_state: ErrorState::new(),
 			p2pool: false,
@@ -311,6 +316,13 @@ impl Default for Tab {
     fn default() -> Self {
         Self::About
     }
+}
+
+//---------------------------------------------------------------------------------------------------- [Restart] Enum
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Restart {
+	No, // We don't need to restart
+	Yes, // We updated, user should probably (but isn't required to) restart
 }
 
 //---------------------------------------------------------------------------------------------------- [ErrorState] struct
@@ -492,7 +504,7 @@ fn init_auto(app: &mut App) {
 
 	// [Auto-Update]
 	if app.state.gupax.auto_update {
-		Update::spawn_thread(&app.og, &app.state.gupax, &app.state_path, &app.update, &mut app.error_state);
+		Update::spawn_thread(&app.og, &app.state.gupax, &app.state_path, &app.update, &mut app.error_state, &app.restart);
 	} else {
 		info!("Skipping auto-update...");
 	}
@@ -860,22 +872,28 @@ impl eframe::App for App {
 			ui.style_mut().override_text_style = Some(Name("Bottom".into()));
 			ui.horizontal(|ui| {
 				ui.group(|ui| {
-					// [Gupax Version] + [OS] + [P2Pool on/off] + [XMRig on/off]
 					let width = ((self.width/2.0)/4.0)-(SPACE*2.0);
-					ui.add_sized([width, height], Label::new(&*self.name_version));
+					// [Gupax Version]
+					// Is yellow if the user updated and should (but isn't required to) restart.
+					match *self.restart.lock().unwrap() {
+						Restart::Yes => ui.add_sized([width, height], Label::new(RichText::new(&self.name_version).color(YELLOW))).on_hover_text("Gupax was updated. A restart is recommended but not required."),
+						_ => ui.add_sized([width, height], Label::new(&self.name_version)).on_hover_text("Gupax is up-to-date"),
+					};
 					ui.separator();
+					// [OS]
 					ui.add_sized([width, height], Label::new(self.os));
 					ui.separator();
+					// [P2Pool/XMRig] Status
 					if self.p2pool {
-						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(GREEN)));
+						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(GREEN))).on_hover_text("P2Pool is online");
 					} else {
-						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(RED)));
+						ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(RED))).on_hover_text("P2Pool is offline");
 					}
 					ui.separator();
 					if self.xmrig {
-						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(GREEN)));
+						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(GREEN))).on_hover_text("XMRig is online");
 					} else {
-						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(RED)));
+						ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(RED))).on_hover_text("XMRig is offline");
 					}
 				});
 
@@ -1026,7 +1044,7 @@ impl eframe::App for App {
 					Status::show(self, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
-					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, self.width, self.height, frame, ctx, ui);
+					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
 				}
 				Tab::P2pool => {
 					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, self.p2pool, &self.ping, &self.regex, self.width, self.height, ctx, ui);

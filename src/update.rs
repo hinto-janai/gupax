@@ -32,6 +32,7 @@ use crate::{
 	disk::*,
 	update::Name::*,
 	ErrorState,ErrorFerris,ErrorButtons,
+	Restart,
 };
 use hyper::{
 	Client,Body,Request,
@@ -265,7 +266,7 @@ impl Update {
 	// actually contains the code. This is so that everytime
 	// an update needs to happen (Gupax tab, auto-update), the
 	// code only needs to be edited once, here.
-	pub fn spawn_thread(og: &Arc<Mutex<State>>, gupax: &crate::disk::Gupax, state_path: &Path, update: &Arc<Mutex<Update>>, error_state: &mut ErrorState) {
+	pub fn spawn_thread(og: &Arc<Mutex<State>>, gupax: &crate::disk::Gupax, state_path: &Path, update: &Arc<Mutex<Update>>, error_state: &mut ErrorState, restart: &Arc<Mutex<Restart>>) {
 		// Check P2Pool path for safety
 		// Attempt relative to absolute path
 		let p2pool_path = match into_absolute_path(gupax.p2pool_path.clone()) {
@@ -329,9 +330,10 @@ impl Update {
 		let state_ver = Arc::clone(&og.lock().unwrap().version);
 		let state_path = state_path.to_path_buf();
 		let update = Arc::clone(update);
+		let restart = Arc::clone(restart);
 		std::thread::spawn(move|| {
 			info!("Spawning update thread...");
-			match Update::start(update.clone(), og.clone(), state_ver.clone()) {
+			match Update::start(update.clone(), og.clone(), state_ver.clone(), restart) {
 				Ok(_) => {
 					info!("Update | Saving state...");
 					let original_version = og.lock().unwrap().version.clone();
@@ -362,7 +364,7 @@ impl Update {
 	// 4. loop over vec, download links
 	// 5. extract, upgrade
 	#[tokio::main]
-	pub async fn start(update: Arc<Mutex<Self>>, _og: Arc<Mutex<State>>, state_ver: Arc<Mutex<Version>>) -> Result<(), anyhow::Error> {
+	pub async fn start(update: Arc<Mutex<Self>>, _og: Arc<Mutex<State>>, state_ver: Arc<Mutex<Version>>, restart: Arc<Mutex<Restart>>) -> Result<(), anyhow::Error> {
 		//---------------------------------------------------------------------------------------------------- Init
 		*update.lock().unwrap().updating.lock().unwrap() = true;
 		// Set timer
@@ -658,7 +660,11 @@ impl Update {
 					}
 					std::fs::rename(entry.path(), path)?;
 					match name {
-						Gupax  => state_ver.lock().unwrap().gupax = Pkg::get_new_pkg_version(Gupax, &vec4)?,
+						Gupax  => {
+							state_ver.lock().unwrap().gupax = Pkg::get_new_pkg_version(Gupax, &vec4)?;
+							// If we're updating Gupax, set the [Restart] state so that the user knows to restart
+							*restart.lock().unwrap() = Restart::Yes;
+						},
 						P2pool => state_ver.lock().unwrap().p2pool = Pkg::get_new_pkg_version(P2pool, &vec4)?,
 						Xmrig  => state_ver.lock().unwrap().xmrig = Pkg::get_new_pkg_version(Xmrig, &vec4)?,
 					};
