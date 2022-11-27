@@ -152,7 +152,7 @@ pub const XMRIG_ADDRESS: &str = "Specify which Monero address to send payouts to
 pub const XMRIG_NAME: &str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
 pub const XMRIG_IP: &str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const XMRIG_PORT: &str = "Specify the port of the pool; [1-65535]";
-pub const XMRIG_RIG: &str = "Add a unique rig ID. This will be the name shown on the pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const XMRIG_RIG: &str = "Add an optional rig ID. This will be the name shown on the pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
 pub const XMRIG_PAUSE: &str = "THIS SETTING IS DISABLED IF SET TO [0]. Pause mining if user is active, resume after";
 pub const XMRIG_API_IP: &str = "Specify which IP to bind to for XMRig's HTTP API";
 pub const XMRIG_API_PORT: &str = "Specify which port to bind to for XMRig's HTTP API";

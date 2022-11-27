@@ -201,7 +201,7 @@ impl Xmrig {
 			ComboBox::from_id_source("manual_pool").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
 				let mut n = 0;
 				for (name, pool) in pool_vec.iter() {
-					let text = RichText::text_style(RichText::new(format!("{}. {}\n    RIG: {}\n     IP: {}\n   PORT: {}\n", n+1, name, pool.rig, pool.ip, pool.port)), Monospace);
+					let text = RichText::text_style(RichText::new(format!("{}. {}\n     IP: {}\n   Port: {}\n    Rig: {}", n+1, name, pool.ip, pool.port, pool.rig)), Monospace);
 					if ui.add(SelectableLabel::new(self.selected_name == *name, text)).clicked() {
 						self.selected_index = n;
 						let pool = pool.clone();
@@ -245,7 +245,7 @@ impl Xmrig {
 							port: self.port.clone(),
 						};
 						pool_vec[existing_index].1 = pool;
-						info!("Node | S | [index: {}, name: \"{}\", rig: \"{}\", ip: \"{}\", pool: {}]", existing_index+1, self.name, self.rig, self.ip, self.port);
+						info!("Node | S | [index: {}, name: \"{}\", ip: \"{}\", port: {}, rig: \"{}\"]", existing_index+1, self.name, self.ip, self.port, self.rig);
 					}
 				// Else, add to the list
 				} else {
@@ -262,7 +262,7 @@ impl Xmrig {
 						self.selected_rig = self.rig.clone();
 						self.selected_ip = self.ip.clone();
 						self.selected_port = self.port.clone();
-						info!("Node | A | [index: {}, name: \"{}\", rig: \"{}\", ip: \"{}\", port: {}]", pool_vec_len, self.name, self.rig, self.ip, self.port);
+						info!("Node | A | [index: {}, name: \"{}\", ip: \"{}\", port: {}, rig: \"{}\"]", pool_vec_len, self.name, self.ip, self.port, self.rig);
 					}
 				}
 			});
@@ -294,7 +294,7 @@ impl Xmrig {
 					self.rig = new_pool.rig;
 					self.ip = new_pool.ip;
 					self.port = new_pool.port;
-					info!("Node | D | [index: {}, name: \"{}\", rig: \"{}\", ip: \"{}\", port: {}]", self.selected_index, self.selected_name, self.selected_rig, self.selected_ip, self.selected_port);
+					info!("Node | D | [index: {}, name: \"{}\", ip: \"{}\", port: {}, rig\"{}\"]", self.selected_index, self.selected_name, self.selected_ip, self.selected_port, self.selected_rig);
 				}
 			});
 			ui.horizontal(|ui| {
