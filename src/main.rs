@@ -443,6 +443,7 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 	style.spacing.icon_width_inner = width / 35.0;
 	style.spacing.icon_width = width / 25.0;
 	style.spacing.icon_spacing = 20.0;
+	style.spacing.scroll_bar_width = width / 150.0;
 	ctx.set_style(style);
 	ctx.set_pixels_per_point(1.0);
 	ctx.request_repaint();

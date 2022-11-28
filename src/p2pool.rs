@@ -38,7 +38,24 @@ impl P2pool {
 		let height = height / 10.0;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
-		ui.add_sized([width, height*3.5], TextEdit::multiline(&mut "".to_string()));
+		//ui.add_sized([width, height*3.5], TextEdit::multiline(&mut "asdf"));
+egui::Frame::none()
+.fill(Color32::from_rgb(18, 18, 18))
+.show(ui, |ui| {
+		let text_style = egui::TextStyle::Monospace;
+		let row_height = ui.text_style_height(&text_style);
+		let total_rows = 10_000;
+		let width = width-(SPACE*2.0);
+		egui::ScrollArea::vertical().max_width(width).max_height(height*3.5).auto_shrink([false; 2]).show_rows(ui, row_height, total_rows, |ui, row_range| {
+			let mut text = "".to_string();
+			for row in row_range {
+				text = format!("{}Row {}/{}\n", text, row + 1, total_rows);
+//				ui.label(text);
+			}
+			ui.add_sized([width, height*3.5], TextEdit::multiline(&mut text.as_str()));
+		});
+});
+		ui.separator();
 		ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(&mut "".to_string()), r#"Type a command (e.g "help" or "status") and press Enter"#));
 	});
 
