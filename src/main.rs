@@ -60,6 +60,7 @@ mod gupax;
 mod p2pool;
 mod xmrig;
 mod update;
+mod command;
 use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*};
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl

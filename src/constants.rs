@@ -52,6 +52,9 @@ pub const YELLOW: egui::Color32 = egui::Color32::from_rgb(230, 230, 100);
 pub const LIGHT_GRAY: egui::Color32 = egui::Color32::LIGHT_GRAY;
 pub const BLACK: egui::Color32 = egui::Color32::BLACK;
 
+// [Duration] constants
+pub const SECOND: std::time::Duration = std::time::Duration::from_secs(1);
+
 // OS specific
 #[cfg(target_os = "windows")]
 pub const OS: &'static str = " Windows";

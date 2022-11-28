@@ -19,7 +19,8 @@ use crate::{
 	Regexes,
 	constants::*,
 	disk::*,
-	node::*
+	node::*,
+	command::*,
 };
 use egui::{
 	TextEdit,SelectableLabel,ComboBox,Label,Button,
