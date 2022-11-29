@@ -20,7 +20,7 @@ use crate::{
 	constants::*,
 	disk::*,
 	node::*,
-	command::*,
+	process::*,
 };
 use egui::{
 	TextEdit,SelectableLabel,ComboBox,Label,Button,
@@ -45,7 +45,7 @@ egui::Frame::none()
 .show(ui, |ui| {
 		let text_style = egui::TextStyle::Monospace;
 		let row_height = ui.text_style_height(&text_style);
-		let total_rows = 10_000;
+		let total_rows = 700_000;
 		let width = width-(SPACE*2.0);
 		egui::ScrollArea::vertical().max_width(width).max_height(height*3.5).auto_shrink([false; 2]).show_rows(ui, row_height, total_rows, |ui, row_range| {
 			let mut text = "".to_string();

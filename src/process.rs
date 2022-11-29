@@ -62,7 +62,10 @@ impl Process {
 			args,
 			path,
 			signal: ProcessSignal::None,
-			output: String::new(),
+			// P2Pool log level 1 produces a bit less than 100,000 lines a day.
+			// Assuming each line averages 80 UTF-8 scalars (80 bytes), then this
+			// initial buffer should last around a week (56MB) before resetting.
+			output: String::with_capacity(56_000_000),
 			input: vec![String::new()],
 		}
 	}
