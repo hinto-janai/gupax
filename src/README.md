@@ -1,7 +1,7 @@
-# Gupax source files
+# Gupax source
 * [Structure](#Structure)
-* [Bootstrap](#Bootstrap)
 * [Thread Model](#Thread-Model)
+* [Bootstrap](#Bootstrap)
 * [Disk](#Disk)
 * [Scale](#Scale)
 * [Naming Scheme](#naming-scheme)
@@ -10,16 +10,19 @@
 | File/Folder  | Purpose |
 |--------------|---------|
 | constants.rs | General constants needed in Gupax
-| disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State]
+| disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State] struct
 | ferris.rs    | Cute crab bytes
 | gupax.rs     | `Gupax` tab
-| main.rs      | `App/Tab/State` + misc data/functions
+| helper.rs   | The "helper" thread that runs for the entire duration Gupax is alive. All the processing that needs to be done without blocking the main GUI thread runs here, including everything related to handling P2Pool/XMRig
+| main.rs      | The main `App` struct that holds all data + misc data/functions
 | node.rs      | Community node ping code for the `P2Pool` simple tab
-| process.rs   | Code for executing/handling P2Pool/XMRig
 | p2pool.rs    | `P2Pool` tab
 | status.rs    | `Status` tab
 | update.rs    | Update code for the `Gupax` tab
 | xmrig.rs     | `XMRig` tab
+
+## Thread Model
+![thread_model.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/thread_model.png)
 
 ## Bootstrap
 This is how Gupax works internally when starting up:
@@ -27,10 +30,9 @@ This is how Gupax works internally when starting up:
 1. **INIT**
 	- Initialize custom console logging with `log`, `env_logger`
 	- Initialize misc data (structs, text styles, thread count, images, etc)
-	- Check for admin privilege (for XMRig)
 	- Start initializing main `App` struct
 	- Parse command arguments
-	- Attempt to read disk files `state.toml`, `node.toml`
+	- Attempt to read disk files
 	- If errors were found, pop-up window
 	
 2. **AUTO**
@@ -43,9 +45,6 @@ This is how Gupax works internally when starting up:
 	- Do `App` stuff
 	- If `ask_before_quit` == `true`, ask before quitting
 	- Kill processes, kill connections, exit
-
-## Thread Model
-![thread_model.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/thread_model.png)
 
 ## Disk
 Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. The node/pool database cannot be merged, and if given a corrupted file, Gupax will show an un-recoverable error screen. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error screen.

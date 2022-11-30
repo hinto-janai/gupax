@@ -60,7 +60,7 @@ mod gupax;
 mod p2pool;
 mod xmrig;
 mod update;
-mod process;
+mod helper;
 use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*};
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
@@ -93,16 +93,18 @@ pub struct App {
 	// If Gupax updated itself, this represents that the
 	// user should (but isn't required to) restart Gupax.
 	restart: Arc<Mutex<Restart>>,
-	// Error State
+	// Error State:
 	// These values are essentially global variables that
 	// indicate if an error message needs to be displayed
 	// (it takes up the whole screen with [error_msg] and buttons for ok/quit/etc)
 	error_state: ErrorState,
-	// Process/update state:
-	// Doesn't make sense to save this on disk
-	// so it's represented as a bool here.
-	p2pool: bool, // Is p2pool online?
-	xmrig: bool, // Is xmrig online?
+	// Process State:
+	// This holds everything related to the
+	// child processes when starting P2Pool/XMRig.
+	p2pool: bool,
+	xmrig: bool,
+//	p2pool: Arc<Mutex<Process>>,
+//	xmrig: Arc<Mutex<Process>>,
 	// State from [--flags]
 	no_startup: bool,
 	// Static stuff
@@ -153,6 +155,8 @@ impl App {
 			error_state: ErrorState::new(),
 			p2pool: false,
 			xmrig: false,
+//			p2pool: Arc::new(Mutex::new(Process::new())),
+//			xmrig: Arc::new(Mutex::new(Process::new())),
 			no_startup: false,
 			now: Instant::now(),
 			exe: String::new(),

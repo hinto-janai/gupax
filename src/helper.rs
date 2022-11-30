@@ -15,9 +15,24 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// This file handles all things related to child processes (P2Pool/XMRig).
-// The main GUI thread will interface with the [Arc<Mutex<...>>] data found
-// here, e.g: User clicks [Start P2Pool] -> Init p2pool thread here.
+// This file represents the "helper" thread, which is the full separate thread
+// that runs alongside the main [App] GUI thread. It exists for the entire duration
+// of Gupax so that things can be handled without locking up the GUI thread.
+//
+// This thread is a continual 1 second loop, collecting available jobs on the
+// way down and (if possible) asynchronously executing them at the very end.
+//
+// The main GUI thread will interface with this thread by mutating the Arc<Mutex>'s
+// found here, e.g: User clicks [Start P2Pool] -> Arc<Mutex<ProcessSignal> is set
+// indicating to this thread during its loop: "I should start P2Pool!", e.g:
+//
+//     match p2pool.lock().unwrap().signal {
+//         ProcessSignal::Start => start_p2pool(),
+//         ...
+//     }
+//
+// This also includes all things related to handling the child processes (P2Pool/XMRig):
+// piping their stdout/stderr/stdin, accessing their APIs (HTTP + disk files), etc.
 
 //---------------------------------------------------------------------------------------------------- Import
 use std::{
@@ -31,14 +46,11 @@ use log::*;
 
 //---------------------------------------------------------------------------------------------------- [Process] Struct
 // This holds all the state of a (child) process.
-// The actual process thread runs in a 1 second loop, reading/writing to this struct.
 // The main GUI thread will use this to display console text, online state, etc.
 pub struct Process {
 	name: ProcessName,     // P2Pool or XMRig?
-	online: bool,          // Is the process alive?
-	args: String,          // A single [String] containing the arguments
-	path: PathBuf,         // The absolute path to the process binary
-	signal: ProcessSignal, // Did the user click [Stop/Restart]?
+	state: ProcessState,   // The state of the process (alive, dead, etc)
+	signal: ProcessSignal, // Did the user click [Start/Stop/Restart]?
 	output: String,        // This is the process's stdout + stderr
 	// STDIN Problem:
 	//     - User can input many many commands in 1 second
@@ -58,9 +70,7 @@ impl Process {
 	pub fn new(name: ProcessName, args: String, path: PathBuf) -> Self {
 		Self {
 			name,
-			online: false,
-			args,
-			path,
+			state: ProcessState::Dead,
 			signal: ProcessSignal::None,
 			// P2Pool log level 1 produces a bit less than 100,000 lines a day.
 			// Assuming each line averages 80 UTF-8 scalars (80 bytes), then this
@@ -74,57 +84,51 @@ impl Process {
 	pub fn parse_args(args: &str) -> Vec<String> {
 		args.split_whitespace().map(|s| s.to_owned()).collect()
 	}
-
-	pub fn spawn(process: &Arc<Mutex<Self>>, name: ProcessName) {
-		// Setup
-		let process = Arc::clone(process);
-		let args = Self::parse_args(&process.lock().unwrap().args);
-		info!("{} | Spawning initial thread", name);
-		info!("{} | Arguments: {:?}", name, args);
-
-		// Spawn thread
-		thread::spawn(move || {
-			// Create & spawn child
-			let mut child = Command::new(&process.lock().unwrap().path)
-				.args(args)
-				.stdout(std::process::Stdio::piped())
-				.spawn().unwrap();
-
-			// 1-second loop, reading and writing data to relevent struct
-			loop {
-				let process = process.lock().unwrap(); // Get lock
-				// If user sent a signal, handle it
-				match process.signal {
-					ProcessSignal::None => {},
-					_ => { child.kill(); break; },
-				};
-//				println!("{:?}", String::from_utf8(child.wait_with_output().unwrap().stdout).unwrap());
-				thread::sleep(SECOND);
-			}
-
-			// End of thread, must mean process is offline
-			process.lock().unwrap().online = false;
-		});
-	}
 }
 
-//---------------------------------------------------------------------------------------------------- [ProcessSignal] Enum
+//---------------------------------------------------------------------------------------------------- [Process*] Enum
+#[derive(Copy,Clone,Eq,PartialEq,Debug)]
+pub enum ProcessState {
+	Alive,    // Process is online, GREEN!
+	Dead,     // Process is dead, BLACK!
+	Failed,   // Process is dead AND exited with a bad code, RED!
+	// Process is starting up, YELLOW!
+	// Really, processes start instantly, this just accounts for the delay
+	// between the main thread and this threads 1 second event loop.
+	Starting,
+}
+
 #[derive(Copy,Clone,Eq,PartialEq,Debug)]
 pub enum ProcessSignal {
 	None,
+	Start,
 	Stop,
 	Restart,
 }
 
-//---------------------------------------------------------------------------------------------------- [ProcessName] Enum
 #[derive(Copy,Clone,Eq,PartialEq,Debug)]
 pub enum ProcessName {
 	P2Pool,
 	XMRig,
 }
 
-impl std::fmt::Display for ProcessName {
-	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		write!(f, "{:#?}", self)
-	}
+impl std::fmt::Display for ProcessState  { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "{:#?}", self) } }
+impl std::fmt::Display for ProcessSignal { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "{:#?}", self) } }
+impl std::fmt::Display for ProcessName   { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "{:#?}", self) } }
+
+//---------------------------------------------------------------------------------------------------- The "helper" loop
+#[tokio::main]
+pub async fn helper() {
+	thread::spawn(|| { loop {
+	// 1. Check process signals, match, do action (start, kill, read)
+	// 2. Spawn P2Pool API task
+	// 3. Spawn XMRig HTTP API task
+	// 4. 
+	// 5.
+	// 6.
+	// 7.
+	// 8.
+	// 9.
+	// 10.
+	}});
 }
