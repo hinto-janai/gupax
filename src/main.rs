@@ -61,7 +61,7 @@ mod p2pool;
 mod xmrig;
 mod update;
 mod helper;
-use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*};
+use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*,helper::*};
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
 // The state of the outer main [App].
@@ -98,13 +98,17 @@ pub struct App {
 	// indicate if an error message needs to be displayed
 	// (it takes up the whole screen with [error_msg] and buttons for ok/quit/etc)
 	error_state: ErrorState,
-	// Process State:
-	// This holds everything related to the
-	// child processes when starting P2Pool/XMRig.
+	// Helper State:
+	// This holds everything related to the data
+	// processed by the "helper thread", including
+	helper: Arc<Mutex<Helper>>,
+
+// Fix-me.
+// These shouldn't exist
+// Just for debugging.
 	p2pool: bool,
 	xmrig: bool,
-//	p2pool: Arc<Mutex<Process>>,
-//	xmrig: Arc<Mutex<Process>>,
+
 	// State from [--flags]
 	no_startup: bool,
 	// Static stuff
@@ -133,7 +137,7 @@ impl App {
 		}
 	}
 
-	fn new() -> Self {
+	fn new(now: Instant) -> Self {
 		info!("Initializing App Struct...");
 		let mut app = Self {
 			tab: Tab::default(),
@@ -153,12 +157,17 @@ impl App {
 			restart: Arc::new(Mutex::new(Restart::No)),
 			diff: false,
 			error_state: ErrorState::new(),
+			helper: Arc::new(Mutex::new(Helper::new(now))),
+
+// TODO
+// these p2pool/xmrig bools are here for debugging purposes
+// they represent the online/offline status.
+// fix this later when [Helper] is integrated.
+
 			p2pool: false,
 			xmrig: false,
-//			p2pool: Arc::new(Mutex::new(Process::new())),
-//			xmrig: Arc::new(Mutex::new(Process::new())),
 			no_startup: false,
-			now: Instant::now(),
+			now,
 			exe: String::new(),
 			dir: String::new(),
 			resolution: Vec2::new(APP_DEFAULT_HEIGHT, APP_DEFAULT_WIDTH),
@@ -664,8 +673,7 @@ fn print_disk_file(path: &PathBuf) {
 fn main() {
 	let now = Instant::now();
 	init_logger(now);
-	let mut app = App::new();
-	app.now = now;
+	let mut app = App::new(now);
 	init_auto(&mut app);
 	let initial_window_size = match app.state.gupax.simple {
 		true  => Some(Vec2::new(app.state.gupax.selected_width as f32, app.state.gupax.selected_height as f32)),
