@@ -52,8 +52,10 @@ pub struct Helper {
 	human_time: HumanTime, // Gupax uptime formatting for humans
 	p2pool: Process,       // P2Pool process state
 	xmrig: Process,        // XMRig process state
-	p2pool_api: P2poolApi, // P2Pool API state
-	xmrig_api: XmrigApi,   // XMRig API state
+	pub_api_p2pool: P2poolApi, // P2Pool API state
+	pub_api_xmrig: XmrigApi,   // XMRig API state
+//	priv_api_p2pool:
+//	priv_api_xmrig:
 }
 
 // Impl found at the very bottom of this file.
@@ -65,9 +67,10 @@ pub struct Process {
 	name: ProcessName,     // P2Pool or XMRig?
 	state: ProcessState,   // The state of the process (alive, dead, etc)
 	signal: ProcessSignal, // Did the user click [Start/Stop/Restart]?
-	start: Instant,        // Starttime of process
-	uptime: HumanTime,     // Uptime of process
+	start: Instant,        // Start time of process
+	uptime: HumanTime,     // Human readable process uptime
 	output: String,        // This is the process's stdout + stderr
+	stdin: Option<std::process::ChildStdin>, // A handle to the process's STDIN
 	// STDIN Problem:
 	//     - User can input many many commands in 1 second
 	//     - The process loop only processes every 1 second
@@ -91,6 +94,7 @@ impl Process {
 			signal: ProcessSignal::None,
 			start: now,
 			uptime: HumanTime::into_human(now.elapsed()),
+			stdin: Option::None,
 			// P2Pool log level 1 produces a bit less than 100,000 lines a day.
 			// Assuming each line averages 80 UTF-8 scalars (80 bytes), then this
 			// initial buffer should last around a week (56MB) before resetting.
@@ -232,6 +236,28 @@ impl Helper {
 	pub fn spawn_helper(helper: &Arc<Mutex<Self>>) {
 		let helper = Arc::clone(helper);
 		thread::spawn(move || { Self::helper(helper); });
+	}
+
+	// The tokio runtime that blocks while async reading both STDOUT/STDERR
+	// Cheaper than spawning 2 OS threads just to read 2 pipes (...right? :D)
+	#[tokio::main]
+	async fn read_stdout_stderr(stdout: tokio::process::ChildStdout, stderr: tokio::process::ChildStderr) {
+		// Create STDOUT pipe job
+		let stdout_job = tokio::spawn(async move {
+			let mut stdout_reader = BufReader::new(stdout).lines();
+			while let Ok(Some(line)) = stdout_reader.next_line().await {
+				println!("{}", line);
+			}
+		});
+		// Create STDERR pipe job
+		let stderr_job = tokio::spawn(async move {
+			let mut stderr_reader = BufReader::new(stderr).lines();
+			while let Ok(Some(line)) = stderr_reader.next_line().await {
+			println!("{}", line);
+			}
+		});
+		// Block and read both until they are closed (automatic when process dies)
+		tokio::join![stdout_job, stderr_job];
 	}
 
 	// The "helper" loop
