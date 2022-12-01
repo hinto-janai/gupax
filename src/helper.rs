@@ -48,24 +48,15 @@ use log::*;
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread
 pub struct Helper {
-	uptime: HumanTime,     // Gupax uptime formatting for humans
+	instant: Instant,      // Gupax start as an [Instant]
+	human_time: HumanTime, // Gupax uptime formatting for humans
 	p2pool: Process,       // P2Pool process state
 	xmrig: Process,        // XMRig process state
 	p2pool_api: P2poolApi, // P2Pool API state
 	xmrig_api: XmrigApi,   // XMRig API state
 }
 
-impl Helper {
-	pub fn new(instant: std::time::Instant) -> Self {
-		Self {
-			uptime: HumanTime::into_human(instant.elapsed()),
-			p2pool: Process::new(ProcessName::P2pool, String::new(), PathBuf::new()),
-			xmrig: Process::new(ProcessName::Xmrig, String::new(), PathBuf::new()),
-			p2pool_api: P2poolApi::new(),
-			xmrig_api: XmrigApi::new(),
-		}
-	}
-}
+// Impl found at the very bottom of this file.
 
 //---------------------------------------------------------------------------------------------------- [Process] Struct
 // This holds all the state of a (child) process.
@@ -224,17 +215,87 @@ impl XmrigApi {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- The "helper" loop
-#[tokio::main]
-pub async fn helper() {
-	thread::spawn(|| { loop {
-	// 1. Spawn child processes (if signal found)
-	// 2. Create stdout pipe thread (if new child process)
-	// 3. Send stdin (if signal found)
-	// 4. Kill child process (if signal found)
-	// 4. Collect P2Pool API task (if alive)
-	// 5. Collect XMRig HTTP API task (if alive)
-	// 6. Execute all async tasks
-	// 7. Set Gupax/P2Pool/XMRig uptime
-	}});
+//---------------------------------------------------------------------------------------------------- [Helper]
+impl Helper {
+	pub fn new(instant: std::time::Instant) -> Self {
+		Self {
+			instant,
+			human_time: HumanTime::into_human(instant.elapsed()),
+			p2pool: Process::new(ProcessName::P2pool, String::new(), PathBuf::new()),
+			xmrig: Process::new(ProcessName::Xmrig, String::new(), PathBuf::new()),
+			p2pool_api: P2poolApi::new(),
+			xmrig_api: XmrigApi::new(),
+		}
+	}
+
+	// Intermediate function that spawns the helper thread.
+	pub fn spawn_helper(helper: &Arc<Mutex<Self>>) {
+		let helper = Arc::clone(helper);
+		thread::spawn(move || { Self::helper(helper); });
+	}
+
+	// The "helper" loop
+	// [helper] = Actual Arc
+	// [h]      = Temporary lock that gets dropped
+	// [jobs]   = Vector of async jobs ready to go
+	#[tokio::main]
+	pub async fn helper(helper: Arc<Mutex<Self>>) {
+		// Begin loop
+		loop {
+
+		// 1. Create "jobs" vector holding async tasks
+		let jobs: Vec<tokio::task::JoinHandle<Result<(), anyhow::Error>>> = vec![];
+
+		// 2. Loop init timestamp
+		let start = Instant::now();
+
+		// 3. Spawn child processes (if signal found)
+		let h = helper.lock().unwrap();
+		if let ProcessSignal::Start = h.p2pool.signal {
+			// Start outer thread, start inner stdout/stderr pipe, loop in outer thread for stdin/signal/etc
+			if !h.p2pool.input.is_empty() {
+				// Process STDIN
+			}
+		}
+		drop(h);
+		let h = helper.lock().unwrap();
+		if let ProcessSignal::Start = h.xmrig.signal {
+			// Start outer thread, start inner stdout/stderr pipe, loop in outer thread for stdin/signal/etc
+			if !h.xmrig.input.is_empty() {
+				// Process STDIN
+			}
+		}
+		drop(h);
+
+		// 4. Collect P2Pool API task (if alive)
+		let h = helper.lock().unwrap();
+		if let ProcessState::Alive = h.p2pool.state {
+		}
+		// 5. Collect XMRig HTTP API task (if alive)
+		if let ProcessState::Alive = h.xmrig.state {
+		}
+		drop(h);
+
+		// 6. Execute all async tasks
+		for job in jobs {
+			job.await;
+		}
+
+		// 7. Set Gupax/P2Pool/XMRig uptime
+		let mut h = helper.lock().unwrap();
+		h.human_time = HumanTime::into_human(h.instant.elapsed());
+		drop(h);
+
+		// 8. Calculate if we should sleep or not.
+		// If we should sleep, how long?
+		let elapsed = start.elapsed().as_millis();
+		if elapsed < 1000 {
+			// Casting from u128 to u64 should be safe here, because [elapsed]
+			// is less than 1000, meaning it can fit into a u64 easy.
+			std::thread::sleep(std::time::Duration::from_millis((1000-elapsed) as u64));
+		}
+
+		// 9. End loop
+		}
+	}
 }

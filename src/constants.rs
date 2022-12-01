@@ -54,6 +54,7 @@ pub const BLACK: egui::Color32 = egui::Color32::BLACK;
 
 // [Duration] constants
 pub const SECOND: std::time::Duration = std::time::Duration::from_secs(1);
+pub const TOKIO_SECOND: tokio::time::Duration = std::time::Duration::from_secs(1);
 
 // OS specific
 #[cfg(target_os = "windows")]
