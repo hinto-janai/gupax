@@ -48,14 +48,14 @@ use log::*;
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread
 pub struct Helper {
-	instant: Instant,      // Gupax start as an [Instant]
-	human_time: HumanTime, // Gupax uptime formatting for humans
-	p2pool: Process,       // P2Pool process state
-	xmrig: Process,        // XMRig process state
-	pub_api_p2pool: P2poolApi, // P2Pool API state
-	pub_api_xmrig: XmrigApi,   // XMRig API state
-//	priv_api_p2pool:
-//	priv_api_xmrig:
+	pub instant: Instant,      // Gupax start as an [Instant]
+	pub human_time: HumanTime, // Gupax uptime formatting for humans
+	pub p2pool: Process,       // P2Pool process state
+	pub xmrig: Process,        // XMRig process state
+	pub pub_api_p2pool: PubP2poolApi, // P2Pool API state (for GUI thread)
+	pub pub_api_xmrig: PubXmrigApi,   // XMRig API state (for GUI thread)
+	priv_api_p2pool: PrivP2poolApi, // For "watchdog" thread
+	priv_api_xmrig: PrivXmrigApi,   // For "watchdog" thread
 }
 
 // Impl found at the very bottom of this file.
@@ -195,31 +195,131 @@ impl std::fmt::Display for HumanTime {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- [P2poolApi]
-pub struct P2poolApi {
+//---------------------------------------------------------------------------------------------------- Public P2Pool API
+// GUI thread interfaces with this.
+pub struct PubP2poolApi {
 
 }
 
-impl P2poolApi {
+impl PubP2poolApi {
 	pub fn new() -> Self {
 		Self {
 		}
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- [XmrigApi]
-pub struct XmrigApi {
+//---------------------------------------------------------------------------------------------------- Private P2Pool API
+// This is the data the "watchdog" threads mutate.
+// It matches directly to P2Pool's [local/stats] JSON API file (excluding a few stats).
+// P2Pool seems to initialize all stats at 0 (or 0.0), so no [Option] wrapper seems needed.
+#[derive(Debug, Serialize, Deserialize)]
+struct PrivP2poolApi {
+	hashrate_15m: u128,
+	hashrate_1h: u128,
+	hashrate_24h: u128,
+	shares_found: u128,
+	average_effort: f64,
+	current_effort: f64,
+	connections: u16, // No one will have more than 65535 connections... right?
+}
+
+impl PrivP2poolApi {
+	fn new() -> Self {
+		Self {
+			hashrate_15m: 0,
+			hashrate_1h: 0,
+			hashrate_24h: 0,
+			shares_found: 0,
+			average_effort: 0.0,
+			current_effort: 0.0,
+			connections: 0,
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- Public XMRig API
+pub struct PubXmrigApi {
 
 }
 
-impl XmrigApi {
+impl PubXmrigApi {
 	pub fn new() -> Self {
 		Self {
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- Private XMRig API
+// This matches to some JSON stats in the HTTP call [summary],
+// e.g: [wget -qO- localhost:18085/1/summary].
+// XMRig doesn't initialize stats at 0 (or 0.0) and instead opts for [null]
+// which means some elements need to be wrapped in an [Option] or else serde will [panic!].
+#[derive(Debug, Serialize, Deserialize)]
+struct PrivXmrigApi {
+	worker_id: String,
+	resources: Resources,
+	connection: Connection,
+	hashrate: Hashrate,
+}
+
+impl PrivXmrigApi {
+	fn new() -> Self {
+		Self {
+			worker_id: String::new(),
+			resources: Resources::new(),
+			connection: Connection::new(),
+			hashrate: Hashrate::new(),
+		}
+	}
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Resources {
+	load_average: [Option<f32>; 3],
+}
+impl Resources {
+	fn new() -> Self {
+		Self {
+			load_average: [Some(0.0), Some(0.0), Some(0.0)],
+		}
+	}
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Connection {
+	pool: String,
+	ping: u32,
+	diff: u128,
+	accepted: u128,
+	rejected: u128,
+}
+impl Connection {
+	fn new() -> Self {
+		Self {
+			pool: String::new(),
+			ping: 0,
+			diff: 0,
+			accepted: 0,
+			rejected: 0,
+		}
+	}
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Hashrate {
+	total: [Option<f32>; 3],
+}
+impl Hashrate {
+	fn new() -> Self {
+		Self {
+			total: [Some(0.0), Some(0.0), Some(0.0)],
 		}
 	}
 }
 
 //---------------------------------------------------------------------------------------------------- [Helper]
+use tokio::io::{BufReader,AsyncBufReadExt};
+
 impl Helper {
 	pub fn new(instant: std::time::Instant) -> Self {
 		Self {
@@ -227,8 +327,10 @@ impl Helper {
 			human_time: HumanTime::into_human(instant.elapsed()),
 			p2pool: Process::new(ProcessName::P2pool, String::new(), PathBuf::new()),
 			xmrig: Process::new(ProcessName::Xmrig, String::new(), PathBuf::new()),
-			p2pool_api: P2poolApi::new(),
-			xmrig_api: XmrigApi::new(),
+			pub_api_p2pool: PubP2poolApi::new(),
+			pub_api_xmrig: PubXmrigApi::new(),
+			priv_api_p2pool: PrivP2poolApi::new(),
+			priv_api_xmrig: PrivXmrigApi::new(),
 		}
 	}
 
@@ -264,13 +366,13 @@ impl Helper {
 	// [helper] = Actual Arc
 	// [h]      = Temporary lock that gets dropped
 	// [jobs]   = Vector of async jobs ready to go
-	#[tokio::main]
-	pub async fn helper(helper: Arc<Mutex<Self>>) {
+//	#[tokio::main]
+	pub fn helper(helper: Arc<Mutex<Self>>) {
 		// Begin loop
 		loop {
 
 		// 1. Create "jobs" vector holding async tasks
-		let jobs: Vec<tokio::task::JoinHandle<Result<(), anyhow::Error>>> = vec![];
+//		let jobs: Vec<tokio::task::JoinHandle<Result<(), anyhow::Error>>> = vec![];
 
 		// 2. Loop init timestamp
 		let start = Instant::now();
@@ -303,9 +405,9 @@ impl Helper {
 		drop(h);
 
 		// 6. Execute all async tasks
-		for job in jobs {
-			job.await;
-		}
+//		for job in jobs {
+//			job.await;
+//		}
 
 		// 7. Set Gupax/P2Pool/XMRig uptime
 		let mut h = helper.lock().unwrap();
