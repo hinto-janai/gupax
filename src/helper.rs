@@ -42,8 +42,10 @@ use std::{
 	time::*,
 	thread,
 };
+use serde::{Serialize,Deserialize};
 use crate::constants::*;
 use log::*;
+
 
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread

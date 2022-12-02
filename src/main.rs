@@ -72,12 +72,17 @@ pub struct App {
 	tab: Tab, // What tab are we on?
 	width: f32, // Top-level width
 	height: f32, // Top-level height
+	// Alpha (transparency)
+	// This value is used to incrementally increase/decrease
+	// the transparency when resizing. Basically, it fades
+	// in/out of black to hide jitter when resizing with [init_text_styles()]
+	alpha: u8,
 	// This is a one time trigger so [init_text_styles()] isn't
 	// called 60x a second when resizing the window. Instead,
 	// it only gets called if this bool is true and the user
 	// is hovering over egui (ctx.is_pointer_over_area()).
-	must_resize: bool,
-	first_frame: bool, // Is this the very first frame?
+	must_resize: bool, // Sets the flag so we know to [init_text_styles()]
+	resizing: bool,    // Are we in the process of resizing? (For black fade in/out)
 	// State
 	og: Arc<Mutex<State>>, // og = Old state to compare against
 	state: State, // state = Working state (current settings)
@@ -145,7 +150,6 @@ impl App {
 			width: APP_DEFAULT_WIDTH,
 			height: APP_DEFAULT_HEIGHT,
 			must_resize: false,
-			first_frame: true,
 			og: Arc::new(Mutex::new(State::new())),
 			state: State::new(),
 			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
@@ -163,7 +167,8 @@ impl App {
 // these p2pool/xmrig bools are here for debugging purposes
 // they represent the online/offline status.
 // fix this later when [Helper] is integrated.
-
+			resizing: false,
+			alpha: 0,
 			p2pool: false,
 			xmrig: false,
 			no_startup: false,
@@ -703,13 +708,21 @@ impl eframe::App for App {
 		// | DEBUG |
 		// *-------*
 
+		// If [F11] was pressed, reverse [fullscreen] bool
+        if ctx.input_mut().consume_key(Modifiers::NONE, Key::F11) {
+            let info = frame.info();
+            frame.set_fullscreen(!info.window_info.fullscreen);
+        }
+
 		// This sets the top level Ui dimensions.
 		// Used as a reference for other uis.
 		CentralPanel::default().show(ctx, |ui| {
 			let available_width = ui.available_width();
 			if self.width != available_width {
 				self.width = available_width;
-				self.must_resize = true;
+				if self.now.elapsed().as_secs() > 5 {
+					self.must_resize = true;
+				}
 			};
 			self.height = ui.available_height();
 		});
@@ -719,17 +732,40 @@ impl eframe::App for App {
 		// while the user was readjusting the frame. It's a pretty heavy operation and looks
 		// buggy when calling it that many times. Looking for a [must_resize] in addtion to
 		// checking if the user is hovering over the app means that we only have call it once.
-		if self.must_resize && ctx.is_pointer_over_area(){
-			info!("App | Resizing frame to match new internal resolution: [{}x{}]", self.width, self.height);
-			init_text_styles(ctx, self.width);
+		if self.must_resize && ctx.is_pointer_over_area() {
+			self.resizing = true;
 			self.must_resize = false;
 		}
-
-		// If [F11] was pressed, reverse [fullscreen] bool
-        if ctx.input_mut().consume_key(Modifiers::NONE, Key::F11) {
-            let info = frame.info();
-            frame.set_fullscreen(!info.window_info.fullscreen);
-        }
+		// This (ab)uses [Area] and [TextEdit] to overlay a full black layer over whatever UI we had before.
+		// It incrementally becomes more opaque until [self.alpha] >= 250, when we just switch to pure black (no alpha).
+		// When black, we're safe to [init_text_styles()], and then incrementally go transparent, until we remove the layer.
+		if self.resizing {
+			egui::Area::new("resize_layer").order(egui::Order::Foreground).anchor(egui::Align2::CENTER_CENTER, (0.0, 0.0)).show(ctx, |ui| {
+				if self.alpha < 250 {
+					egui::Frame::none().fill(Color32::from_rgba_premultiplied(0,0,0,self.alpha)).show(ui, |ui| {
+						ui.add_sized([ui.available_width()+SPACE, ui.available_height()+SPACE], egui::TextEdit::multiline(&mut ""));
+					});
+					ctx.request_repaint();
+					self.alpha += 10;
+				} else {
+					egui::Frame::none().fill(Color32::from_rgb(0,0,0)).show(ui, |ui| {
+						ui.add_sized([ui.available_width()+SPACE, ui.available_height()+SPACE], egui::TextEdit::multiline(&mut ""));
+					});
+					ctx.request_repaint();
+					info!("App | Resizing frame to match new internal resolution: [{}x{}]", self.width, self.height);
+					init_text_styles(ctx, self.width);
+					self.resizing = false;
+				}
+			});
+		} else if self.alpha != 0 {
+			egui::Area::new("resize_layer").order(egui::Order::Foreground).anchor(egui::Align2::CENTER_CENTER, (0.0, 0.0)).show(ctx, |ui| {
+				egui::Frame::none().fill(Color32::from_rgba_premultiplied(0,0,0,self.alpha)).show(ui, |ui| {
+					ui.add_sized([ui.available_width()+SPACE, ui.available_height()+SPACE], egui::TextEdit::multiline(&mut ""));
+				})
+			});
+			self.alpha -= 10;
+			ctx.request_repaint();
+		}
 
 		// If there's an error, display [ErrorState] on the whole screen until user responds
 		if self.error_state.error {
