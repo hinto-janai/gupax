@@ -112,7 +112,7 @@ pub fn read_to_string(file: File, path: &PathBuf) -> Result<String, TomlError> {
 }
 
 // Write str to console with [info!] surrounded by "---"
-pub fn print_toml(toml: &str) {
+pub fn print_dash(toml: &str) {
 	info!("{}", HORIZONTAL);
 	for i in toml.lines() { info!("{}", i); }
 	info!("{}", HORIZONTAL);
@@ -165,7 +165,7 @@ impl State {
 				log_level: 3,
 				node: crate::NodeEnum::C3pool,
 				arguments: String::new(),
-				address: String::with_capacity(95),
+				address: String::with_capacity(96),
 				name: "Local Monero Node".to_string(),
 				ip: "localhost".to_string(),
 				rpc: "18081".to_string(),
@@ -179,8 +179,9 @@ impl State {
 			xmrig: Xmrig {
 				simple: true,
 				pause: 0,
-				config: String::with_capacity(100),
-				address: String::with_capacity(95),
+				simple_rig: String::with_capacity(30),
+				arguments: String::with_capacity(300),
+				address: String::with_capacity(96),
 				name: "Local P2Pool".to_string(),
 				rig: "Gupax".to_string(),
 				ip: "localhost".to_string(),
@@ -210,7 +211,7 @@ impl State {
 		match toml::de::from_str(string) {
 			Ok(state) => {
 				info!("State | Parse ... OK");
-				print_toml(string);
+				print_dash(string);
 				Ok(state)
 			}
 			Err(err) => {
@@ -272,7 +273,7 @@ impl State {
 		let string = match toml::ser::to_string(&self) {
 			Ok(string) => {
 				info!("State | Parse ... OK");
-				print_toml(&string);
+				print_dash(&string);
 				string
 			},
 			Err(err) => { error!("State | Couldn't parse TOML into string ... FAIL"); return Err(TomlError::Serialize(err)) },
@@ -615,7 +616,8 @@ pub struct P2pool {
 pub struct Xmrig {
 	pub simple: bool,
 	pub pause: u8,
-	pub config: String,
+	pub simple_rig: String,
+	pub arguments: String,
 	pub tls: bool,
 	pub keepalive: bool,
 	pub max_threads: usize,

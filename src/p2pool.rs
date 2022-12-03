@@ -66,7 +66,7 @@ egui::Frame::none()
 			let width = (width/10.0) - SPACE;
 			ui.style_mut().override_text_style = Some(Monospace);
 			ui.add_sized([width, text_edit], Label::new("Command arguments:"));
-			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.arguments), r#"--wallet <...> --host <...>"#)).on_hover_text(P2POOL_COMMAND);
+			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.arguments), r#"--wallet <...> --host <...>"#)).on_hover_text(P2POOL_ARGUMENTS);
 			self.arguments.truncate(1024);
 		})});
 		ui.set_enabled(self.arguments.is_empty());

@@ -113,6 +113,7 @@ https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e
 * A Monero node/wallet
 
 ## Build
+Windows/Linux:
 ```
 cargo build --release
 ```
@@ -120,5 +121,8 @@ On macOS, if you want the binary to have an icon in `Finder`, you must install [
 ```
 cargo bundle --release
 ```
+This bundles Gupax into a `Gupax.app`, the way it comes in the pre-built tars for macOS.
 
 The `build.rs` file in the repo root sets the icon in `File Explorer` for Windows. The taskbar icon & App frame icon (for all OS's) get set at runtime using pre-compiled bytes in [`src/constants.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/constants.rs) from [`images`](https://github.com/hinto-janaiyo/gupax/blob/main/images).
+
+The `--release` profile is set to prefer code performance & small binary sizes over compilation speed (see [`Cargo.toml`](https://github.com/hinto-janaiyo/gupax/blob/main/Cargo.toml)). Gupax itself (with all dependencies already built) takes around 1m30s to build (vs 10s on a normal `--release`) with a Ryzen 5950x.

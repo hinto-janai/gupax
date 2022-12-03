@@ -113,7 +113,7 @@ pub const P2POOL_AUTO_SELECT: &str = "Automatically select the fastest community
 pub const P2POOL_SELECT_FASTEST: &str = "Select the fastest community Monero node";
 pub const P2POOL_PING: &str = "Ping the built-in community Monero nodes";
 pub const P2POOL_ADDRESS: &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet for P2Pool mining; wallet addresses are public on P2Pool!";
-pub const P2POOL_COMMAND: &str = "Start P2Pool with these arguments and override all below settings; If the [--data-api] flag is not given, Gupax will append it to the arguments automatically so that the [Status] tab can work";
+pub const P2POOL_ARGUMENTS: &str = "Start P2Pool with these arguments and override all below settings; If the [--data-api] & [--local-api] flag is not given, Gupax will append it to the arguments automatically so that the [Status] tab can work";
 pub const P2POOL_SIMPLE: &str =
 r#"Use simple P2Pool settings:
     - Remote community Monero node
@@ -151,7 +151,7 @@ r#"Use advanced XMRig settings:
 	- TLS setting
 	- Keepalive setting
 	- Custom HTTP API IP/Port"#;
-pub const XMRIG_CONFIG: &str = "Start XMRig with this config file and override all below settings; If the [http-api] options are not set, the [Status] tab will not properly show XMRig stats. If they are set, Gupax will detect which automatically IP/Port you are using";
+pub const XMRIG_ARGUMENTS: &str = "Start XMRig with these arguments and override all below settings; If the [http-api] options are not set, Gupax will append it to the arguments automatically so that the [Status] tab can work";
 pub const XMRIG_ADDRESS: &str = "Specify which Monero address to send payouts to; Must be a valid primary address (starts with 4)";
 pub const XMRIG_NAME: &str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
 pub const XMRIG_IP: &str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";

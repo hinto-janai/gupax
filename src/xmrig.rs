@@ -45,11 +45,11 @@ impl Xmrig {
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/10.0) - SPACE;
 			ui.style_mut().override_text_style = Some(Monospace);
-			ui.add_sized([width, text_edit], Label::new("Config file:"));
-			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.config), r#"...config.json"#)).on_hover_text(XMRIG_CONFIG);
-			self.config.truncate(1024);
+			ui.add_sized([width, text_edit], Label::new("Command arguments:"));
+			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.arguments), r#"--url <...> --user <...> --config <...>"#)).on_hover_text(XMRIG_ARGUMENTS);
+			self.arguments.truncate(1024);
 		})});
-		ui.set_enabled(self.config.is_empty());
+		ui.set_enabled(self.arguments.is_empty());
 	//---------------------------------------------------------------------------------------------------- Address
 		ui.group(|ui| {
 			let width = width - SPACE;

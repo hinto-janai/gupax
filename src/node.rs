@@ -143,6 +143,18 @@ pub fn enum_to_ip(node: NodeEnum) -> &'static str {
 	}
 }
 
+// Returns a tuple of (IP, RPC_PORT, ZMQ_PORT)
+pub fn enum_to_ip_rpc_zmq_tuple(node: NodeEnum) -> (&'static str, &'static str, &'static str) {
+	// [.unwrap()] should be safe, IP:PORTs are constants after all.
+	let (ip, rpc) = enum_to_ip(node).rsplit_once(':').unwrap();
+	// Get ZMQ, grr... plowsof is the only 18084 zmq person.
+	let zmq = match node {
+		Plowsof1|Plowsof2 => "18084",
+		_ => "18083",
+	};
+	(ip, rpc, zmq)
+}
+
 // 5000 = 4 max length
 pub fn format_ms(ms: u128) -> String {
 	match ms.to_string().len() {

@@ -323,6 +323,7 @@ impl Hashrate {
 use tokio::io::{BufReader,AsyncBufReadExt};
 
 impl Helper {
+	//---------------------------------------------------------------------------------------------------- General Functions
 	pub fn new(instant: std::time::Instant) -> Self {
 		Self {
 			instant,
@@ -334,12 +335,6 @@ impl Helper {
 			priv_api_p2pool: PrivP2poolApi::new(),
 			priv_api_xmrig: PrivXmrigApi::new(),
 		}
-	}
-
-	// Intermediate function that spawns the helper thread.
-	pub fn spawn_helper(helper: &Arc<Mutex<Self>>) {
-		let helper = Arc::clone(helper);
-		thread::spawn(move || { Self::helper(helper); });
 	}
 
 	// The tokio runtime that blocks while async reading both STDOUT/STDERR
@@ -364,7 +359,113 @@ impl Helper {
 		tokio::join![stdout_job, stderr_job];
 	}
 
-	// The "helper" loop
+	//---------------------------------------------------------------------------------------------------- P2Pool specific
+	// Intermediate function that parses the arguments, and spawns the P2Pool watchdog thread.
+	pub fn spawn_p2pool(state: &crate::disk::P2pool, api_path: &std::path::Path) {
+		let mut args = Vec::with_capacity(500);
+		// [Simple]
+		if state.simple {
+			// Build the p2pool argument
+			let (ip, rpc, zmq) = crate::node::enum_to_ip_rpc_zmq_tuple(state.node); // Get: (IP, RPC, ZMQ)
+			args.push(format!("--wallet {}", state.address));        // Wallet Address
+			args.push(format!("--host {}", ip));                     // IP Address
+			args.push(format!("--rpc-port {}", rpc));                // RPC Port
+			args.push(format!("--zmq-port {}", zmq));                // ZMQ Port
+			args.push(format!("--data-api {}", api_path.display())); // API Path
+			args.push("--local-api".to_string());                    // Enable API
+			args.push("--no-color".to_string());                     // Remove color escape sequences, Gupax terminal can't parse it :(
+			args.push("--mini".to_string());                         // P2Pool Mini
+
+		// [Advanced]
+		} else {
+			// Overriding command arguments
+			if !state.arguments.is_empty() {
+				for arg in state.arguments.split_whitespace() {
+					args.push(arg.to_string());
+				}
+			// Else, build the argument
+			} else {
+				args.push(state.address.clone());      // Wallet
+				args.push(state.selected_ip.clone());  // IP
+				args.push(state.selected_rpc.clone()); // RPC
+				args.push(state.selected_zmq.clone()); // ZMQ
+				args.push("--local-api".to_string());  // Enable API
+				args.push("--no-color".to_string());   // Remove color escape sequences
+				if state.mini { args.push("--mini".to_string()); };      // Mini
+				args.push(format!("--loglevel {}", state.log_level));    // Log Level
+				args.push(format!("--out-peers {}", state.out_peers));   // Out Peers
+				args.push(format!("--in-peers {}", state.in_peers));     // In Peers
+				args.push(format!("--data-api {}", api_path.display())); // API Path
+			}
+		}
+
+		// Print arguments to console
+		crate::disk::print_dash(&format!("P2Pool | Launch arguments ... {:#?}", args));
+
+		// Spawn watchdog thread
+		thread::spawn(move || {
+			Self::spawn_p2pool_watchdog(args);
+		});
+	}
+
+	// The actual P2Pool watchdog tokio runtime.
+	#[tokio::main]
+	pub async fn spawn_p2pool_watchdog(args: Vec<String>) {
+		// 1. Create command
+		// 2. Spawn STDOUT/STDERR thread
+		// 3. Loop forever as watchdog until process dies
+	}
+
+	//---------------------------------------------------------------------------------------------------- XMRig specific
+	// Intermediate function that parses the arguments, and spawns the XMRig watchdog thread.
+	pub fn spawn_xmrig(state: &crate::disk::Xmrig, api_path: &std::path::Path) {
+		let mut args = Vec::with_capacity(500);
+		if state.simple {
+			let rig_name = if state.simple_rig.is_empty() { GUPAX_VERSION.to_string() } else { state.simple_rig.clone() }; // Rig name
+			args.push(format!("--threads {}", state.current_threads)); // Threads
+			args.push(format!("--user {}", state.simple_rig));         // Rig name
+			args.push(format!("--url 127.0.0.1:3333"));                // Local P2Pool (the default)
+			args.push("--no-color".to_string());                       // No color escape codes
+			if state.pause != 0 { args.push(format!("--pause-on-active {}", state.pause)); } // Pause on active
+		} else {
+			if !state.arguments.is_empty() {
+				for arg in state.arguments.split_whitespace() {
+					args.push(arg.to_string());
+				}
+			} else {
+				args.push(format!("--user {}", state.address.clone()));    // Wallet
+				args.push(format!("--threads {}", state.current_threads)); // Threads
+				args.push(format!("--rig-id {}", state.selected_rig));     // Rig ID
+				args.push(format!("--url {}:{}", state.selected_ip.clone(), state.selected_port.clone())); // IP/Port
+				args.push(format!("--http-host {}", state.api_ip).to_string());   // HTTP API IP
+				args.push(format!("--http-port {}", state.api_port).to_string()); // HTTP API Port
+				args.push("--no-color".to_string());                         // No color escape codes
+				if state.tls { args.push("--tls".to_string()); }             // TLS
+				if state.keepalive { args.push("--keepalive".to_string()); } // Keepalive
+				if state.pause != 0 { args.push(format!("--pause-on-active {}", state.pause)); } // Pause on active
+			}
+		}
+		// Print arguments to console
+		crate::disk::print_dash(&format!("XMRig | Launch arguments ... {:#?}", args));
+
+		// Spawn watchdog thread
+		thread::spawn(move || {
+			Self::spawn_xmrig_watchdog(args);
+		});
+	}
+
+	// The actual XMRig watchdog tokio runtime.
+	#[tokio::main]
+	pub async fn spawn_xmrig_watchdog(args: Vec<String>) {
+	}
+
+	//---------------------------------------------------------------------------------------------------- The "helper"
+	// Intermediate function that spawns the helper thread.
+	pub fn spawn_helper(helper: &Arc<Mutex<Self>>) {
+		let helper = Arc::clone(helper);
+		thread::spawn(move || { Self::helper(helper); });
+	}
+
 	// [helper] = Actual Arc
 	// [h]      = Temporary lock that gets dropped
 	// [jobs]   = Vector of async jobs ready to go
