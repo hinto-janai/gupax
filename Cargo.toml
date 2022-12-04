@@ -37,7 +37,7 @@ hyper-tls = "0.5.0"
 image = { version = "0.24.4", features = ["png"] }
 log = "0.4.17"
 num_cpus = "1.13.1"
-num-format = "0.4.0"
+num-format = { version = "0.4.3", default-features = false }
 rand = "0.8.5"
 regex = { version = "1.6.0", default-features = false, features = ["perf"] }
 rfd = "0.10.0"

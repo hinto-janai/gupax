@@ -45,8 +45,11 @@ use std::{
 };
 use serde::{Serialize,Deserialize};
 use crate::constants::*;
+use num_format::{Buffer,Locale};
 use log::*;
 
+//---------------------------------------------------------------------------------------------------- Constants
+const LOCALE: num_format::Locale = num_format::Locale::en;
 
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread
@@ -55,8 +58,8 @@ pub struct Helper {
 	pub human_time: HumanTime,                    // Gupax uptime formatting for humans
 	pub p2pool: Arc<Mutex<Process>>,              // P2Pool process state
 	pub xmrig: Arc<Mutex<Process>>,               // XMRig process state
-	pub pub_api_p2pool: Arc<Mutex<PubP2poolApi>>, // P2Pool API state (for GUI thread)
-	pub pub_api_xmrig: Arc<Mutex<PubXmrigApi>>,   // XMRig API state (for GUI thread)
+	pub pub_api_p2pool: Arc<Mutex<PubP2poolApi>>, // P2Pool API state (for GUI/Helper thread)
+	pub pub_api_xmrig: Arc<Mutex<PubXmrigApi>>,   // XMRig API state (for GUI/Helper thread)
 	priv_api_p2pool: Arc<Mutex<PrivP2poolApi>>,   // For "watchdog" thread
 	priv_api_xmrig: Arc<Mutex<PrivXmrigApi>>,     // For "watchdog" thread
 }
@@ -67,13 +70,12 @@ pub struct Helper {
 // This holds all the state of a (child) process.
 // The main GUI thread will use this to display console text, online state, etc.
 pub struct Process {
-	name: ProcessName,     // P2Pool or XMRig?
-	state: ProcessState,   // The state of the process (alive, dead, etc)
-	signal: ProcessSignal, // Did the user click [Start/Stop/Restart]?
-	start: Instant,        // Start time of process
-	uptime: HumanTime,     // Human readable process uptime
-	output: String,        // This is the process's stdout + stderr
-	stdin: Option<std::process::ChildStdin>, // A handle to the process's STDIN
+	pub name: ProcessName,     // P2Pool or XMRig?
+	pub state: ProcessState,   // The state of the process (alive, dead, etc)
+	pub signal: ProcessSignal, // Did the user click [Start/Stop/Restart]?
+	start: Instant,            // Start time of process
+	pub uptime: HumanTime,     // Human readable process uptime
+	pub output: String,        // This is the process's stdout + stderr
 	// STDIN Problem:
 	//     - User can input many many commands in 1 second
 	//     - The process loop only processes every 1 second
@@ -84,7 +86,8 @@ pub struct Process {
 	//     - When the user inputs something, push it to a [Vec]
 	//     - In the process loop, loop over every [Vec] element and
 	//       send each one individually to the process stdin
-	input: Vec<String>,
+	stdin: Option<std::process::ChildStdin>, // A handle to the process's STDIN
+	pub input: Vec<String>,
 }
 
 //---------------------------------------------------------------------------------------------------- [Process] Impl
@@ -198,15 +201,181 @@ impl std::fmt::Display for HumanTime {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- [HumanNumber]
+// Human readable numbers.
+// Float    | [1234.57] -> [1,234]                    | Casts as u64/u128, adds comma
+// Unsigned | [1234567] -> [1,234,567]                | Adds comma
+// Percent  | [99.123] -> [99.12%]                    | Truncates to 2 after dot, adds percent
+// Percent  | [0.001]  -> [0%]                        | Rounds down, removes redundant zeros
+// Hashrate | [123.0, 311.2, null] -> [123, 311, ???] | Casts, replaces null with [???]
+// CPU Load | [12.0, 11.4, null] -> [12.0, 11.4, ???] | No change, just into [String] form
+#[derive(Debug, Clone)]
+pub struct HumanNumber(String);
+
+impl std::fmt::Display for HumanNumber {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f, "{}", &self.0)
+	}
+}
+
+impl HumanNumber {
+	fn unknown() -> Self {
+		Self("???".to_string())
+	}
+	fn to_percent(f: f32) -> Self {
+		if f < 0.01 {
+			Self("0%".to_string())
+		} else {
+			Self(format!("{:.2}%", f))
+		}
+	}
+	fn from_f32(f: f32) -> Self {
+		let mut buf = num_format::Buffer::new();
+		buf.write_formatted(&(f as u64), &LOCALE);
+		Self(buf.as_str().to_string())
+	}
+	fn from_f64(f: f64) -> Self {
+		let mut buf = num_format::Buffer::new();
+		buf.write_formatted(&(f as u128), &LOCALE);
+		Self(buf.as_str().to_string())
+	}
+	fn from_u8(u: u8) -> Self {
+		let mut buf = num_format::Buffer::new();
+		buf.write_formatted(&u, &LOCALE);
+		Self(buf.as_str().to_string())
+	}
+	fn from_u16(u: u16) -> Self {
+		let mut buf = num_format::Buffer::new();
+		buf.write_formatted(&u, &LOCALE);
+		Self(buf.as_str().to_string())
+	}
+	fn from_u32(u: u32) -> Self {
+		let mut buf = num_format::Buffer::new();
+		buf.write_formatted(&u, &LOCALE);
+		Self(buf.as_str().to_string())
+	}
+	fn from_u64(u: u64) -> Self {
+		let mut buf = num_format::Buffer::new();
+		buf.write_formatted(&u, &LOCALE);
+		Self(buf.as_str().to_string())
+	}
+	fn from_u128(u: u128) -> Self {
+		let mut buf = num_format::Buffer::new();
+		buf.write_formatted(&u, &LOCALE);
+		Self(buf.as_str().to_string())
+	}
+	fn from_hashrate(array: [Option<f32>; 3]) -> Self {
+		let mut string = "[".to_string();
+		let mut buf = num_format::Buffer::new();
+
+		let mut n = 0;
+		for i in array {
+			match i {
+				Some(f) => {
+					let f = f as u128;
+					buf.write_formatted(&f, &LOCALE);
+					string.push_str(buf.as_str());
+					string.push_str(" H/s");
+				},
+				None => string.push_str("??? H/s"),
+			}
+			if n != 2 {
+				string.push_str(", ");
+				n += 1;
+			} else {
+				string.push(']');
+				break
+			}
+		}
+
+		Self(string)
+	}
+	fn from_load(array: [Option<f32>; 3]) -> Self {
+		let mut string = "[".to_string();
+		let mut n = 0;
+		for i in array {
+			match i {
+				Some(f) => string.push_str(format!("{}", f).as_str()),
+				None => string.push_str("???"),
+			}
+			if n != 2 {
+				string.push_str(", ");
+				n += 1;
+			} else {
+				string.push(']');
+				break
+			}
+		}
+		Self(string)
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- Public P2Pool API
 // GUI thread interfaces with this.
 pub struct PubP2poolApi {
-
+	// One off
+	pub mini: bool,
+	// These are manually parsed from the STDOUT.
+	pub payouts: f64,
+	pub payouts_hour: f64,
+	pub payouts_day: f64,
+	pub payouts_month: f64,
+	pub xmr: f64,
+	pub xmr_hour: f64,
+	pub xmr_day: f64,
+	pub xmr_month: f64,
+	// The rest are serialized from the API, then turned into [HumanNumber]s
+	pub hashrate_15m: HumanNumber,
+	pub hashrate_1h: HumanNumber,
+	pub hashrate_24h: HumanNumber,
+	pub shares_found: HumanNumber,
+	pub average_effort: HumanNumber,
+	pub current_effort: HumanNumber,
+	pub connections: HumanNumber,
 }
 
 impl PubP2poolApi {
 	pub fn new() -> Self {
 		Self {
+			mini: true,
+			payouts: 0.0,
+			payouts_hour: 0.0,
+			payouts_day: 0.0,
+			payouts_month: 0.0,
+			xmr: 0.0,
+			xmr_hour: 0.0,
+			xmr_day: 0.0,
+			xmr_month: 0.0,
+			hashrate_15m: HumanNumber::unknown(),
+			hashrate_1h: HumanNumber::unknown(),
+			hashrate_24h: HumanNumber::unknown(),
+			shares_found: HumanNumber::unknown(),
+			average_effort: HumanNumber::unknown(),
+			current_effort: HumanNumber::unknown(),
+			connections: HumanNumber::unknown(),
+		}
+	}
+
+	// Updates the struct with hour/day/month calculations given an uptime in f64 seconds.
+	pub fn update_hour_day_month(self, elapsed: f64) -> Self {
+		// Payouts
+		let per_sec = self.payouts / elapsed;
+		let payouts_hour = (per_sec * 60.0) * 60.0;
+		let payouts_day = payouts_hour * 24.0;
+		let payouts_month = payouts_day * 30.0;
+		// Total XMR
+		let per_sec = self.xmr / elapsed;
+		let xmr_hour = (per_sec * 60.0) * 60.0;
+		let xmr_day = payouts_hour * 24.0;
+		let xmr_month = payouts_day * 30.0;
+		Self {
+			payouts_hour,
+			payouts_day,
+			payouts_month,
+			xmr_hour,
+			xmr_day,
+			xmr_month,
+			..self // <- wow this is so useful
 		}
 	}
 }
@@ -221,8 +390,8 @@ struct PrivP2poolApi {
 	hashrate_1h: u128,
 	hashrate_24h: u128,
 	shares_found: u128,
-	average_effort: f64,
-	current_effort: f64,
+	average_effort: f32,
+	current_effort: f32,
 	connections: u16, // No one will have more than 65535 connections... right?
 }
 
@@ -238,16 +407,48 @@ impl PrivP2poolApi {
 			connections: 0,
 		}
 	}
+
+	// Formats raw private data into ready-to-print human readable version.
+//	pub fn from_priv(private: PrivP2poolApi) -> Self {
+//		Self {
+//		}
+//	}
 }
 
 //---------------------------------------------------------------------------------------------------- Public XMRig API
 pub struct PubXmrigApi {
-
+	worker_id: String,
+	resources: HumanNumber,
+	hashrate: HumanNumber,
+	pool: String,
+	diff: HumanNumber,
+	accepted: HumanNumber,
+	rejected: HumanNumber,
 }
 
 impl PubXmrigApi {
 	pub fn new() -> Self {
 		Self {
+			worker_id: "???".to_string(),
+			resources: HumanNumber::unknown(),
+			hashrate: HumanNumber::unknown(),
+			pool: "???".to_string(),
+			diff: HumanNumber::unknown(),
+			accepted: HumanNumber::unknown(),
+			rejected: HumanNumber::unknown(),
+		}
+	}
+
+	// Formats raw private data into ready-to-print human readable version.
+	fn from_priv(private: PrivXmrigApi) -> Self {
+		Self {
+			worker_id: private.worker_id,
+			resources: HumanNumber::from_load(private.resources.load_average),
+			hashrate: HumanNumber::from_hashrate(private.hashrate.total),
+			pool: private.connection.pool,
+			diff: HumanNumber::from_u128(private.connection.diff),
+			accepted: HumanNumber::from_u128(private.connection.accepted),
+			rejected: HumanNumber::from_u128(private.connection.rejected),
 		}
 	}
 }
@@ -291,7 +492,6 @@ impl Resources {
 #[derive(Debug, Serialize, Deserialize)]
 struct Connection {
 	pool: String,
-	ping: u32,
 	diff: u128,
 	accepted: u128,
 	rejected: u128,
@@ -300,7 +500,6 @@ impl Connection {
 	fn new() -> Self {
 		Self {
 			pool: String::new(),
-			ping: 0,
 			diff: 0,
 			accepted: 0,
 			rejected: 0,
