@@ -75,7 +75,7 @@ pub struct Process {
 	pub signal: ProcessSignal, // Did the user click [Start/Stop/Restart]?
 	start: Instant,            // Start time of process
 	pub uptime: HumanTime,     // Human readable process uptime
-	pub output: String,        // This is the process's stdout + stderr
+	pub output: String,        // This is the process's PUBLIC stdout + stderr
 	// STDIN Problem:
 	//     - User can input many many commands in 1 second
 	//     - The process loop only processes every 1 second
@@ -86,7 +86,10 @@ pub struct Process {
 	//     - When the user inputs something, push it to a [Vec]
 	//     - In the process loop, loop over every [Vec] element and
 	//       send each one individually to the process stdin
-	stdin: Option<std::process::ChildStdin>, // A handle to the process's STDIN
+	pub child: Option<Arc<Mutex<tokio::process::Child>>>,  // A handle to the actual child process
+	stdout: Option<tokio::process::ChildStdout>, // A handle to the process's STDOUT
+	stderr: Option<tokio::process::ChildStderr>, // A handle to the process's STDERR
+	stdin: Option<tokio::process::ChildStdin>, // A handle to the process's STDIN
 	pub input: Vec<String>,
 }
 
@@ -100,7 +103,10 @@ impl Process {
 			signal: ProcessSignal::None,
 			start: now,
 			uptime: HumanTime::into_human(now.elapsed()),
+			stdout: Option::None,
+			stderr: Option::None,
 			stdin: Option::None,
+			child: Option::None,
 			// P2Pool log level 1 produces a bit less than 100,000 lines a day.
 			// Assuming each line averages 80 UTF-8 scalars (80 bytes), then this
 			// initial buffer should last around a week (56MB) before resetting.
@@ -540,13 +546,17 @@ impl Helper {
 	// The tokio runtime that blocks while async reading both STDOUT/STDERR
 	// Cheaper than spawning 2 OS threads just to read 2 pipes (...right? :D)
 	#[tokio::main]
-	async fn read_stdout_stderr(process: &Arc<Mutex<Process>>, stdout: tokio::process::ChildStdout, stderr: tokio::process::ChildStderr) {
-		let process_stdout = Arc::clone(process);
-		let process_stderr = Arc::clone(process);
+	async fn read_stdout_stderr(process: Arc<Mutex<Process>>) {
+		let process_stdout = Arc::clone(&process);
+		let process_stderr = Arc::clone(&process);
+		let stdout = process.lock().unwrap().stdout.take().unwrap();
+		let stderr = process.lock().unwrap().stderr.take().unwrap();
+
 		// Create STDOUT pipe job
 		let stdout_job = tokio::spawn(async move {
 			let mut stdout_reader = BufReader::new(stdout).lines();
 			while let Ok(Some(line)) = stdout_reader.next_line().await {
+//				println!("{}", line); // For debugging.
 				writeln!(process_stdout.lock().unwrap().output, "{}", line);
 			}
 		});
@@ -554,6 +564,7 @@ impl Helper {
 		let stderr_job = tokio::spawn(async move {
 			let mut stderr_reader = BufReader::new(stderr).lines();
 			while let Ok(Some(line)) = stderr_reader.next_line().await {
+//				println!("{}", line); // For debugging.
 				writeln!(process_stderr.lock().unwrap().output, "{}", line);
 			}
 		});
@@ -573,15 +584,15 @@ impl Helper {
 		// [Simple]
 		if state.simple {
 			// Build the p2pool argument
-			let (ip, rpc, zmq) = crate::node::enum_to_ip_rpc_zmq_tuple(state.node); // Get: (IP, RPC, ZMQ)
-			args.push(format!("--wallet {}", state.address));        // Wallet Address
-			args.push(format!("--host {}", ip));                     // IP Address
-			args.push(format!("--rpc-port {}", rpc));                // RPC Port
-			args.push(format!("--zmq-port {}", zmq));                // ZMQ Port
-			args.push(format!("--data-api {}", api_path.display())); // API Path
-			args.push("--local-api".to_string());                    // Enable API
-			args.push("--no-color".to_string());                     // Remove color escape sequences, Gupax terminal can't parse it :(
-			args.push("--mini".to_string());                         // P2Pool Mini
+			let (ip, rpc, zmq) = crate::node::enum_to_ip_rpc_zmq_tuple(state.node);         // Get: (IP, RPC, ZMQ)
+			args.push("--wallet".to_string()); args.push(state.address.clone());            // Wallet address
+			args.push("--host".to_string()); args.push(ip.to_string());                     // IP Address
+			args.push("--rpc-port".to_string()); args.push(rpc.to_string());                // RPC Port
+			args.push("--zmq-port".to_string()); args.push(zmq.to_string());                // ZMQ Port
+			args.push("--data-api".to_string()); args.push(api_path.display().to_string()); // API Path
+			args.push("--local-api".to_string()); // Enable API
+			args.push("--no-color".to_string());  // Remove color escape sequences, Gupax terminal can't parse it :(
+			args.push("--mini".to_string());      // P2Pool Mini
 
 		// [Advanced]
 		} else {
@@ -622,30 +633,44 @@ impl Helper {
 	#[tokio::main]
 	async fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, path: std::path::PathBuf) {
 		// 1. Create command
-		let mut child = tokio::process::Command::new(path)
+		let child = Arc::new(Mutex::new(tokio::process::Command::new(path)
 			.args(args)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
 			.stdin(Stdio::piped())
-			.spawn().unwrap();
+			.spawn().unwrap()));
 
-		// 2. Set start time
-		let now = Instant::now();
-		process.lock().unwrap().start = now;
-		process.lock().unwrap().uptime = HumanTime::into_human(now.elapsed());
+        // 2. Set process state
+        let mut lock = process.lock().unwrap();
+        lock.state = ProcessState::Alive;
+        lock.signal = ProcessSignal::None;
+        lock.start = Instant::now();
+        lock.child = Some(Arc::clone(&child));
+		lock.stdin = Some(child.lock().unwrap().stdin.take().unwrap());
+		drop(lock);
 
 		// 3. Spawn STDOUT/STDERR thread
+		let process_clone = Arc::clone(&process);
 		thread::spawn(move || {
-			Self::read_stdout_stderr(&process, child.stdout.take().unwrap(), child.stderr.take().unwrap());
+			Self::read_stdout_stderr(process_clone);
 		});
 
 		// 4. Loop forever as watchdog until process dies
 		loop {
 			// a. Watch user SIGNAL
+			match process.lock().unwrap().signal {
+				ProcessSignal::Stop    => {},
+				ProcessSignal::Restart => {},
+				_ => {},
+			}
 			// b. Create STDIN task
+			if !process.lock().unwrap().input.is_empty() { /* process it */ }
 			// c. Create API task
+			let async_file_read = { /* tokio async file read job */ };
 			// d. Execute async tasks
-			// e. Sleep (900ms)
+			tokio::join![/* jobs */];
+			// f. Sleep (900ms)
+			std::thread::sleep(MILLI_900);
 		}
 	}
 

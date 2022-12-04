@@ -1018,14 +1018,18 @@ impl eframe::App for App {
 								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() { self.p2pool = false; }
 								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() { self.p2pool = false; }
 								ui.add_enabled_ui(false, |ui| {
-									ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool");
+									if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
+										Helper::spawn_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
+									}
 								});
 							} else {
 								ui.add_enabled_ui(false, |ui| {
 									ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool");
 									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool");
 								});
-								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() { self.p2pool = true; }
+								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
+									Helper::spawn_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
+								}
 							}
 						});
 					},
