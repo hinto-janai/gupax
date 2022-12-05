@@ -38,6 +38,7 @@ image = { version = "0.24.4", features = ["png"] }
 log = "0.4.17"
 num_cpus = "1.13.1"
 num-format = { version = "0.4.3", default-features = false }
+portable-pty = "0.7.0"
 rand = "0.8.5"
 regex = { version = "1.6.0", default-features = false, features = ["perf"] }
 rfd = "0.10.0"

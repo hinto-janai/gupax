@@ -103,10 +103,12 @@ pub struct App {
 	// indicate if an error message needs to be displayed
 	// (it takes up the whole screen with [error_msg] and buttons for ok/quit/etc)
 	error_state: ErrorState,
-	// Helper State:
-	// This holds everything related to the data
-	// processed by the "helper thread", including
+	// Helper/API State:
+	// This holds everything related to the data processed by the "helper thread".
+	// This includes the "helper" threads public P2Pool/XMRig's API.
 	helper: Arc<Mutex<Helper>>,
+	p2pool_api: Arc<Mutex<PubP2poolApi>>,
+	xmrig_api: Arc<Mutex<PubXmrigApi>>,
 
 // Fix-me.
 // These shouldn't exist
@@ -144,6 +146,8 @@ impl App {
 
 	fn new(now: Instant) -> Self {
 		info!("Initializing App Struct...");
+		let p2pool_api = Arc::new(Mutex::new(PubP2poolApi::new()));
+		let xmrig_api = Arc::new(Mutex::new(PubXmrigApi::new()));
 		let mut app = Self {
 			tab: Tab::default(),
 			ping: Arc::new(Mutex::new(Ping::new())),
@@ -161,8 +165,9 @@ impl App {
 			restart: Arc::new(Mutex::new(Restart::No)),
 			diff: false,
 			error_state: ErrorState::new(),
-			helper: Arc::new(Mutex::new(Helper::new(now))),
-
+			helper: Arc::new(Mutex::new(Helper::new(now, p2pool_api.clone(), xmrig_api.clone()))),
+			p2pool_api,
+			xmrig_api,
 // TODO
 // these p2pool/xmrig bools are here for debugging purposes
 // they represent the online/offline status.
@@ -1014,22 +1019,29 @@ impl eframe::App for App {
 						});
 						ui.group(|ui| {
 							let width = (ui.available_width()/3.0)-5.0;
-							if self.p2pool {
-								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() { self.p2pool = false; }
-								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() { self.p2pool = false; }
-								ui.add_enabled_ui(false, |ui| {
-									if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
-										Helper::spawn_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
-									}
-								});
-							} else {
-								ui.add_enabled_ui(false, |ui| {
-									ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool");
-									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool");
-								});
-								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
-									Helper::spawn_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
-								}
+//							if self.p2pool {
+//								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() { self.p2pool = false; }
+//								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() { self.p2pool = false; }
+//								ui.add_enabled_ui(false, |ui| {
+//									if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
+//										Helper::spawn_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
+//									}
+//								});
+//							} else {
+//								ui.add_enabled_ui(false, |ui| {
+//									ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool");
+//									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool");
+//								});
+//								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
+//									Helper::spawn_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
+//								}
+//							}
+							ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool");
+							if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() {
+								self.helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Stop;
+							}
+							if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
+								Helper::spawn_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
 							}
 						});
 					},
@@ -1101,7 +1113,7 @@ impl eframe::App for App {
 					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
 				}
 				Tab::P2pool => {
-					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, self.p2pool, &self.ping, &self.regex, self.width, self.height, ctx, ui);
+					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, self.p2pool, &self.ping, &self.regex, &self.helper, &self.p2pool_api, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
 					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, self.width, self.height, ctx, ui);

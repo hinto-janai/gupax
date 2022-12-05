@@ -38,6 +38,7 @@ pub const BYTES_BANNER: &[u8] = include_bytes!("../images/banner.png");
 pub const P2POOL_BASE_ARGS: &str = "";
 pub const XMRIG_BASE_ARGS: &str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero";
 pub const HORIZONTAL: &str = "--------------------------------------------";
+pub const HORI_DOUBLE: &str = "----------------------------------------------------------------------------------------";
 
 // This is the typical space added when using
 // [ui.separator()] or [ui.group()]

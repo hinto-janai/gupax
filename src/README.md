@@ -24,6 +24,21 @@
 ## Thread Model
 ![thread_model.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/thread_model.png)
 
+Note: The process I/O model depends on if the `[Simple]` or `[Advanced]` version is used.
+
+`[Simple]` has:
+	- 1 OS thread for the watchdog (API fetching, watching signals, etc)
+	- 1 OS thread (with 2 tokio tasks) for STDOUT/STDERR
+	- No pseudo terminal allocated
+	- No STDIN pipe
+
+`[Advanced]` has:
+	- 1 OS thread for the watchdog (API fetching, watching signals, relaying STDIN)
+	- 1 OS thread for a PTY-Child combo (combines STDOUT/STDERR for me, nice!)
+	- A PTY (pseudo terminal) whose underlying type is abstracted with the [`portable_pty`](https://docs.rs/portable-pty/) library
+
+The reason `[Advanced]` is non-async is because P2Pool requires a `TTY` to take STDIN. The PTY library used, [`portable_pty`](https://docs.rs/portable-pty/), doesn't implement async traits. There seem to be tokio PTY libraries, but they are Unix-specific. Having separate PTY code for Windows/Unix is also a big pain. Since the threads will be sleeping most of the time (the pipes are lazily read and buffered), it's fine. Ideally, any I/O should be a tokio task, though.
+
 ## Bootstrap
 This is how Gupax works internally when starting up:
 
@@ -33,7 +48,7 @@ This is how Gupax works internally when starting up:
 	- Start initializing main `App` struct
 	- Parse command arguments
 	- Attempt to read disk files
-	- If errors were found, pop-up window
+	- If errors were found, set the `panic` error screen
 	
 2. **AUTO**
 	- If `auto_update` == `true`, spawn auto-updating thread
