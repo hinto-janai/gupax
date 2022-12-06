@@ -88,21 +88,14 @@ pub struct Process {
 
 	// The below are the handles to the actual child process.
 	// [Simple] has no STDIN, but [Advanced] does. A PTY (pseudo-terminal) is
-	// required for P2Pool/XMRig to open their STDIN pipe, so whether [child]
-	// or [child_pty] actually has a [Some] depends on the users setting.
-	// [Simple]
-	child: Option<Arc<Mutex<tokio::process::Child>>>,
-	stdout: Option<tokio::process::ChildStdout>, // Handle to STDOUT pipe
-	stderr: Option<tokio::process::ChildStderr>, // Handle to STDERR pipe
-
-	// [Advanced] (PTY)
-	child_pty: Option<Arc<Mutex<Box<dyn portable_pty::Child + Send + std::marker::Sync>>>>, // STDOUT/STDERR is combined automatically thanks to this PTY, nice
+	// required for P2Pool/XMRig to open their STDIN pipe.
+	child: Option<Arc<Mutex<Box<dyn portable_pty::Child + Send + std::marker::Sync>>>>, // STDOUT/STDERR is combined automatically thanks to this PTY, nice
 	stdin: Option<Box<dyn portable_pty::MasterPty + Send>>, // A handle to the process's MasterPTY/STDIN
 
 	// This is the process's private output [String], used by both [Simple] and [Advanced].
 	// The "watchdog" threads mutate this, the "helper" thread synchronizes the [Pub*Api] structs
 	// so that the data in here is cloned there roughly once a second. GUI thread never touches this.
-	output: String,
+	output: Arc<Mutex<String>>,
 }
 
 //---------------------------------------------------------------------------------------------------- [Process] Impl
@@ -115,15 +108,12 @@ impl Process {
 			signal: ProcessSignal::None,
 			start: now,
 			uptime: HumanTime::into_human(now.elapsed()),
-			stdout: Option::None,
-			stderr: Option::None,
 			stdin: Option::None,
 			child: Option::None,
-			child_pty: Option::None,
 			// P2Pool log level 1 produces a bit less than 100,000 lines a day.
 			// Assuming each line averages 80 UTF-8 scalars (80 bytes), then this
 			// initial buffer should last around a week (56MB) before resetting.
-			output: String::with_capacity(56_000_000),
+			output: Arc::new(Mutex::new(String::with_capacity(56_000_000))),
 			input: vec![String::new()],
 		}
 	}
@@ -131,6 +121,15 @@ impl Process {
 	// Borrow a [&str], return an owned split collection
 	pub fn parse_args(args: &str) -> Vec<String> {
 		args.split_whitespace().map(|s| s.to_owned()).collect()
+	}
+
+	// Convenience functions
+	pub fn is_alive(&self) -> bool {
+		self.state == ProcessState::Alive || self.state == ProcessState::Middle
+	}
+
+	pub fn is_waiting(&self) -> bool {
+		self.state == ProcessState::Middle || self.state == ProcessState::Waiting
 	}
 }
 
@@ -140,7 +139,8 @@ pub enum ProcessState {
 	Alive,  // Process is online, GREEN!
 	Dead,   // Process is dead, BLACK!
 	Failed, // Process is dead AND exited with a bad code, RED!
-	Middle, // Process is in the middle of something (starting, stopping, etc), YELLOW!
+	Middle, // Process is in the middle of something ([re]starting/stopping), YELLOW!
+	Waiting, // Process was successfully killed by a restart, and is ready to be started again, YELLOW!
 }
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug)]
@@ -166,63 +166,80 @@ use tokio::io::{BufReader,AsyncBufReadExt};
 
 impl Helper {
 	//---------------------------------------------------------------------------------------------------- General Functions
-	pub fn new(instant: std::time::Instant, pub_api_p2pool: Arc<Mutex<PubP2poolApi>>, pub_api_xmrig: Arc<Mutex<PubXmrigApi>>) -> Self {
+	pub fn new(instant: std::time::Instant, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, pub_api_p2pool: Arc<Mutex<PubP2poolApi>>, pub_api_xmrig: Arc<Mutex<PubXmrigApi>>) -> Self {
 		Self {
 			instant,
 			human_time: HumanTime::into_human(instant.elapsed()),
-			p2pool: Arc::new(Mutex::new(Process::new(ProcessName::P2pool, String::new(), PathBuf::new()))),
-			xmrig: Arc::new(Mutex::new(Process::new(ProcessName::Xmrig, String::new(), PathBuf::new()))),
 			priv_api_p2pool: Arc::new(Mutex::new(PrivP2poolApi::new())),
 			priv_api_xmrig: Arc::new(Mutex::new(PrivXmrigApi::new())),
 			// These are created when initializing [App], since it needs a handle to it as well
+			p2pool,
+			xmrig,
 			pub_api_p2pool,
 			pub_api_xmrig,
 		}
 	}
 
-	// The tokio runtime that blocks while async reading both STDOUT/STDERR
-	// Cheaper than spawning 2 OS threads just to read 2 pipes (...right? :D)
-	#[tokio::main]
-	async fn async_read_stdout_stderr(process: Arc<Mutex<Process>>) {
-		let process_stdout = Arc::clone(&process);
-		let process_stderr = Arc::clone(&process);
-		let stdout = process.lock().unwrap().child.as_ref().unwrap().lock().unwrap().stdout.take().unwrap();
-		let stderr = process.lock().unwrap().child.as_ref().unwrap().lock().unwrap().stderr.take().unwrap();
-
-		// Create STDOUT pipe job
-		let stdout_job = tokio::spawn(async move {
-			let mut reader = BufReader::new(stdout).lines();
-			while let Ok(Some(line)) = reader.next_line().await {
-				println!("{}", line); // For debugging.
-				writeln!(process_stdout.lock().unwrap().output, "{}", line);
-			}
-		});
-		// Create STDERR pipe job
-		let stderr_job = tokio::spawn(async move {
-			let mut reader = BufReader::new(stderr).lines();
-			while let Ok(Some(line)) = reader.next_line().await {
-				println!("{}", line); // For debugging.
-				writeln!(process_stderr.lock().unwrap().output, "{}", line);
-			}
-		});
-		// Block and read both until they are closed (automatic when process dies)
-		// The ordering of STDOUT/STDERR should be automatic thanks to the locks.
-		tokio::join![stdout_job, stderr_job];
-	}
-
 	// Reads a PTY which combines STDOUT/STDERR for me, yay
-	fn read_pty(process: Arc<Mutex<Process>>, reader: Box<dyn std::io::Read + Send>) {
+	fn read_pty(output: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
 		while let Some(Ok(line)) = stdout.next() {
-			println!("{}", line); // For debugging.
-			writeln!(process.lock().unwrap().output, "{}", line);
+//			println!("{}", line); // For debugging.
+			writeln!(output.lock().unwrap(), "{}", line);
 		}
 	}
 
 	//---------------------------------------------------------------------------------------------------- P2Pool specific
-	// Intermediate function that parses the arguments, and spawns the P2Pool watchdog thread.
-	pub fn spawn_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: std::path::PathBuf) {
+	// Read P2Pool's API file.
+	fn read_p2pool_api(path: &std::path::PathBuf) -> Result<String, std::io::Error> {
+		match std::fs::read_to_string(path) {
+			Ok(s) => Ok(s),
+			Err(e) => { warn!("P2Pool API | [{}] read error: {}", path.display(), e); Err(e) },
+		}
+	}
+
+	// Deserialize the above [String] into a [PrivP2poolApi]
+	fn str_to_priv_p2pool_api(string: &str) -> Result<PrivP2poolApi, serde_json::Error> {
+		match serde_json::from_str::<PrivP2poolApi>(string) {
+			Ok(a) => Ok(a),
+			Err(e) => { warn!("P2Pool API | Could not deserialize API data: {}", e); Err(e) },
+		}
+	}
+
+	// Just sets some signals for the watchdog thread to pick up on.
+	pub fn stop_p2pool(helper: &Arc<Mutex<Self>>) {
+		info!("P2Pool | Attempting stop...");
+		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Stop;
+		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
+	}
+
+	// The "restart frontend" to a "frontend" function.
+	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
+	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: std::path::PathBuf) {
+		info!("P2Pool | Attempting restart...");
+		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Restart;
+		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
+
+		let helper = Arc::clone(&helper);
+		let state = state.clone();
+		let path = path.clone();
+		// This thread lives to wait, start p2pool then die.
+		thread::spawn(move || {
+			while helper.lock().unwrap().p2pool.lock().unwrap().is_alive() {
+				warn!("P2Pool Restart | Process still alive, waiting...");
+				thread::sleep(SECOND);
+			}
+			// Ok, process is not alive, start the new one!
+			Self::start_p2pool(&helper, &state, path);
+		});
+		info!("P2Pool | Restart ... OK");
+	}
+
+	// The "frontend" function that parses the arguments, and spawns either the [Simple] or [Advanced] P2Pool watchdog thread.
+	pub fn start_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: std::path::PathBuf) {
+		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
+
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
 		let mut api_path = path.clone();
@@ -268,81 +285,29 @@ impl Helper {
 		crate::disk::print_dash(&format!("P2Pool | Launch arguments ... {:#?}", args));
 
 		// Spawn watchdog thread
-		let simple = !state.simple; // Will this process need a PTY (STDIN)?
 		let process = Arc::clone(&helper.lock().unwrap().p2pool);
 		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
 		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_p2pool);
 		thread::spawn(move || {
-			if simple {
-				Self::spawn_simple_p2pool_watchdog(process, pub_api, priv_api, args, path);
-			} else {
-				Self::spawn_pty_p2pool_watchdog(process, pub_api, priv_api, args, path);
-			}
+			Self::spawn_p2pool_watchdog(process, pub_api, priv_api, args, path);
 		});
 	}
 
-	// The [Simple] P2Pool watchdog tokio runtime, using async features with no PTY (STDIN).
+	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	#[tokio::main]
-	async fn spawn_simple_p2pool_watchdog(process: Arc<Mutex<Process>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, path: std::path::PathBuf) {
-		// 1a. Create command
-		let child = Arc::new(Mutex::new(tokio::process::Command::new(path)
-			.args(args)
-			.stdout(Stdio::piped())
-			.stderr(Stdio::piped())
-			.stdin(Stdio::piped())
-			.spawn().unwrap()));
-
-        // 2. Set process state
-        let mut lock = process.lock().unwrap();
-        lock.state = ProcessState::Alive;
-        lock.signal = ProcessSignal::None;
-        lock.start = Instant::now();
-		lock.child = Some(Arc::clone(&child));
-		drop(lock);
-
-		// 3. Spawn STDOUT/STDERR thread
-		let process_clone = Arc::clone(&process);
-		thread::spawn(move || {
-			Self::async_read_stdout_stderr(process_clone);
-		});
-
-		// 4. Loop forever as watchdog until process dies
-		loop {
-			// a. Watch user SIGNAL
-			if process.lock().unwrap().signal == ProcessSignal::Stop {
-				process.lock().unwrap().child.as_mut().unwrap().lock().unwrap().kill().await;
-				process.lock().unwrap().signal = ProcessSignal::None;
-			}
-//			let signal = match process.lock().unwrap().signal {
-//				ProcessSignal::Stop    => { crate::disk::print_dash("KILLING P2POOL"); process.lock().unwrap().child.as_mut().unwrap().lock().unwrap().kill().await.unwrap() },
-//				ProcessSignal::Restart => process.lock().unwrap().child.as_mut().unwrap().lock().unwrap().kill().await,
-//				_ => Ok(()),
-//			};
-			// b. Create STDIN task
-			if !process.lock().unwrap().input.is_empty() { /* process it */ }
-			// c. Create API task
-			let async_file_read = { /* tokio async file read job */ };
-			// d. Execute async tasks
-//			tokio::join![signal];
-			// f. Sleep (900ms)
-			std::thread::sleep(MILLI_900);
-		}
-	}
-
-	// The [Advanced] P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	#[tokio::main]
-	async fn spawn_pty_p2pool_watchdog(process: Arc<Mutex<Process>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, path: std::path::PathBuf) {
+	async fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
-		let mut pair = pty.openpty(portable_pty::PtySize {
+		let pair = pty.openpty(portable_pty::PtySize {
 			rows: 24,
 			cols: 80,
 			pixel_width: 0,
 			pixel_height: 0,
 		}).unwrap();
 		// 1b. Create command
-		let mut cmd = portable_pty::CommandBuilder::new(path);
+		let mut cmd = portable_pty::CommandBuilder::new(path.as_path());
 		cmd.args(args);
+		cmd.cwd(path.as_path().parent().unwrap());
 		// 1c. Create child
 		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
 
@@ -351,16 +316,21 @@ impl Helper {
         lock.state = ProcessState::Alive;
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
-		lock.child_pty = Some(Arc::clone(&child_pty));
+		lock.child = Some(Arc::clone(&child_pty));
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
 		lock.stdin = Some(pair.master);
 		drop(lock);
 
 		// 3. Spawn PTY read thread
-		let process_clone = Arc::clone(&process);
+		let output_clone = Arc::clone(&process.lock().unwrap().output);
 		thread::spawn(move || {
-			Self::read_pty(process_clone, reader);
+			Self::read_pty(output_clone, reader);
 		});
+
+		path.pop();
+		path.push(P2POOL_API_PATH);
+		let regex = P2poolRegex::new();
+		let output = Arc::clone(&process.lock().unwrap().output);
 
 		// 4. Loop as watchdog
 		loop {
@@ -371,14 +341,42 @@ impl Helper {
 			if process.lock().unwrap().signal == ProcessSignal::Stop {
 				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
 				// Wait to get the exit status
+				let mut lock = process.lock().unwrap();
+				let exit_status = match child_pty.lock().unwrap().wait() {
+					Ok(e) => if e.success() { lock.state = ProcessState::Dead; "Successful" } else { lock.state = ProcessState::Failed; "Failed" },
+					_ => { lock.state = ProcessState::Failed; "Unknown Error" },
+				};
+				let uptime = lock.uptime.clone();
+				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
+				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_DOUBLE, uptime, exit_status, HORI_DOUBLE);
+				lock.signal = ProcessSignal::None;
+				break
+			} else if process.lock().unwrap().signal == ProcessSignal::Restart {
+				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
+				// Wait to get the exit status
+				let mut lock = process.lock().unwrap();
 				let exit_status = match child_pty.lock().unwrap().wait() {
 					Ok(e) => if e.success() { "Successful" } else { "Failed" },
 					_ => "Unknown Error",
 				};
-				let mut lock = process.lock().unwrap();
 				let uptime = lock.uptime.clone();
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				writeln!(lock.output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_DOUBLE, uptime, exit_status, HORI_DOUBLE);
+				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
+				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_DOUBLE, uptime, exit_status, HORI_DOUBLE);
+				lock.state = ProcessState::Waiting;
+				break
+			// Check if the process is secretly died without us knowing :)
+			} else if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
+				let mut lock = process.lock().unwrap();
+				let exit_status = match code.success() {
+					true  => { lock.state = ProcessState::Dead; "Successful" },
+					false => { lock.state = ProcessState::Failed; "Failed" },
+				};
+				let uptime = lock.uptime.clone();
+				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
+				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_DOUBLE, uptime, exit_status, HORI_DOUBLE);
 				lock.signal = ProcessSignal::None;
 				break
 			}
@@ -393,6 +391,15 @@ impl Helper {
 			}
 			drop(lock);
 
+			// Read API file into string
+			if let Ok(string) = Self::read_p2pool_api(&path) {
+				// Deserialize
+				if let Ok(s) = Self::str_to_priv_p2pool_api(&string) {
+					// Update the structs.
+					PubP2poolApi::update_from_priv(&pub_api, &priv_api, &output, process.lock().unwrap().start.elapsed().as_secs_f64(), &regex);
+				}
+			}
+
 			// Sleep (only if 900ms hasn't passed)
 			let elapsed = now.elapsed().as_millis();
 			// Since logic goes off if less than 1000, casting should be safe
@@ -400,12 +407,12 @@ impl Helper {
 		}
 
 		// 5. If loop broke, we must be done here.
-		info!("P2Pool | Watchdog thread exiting... Goodbye!");
+		info!("P2Pool | Advanced watchdog thread exiting... Goodbye!");
 	}
 
 	//---------------------------------------------------------------------------------------------------- XMRig specific
 	// Intermediate function that parses the arguments, and spawns the XMRig watchdog thread.
-	pub fn spawn_xmrig(state: &crate::disk::Xmrig, api_path: &std::path::Path) {
+	pub fn spawn_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: std::path::PathBuf) {
 		let mut args = Vec::with_capacity(500);
 		if state.simple {
 			let rig_name = if state.simple_rig.is_empty() { GUPAX_VERSION.to_string() } else { state.simple_rig.clone() }; // Rig name
@@ -661,26 +668,31 @@ impl HumanNumber {
 // The following STDLIB implementation takes [0.003~] seconds to find all matches given a [String] with 30k lines:
 //     let mut n = 0;
 //     for line in P2POOL_OUTPUT.lines() {
-//         if line.contains("[0-9].[0-9]+ XMR") { n += 1; }
+//         if line.contains("You received a payout of [0-9].[0-9]+ XMR") { n += 1; }
 //     }
 //
 // This regex function takes [0.0003~] seconds (10x faster):
-//     let regex = Regex::new("[0-9].[0-9]+ XMR").unwrap();
+//     let regex = Regex::new("You received a payout of [0-9].[0-9]+ XMR").unwrap();
 //     let n = regex.find_iter(P2POOL_OUTPUT).count();
 //
 // Both are nominally fast enough where it doesn't matter too much but meh, why not use regex.
 struct P2poolRegex {
-	xmr: regex::Regex,
+	payout: regex::Regex,
+	float: regex::Regex,
 }
 
 impl P2poolRegex {
 	fn new() -> Self {
-		Self { xmr: regex::Regex::new("[0-9].[0-9]+ XMR").unwrap(), }
+		Self {
+			payout: regex::Regex::new("You received a payout of [0-9].[0-9]+ XMR").unwrap(),
+			float: regex::Regex::new("[0-9].[0-9]+").unwrap(),
+		}
 	}
 }
 
 //---------------------------------------------------------------------------------------------------- Public P2Pool API
 // GUI thread interfaces with this.
+#[derive(Debug, Clone)]
 pub struct PubP2poolApi {
 	// One off
 	pub mini: bool,
@@ -728,20 +740,23 @@ impl PubP2poolApi {
 		}
 	}
 
-	// Mutate [PubP2poolApi] with data from a [PrivP2poolApi].
-	fn update_from_priv(self, output: String, regex: P2poolRegex, private: PrivP2poolApi, uptime: f64) -> Self {
+	// Mutate [PubP2poolApi] with data from a [PrivP2poolApi] and the process output.
+	fn update_from_priv(public: &Arc<Mutex<Self>>, private: &Arc<Mutex<PrivP2poolApi>>, output: &Arc<Mutex<String>>, start: f64, regex: &P2poolRegex) {
+		let public_clone = public.lock().unwrap().clone();
+		let output = output.lock().unwrap().clone();
 		// 1. Parse STDOUT
 		let (payouts, xmr) = Self::calc_payouts_and_xmr(&output, &regex);
 		let stdout_parse = Self {
-			output: output.clone(),
+			output,
 			payouts,
 			xmr,
-			..self // <- So useful
+			..public_clone // <- So useful
 		};
 		// 2. Time calculations
-		let hour_day_month = Self::update_hour_day_month(stdout_parse, uptime);
+		let hour_day_month = Self::update_hour_day_month(stdout_parse, start);
 		// 3. Final priv -> pub conversion
-		Self {
+		let private = private.lock().unwrap();
+		*public.lock().unwrap() = Self {
 			hashrate_15m: HumanNumber::from_u128(private.hashrate_15m),
 			hashrate_1h: HumanNumber::from_u128(private.hashrate_1h),
 			hashrate_24h: HumanNumber::from_u128(private.hashrate_24h),
@@ -756,16 +771,13 @@ impl PubP2poolApi {
 	// Essentially greps the output for [x.xxxxxxxxxxxx XMR] where x = a number.
 	// It sums each match and counts along the way, handling an error by not adding and printing to console.
 	fn calc_payouts_and_xmr(output: &str, regex: &P2poolRegex) -> (u128 /* payout count */, f64 /* total xmr */) {
-		let mut iter = regex.xmr.find_iter(output);
+		let iter = regex.payout.find_iter(output);
 		let mut result: f64 = 0.0;
 		let mut count: u128 = 0;
 		for i in iter {
-			if let Some(text) = i.as_str().split_whitespace().next() {
-				match text.parse::<f64>() {
-					Ok(num) => result += num,
-					Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
-				}
-				count += 1;
+			match regex.float.find(i.as_str()).unwrap().as_str().parse::<f64>() {
+				Ok(num) => { result += num; count += 1; },
+				Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
 			}
 		}
 		(count, result)
@@ -799,7 +811,7 @@ impl PubP2poolApi {
 // This is the data the "watchdog" threads mutate.
 // It matches directly to P2Pool's [local/stats] JSON API file (excluding a few stats).
 // P2Pool seems to initialize all stats at 0 (or 0.0), so no [Option] wrapper seems needed.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct PrivP2poolApi {
 	hashrate_15m: u128,
 	hashrate_1h: u128,
@@ -825,6 +837,7 @@ impl PrivP2poolApi {
 }
 
 //---------------------------------------------------------------------------------------------------- Public XMRig API
+#[derive(Debug, Clone)]
 pub struct PubXmrigApi {
 	output: String,
 	worker_id: String,
@@ -870,7 +883,7 @@ impl PubXmrigApi {
 // e.g: [wget -qO- localhost:18085/1/summary].
 // XMRig doesn't initialize stats at 0 (or 0.0) and instead opts for [null]
 // which means some elements need to be wrapped in an [Option] or else serde will [panic!].
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct PrivXmrigApi {
 	worker_id: String,
 	resources: Resources,
@@ -889,7 +902,7 @@ impl PrivXmrigApi {
 	}
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct Resources {
 	load_average: [Option<f32>; 3],
 }
@@ -901,7 +914,7 @@ impl Resources {
 	}
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Connection {
 	pool: String,
 	diff: u128,
@@ -919,7 +932,7 @@ impl Connection {
 	}
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct Hashrate {
 	total: [Option<f32>; 3],
 }

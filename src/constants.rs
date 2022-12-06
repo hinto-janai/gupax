@@ -35,10 +35,26 @@ pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon@2x.png");
 #[cfg(not(target_os = "macos"))]
 pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon.png");
 pub const BYTES_BANNER: &[u8] = include_bytes!("../images/banner.png");
-pub const P2POOL_BASE_ARGS: &str = "";
-pub const XMRIG_BASE_ARGS: &str = "--http-host=127.0.0.1 --http-port=18088 --algo=rx/0 --coin=Monero";
 pub const HORIZONTAL: &str = "--------------------------------------------";
 pub const HORI_DOUBLE: &str = "----------------------------------------------------------------------------------------";
+
+// P2Pool & XMRig default API stuff
+#[cfg(target_os = "windows")]
+pub const P2POOL_API_PATH: &str = r"local\stats"; // The default relative FS path of P2Pool's local API
+#[cfg(target_family = "unix")]
+pub const P2POOL_API_PATH: &str = "local/stats";
+pub const XMRIG_API_URI: &str = "1/summary"; // The default relative URI of XMRig's API
+
+// Process state tooltips (online, offline, etc)
+pub const P2POOL_ALIVE:  &str = "P2Pool is online";
+pub const P2POOL_DEAD:   &str = "P2Pool is offline";
+pub const P2POOL_FAILED: &str = "P2Pool is offline, and failed when exiting";
+pub const P2POOL_MIDDLE: &str = "P2Pool is in the middle of (re)starting/stopping";
+
+pub const XMRIG_ALIVE:  &str = "XMRig is online";
+pub const XMRIG_DEAD:   &str = "XMRig is offline";
+pub const XMRIG_FAILED: &str = "XMRig is offline, and failed when exiting";
+pub const XMRIG_MIDDLE: &str = "XMRig is in the middle of (re)starting/stopping";
 
 // This is the typical space added when using
 // [ui.separator()] or [ui.group()]
@@ -50,8 +66,10 @@ pub const SPACE: f32 = 10.0;
 pub const RED: egui::Color32 = egui::Color32::from_rgb(230, 50, 50);
 pub const GREEN: egui::Color32 = egui::Color32::from_rgb(100, 230, 100);
 pub const YELLOW: egui::Color32 = egui::Color32::from_rgb(230, 230, 100);
+pub const GRAY: egui::Color32 = egui::Color32::GRAY;
 pub const LIGHT_GRAY: egui::Color32 = egui::Color32::LIGHT_GRAY;
 pub const BLACK: egui::Color32 = egui::Color32::BLACK;
+pub const DARK_GRAY: egui::Color32 = egui::Color32::from_rgb(18, 18, 18);
 
 // [Duration] constants
 pub const SECOND: std::time::Duration = std::time::Duration::from_secs(1);
@@ -90,6 +108,12 @@ pub const GUPAX_LOCK_WIDTH: &str = "Automatically match the height against the w
 pub const GUPAX_LOCK_HEIGHT: &str = "Automatically match the width against the height in a 16:10 ratio; aka WIDTH = HEIGHT * 1.6";
 pub const GUPAX_NO_LOCK: &str = "Allow individual selection of width and height";
 pub const GUPAX_SET: &str = "Set the width/height of the Gupax window to the current values";
+pub const GUPAX_TAB_ABOUT: &str = "Set the tab Gupax starts on to: About";
+pub const GUPAX_TAB_STATUS: &str = "Set the tab Gupax starts on to: Status";
+pub const GUPAX_TAB_GUPAX: &str = "Set the tab Gupax starts on to: Gupax";
+pub const GUPAX_TAB_P2POOL: &str = "Set the tab Gupax starts on to: P2Pool";
+pub const GUPAX_TAB_XMRIG: &str = "Set the tab Gupax starts on to: XMRig";
+
 pub const GUPAX_SIMPLE: &str =
 r#"Use simple Gupax settings:
     - Update button

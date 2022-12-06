@@ -29,6 +29,7 @@ use crate::{
 	update::*,
 	ErrorState,
 	Restart,
+	Tab,
 };
 use std::{
 	thread,
@@ -86,7 +87,7 @@ impl Gupax {
 				// because I need to use [ui.set_enabled]s, but I can't
 				// find a way to use a [ui.xxx()] with [ui.add_sized()].
 				// I have to pick one. This one seperates them though.
-				let height = height/8.0;
+				let height = if self.simple { height/5.0 } else { height/10.0 };
 				let width = width - SPACE;
 				let updating = *update.lock().unwrap().updating.lock().unwrap();
 				ui.vertical(|ui| {
@@ -113,12 +114,7 @@ impl Gupax {
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
 					let width = (width - SPACE*7.5)/4.0;
-					let height = height/8.0;
-//					let mut style = (*ctx.style()).clone();
-//					style.spacing.icon_width_inner = width / 8.0;
-//					style.spacing.icon_width = width / 6.0;
-//					style.spacing.icon_spacing = 20.0;
-//					ctx.set_style(style);
+					let height = height/10.0;
 					ui.add_sized([width, height], Checkbox::new(&mut self.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
 					ui.separator();
 					ui.add_sized([width, height], Checkbox::new(&mut self.update_via_tor, "Update via Tor")).on_hover_text(GUPAX_UPDATE_VIA_TOR);
@@ -217,18 +213,35 @@ impl Gupax {
 			});
 		});
 		ui.style_mut().override_text_style = Some(egui::TextStyle::Button);
+		// Width/Height locks
 		ui.group(|ui| {
-			let width = (width/4.0)-(SPACE*1.5);
-			let height = ui.available_height()/2.0;
+			let height = ui.available_height()/4.0;
 		ui.horizontal(|ui| {
-			if ui.add_sized([width, height], SelectableLabel::new(self.ratio == Ratio::Width, "Lock to width")).on_hover_text(GUPAX_LOCK_WIDTH).clicked() { self.ratio = Ratio::Width; }
+			use Ratio::*;
+			let width = (width/4.0)-(SPACE*1.5);
+			if ui.add_sized([width, height], SelectableLabel::new(self.ratio == Width, "Lock to width")).on_hover_text(GUPAX_LOCK_WIDTH).clicked() { self.ratio = Width; }
 			ui.separator();
-			if ui.add_sized([width, height], SelectableLabel::new(self.ratio == Ratio::Height, "Lock to height")).on_hover_text(GUPAX_LOCK_HEIGHT).clicked() { self.ratio = Ratio::Height; }
+			if ui.add_sized([width, height], SelectableLabel::new(self.ratio == Height, "Lock to height")).on_hover_text(GUPAX_LOCK_HEIGHT).clicked() { self.ratio = Height; }
 			ui.separator();
-			if ui.add_sized([width, height], SelectableLabel::new(self.ratio == Ratio::None, "No lock")).on_hover_text(GUPAX_NO_LOCK).clicked() { self.ratio = Ratio::None; }
+			if ui.add_sized([width, height], SelectableLabel::new(self.ratio == None, "No lock")).on_hover_text(GUPAX_NO_LOCK).clicked() { self.ratio = None; }
 			if ui.add_sized([width, height], Button::new("Set")).on_hover_text(GUPAX_SET).clicked() {
 				frame.set_window_size(Vec2::new(self.selected_width as f32, self.selected_height as f32));
 			}
+		})});
+		// Saved [Tab]
+		ui.group(|ui| {
+			let height = ui.available_height()/2.0;
+			let width = (width/5.0)-(SPACE*1.8);
+			ui.horizontal(|ui| {
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).on_hover_text(GUPAX_TAB_ABOUT).clicked() { self.tab = Tab::About; }
+			ui.separator();
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Status, "Status")).on_hover_text(GUPAX_TAB_STATUS).clicked() { self.tab = Tab::Status; }
+			ui.separator();
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Gupax, "Gupax")).on_hover_text(GUPAX_TAB_GUPAX).clicked() { self.tab = Tab::Gupax; }
+			ui.separator();
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::P2pool, "P2Pool")).on_hover_text(GUPAX_TAB_P2POOL).clicked() { self.tab = Tab::P2pool; }
+			ui.separator();
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Xmrig, "XMRig")).on_hover_text(GUPAX_TAB_XMRIG).clicked() { self.tab = Tab::Xmrig; }
 		})});
 	}
 

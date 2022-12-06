@@ -44,6 +44,7 @@ use figment::providers::{Format,Toml};
 use crate::{
 	constants::*,
 	gupax::Ratio,
+	Tab,
 };
 use log::*;
 
@@ -154,6 +155,7 @@ impl State {
 				selected_width: APP_DEFAULT_WIDTH as u16,
 				selected_height: APP_DEFAULT_HEIGHT as u16,
 				ratio: Ratio::Width,
+				tab: Tab::About,
 			},
 			p2pool: P2pool {
 				simple: true,
@@ -586,6 +588,7 @@ pub struct Gupax {
 	pub absolute_xmrig_path: PathBuf,
 	pub selected_width: u16,
 	pub selected_height: u16,
+	pub tab: Tab,
 	pub ratio: Ratio,
 }
 
