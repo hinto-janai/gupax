@@ -243,6 +243,7 @@ impl Helper {
 		let path = path.clone();
 		let mut api_path = path.clone();
 		api_path.pop();
+		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
 
 		// [Simple]
 		if state.simple {
@@ -256,6 +257,17 @@ impl Helper {
 			args.push("--local-api".to_string()); // Enable API
 			args.push("--no-color".to_string());  // Remove color escape sequences, Gupax terminal can't parse it :(
 			args.push("--mini".to_string());      // P2Pool Mini
+			// Set static user data
+			pub_api.lock().unwrap().user = UserP2poolData {
+				mini: true,
+				address: state.address.clone(),
+				host: ip.to_string(),
+				rpc: rpc.to_string(),
+				zmq: zmq.to_string(),
+				log_level: "3".to_string(),
+				out_peers: "10".to_string(),
+				in_peers: "10".to_string(),
+			};
 
 		// [Advanced]
 		} else {
@@ -277,15 +289,25 @@ impl Helper {
 				args.push("--local-api".to_string());               // Enable API
 				args.push("--no-color".to_string());                // Remove color escape sequences
 				if state.mini { args.push("--mini".to_string()); }; // Mini
+				// Set static user data
+				pub_api.lock().unwrap().user = UserP2poolData {
+					mini: state.mini,
+					address: state.address.clone(),
+					host: state.selected_ip.to_string(),
+					rpc: state.selected_rpc.to_string(),
+					zmq: state.selected_zmq.to_string(),
+					log_level: state.log_level.to_string(),
+					out_peers: state.out_peers.to_string(),
+					in_peers: state.in_peers.to_string(),
+				};
 			}
 		}
 
-		// Print arguments to console
+		// Print arguments & user settings to console
 		crate::disk::print_dash(&format!("P2Pool | Launch arguments ... {:#?}", args));
 
 		// Spawn watchdog thread
 		let process = Arc::clone(&helper.lock().unwrap().p2pool);
-		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
 		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_p2pool);
 		thread::spawn(move || {
 			Self::spawn_p2pool_watchdog(process, pub_api, priv_api, args, path);
@@ -413,7 +435,7 @@ impl Helper {
 		}
 
 		// 5. If loop broke, we must be done here.
-		info!("P2Pool | Advanced watchdog thread exiting... Goodbye!");
+		info!("P2Pool | Watchdog thread exiting... Goodbye!");
 	}
 
 	//---------------------------------------------------------------------------------------------------- XMRig specific
@@ -703,11 +725,40 @@ impl P2poolRegex {
 }
 
 //---------------------------------------------------------------------------------------------------- Public P2Pool API
+// Static Public data that is only initialized once per P2Pool start.
+#[derive(Debug, Clone)]
+pub struct UserP2poolData {
+	// Static user data that gets initialized once.
+	pub mini: bool,        // Did the user start on the mini-chain?
+	pub address: String,   // What address is the current p2pool paying out to? (This gets shortened to [4xxxxx...xxxxxx])
+	pub host: String,      // What monerod are we using?
+	pub rpc: String,       // What is the RPC port?
+	pub zmq: String,       // What is the ZMQ port?
+	pub out_peers: String, // How many out-peers?
+	pub in_peers: String,  // How many in-peers?
+	pub log_level: String, // What log level?
+}
+
+impl UserP2poolData {
+	fn new() -> Self {
+		Self {
+			mini: true,
+			address: String::new(),
+			host: String::new(),
+			rpc: String::new(),
+			zmq: String::new(),
+			out_peers: String::new(),
+			in_peers: String::new(),
+			log_level: String::new(),
+		}
+	}
+}
+
 // GUI thread interfaces with this.
 #[derive(Debug, Clone)]
 pub struct PubP2poolApi {
-	// One off
-	pub mini: bool,
+	// Static data
+	pub user: UserP2poolData,
 	// Output
 	pub output: String,
 	// Uptime
@@ -734,7 +785,7 @@ pub struct PubP2poolApi {
 impl PubP2poolApi {
 	pub fn new() -> Self {
 		Self {
-			mini: true,
+			user: UserP2poolData::new(),
 			output: String::with_capacity(56_000_000),
 			uptime: HumanTime::new(),
 			payouts: 0,
