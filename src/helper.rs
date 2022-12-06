@@ -71,8 +71,6 @@ pub struct Process {
 	pub name: ProcessName,     // P2Pool or XMRig?
 	pub state: ProcessState,   // The state of the process (alive, dead, etc)
 	pub signal: ProcessSignal, // Did the user click [Start/Stop/Restart]?
-	pub start: Instant,        // Start time of process
-	pub uptime: HumanTime,     // Human readable process uptime
 	// STDIN Problem:
 	//     - User can input many many commands in 1 second
 	//     - The process loop only processes every 1 second
@@ -96,18 +94,19 @@ pub struct Process {
 	// The "watchdog" threads mutate this, the "helper" thread synchronizes the [Pub*Api] structs
 	// so that the data in here is cloned there roughly once a second. GUI thread never touches this.
 	output: Arc<Mutex<String>>,
+
+	// Start time of process.
+	start: std::time::Instant,
 }
 
 //---------------------------------------------------------------------------------------------------- [Process] Impl
 impl Process {
 	pub fn new(name: ProcessName, args: String, path: PathBuf) -> Self {
-		let now = Instant::now();
 		Self {
 			name,
 			state: ProcessState::Dead,
 			signal: ProcessSignal::None,
-			start: now,
-			uptime: HumanTime::into_human(now.elapsed()),
+			start: Instant::now(),
 			stdin: Option::None,
 			child: Option::None,
 			// P2Pool log level 1 produces a bit less than 100,000 lines a day.
@@ -331,6 +330,7 @@ impl Helper {
 		path.push(P2POOL_API_PATH);
 		let regex = P2poolRegex::new();
 		let output = Arc::clone(&process.lock().unwrap().output);
+		let start = process.lock().unwrap().start;
 
 		// 4. Loop as watchdog
 		loop {
@@ -341,43 +341,46 @@ impl Helper {
 			if process.lock().unwrap().signal == ProcessSignal::Stop {
 				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
 				// Wait to get the exit status
-				let mut lock = process.lock().unwrap();
 				let exit_status = match child_pty.lock().unwrap().wait() {
-					Ok(e) => if e.success() { lock.state = ProcessState::Dead; "Successful" } else { lock.state = ProcessState::Failed; "Failed" },
-					_ => { lock.state = ProcessState::Failed; "Unknown Error" },
+					Ok(e) => {
+						if e.success() {
+							process.lock().unwrap().state = ProcessState::Dead; "Successful"
+						} else {
+							process.lock().unwrap().state = ProcessState::Failed; "Failed"
+						}
+					},
+					_ => { process.lock().unwrap().state = ProcessState::Failed; "Unknown Error" },
 				};
-				let uptime = lock.uptime.clone();
+				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
-				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_DOUBLE, uptime, exit_status, HORI_DOUBLE);
-				lock.signal = ProcessSignal::None;
+				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			} else if process.lock().unwrap().signal == ProcessSignal::Restart {
 				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
 				// Wait to get the exit status
-				let mut lock = process.lock().unwrap();
 				let exit_status = match child_pty.lock().unwrap().wait() {
 					Ok(e) => if e.success() { "Successful" } else { "Failed" },
 					_ => "Unknown Error",
 				};
-				let uptime = lock.uptime.clone();
+				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
-				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_DOUBLE, uptime, exit_status, HORI_DOUBLE);
-				lock.state = ProcessState::Waiting;
+				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				process.lock().unwrap().state = ProcessState::Waiting;
 				break
 			// Check if the process is secretly died without us knowing :)
 			} else if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
-				let mut lock = process.lock().unwrap();
 				let exit_status = match code.success() {
-					true  => { lock.state = ProcessState::Dead; "Successful" },
-					false => { lock.state = ProcessState::Failed; "Failed" },
+					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
+					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
 				};
-				let uptime = lock.uptime.clone();
+				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
-				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_DOUBLE, uptime, exit_status, HORI_DOUBLE);
-				lock.signal = ProcessSignal::None;
+				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			}
 
@@ -392,7 +395,7 @@ impl Helper {
 			drop(lock);
 
 			// Always update from output
-			PubP2poolApi::update_from_output(&pub_api, &output, process.lock().unwrap().start.elapsed().as_secs_f64(), &regex);
+			PubP2poolApi::update_from_output(&pub_api, &output, start.elapsed(), &regex);
 
 			// Read API file into string
 			if let Ok(string) = Self::read_p2pool_api(&path) {
@@ -506,19 +509,25 @@ use std::time::Duration;
 pub struct HumanTime(Duration);
 
 impl HumanTime {
+	pub fn new() -> HumanTime {
+		HumanTime(ZERO_SECONDS)
+	}
+
 	pub fn into_human(d: Duration) -> HumanTime {
 		HumanTime(d)
 	}
 
 	fn plural(f: &mut std::fmt::Formatter, started: &mut bool, name: &str, value: u64) -> std::fmt::Result {
 		if value > 0 {
-			if *started { f.write_str(" ")?; }
+			if *started {
+				f.write_str(", ")?;
+			}
+			write!(f, "{} {}", value, name)?;
+			if value > 1 {
+				f.write_str("s")?;
+			}
+			*started = true;
 		}
-		write!(f, "{}{}", value, name)?;
-		if value > 1 {
-			f.write_str("s")?;
-		}
-		*started = true;
 		Ok(())
 	}
 }
@@ -527,7 +536,7 @@ impl std::fmt::Display for HumanTime {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 		let secs = self.0.as_secs();
 		if secs == 0 {
-			f.write_str("0s")?;
+			f.write_str("0 seconds")?;
 			return Ok(());
 		}
 
@@ -542,12 +551,12 @@ impl std::fmt::Display for HumanTime {
 		let seconds = day_secs % 60;
 
 		let ref mut started = false;
-		Self::plural(f, started, " year", years)?;
-		Self::plural(f, started, " month", months)?;
-		Self::plural(f, started, " day", days)?;
-		Self::plural(f, started, " hour", hours)?;
-		Self::plural(f, started, " minute", minutes)?;
-		Self::plural(f, started, " second", seconds)?;
+		Self::plural(f, started, "year", years)?;
+		Self::plural(f, started, "month", months)?;
+		Self::plural(f, started, "day", days)?;
+		Self::plural(f, started, "hour", hours)?;
+		Self::plural(f, started, "minute", minutes)?;
+		Self::plural(f, started, "second", seconds)?;
 		Ok(())
 	}
 }
@@ -701,6 +710,8 @@ pub struct PubP2poolApi {
 	pub mini: bool,
 	// Output
 	pub output: String,
+	// Uptime
+	pub uptime: HumanTime,
 	// These are manually parsed from the STDOUT.
 	pub payouts: u128,
 	pub payouts_hour: f64,
@@ -725,6 +736,7 @@ impl PubP2poolApi {
 		Self {
 			mini: true,
 			output: String::with_capacity(56_000_000),
+			uptime: HumanTime::new(),
 			payouts: 0,
 			payouts_hour: 0.0,
 			payouts_day: 0.0,
@@ -744,26 +756,30 @@ impl PubP2poolApi {
 	}
 
 	// Mutate [PubP2poolApi] with data the process output.
-	fn update_from_output(public: &Arc<Mutex<Self>>, output: &Arc<Mutex<String>>, elapsed: f64, regex: &P2poolRegex) {
+	fn update_from_output(public: &Arc<Mutex<Self>>, output: &Arc<Mutex<String>>, elapsed: std::time::Duration, regex: &P2poolRegex) {
+		// 1. Clone output
 		let output = output.lock().unwrap().clone();
-		// 1. Parse STDOUT
+
+		// 2. Parse STDOUT
 		let (payouts, xmr) = Self::calc_payouts_and_xmr(&output, &regex);
 
-		// 2. Calculate hour/day/month given elapsed time
+		// 3. Calculate hour/day/month given elapsed time
+		let elapsed_as_secs_f64 = elapsed.as_secs_f64();
 		// Payouts
-		let per_sec = (payouts as f64) / elapsed;
+		let per_sec = (payouts as f64) / elapsed_as_secs_f64;
 		let payouts_hour = (per_sec * 60.0) * 60.0;
 		let payouts_day = payouts_hour * 24.0;
 		let payouts_month = payouts_day * 30.0;
 		// Total XMR
-		let per_sec = xmr / elapsed;
+		let per_sec = xmr / elapsed_as_secs_f64;
 		let xmr_hour = (per_sec * 60.0) * 60.0;
 		let xmr_day = payouts_hour * 24.0;
 		let xmr_month = payouts_day * 30.0;
 
-		// 3. Mutate the struct with the new info
+		// 4. Mutate the struct with the new info
 		let mut public = public.lock().unwrap();
 		*public = Self {
+			uptime: HumanTime::into_human(elapsed),
 			output,
 			payouts,
 			xmr,
@@ -779,7 +795,7 @@ impl PubP2poolApi {
 
 	// Mutate [PubP2poolApi] with data from a [PrivP2poolApi] and the process output.
 	fn update_from_priv(public: &Arc<Mutex<Self>>, private: &Arc<Mutex<PrivP2poolApi>>) {
-		// 3. Final priv -> pub conversion
+		// priv -> pub conversion
 		let private = private.lock().unwrap();
 		let mut public = public.lock().unwrap();
 		*public = Self {

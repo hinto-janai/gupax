@@ -36,7 +36,8 @@ pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon@2x.png");
 pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon.png");
 pub const BYTES_BANNER: &[u8] = include_bytes!("../images/banner.png");
 pub const HORIZONTAL: &str = "--------------------------------------------";
-pub const HORI_DOUBLE: &str = "----------------------------------------------------------------------------------------";
+// The text to separate my "process stopped, here's stats" text from the process output in the console.
+pub const HORI_CONSOLE: &str = "---------------------------------------------------------------------------------------------------------------------------";
 
 // P2Pool & XMRig default API stuff
 #[cfg(target_os = "windows")]
@@ -73,6 +74,7 @@ pub const DARK_GRAY: egui::Color32 = egui::Color32::from_rgb(18, 18, 18);
 
 // [Duration] constants
 pub const SECOND: std::time::Duration = std::time::Duration::from_secs(1);
+pub const ZERO_SECONDS: std::time::Duration = std::time::Duration::from_secs(0);
 pub const MILLI_900: std::time::Duration = std::time::Duration::from_millis(900);
 pub const TOKIO_SECOND: tokio::time::Duration = std::time::Duration::from_secs(1);
 
