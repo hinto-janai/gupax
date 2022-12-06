@@ -58,11 +58,23 @@ pub struct Helper {
 	pub human_time: HumanTime,                    // Gupax uptime formatting for humans
 	pub p2pool: Arc<Mutex<Process>>,              // P2Pool process state
 	pub xmrig: Arc<Mutex<Process>>,               // XMRig process state
-	pub pub_api_p2pool: Arc<Mutex<PubP2poolApi>>, // P2Pool API state (for GUI/Helper thread)
-	pub pub_api_xmrig: Arc<Mutex<PubXmrigApi>>,   // XMRig API state (for GUI/Helper thread)
+	pub gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, // P2Pool API state (for GUI thread)
+	pub gui_api_xmrig: Arc<Mutex<PubXmrigApi>>,   // XMRig API state (for GUI thread)
+	pub img_p2pool: Arc<Mutex<ImgP2pool>>,        // A static "image" of the data P2Pool started with
+	pub img_xmrig: Arc<Mutex<ImgXmrig>>,          // A static "image" of the data XMRig started with
+	pub_api_p2pool: Arc<Mutex<PubP2poolApi>>,     // P2Pool API state (for Helper/P2Pool thread)
+	pub_api_xmrig: Arc<Mutex<PubXmrigApi>>,       // XMRig API state (for Helper/XMRig thread)
 	priv_api_p2pool: Arc<Mutex<PrivP2poolApi>>,   // For "watchdog" thread
 	priv_api_xmrig: Arc<Mutex<PrivXmrigApi>>,     // For "watchdog" thread
 }
+
+// The communication between the data here and the GUI thread goes as follows:
+// [GUI] <---> [Helper] <---> [Watchdog] <---> [Private Data only available here]
+//
+// Both [GUI] and [Helper] own their separate [Pub*Api] structs.
+// Since P2Pool & XMRig will be updating their information out of sync,
+// it's the helpers job to lock everything, and move the watchdog [Pub*Api]s
+// on a 1-second interval into the [GUI]'s [Pub*Api] struct, atomically.
 
 //---------------------------------------------------------------------------------------------------- [Process] Struct
 // This holds all the state of a (child) process.
@@ -165,17 +177,21 @@ use tokio::io::{BufReader,AsyncBufReadExt};
 
 impl Helper {
 	//---------------------------------------------------------------------------------------------------- General Functions
-	pub fn new(instant: std::time::Instant, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, pub_api_p2pool: Arc<Mutex<PubP2poolApi>>, pub_api_xmrig: Arc<Mutex<PubXmrigApi>>) -> Self {
+	pub fn new(instant: std::time::Instant, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, gui_api_xmrig: Arc<Mutex<PubXmrigApi>>, img_p2pool: Arc<Mutex<ImgP2pool>>, img_xmrig: Arc<Mutex<ImgXmrig>>) -> Self {
 		Self {
 			instant,
 			human_time: HumanTime::into_human(instant.elapsed()),
 			priv_api_p2pool: Arc::new(Mutex::new(PrivP2poolApi::new())),
 			priv_api_xmrig: Arc::new(Mutex::new(PrivXmrigApi::new())),
+			pub_api_p2pool: Arc::new(Mutex::new(PubP2poolApi::new())),
+			pub_api_xmrig: Arc::new(Mutex::new(PubXmrigApi::new())),
 			// These are created when initializing [App], since it needs a handle to it as well
 			p2pool,
 			xmrig,
-			pub_api_p2pool,
-			pub_api_xmrig,
+			gui_api_p2pool,
+			gui_api_xmrig,
+			img_p2pool,
+			img_xmrig,
 		}
 	}
 
@@ -215,7 +231,7 @@ impl Helper {
 
 	// The "restart frontend" to a "frontend" function.
 	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
-	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: std::path::PathBuf) {
+	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
 		info!("P2Pool | Attempting restart...");
 		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Restart;
 		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
@@ -230,20 +246,38 @@ impl Helper {
 				thread::sleep(SECOND);
 			}
 			// Ok, process is not alive, start the new one!
-			Self::start_p2pool(&helper, &state, path);
+			Self::start_p2pool(&helper, &state, &path);
 		});
 		info!("P2Pool | Restart ... OK");
 	}
 
 	// The "frontend" function that parses the arguments, and spawns either the [Simple] or [Advanced] P2Pool watchdog thread.
-	pub fn start_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: std::path::PathBuf) {
+	pub fn start_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
 		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
 
+		let args = Self::build_p2pool_args_and_mutate_img(helper, state, path);
+
+		// Print arguments & user settings to console
+		crate::disk::print_dash(&format!("P2Pool | Launch arguments ... {:#?}", args));
+
+		// Spawn watchdog thread
+		let process = Arc::clone(&helper.lock().unwrap().p2pool);
+		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
+		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_p2pool);
+		let path = path.clone();
+		thread::spawn(move || {
+			Self::spawn_p2pool_watchdog(process, pub_api, priv_api, args, path);
+		});
+	}
+
+	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
+	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
+	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
+	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> Vec<String> {
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
 		let mut api_path = path.clone();
 		api_path.pop();
-		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
 
 		// [Simple]
 		if state.simple {
@@ -257,8 +291,7 @@ impl Helper {
 			args.push("--local-api".to_string()); // Enable API
 			args.push("--no-color".to_string());  // Remove color escape sequences, Gupax terminal can't parse it :(
 			args.push("--mini".to_string());      // P2Pool Mini
-			// Set static user data
-			pub_api.lock().unwrap().user = UserP2poolData {
+			*helper.lock().unwrap().img_p2pool.lock().unwrap() = ImgP2pool {
 				mini: true,
 				address: state.address.clone(),
 				host: ip.to_string(),
@@ -273,8 +306,25 @@ impl Helper {
 		} else {
 			// Overriding command arguments
 			if !state.arguments.is_empty() {
+				// This parses the input and attemps to fill out
+				// the [ImgP2pool]... This is pretty bad code...
+				let mut last = "";
+				let lock = helper.lock().unwrap();
+				let mut p2pool_image = lock.img_p2pool.lock().unwrap();
 				for arg in state.arguments.split_whitespace() {
+					match last {
+						"--mini"      => p2pool_image.mini = true,
+						"--wallet"    => p2pool_image.address = arg.to_string(),
+						"--host"      => p2pool_image.host = arg.to_string(),
+						"--rpc-port"  => p2pool_image.rpc = arg.to_string(),
+						"--zmq-port"  => p2pool_image.zmq = arg.to_string(),
+						"--loglevel"  => p2pool_image.log_level = arg.to_string(),
+						"--out-peers" => p2pool_image.out_peers = arg.to_string(),
+						"--in-peers"  => p2pool_image.in_peers = arg.to_string(),
+						_ => (),
+					}
 					args.push(arg.to_string());
+					last = arg;
 				}
 			// Else, build the argument
 			} else {
@@ -289,8 +339,7 @@ impl Helper {
 				args.push("--local-api".to_string());               // Enable API
 				args.push("--no-color".to_string());                // Remove color escape sequences
 				if state.mini { args.push("--mini".to_string()); }; // Mini
-				// Set static user data
-				pub_api.lock().unwrap().user = UserP2poolData {
+				*helper.lock().unwrap().img_p2pool.lock().unwrap() = ImgP2pool {
 					mini: state.mini,
 					address: state.address.clone(),
 					host: state.selected_ip.to_string(),
@@ -299,19 +348,10 @@ impl Helper {
 					log_level: state.log_level.to_string(),
 					out_peers: state.out_peers.to_string(),
 					in_peers: state.in_peers.to_string(),
-				};
+				}
 			}
 		}
-
-		// Print arguments & user settings to console
-		crate::disk::print_dash(&format!("P2Pool | Launch arguments ... {:#?}", args));
-
-		// Spawn watchdog thread
-		let process = Arc::clone(&helper.lock().unwrap().p2pool);
-		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_p2pool);
-		thread::spawn(move || {
-			Self::spawn_p2pool_watchdog(process, pub_api, priv_api, args, path);
-		});
+		args
 	}
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
@@ -482,32 +522,49 @@ impl Helper {
 	}
 
 	//---------------------------------------------------------------------------------------------------- The "helper"
-	// Intermediate function that spawns the helper thread.
+	// The "helper" thread. Syncs data between threads here and the GUI.
 	pub fn spawn_helper(helper: &Arc<Mutex<Self>>) {
-		let helper = Arc::clone(helper);
-		thread::spawn(move || { Self::helper(helper); });
-	}
-
-	// [helper] = Actual Arc
-	// [h]      = Temporary lock that gets dropped
-	// [jobs]   = Vector of async jobs ready to go
-//	#[tokio::main]
-	pub fn helper(helper: Arc<Mutex<Self>>) {
+		let mut helper = Arc::clone(helper);
+		thread::spawn(move || {
 		// Begin loop
 		loop {
-
-		// 1. Create "jobs" vector holding async tasks
-//		let jobs: Vec<tokio::task::JoinHandle<Result<(), anyhow::Error>>> = vec![];
-
-		// 2. Loop init timestamp
+		// 1. Loop init timestamp
 		let start = Instant::now();
 
-		// 7. Set Gupax/P2Pool/XMRig uptime
-		let mut h = helper.lock().unwrap();
-		h.human_time = HumanTime::into_human(h.instant.elapsed());
-		drop(h);
+		// 2. Lock... EVERYTHING!
+		let mut lock = helper.lock().unwrap();
+		let mut gui_api_p2pool = lock.gui_api_p2pool.lock().unwrap();
+		let mut gui_api_xmrig = lock.gui_api_xmrig.lock().unwrap();
+		let mut pub_api_p2pool = lock.pub_api_p2pool.lock().unwrap();
+		let mut pub_api_xmrig = lock.pub_api_xmrig.lock().unwrap();
+		let p2pool = lock.p2pool.lock().unwrap();
+		let xmrig = lock.xmrig.lock().unwrap();
+		// Calculate Gupax's uptime always.
+		let human_time = HumanTime::into_human(lock.instant.elapsed());
+		// If both [P2Pool/XMRig] are alive...
+		if p2pool.is_alive() && xmrig.is_alive() {
+			*gui_api_p2pool = std::mem::take(&mut pub_api_p2pool);
+			*gui_api_xmrig = std::mem::take(&mut pub_api_xmrig);
+		// If only [P2Pool] is alive...
+		} else if p2pool.is_alive() {
+			*gui_api_p2pool = std::mem::take(&mut pub_api_p2pool);
+		// If only [XMRig] is alive...
+		} else if xmrig.is_alive() {
+			*gui_api_xmrig = std::mem::take(&mut pub_api_xmrig);
+		}
 
-		// 8. Calculate if we should sleep or not.
+		// 2. Drop... (almost) EVERYTHING... IN REVERSE!
+		drop(xmrig);
+		drop(p2pool);
+		drop(pub_api_xmrig);
+		drop(pub_api_p2pool);
+		drop(gui_api_xmrig);
+		drop(gui_api_p2pool);
+		// Update the time... then drop :)
+		lock.human_time = human_time;
+		drop(lock);
+
+		// 3. Calculate if we should sleep or not.
 		// If we should sleep, how long?
 		let elapsed = start.elapsed().as_millis();
 		if elapsed < 1000 {
@@ -516,8 +573,14 @@ impl Helper {
 			std::thread::sleep(std::time::Duration::from_millis((1000-elapsed) as u64));
 		}
 
-		// 9. End loop
+		// 4. End loop
 		}
+
+		// 5. Something has gone terribly wrong if the helper exited this loop.
+		let text = "HELPER THREAD HAS ESCAPED THE LOOP...!";
+		error!("{}", text);error!("{}", text);error!("{}", text);panic!("{}", text);
+
+		});
 	}
 }
 
@@ -724,11 +787,13 @@ impl P2poolRegex {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- Public P2Pool API
-// Static Public data that is only initialized once per P2Pool start.
+//---------------------------------------------------------------------------------------------------- [ImgP2pool]
+// A static "image" of data that P2Pool started with.
+// This is just a snapshot of the user data when they initially started P2Pool.
+// Created by [start_p2pool()] and return to the main GUI thread where it will store it.
+// No need for an [Arc<Mutex>] since the Helper thread doesn't need this information.
 #[derive(Debug, Clone)]
-pub struct UserP2poolData {
-	// Static user data that gets initialized once.
+pub struct ImgP2pool {
 	pub mini: bool,        // Did the user start on the mini-chain?
 	pub address: String,   // What address is the current p2pool paying out to? (This gets shortened to [4xxxxx...xxxxxx])
 	pub host: String,      // What monerod are we using?
@@ -739,8 +804,8 @@ pub struct UserP2poolData {
 	pub log_level: String, // What log level?
 }
 
-impl UserP2poolData {
-	fn new() -> Self {
+impl ImgP2pool {
+	pub fn new() -> Self {
 		Self {
 			mini: true,
 			address: String::new(),
@@ -754,11 +819,11 @@ impl UserP2poolData {
 	}
 }
 
-// GUI thread interfaces with this.
+//---------------------------------------------------------------------------------------------------- Public P2Pool API
+// Helper/GUI threads both have a copy of this, Helper updates
+// the GUI's version on a 1-second interval from the private data.
 #[derive(Debug, Clone)]
 pub struct PubP2poolApi {
-	// Static data
-	pub user: UserP2poolData,
 	// Output
 	pub output: String,
 	// Uptime
@@ -782,11 +847,16 @@ pub struct PubP2poolApi {
 	pub connections: HumanNumber,
 }
 
+impl Default for PubP2poolApi {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl PubP2poolApi {
 	pub fn new() -> Self {
 		Self {
-			user: UserP2poolData::new(),
-			output: String::with_capacity(56_000_000),
+			output: String::new(),
 			uptime: HumanTime::new(),
 			payouts: 0,
 			payouts_hour: 0.0,
@@ -906,6 +976,15 @@ impl PrivP2poolApi {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- [ImgXmrig]
+#[derive(Debug, Clone)]
+pub struct ImgXmrig {}
+impl ImgXmrig {
+	pub fn new() -> Self {
+		Self {}
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- Public XMRig API
 #[derive(Debug, Clone)]
 pub struct PubXmrigApi {
@@ -919,10 +998,16 @@ pub struct PubXmrigApi {
 	rejected: HumanNumber,
 }
 
+impl Default for PubXmrigApi {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl PubXmrigApi {
 	pub fn new() -> Self {
 		Self {
-			output: String::with_capacity(56_000_000),
+			output: String::new(),
 			worker_id: "???".to_string(),
 			resources: HumanNumber::unknown(),
 			hashrate: HumanNumber::unknown(),

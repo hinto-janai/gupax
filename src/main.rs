@@ -109,6 +109,8 @@ pub struct App {
 	xmrig: Arc<Mutex<Process>>,  // [XMRig] process state
 	p2pool_api: Arc<Mutex<PubP2poolApi>>, // Public ready-to-print P2Pool API made by the "helper" thread
 	xmrig_api: Arc<Mutex<PubXmrigApi>>,   // Public ready-to-print XMRig API made by the "helper" thread
+	p2pool_img: Arc<Mutex<ImgP2pool>>,    // A one-time snapshot of what data P2Pool started with
+	xmrig_img: Arc<Mutex<ImgXmrig>>,      // A one-time snapshot of what data XMRig started with
 	// State from [--flags]
 	no_startup: bool,
 	// Static stuff
@@ -143,6 +145,8 @@ impl App {
 		let xmrig = Arc::new(Mutex::new(Process::new(ProcessName::Xmrig, String::new(), PathBuf::new())));
 		let p2pool_api = Arc::new(Mutex::new(PubP2poolApi::new()));
 		let xmrig_api = Arc::new(Mutex::new(PubXmrigApi::new()));
+		let p2pool_img = Arc::new(Mutex::new(ImgP2pool::new()));
+		let xmrig_img = Arc::new(Mutex::new(ImgXmrig::new()));
 		let mut app = Self {
 			tab: Tab::default(),
 			ping: Arc::new(Mutex::new(Ping::new())),
@@ -160,11 +164,13 @@ impl App {
 			restart: Arc::new(Mutex::new(Restart::No)),
 			diff: false,
 			error_state: ErrorState::new(),
-			helper: Arc::new(Mutex::new(Helper::new(now, p2pool.clone(), xmrig.clone(), p2pool_api.clone(), xmrig_api.clone()))),
+			helper: Arc::new(Mutex::new(Helper::new(now, p2pool.clone(), xmrig.clone(), p2pool_api.clone(), xmrig_api.clone(), p2pool_img.clone(), xmrig_img.clone()))),
 			p2pool,
 			xmrig,
 			p2pool_api,
 			xmrig_api,
+			p2pool_img,
+			xmrig_img,
 			resizing: false,
 			alpha: 0,
 			no_startup: false,
@@ -1026,7 +1032,7 @@ impl eframe::App for App {
 								});
 							} else if self.p2pool.lock().unwrap().is_alive() {
 								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() {
-									Helper::restart_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
+									Helper::restart_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() {
 									Helper::stop_p2pool(&self.helper);
@@ -1040,7 +1046,7 @@ impl eframe::App for App {
 									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool");
 								});
 								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
-									Helper::start_p2pool(&self.helper, &self.state.p2pool, self.state.gupax.absolute_p2pool_path.clone());
+									Helper::start_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 							}
 						});
