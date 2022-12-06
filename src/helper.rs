@@ -248,8 +248,8 @@ impl Helper {
 		if state.simple {
 			// Build the p2pool argument
 			let (ip, rpc, zmq) = crate::node::enum_to_ip_rpc_zmq_tuple(state.node);         // Get: (IP, RPC, ZMQ)
-			args.push("--wallet".to_string()); args.push(state.address.clone());            // Wallet address
-			args.push("--host".to_string()); args.push(ip.to_string());                     // IP Address
+			args.push("--wallet".to_string());   args.push(state.address.clone());          // Wallet address
+			args.push("--host".to_string());     args.push(ip.to_string());                 // IP Address
 			args.push("--rpc-port".to_string()); args.push(rpc.to_string());                // RPC Port
 			args.push("--zmq-port".to_string()); args.push(zmq.to_string());                // ZMQ Port
 			args.push("--data-api".to_string()); args.push(api_path.display().to_string()); // API Path
@@ -266,17 +266,17 @@ impl Helper {
 				}
 			// Else, build the argument
 			} else {
-				args.push(state.address.clone());      // Wallet
-				args.push(state.selected_ip.clone());  // IP
-				args.push(state.selected_rpc.clone()); // RPC
-				args.push(state.selected_zmq.clone()); // ZMQ
-				args.push("--local-api".to_string());  // Enable API
-				args.push("--no-color".to_string());   // Remove color escape sequences
-				if state.mini { args.push("--mini".to_string()); };      // Mini
-				args.push(format!("--loglevel {}", state.log_level));    // Log Level
-				args.push(format!("--out-peers {}", state.out_peers));   // Out Peers
-				args.push(format!("--in-peers {}", state.in_peers));     // In Peers
-				args.push(format!("--data-api {}", api_path.display())); // API Path
+				args.push("--wallet".to_string());    args.push(state.address.clone());          // Wallet
+				args.push("--host".to_string());      args.push(state.selected_ip.to_string());  // IP
+				args.push("--rpc-port".to_string());  args.push(state.selected_rpc.to_string()); // RPC
+				args.push("--zmq-port".to_string());  args.push(state.selected_zmq.to_string()); // ZMQ
+				args.push("--loglevel".to_string());  args.push(state.log_level.to_string());    // Log Level
+				args.push("--out-peers".to_string()); args.push(state.out_peers.to_string());    // Out Peers
+				args.push("--in-peers".to_string());  args.push(state.in_peers.to_string());     // In Peers
+				args.push("--data-api".to_string());  args.push(api_path.display().to_string()); // API Path
+				args.push("--local-api".to_string());               // Enable API
+				args.push("--no-color".to_string());                // Remove color escape sequences
+				if state.mini { args.push("--mini".to_string()); }; // Mini
 			}
 		}
 
