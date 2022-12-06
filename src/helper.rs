@@ -391,12 +391,15 @@ impl Helper {
 			}
 			drop(lock);
 
+			// Always update from output
+			PubP2poolApi::update_from_output(&pub_api, &output, process.lock().unwrap().start.elapsed().as_secs_f64(), &regex);
+
 			// Read API file into string
 			if let Ok(string) = Self::read_p2pool_api(&path) {
 				// Deserialize
 				if let Ok(s) = Self::str_to_priv_p2pool_api(&string) {
 					// Update the structs.
-					PubP2poolApi::update_from_priv(&pub_api, &priv_api, &output, process.lock().unwrap().start.elapsed().as_secs_f64(), &regex);
+					PubP2poolApi::update_from_priv(&pub_api, &priv_api);
 				}
 			}
 
@@ -740,23 +743,46 @@ impl PubP2poolApi {
 		}
 	}
 
-	// Mutate [PubP2poolApi] with data from a [PrivP2poolApi] and the process output.
-	fn update_from_priv(public: &Arc<Mutex<Self>>, private: &Arc<Mutex<PrivP2poolApi>>, output: &Arc<Mutex<String>>, start: f64, regex: &P2poolRegex) {
-		let public_clone = public.lock().unwrap().clone();
+	// Mutate [PubP2poolApi] with data the process output.
+	fn update_from_output(public: &Arc<Mutex<Self>>, output: &Arc<Mutex<String>>, elapsed: f64, regex: &P2poolRegex) {
 		let output = output.lock().unwrap().clone();
 		// 1. Parse STDOUT
 		let (payouts, xmr) = Self::calc_payouts_and_xmr(&output, &regex);
-		let stdout_parse = Self {
+
+		// 2. Calculate hour/day/month given elapsed time
+		// Payouts
+		let per_sec = (payouts as f64) / elapsed;
+		let payouts_hour = (per_sec * 60.0) * 60.0;
+		let payouts_day = payouts_hour * 24.0;
+		let payouts_month = payouts_day * 30.0;
+		// Total XMR
+		let per_sec = xmr / elapsed;
+		let xmr_hour = (per_sec * 60.0) * 60.0;
+		let xmr_day = payouts_hour * 24.0;
+		let xmr_month = payouts_day * 30.0;
+
+		// 3. Mutate the struct with the new info
+		let mut public = public.lock().unwrap();
+		*public = Self {
 			output,
 			payouts,
 			xmr,
-			..public_clone // <- So useful
+			payouts_hour,
+			payouts_day,
+			payouts_month,
+			xmr_hour,
+			xmr_day,
+			xmr_month,
+			..public.clone()
 		};
-		// 2. Time calculations
-		let hour_day_month = Self::update_hour_day_month(stdout_parse, start);
+	}
+
+	// Mutate [PubP2poolApi] with data from a [PrivP2poolApi] and the process output.
+	fn update_from_priv(public: &Arc<Mutex<Self>>, private: &Arc<Mutex<PrivP2poolApi>>) {
 		// 3. Final priv -> pub conversion
 		let private = private.lock().unwrap();
-		*public.lock().unwrap() = Self {
+		let mut public = public.lock().unwrap();
+		*public = Self {
 			hashrate_15m: HumanNumber::from_u128(private.hashrate_15m),
 			hashrate_1h: HumanNumber::from_u128(private.hashrate_1h),
 			hashrate_24h: HumanNumber::from_u128(private.hashrate_24h),
@@ -764,7 +790,7 @@ impl PubP2poolApi {
 			average_effort: HumanNumber::to_percent(private.average_effort),
 			current_effort: HumanNumber::to_percent(private.current_effort),
 			connections: HumanNumber::from_u16(private.connections),
-			..hour_day_month // <- Holy cow this is so good
+			..public.clone()
 		}
 	}
 
@@ -781,29 +807,6 @@ impl PubP2poolApi {
 			}
 		}
 		(count, result)
-	}
-
-	// Updates the struct with hour/day/month calculations given an uptime in f64 seconds.
-	fn update_hour_day_month(self, elapsed: f64) -> Self {
-		// Payouts
-		let per_sec = (self.payouts as f64) / elapsed;
-		let payouts_hour = (per_sec * 60.0) * 60.0;
-		let payouts_day = payouts_hour * 24.0;
-		let payouts_month = payouts_day * 30.0;
-		// Total XMR
-		let per_sec = self.xmr / elapsed;
-		let xmr_hour = (per_sec * 60.0) * 60.0;
-		let xmr_day = payouts_hour * 24.0;
-		let xmr_month = payouts_day * 30.0;
-		Self {
-			payouts_hour,
-			payouts_day,
-			payouts_month,
-			xmr_hour,
-			xmr_day,
-			xmr_month,
-			..self
-		}
 	}
 }
 

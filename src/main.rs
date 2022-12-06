@@ -1074,7 +1074,7 @@ impl eframe::App for App {
 									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig");
 								});
 								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").clicked() {
-									Helper::spawn_xmrig(&self.helper, &self.state.xmrig, self.state.gupax.absolute_xmrig_path.clone());
+//									Helper::spawn_xmrig(&self.helper, &self.state.xmrig, self.state.gupax.absolute_xmrig_path.clone());
 								}
 							}
 						});
