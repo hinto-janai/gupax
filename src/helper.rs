@@ -241,7 +241,7 @@ impl Helper {
 
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_p2pool(helper: &Arc<Mutex<Self>>) {
-		info!("P2Pool | Attempting stop...");
+		info!("P2Pool | Attempting to stop...");
 		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Stop;
 		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
 	}
@@ -249,7 +249,7 @@ impl Helper {
 	// The "restart frontend" to a "frontend" function.
 	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
 	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
-		info!("P2Pool | Attempting restart...");
+		info!("P2Pool | Attempting to restart...");
 		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Restart;
 		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
 
@@ -259,7 +259,7 @@ impl Helper {
 		// This thread lives to wait, start p2pool then die.
 		thread::spawn(move || {
 			while helper.lock().unwrap().p2pool.lock().unwrap().is_alive() {
-				warn!("P2Pool Restart | Process still alive, waiting...");
+				warn!("P2Pool | Want to restart but process is still alive, waiting...");
 				thread::sleep(SECOND);
 			}
 			// Ok, process is not alive, start the new one!
@@ -275,15 +275,16 @@ impl Helper {
 		let args = Self::build_p2pool_args_and_mutate_img(helper, state, path);
 
 		// Print arguments & user settings to console
-		crate::disk::print_dash(&format!("P2Pool | Launch arguments ... {:#?}", args));
+		crate::disk::print_dash(&format!("P2Pool | Launch arguments: {:#?}", args));
 
 		// Spawn watchdog thread
 		let process = Arc::clone(&helper.lock().unwrap().p2pool);
+		let gui_api = Arc::clone(&helper.lock().unwrap().gui_api_p2pool);
 		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
 		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_p2pool);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_p2pool_watchdog(process, pub_api, priv_api, args, path);
+			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, priv_api, args, path);
 		});
 	}
 
@@ -373,7 +374,7 @@ impl Helper {
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	#[tokio::main]
-	async fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
+	async fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
 		let pair = pty.openpty(portable_pty::PtySize {
@@ -432,8 +433,8 @@ impl Helper {
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
-				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
+				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			// Check RESTART
@@ -446,8 +447,8 @@ impl Helper {
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
-				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
+				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().state = ProcessState::Waiting;
 				break
 			// Check if the process is secretly died without us knowing :)
@@ -458,8 +459,8 @@ impl Helper {
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				// This is written directly into the public API, because sometimes the 900ms event loop can't catch it.
-				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				// This is written directly into the GUI, because sometimes the 900ms event loop can't catch it.
+				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			}
