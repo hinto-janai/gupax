@@ -20,14 +20,14 @@ pub const P2POOL_VERSION: &str = "v2.4";
 pub const XMRIG_VERSION: &str = "v6.18.0";
 pub const COMMIT: &str = include_str!("../.git/refs/heads/main");
 
-// App frame resolution, [16:10] aspect ratio, height = width * 1.6
-pub const APP_MIN_WIDTH: f32 = 768.0;
+// App frame resolution, [4:3] aspect ratio, [1.33:1]
+pub const APP_MIN_WIDTH: f32 = 640.0;
 pub const APP_MIN_HEIGHT: f32 = 480.0;
-pub const APP_MAX_WIDTH: f32 = 3456.0;
-pub const APP_MAX_HEIGHT: f32 = 2160.0;
-// Default, 1280x800
+pub const APP_MAX_WIDTH: f32 = 2560.0;
+pub const APP_MAX_HEIGHT: f32 = 1920.0;
+// Default, 1280x960
 pub const APP_DEFAULT_WIDTH: f32 = 1280.0;
-pub const APP_DEFAULT_HEIGHT: f32 = 800.0;
+pub const APP_DEFAULT_HEIGHT: f32 = 960.0;
 
 // Use macOS shaped icon for macOS
 #[cfg(target_os = "macos")]

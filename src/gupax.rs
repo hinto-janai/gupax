@@ -17,6 +17,7 @@
 
 use crate::State;
 use egui::{
+	TextEdit,
 	TextStyle::Monospace,
 	Checkbox,ProgressBar,Spinner,Button,Label,Slider,
 	SelectableLabel,
@@ -130,7 +131,7 @@ impl Gupax {
 		// P2Pool/XMRig binary path selection
 		ui.add_space(SPACE);
 		ui.style_mut().override_text_style = Some(Monospace);
-		let height = height/20.0;
+		let height = height/28.0;
 		let text_edit = (ui.available_width()/10.0)-SPACE;
 		ui.horizontal(|ui| {
 			if self.p2pool_path.is_empty() {
@@ -152,7 +153,7 @@ impl Gupax {
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				Self::spawn_file_window_thread(file_window, FileType::P2pool);
 			}
-			ui.text_edit_singleline(&mut self.p2pool_path).on_hover_text(GUPAX_PATH_P2POOL);
+			ui.add_sized([ui.available_width()-SPACE, height], TextEdit::hint_text(TextEdit::singleline(&mut self.p2pool_path), GUPAX_PATH_P2POOL));
 		});
 		ui.horizontal(|ui| {
 			if self.xmrig_path.is_empty() {
@@ -174,7 +175,7 @@ impl Gupax {
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				Self::spawn_file_window_thread(file_window, FileType::Xmrig);
 			}
-			ui.text_edit_singleline(&mut self.xmrig_path).on_hover_text(GUPAX_PATH_XMRIG);
+			ui.add_sized([ui.available_width()-SPACE, height], TextEdit::hint_text(TextEdit::singleline(&mut self.xmrig_path), GUPAX_PATH_XMRIG));
 		});
 		let mut guard = file_window.lock().unwrap();
 		if guard.picked_p2pool { self.p2pool_path = guard.p2pool_path.clone(); guard.picked_p2pool = false; }

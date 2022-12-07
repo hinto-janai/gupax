@@ -32,8 +32,8 @@ use regex::Regex;
 use log::*;
 
 impl P2pool {
-	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, regex: &Regexes, helper: &Arc<Mutex<Helper>>, api: &Arc<Mutex<PubP2poolApi>>, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
-	let text_edit = height / 22.0;
+	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	if self.simple {
 	ui.group(|ui| {
@@ -51,7 +51,7 @@ impl P2pool {
 	//---------------------------------------------------------------------------------------------------- [Advanced] Console
 	} else {
 	ui.group(|ui| {
-		let height = height / 3.0;
+		let height = height / 2.8;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
@@ -61,7 +61,14 @@ impl P2pool {
 			});
 		});
 		ui.separator();
-		ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(&mut "".to_string()), r#"Type a command (e.g "help" or "status") and press Enter"#));
+		let response = ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(buffer), r#"Type a command (e.g "help" or "status") and press Enter"#));
+		// If the user pressed enter, dump buffer contents into the process STDIN
+		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
+			response.request_focus();                  // Get focus back
+			let mut buffer = std::mem::take(buffer);   // Take buffer
+			let mut process = process.lock().unwrap(); // Lock
+			if process.is_alive() { process.input.push(buffer); } // Push only if alive
+		}
 	});
 	}
 
@@ -414,7 +421,7 @@ impl P2pool {
 
 		// [Main/Mini]
 		ui.horizontal(|ui| {
-		let height = height/3.0;
+		let height = height/4.0;
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/4.0)-SPACE;
 			let height = height + 6.0;
@@ -429,7 +436,6 @@ impl P2pool {
 			ui.style_mut().spacing.slider_width = width/1.2;
 			ui.style_mut().spacing.interact_size.y = height;
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
-//			ui.style_mut().override_text_style = Some(Monospace);
 			ui.horizontal(|ui| {
 				ui.add_sized([text, height], Label::new("Out peers [10-450]:"));
 				ui.add_sized([width, height], Slider::new(&mut self.out_peers, 10..=450)).on_hover_text(P2POOL_OUT);

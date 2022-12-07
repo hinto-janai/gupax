@@ -111,6 +111,8 @@ pub struct App {
 	xmrig_api: Arc<Mutex<PubXmrigApi>>,   // Public ready-to-print XMRig API made by the "helper" thread
 	p2pool_img: Arc<Mutex<ImgP2pool>>,    // A one-time snapshot of what data P2Pool started with
 	xmrig_img: Arc<Mutex<ImgXmrig>>,      // A one-time snapshot of what data XMRig started with
+	// Buffer State
+	p2pool_console: String, // The buffer between the p2pool console and the [Helper]
 	// State from [--flags]
 	no_startup: bool,
 	// Static stuff
@@ -171,6 +173,7 @@ impl App {
 			xmrig_api,
 			p2pool_img,
 			xmrig_img,
+			p2pool_console: String::with_capacity(10),
 			resizing: false,
 			alpha: 0,
 			no_startup: false,
@@ -320,6 +323,12 @@ impl App {
 		app.tab = app.state.gupax.tab;
 		drop(og); // Unlock [og]
 		info!("App ... OK");
+
+		// Spawn the "Helper" thread.
+		info!("Helper | Spawning helper thread...");
+		Helper::spawn_helper(&app.helper);
+		info!("Helper ... OK");
+
 		app
 	}
 }
@@ -1126,7 +1135,7 @@ impl eframe::App for App {
 					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
 				}
 				Tab::P2pool => {
-					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.helper, &self.p2pool_api, self.width, self.height, ctx, ui);
+					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_console, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
 					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, self.width, self.height, ctx, ui);

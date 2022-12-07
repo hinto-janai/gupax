@@ -205,6 +205,23 @@ impl Helper {
 		}
 	}
 
+	// Reset output if larger than 55_999_000 bytes (around 1 week of logs).
+	// The actual [String] holds 56_000_000, but this allows for some leeway so it doesn't allocate more memory.
+	// This will also append a message showing it was reset.
+	fn check_reset_output(output: &Arc<Mutex<String>>, name: ProcessName) {
+		let mut output = output.lock().unwrap();
+		if output.len() > 55_999_000 {
+			let name = match name {
+				ProcessName::P2pool => "P2Pool",
+				ProcessName::Xmrig  => "XMRig",
+			};
+			info!("{} | Output is nearing 56,000,000 bytes, resetting!", name);
+			let text = format!("{}\n{} logs are exceeding the maximum: 56,000,000 bytes!\nI've reset the logs for you, your stats may now be inaccurate since they depend on these logs!\nI think you rather have that than have it hogging your memory, though!\n{}", HORI_CONSOLE, name, HORI_CONSOLE);
+			output.clear();
+			output.push_str(&text);
+		}
+	}
+
 	//---------------------------------------------------------------------------------------------------- P2Pool specific
 	// Read P2Pool's API file.
 	fn read_p2pool_api(path: &std::path::PathBuf) -> Result<String, std::io::Error> {
@@ -419,6 +436,7 @@ impl Helper {
 				writeln!(pub_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
 				break
+			// Check RESTART
 			} else if process.lock().unwrap().signal == ProcessSignal::Restart {
 				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
 				// Wait to get the exit status
@@ -467,6 +485,9 @@ impl Helper {
 					PubP2poolApi::update_from_priv(&pub_api, &priv_api);
 				}
 			}
+
+			// Check if logs need resetting
+			Self::check_reset_output(&output, ProcessName::P2pool);
 
 			// Sleep (only if 900ms hasn't passed)
 			let elapsed = now.elapsed().as_millis();
@@ -526,6 +547,7 @@ impl Helper {
 	pub fn spawn_helper(helper: &Arc<Mutex<Self>>) {
 		let mut helper = Arc::clone(helper);
 		thread::spawn(move || {
+		info!("Helper | Hello from helper thread! Entering loop where I will spend the rest of my days...");
 		// Begin loop
 		loop {
 		// 1. Loop init timestamp
