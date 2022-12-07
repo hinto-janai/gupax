@@ -24,11 +24,12 @@ use egui::{
 	TextStyle::*,
 	color::Color32,
 	FontFamily::Proportional,
-	TextStyle,
+	TextStyle,Spinner,
 	Layout,Align,
 	FontId,Label,RichText,Stroke,Vec2,Button,SelectableLabel,
-	Key,Modifiers,
+	Key,Modifiers,TextEdit,
 	CentralPanel,TopBottomPanel,
+	Hyperlink,
 };
 use egui_extras::RetainedImage;
 use eframe::{egui,NativeOptions};
@@ -60,6 +61,12 @@ mod xmrig;
 mod update;
 mod helper;
 use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*,helper::*};
+
+// Sudo (unix only)
+#[cfg(target_family = "unix")]
+mod sudo;
+#[cfg(target_family = "unix")]
+use sudo::*;
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
 // The state of the outer main [App].
@@ -113,6 +120,9 @@ pub struct App {
 	xmrig_img: Arc<Mutex<ImgXmrig>>,      // A one-time snapshot of what data XMRig started with
 	// Buffer State
 	p2pool_console: String, // The buffer between the p2pool console and the [Helper]
+	// Sudo State
+	#[cfg(target_family = "unix")]
+	sudo: Arc<Mutex<SudoState>>,
 	// State from [--flags]
 	no_startup: bool,
 	// Static stuff
@@ -174,6 +184,8 @@ impl App {
 			p2pool_img,
 			xmrig_img,
 			p2pool_console: String::with_capacity(10),
+			#[cfg(target_family = "unix")]
+			sudo: Arc::new(Mutex::new(SudoState::new())),
 			resizing: false,
 			alpha: 0,
 			no_startup: false,
@@ -366,6 +378,7 @@ pub enum ErrorButtons {
 	ResetNode,
 	Okay,
 	Quit,
+	Sudo,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -374,6 +387,7 @@ pub enum ErrorFerris {
 	Oops,
 	Error,
 	Panic,
+	Sudo,
 }
 
 pub struct ErrorState {
@@ -412,6 +426,23 @@ impl ErrorState {
 			buttons,
 		};
 	}
+
+	// Just sets the current state to new, resetting it.
+	pub fn reset(&mut self) {
+		*self = Self::new();
+	}
+
+	// Instead of creating a whole new screen and system, this (ab)uses ErrorState
+	// to ask for the [sudo] when starting XMRig. Yes, yes I know, it's called "ErrorState"
+	// but rewriting the UI code and button stuff might be worse.
+	pub fn ask_sudo(&mut self) {
+		*self = Self {
+			error: true,
+			msg: String::new(),
+			ferris: ErrorFerris::Sudo,
+			buttons: ErrorButtons::Sudo,
+		}
+	}
 }
 
 //---------------------------------------------------------------------------------------------------- [Images] struct
@@ -421,6 +452,7 @@ struct Images {
 	oops: RetainedImage,
 	error: RetainedImage,
 	panic: RetainedImage,
+	sudo: RetainedImage,
 }
 
 impl Images {
@@ -431,6 +463,7 @@ impl Images {
 			oops: RetainedImage::from_image_bytes("oops.png", FERRIS_OOPS).unwrap(),
 			error: RetainedImage::from_image_bytes("error.png", FERRIS_ERROR).unwrap(),
 			panic: RetainedImage::from_image_bytes("panic.png", FERRIS_PANIC).unwrap(),
+			sudo: RetainedImage::from_image_bytes("panic.png", FERRIS_SUDO).unwrap(),
 		}
 	}
 }
@@ -804,6 +837,7 @@ impl eframe::App for App {
 					Oops  => &self.img.oops,
 					Error => &self.img.error,
 					Panic => &self.img.panic,
+					ErrorFerris::Sudo => &self.img.sudo,
 				};
 				ferris.show_max_size(ui, Vec2::new(width, height));
 
@@ -825,6 +859,14 @@ impl eframe::App for App {
 						ui.add_sized([width, height], Label::new(format!("--- Gupax has encountered an error! ---\n{}", &self.error_state.msg)));
 						ui.add_sized([width, height], Label::new("Reset the manual node list?"))
 					},
+					ErrorButtons::Sudo => {
+						let text = format!("Why does XMRig need admin priviledge?\n{}", XMRIG_ADMIN_REASON);
+						let height = height/4.0;
+						ui.add_sized([width, height], Label::new(format!("--- Gupax needs sudo/admin priviledge for XMRig! ---\n{}", &self.error_state.msg)));
+						ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
+						ui.add_sized([width/2.0, height], Label::new(text));
+						ui.add_sized([width, height], Hyperlink::from_label_and_url("Click here for more info.", "https://xmrig.com/docs/miner/randomx-optimization-guide"))
+					},
 					_ => {
 						match self.error_state.ferris {
 							Panic => ui.add_sized([width, height], Label::new("--- Gupax has encountered an un-recoverable error! ---")),
@@ -841,7 +883,7 @@ impl eframe::App for App {
 
 				match self.error_state.buttons {
 					YesNo   => {
-						if ui.add_sized([width, height/2.0], Button::new("Yes")).clicked() { self.error_state = ErrorState::new(); }
+						if ui.add_sized([width, height/2.0], Button::new("Yes")).clicked() { self.error_state.reset() }
 						// If [Esc] was pressed, assume [No]
 				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { exit(0); }
 					},
@@ -871,7 +913,7 @@ impl eframe::App for App {
 								Err(e) => self.error_state.set(format!("State reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 							};
 						}
-				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state = ErrorState::new() }
+				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state.reset() }
 					},
 					ResetNode => {
 						if ui.add_sized([width, height/2.0], Button::new("Yes")).clicked() {
@@ -889,9 +931,38 @@ impl eframe::App for App {
 								Err(e) => self.error_state.set(format!("Node reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 							};
 						}
-				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state = ErrorState::new() }
+				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state.reset() }
 					},
-					Okay => if esc || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state = ErrorState::new(); },
+					ErrorButtons::Sudo => {
+						let sudo_width = (width/10.0);
+						let height = ui.available_height()/4.0;
+						let mut sudo = self.sudo.lock().unwrap();
+						let hide = sudo.hide.clone();
+						ui.style_mut().override_text_style = Some(Monospace);
+						if sudo.testing {
+							ui.add_sized([width, height], Spinner::new().size(height));
+							ui.set_enabled(false);
+						} else {
+							ui.add_sized([width, height], Label::new(&sudo.msg));
+						}
+						ui.add_space(height);
+						let height = ui.available_height()/5.0;
+						// Password input box with a hider.
+						ui.horizontal(|ui| {
+							let response = ui.add_sized([sudo_width*8.0, height], TextEdit::hint_text(TextEdit::singleline(&mut sudo.pass).password(hide), PASSWORD_TEXT));
+							let box_width = (ui.available_width()/2.0)-5.0;
+							if (response.lost_focus() && ui.input().key_pressed(Key::Enter)) ||
+							ui.add_sized([box_width, height], Button::new("Enter")).on_hover_text(PASSWORD_ENTER).clicked() {
+								if !sudo.testing {
+									SudoState::test_sudo(Arc::clone(&self.sudo));
+								}
+							}
+							let color = if hide { BLACK } else { BRIGHT_YELLOW };
+							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { sudo.hide = !sudo.hide; }
+						});
+						if esc || ui.add_sized([width, height*4.0], Button::new("Leave")).clicked() { self.error_state.reset(); };
+					},
+					Okay => if esc || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
 					Quit => if ui.add_sized([width, height], Button::new("Quit")).clicked() { exit(1); },
 				}
 			})});
@@ -1079,10 +1150,10 @@ impl eframe::App for App {
 							let width = (ui.available_width()/3.0)-5.0;
 							if self.xmrig.lock().unwrap().is_alive() {
 								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
-									self.xmrig.lock().unwrap().state = ProcessState::Middle;
+									self.error_state.ask_sudo();
 								}
 								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
-									self.xmrig.lock().unwrap().state = ProcessState::Dead;
+									self.error_state.ask_sudo();
 								}
 								ui.add_enabled_ui(false, |ui| {
 									ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig");
@@ -1093,7 +1164,7 @@ impl eframe::App for App {
 									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig");
 								});
 								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").clicked() {
-//									Helper::spawn_xmrig(&self.helper, &self.state.xmrig, self.state.gupax.absolute_xmrig_path.clone());
+									self.error_state.ask_sudo();
 								}
 							}
 						});

@@ -37,6 +37,7 @@ dependencies = [
  "tor-rtcompat",
  "walkdir",
  "winres",
+ "zeroize",
  "zip",
 ]
 
