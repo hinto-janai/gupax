@@ -192,13 +192,13 @@ impl Gupax {
 				Ratio::Width => {
 					let width = self.selected_width as f64;
 					let _height = self.selected_height as f64;
-					let height = (width / 1.6).round();
+					let height = (width / 1.333).round();
 					self.selected_height = height as u16;
 				},
 				Ratio::Height => {
 					let _width = self.selected_width as f64;
 					let height = self.selected_height as f64;
-					let width = (height * 1.6).round();
+					let width = (height * 1.333).round();
 					self.selected_width = width as u16;
 				},
 			}

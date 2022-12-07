@@ -49,7 +49,13 @@ use num_format::{Buffer,Locale};
 use log::*;
 
 //---------------------------------------------------------------------------------------------------- Constants
+// The locale numbers are formatting in is English, which looks like: [1,000]
 const LOCALE: num_format::Locale = num_format::Locale::en;
+// The max amount of bytes of process output we are willing to
+// hold in memory before it's too much and we need to reset.
+const MAX_PROCESS_OUTPUT_BYTES: usize = 56_000_000;
+// Just a little leeway so a reset will go off before the [String] allocates more memory.
+const PROCESS_OUTPUT_LEEWAY: usize = MAX_PROCESS_OUTPUT_BYTES - 1000;
 
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread
@@ -124,7 +130,7 @@ impl Process {
 			// P2Pool log level 1 produces a bit less than 100,000 lines a day.
 			// Assuming each line averages 80 UTF-8 scalars (80 bytes), then this
 			// initial buffer should last around a week (56MB) before resetting.
-			output: Arc::new(Mutex::new(String::with_capacity(56_000_000))),
+			output: Arc::new(Mutex::new(String::with_capacity(MAX_PROCESS_OUTPUT_BYTES))),
 			input: vec![String::new()],
 		}
 	}
@@ -210,7 +216,7 @@ impl Helper {
 	// This will also append a message showing it was reset.
 	fn check_reset_output(output: &Arc<Mutex<String>>, name: ProcessName) {
 		let mut output = output.lock().unwrap();
-		if output.len() > 55_999_000 {
+		if output.len() > PROCESS_OUTPUT_LEEWAY {
 			let name = match name {
 				ProcessName::P2pool => "P2Pool",
 				ProcessName::Xmrig  => "XMRig",

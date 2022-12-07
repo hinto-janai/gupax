@@ -98,6 +98,8 @@ pub const OS_NAME: &str = "Linux";
 // Gupax
 pub const GUPAX_UPDATE: &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
 pub const GUPAX_AUTO_UPDATE: &str = "Automatically check for updates at startup";
+pub const GUPAX_SHOULD_RESTART: &str = "Gupax was updated. A restart is recommended but not required";
+pub const GUPAX_UP_TO_DATE: &str = "Gupax is up-to-date";
 #[cfg(not(target_os = "macos"))]
 pub const GUPAX_UPDATE_VIA_TOR: &str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
 #[cfg(target_os = "macos")] // Arti library has issues on macOS
@@ -106,8 +108,8 @@ pub const GUPAX_ASK_BEFORE_QUIT: &str = "Ask before quitting Gupax";
 pub const GUPAX_SAVE_BEFORE_QUIT: &str = "Automatically save any changed settings before quitting";
 pub const GUPAX_WIDTH: &str = "Set the width of the Gupax window";
 pub const GUPAX_HEIGHT: &str = "Set the height of the Gupax window";
-pub const GUPAX_LOCK_WIDTH: &str = "Automatically match the height against the width in a 16:10 ratio; aka HEIGHT = WIDTH / 1.6";
-pub const GUPAX_LOCK_HEIGHT: &str = "Automatically match the width against the height in a 16:10 ratio; aka WIDTH = HEIGHT * 1.6";
+pub const GUPAX_LOCK_WIDTH: &str = "Automatically match the HEIGHT against the WIDTH in a 4:3 ratio";
+pub const GUPAX_LOCK_HEIGHT: &str = "Automatically match the WIDTH against the HEIGHT in a 4:3 ratio";
 pub const GUPAX_NO_LOCK: &str = "Allow individual selection of width and height";
 pub const GUPAX_SET: &str = "Set the width/height of the Gupax window to the current values";
 pub const GUPAX_TAB_ABOUT: &str = "Set the tab Gupax starts on to: About";

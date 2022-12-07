@@ -693,9 +693,13 @@ fn main() {
 	init_logger(now);
 	let mut app = App::new(now);
 	init_auto(&mut app);
-	let initial_window_size = match app.state.gupax.simple {
-		true  => Some(Vec2::new(app.state.gupax.selected_width as f32, app.state.gupax.selected_height as f32)),
-		false => Some(Vec2::new(APP_DEFAULT_WIDTH, APP_DEFAULT_HEIGHT)),
+	let selected_width = app.state.gupax.selected_width as f32;
+	let selected_height = app.state.gupax.selected_height as f32;
+	let initial_window_size = if selected_width > APP_MAX_WIDTH || selected_height > APP_MAX_HEIGHT {
+		warn!("App | Set width or height was greater than the maximum! Starting with the default resolution...");
+		Some(Vec2::new(APP_DEFAULT_WIDTH, APP_DEFAULT_HEIGHT))
+	} else {
+		Some(Vec2::new(app.state.gupax.selected_width as f32, app.state.gupax.selected_height as f32))
 	};
 	let options = init_options(initial_window_size);
 	match clean_dir() {
@@ -942,8 +946,8 @@ impl eframe::App for App {
 					// [Gupax Version]
 					// Is yellow if the user updated and should (but isn't required to) restart.
 					match *self.restart.lock().unwrap() {
-						Restart::Yes => ui.add_sized([width, height], Label::new(RichText::new(&self.name_version).color(YELLOW))).on_hover_text("Gupax was updated. A restart is recommended but not required."),
-						_ => ui.add_sized([width, height], Label::new(&self.name_version)).on_hover_text("Gupax is up-to-date"),
+						Restart::Yes => ui.add_sized([width, height], Label::new(RichText::new(&self.name_version).color(YELLOW))).on_hover_text(GUPAX_SHOULD_RESTART),
+						_ => ui.add_sized([width, height], Label::new(&self.name_version)).on_hover_text(GUPAX_UP_TO_DATE),
 					};
 					ui.separator();
 					// [OS]
