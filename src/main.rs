@@ -120,6 +120,7 @@ pub struct App {
 	xmrig_img: Arc<Mutex<ImgXmrig>>,      // A one-time snapshot of what data XMRig started with
 	// Buffer State
 	p2pool_console: String, // The buffer between the p2pool console and the [Helper]
+	xmrig_console: String, // The buffer between the xmrig console and the [Helper]
 	// Sudo State
 	#[cfg(target_family = "unix")]
 	sudo: Arc<Mutex<SudoState>>,
@@ -184,6 +185,7 @@ impl App {
 			p2pool_img,
 			xmrig_img,
 			p2pool_console: String::with_capacity(10),
+			xmrig_console: String::with_capacity(10),
 			#[cfg(target_family = "unix")]
 			sudo: Arc::new(Mutex::new(SudoState::new())),
 			resizing: false,
@@ -956,13 +958,17 @@ impl eframe::App for App {
 							if (response.lost_focus() && ui.input().key_pressed(Key::Enter)) ||
 							ui.add_sized([box_width, height], Button::new("Enter")).on_hover_text(PASSWORD_ENTER).clicked() {
 								if !sudo.testing {
-									SudoState::test_sudo(Arc::clone(&self.sudo));
+									SudoState::test_sudo(self.sudo.clone(), &self.helper.clone(), &self.state.xmrig, &self.state.gupax.absolute_xmrig_path);
 								}
 							}
 							let color = if hide { BLACK } else { BRIGHT_YELLOW };
 							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { sudo.hide = !sudo.hide; }
 						});
 						if esc || ui.add_sized([width, height*4.0], Button::new("Leave")).clicked() { self.error_state.reset(); };
+						// If [test_sudo()] finished, reset sudo state + error state.
+						if sudo.success {
+							self.error_state.reset();
+						}
 					},
 					Okay => if esc || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
 					Quit => if ui.add_sized([width, height], Button::new("Quit")).clicked() { exit(1); },
@@ -1150,12 +1156,19 @@ impl eframe::App for App {
 						});
 						ui.group(|ui| {
 							let width = (ui.available_width()/3.0)-5.0;
-							if self.xmrig.lock().unwrap().is_alive() {
+							if self.xmrig.lock().unwrap().is_waiting() {
+								ui.add_enabled_ui(false, |ui| {
+									ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig");
+									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig");
+									ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig");
+								});
+							} else if self.xmrig.lock().unwrap().is_alive() {
 								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
-									self.error_state.ask_sudo(&self.sudo);
+//									self.error_state.ask_sudo(&self.sudo);
+//									Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path);
 								}
 								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
-									self.error_state.ask_sudo(&self.sudo);
+									Helper::stop_xmrig(&self.helper);
 								}
 								ui.add_enabled_ui(false, |ui| {
 									ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig");
@@ -1167,6 +1180,7 @@ impl eframe::App for App {
 								});
 								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").clicked() {
 									self.error_state.ask_sudo(&self.sudo);
+//									Helper::start_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path);
 								}
 							}
 						});
@@ -1215,7 +1229,7 @@ impl eframe::App for App {
 					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_console, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
-					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, self.width, self.height, ctx, ui);
+					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_console, self.width, self.height, ctx, ui);
 				}
 			}
 		});

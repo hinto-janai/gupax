@@ -18,27 +18,60 @@
 use crate::{
 	Regexes,
 	constants::*,
-	disk::*
+	disk::*,
+	Process,
+	PubXmrigApi,
 };
 use egui::{
 	TextEdit,SelectableLabel,ComboBox,Label,Button,RichText,Slider,Checkbox,
 	TextStyle::*,
 };
-
+use std::{
+	sync::{Arc,Mutex},
+};
 use regex::Regex;
 use log::*;
 
 impl Xmrig {
-	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
-	let text_edit = height / 22.0;
+	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- Console
+	if self.simple {
 	ui.group(|ui| {
-		let height = height / 10.0;
+		let height = height / 1.5;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
-		ui.add_sized([width, height*3.5], TextEdit::multiline(&mut "".to_string()));
-		ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(&mut "".to_string()), r#"Type a command (e.g "help" or "status") and press Enter"#));
+		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
+			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
+			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
+				let lock = api.lock().unwrap();
+				ui.add_sized([width, height], TextEdit::multiline(&mut lock.output.as_str()));
+			});
+		});
 	});
+	//---------------------------------------------------------------------------------------------------- [Advanced] Console
+	} else {
+	ui.group(|ui| {
+		let height = height / 2.8;
+		let width = width - SPACE;
+		ui.style_mut().override_text_style = Some(Monospace);
+		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
+			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
+			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
+				ui.add_sized([width, height], TextEdit::multiline(&mut api.lock().unwrap().output.as_str()));
+			});
+		});
+		ui.separator();
+		let response = ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(buffer), r#"Commands: [h]ashrate, [p]ause, [r]esume, re[s]ults, [c]onnection"#));
+		// If the user pressed enter, dump buffer contents into the process STDIN
+		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
+			response.request_focus();                  // Get focus back
+			let mut buffer = std::mem::take(buffer);   // Take buffer
+			let mut process = process.lock().unwrap(); // Lock
+			if process.is_alive() { process.input.push(buffer); } // Push only if alive
+		}
+	});
+	}
 
 	//---------------------------------------------------------------------------------------------------- Config
 	if !self.simple {

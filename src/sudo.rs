@@ -25,8 +25,12 @@ use std::{
 	sync::{Arc,Mutex},
 	process::*,
 	io::Write,
+	path::PathBuf,
 };
 use crate::{
+	Helper,
+	disk::Xmrig,
+	ProcessSignal,
 	constants::*,
 };
 use log::*;
@@ -75,7 +79,10 @@ impl SudoState {
 	// Spawns a thread and tests sudo with the provided password.
 	// Sudo takes the password through STDIN via [--stdin].
 	// Sets the appropriate state fields on success/failure.
-	pub fn test_sudo(state: Arc<Mutex<Self>>) {
+	pub fn test_sudo(state: Arc<Mutex<Self>>, helper: &Arc<Mutex<Helper>>, xmrig: &Xmrig, path: &PathBuf) {
+		let helper = Arc::clone(helper);
+		let xmrig = xmrig.clone();
+		let path = path.clone();
 		thread::spawn(move || {
 			// Set to testing
 			state.lock().unwrap().testing = true;
@@ -115,13 +122,12 @@ impl SudoState {
 			// Sudo re-prompts and will hang.
 			// To workaround this, try checking
 			// results for 5 seconds in a loop.
-			let mut success = false;
 			for i in 1..=5 {
 				match sudo.try_wait() {
 					Ok(Some(code)) => if code.success() {
 						info!("Sudo | Password ... OK!");
-						success = true;
-						/* spawn xmrig */
+						state.lock().unwrap().success = true;
+						crate::helper::Helper::start_xmrig(&helper, &xmrig, &path);  //----------- Start XMRig
 						break
 					},
 					Ok(None) => {
@@ -137,11 +143,9 @@ impl SudoState {
 					},
 				}
 			}
-			//
-			state.lock().unwrap().msg = match success {
-				true  => "OK!".to_string(),
-				false => "Incorrect password!".to_string(),
-			};
+			let mut lock = state.lock().unwrap();
+			if !lock.success { lock.msg = "Incorrect password!".to_string(); }
+			drop(lock);
 			sudo.kill();
 			Self::wipe(&state);
 			state.lock().unwrap().testing = false;

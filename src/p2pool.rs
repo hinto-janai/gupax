@@ -35,8 +35,8 @@ impl P2pool {
 	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
-	if self.simple {
 	ui.group(|ui| {
+	if self.simple {
 		let height = height / 2.5;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
@@ -47,10 +47,8 @@ impl P2pool {
 				ui.add_sized([width, height], TextEdit::multiline(&mut lock.output.as_str()));
 			});
 		});
-	});
 	//---------------------------------------------------------------------------------------------------- [Advanced] Console
 	} else {
-	ui.group(|ui| {
 		let height = height / 2.8;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
@@ -69,8 +67,8 @@ impl P2pool {
 			let mut process = process.lock().unwrap(); // Lock
 			if process.is_alive() { process.input.push(buffer); } // Push only if alive
 		}
-	});
 	}
+	});
 
 	//---------------------------------------------------------------------------------------------------- Args
 	if !self.simple {

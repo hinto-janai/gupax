@@ -56,6 +56,10 @@ const LOCALE: num_format::Locale = num_format::Locale::en;
 const MAX_PROCESS_OUTPUT_BYTES: usize = 56_000_000;
 // Just a little leeway so a reset will go off before the [String] allocates more memory.
 const PROCESS_OUTPUT_LEEWAY: usize = MAX_PROCESS_OUTPUT_BYTES - 1000;
+// The max bytes the GUI thread should hold
+const MAX_GUI_OUTPUT_BYTES: usize = 1_000_000;
+const GUI_OUTPUT_LEEWAY: usize = MAX_GUI_OUTPUT_BYTES - 1000;
+
 
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread
@@ -109,9 +113,12 @@ pub struct Process {
 	stdin: Option<Box<dyn portable_pty::MasterPty + Send>>, // A handle to the process's MasterPTY/STDIN
 
 	// This is the process's private output [String], used by both [Simple] and [Advanced].
-	// The "watchdog" threads mutate this, the "helper" thread synchronizes the [Pub*Api] structs
-	// so that the data in here is cloned there roughly once a second. GUI thread never touches this.
-	output: Arc<Mutex<String>>,
+	// "full" contains the entire output (up to a month, or 50m bytes), "buf" will be written to
+	// the same as full, but it will be [swap()]'d by the "helper" thread into the GUIs [String].
+	// The "helper" thread synchronizes this swap so that the data in here is moved there
+	// roughly once a second. GUI thread never touches this.
+	output_full: Arc<Mutex<String>>,
+	output_buf: Arc<Mutex<String>>,
 
 	// Start time of process.
 	start: std::time::Instant,
@@ -127,10 +134,9 @@ impl Process {
 			start: Instant::now(),
 			stdin: Option::None,
 			child: Option::None,
-			// P2Pool log level 1 produces a bit less than 100,000 lines a day.
-			// Assuming each line averages 80 UTF-8 scalars (80 bytes), then this
-			// initial buffer should last around a week (56MB) before resetting.
-			output: Arc::new(Mutex::new(String::with_capacity(MAX_PROCESS_OUTPUT_BYTES))),
+			// MAX should last around a month for P2Pool log level 3.
+			output_full: Arc::new(Mutex::new(String::with_capacity(MAX_PROCESS_OUTPUT_BYTES))),
+			output_buf: Arc::new(Mutex::new(String::new())),
 			input: vec![String::new()],
 		}
 	}
@@ -202,29 +208,47 @@ impl Helper {
 	}
 
 	// Reads a PTY which combines STDOUT/STDERR for me, yay
-	fn read_pty(output: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
+	fn read_pty(output_full: Arc<Mutex<String>>, output_buf: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
 		while let Some(Ok(line)) = stdout.next() {
 //			println!("{}", line); // For debugging.
-			writeln!(output.lock().unwrap(), "{}", line);
+			writeln!(output_full.lock().unwrap(), "{}", line);
+			writeln!(output_buf.lock().unwrap(), "{}", line);
 		}
 	}
 
 	// Reset output if larger than 55_999_000 bytes (around 1 week of logs).
 	// The actual [String] holds 56_000_000, but this allows for some leeway so it doesn't allocate more memory.
 	// This will also append a message showing it was reset.
-	fn check_reset_output(output: &Arc<Mutex<String>>, name: ProcessName) {
-		let mut output = output.lock().unwrap();
-		if output.len() > PROCESS_OUTPUT_LEEWAY {
-			let name = match name {
-				ProcessName::P2pool => "P2Pool",
-				ProcessName::Xmrig  => "XMRig",
-			};
-			info!("{} | Output is nearing 56,000,000 bytes, resetting!", name);
-			let text = format!("{}\n{} logs are exceeding the maximum: 56,000,000 bytes!\nI've reset the logs for you, your stats may now be inaccurate since they depend on these logs!\nI think you rather have that than have it hogging your memory, though!\n{}", HORI_CONSOLE, name, HORI_CONSOLE);
-			output.clear();
-			output.push_str(&text);
+	fn check_reset_output_full(output_full: &Arc<Mutex<String>>, name: ProcessName) {
+		let mut output_full = output_full.lock().unwrap();
+		if output_full.len() > PROCESS_OUTPUT_LEEWAY {
+			info!("{} | Output is nearing {} bytes, resetting!", MAX_PROCESS_OUTPUT_BYTES, name);
+			let text = format!("{}\n{} internal log is exceeding the maximum: {} bytes!\nI've reset the logs for you, your stats may now be inaccurate since they depend on these logs!\nI think you rather have that than have it hogging your memory, though!\n{}\n\n\n\n", HORI_CONSOLE, name, MAX_PROCESS_OUTPUT_BYTES, HORI_CONSOLE);
+			output_full.clear();
+			output_full.push_str(&text);
+		}
+	}
+
+	// For the GUI thread, the max is 1_000_000 bytes.
+	fn check_reset_gui_p2pool_output(gui_api: &Arc<Mutex<PubP2poolApi>>) {
+		let mut gui_api = gui_api.lock().unwrap();
+		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
+			info!("P2Pool | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
+			let text = format!("{}\nP2Pool GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you, but your stats will be fine (at least for around a month) since they rely on an internal log!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
+			gui_api.output.clear();
+			gui_api.output.push_str(&text);
+		}
+	}
+
+	fn check_reset_gui_xmrig_output(gui_api: &Arc<Mutex<PubXmrigApi>>) {
+		let mut gui_api = gui_api.lock().unwrap();
+		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
+			info!("XMRig | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
+			let text = format!("{}\nP2Pool GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you, but your stats will be fine (at least for around a month) since they rely on an internal log!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
+			gui_api.output.clear();
+			gui_api.output.push_str(&text);
 		}
 	}
 
@@ -407,18 +431,21 @@ impl Helper {
 		drop(lock);
 
 		// 3. Spawn PTY read thread
-		let output_clone = Arc::clone(&process.lock().unwrap().output);
+		let output_full = Arc::clone(&process.lock().unwrap().output_full);
+		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 		thread::spawn(move || {
-			Self::read_pty(output_clone, reader);
+			Self::read_pty(output_full, output_buf, reader);
 		});
+		let output_full = Arc::clone(&process.lock().unwrap().output_full);
+		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 
 		path.pop();
 		path.push(P2POOL_API_PATH);
 		let regex = P2poolRegex::new();
-		let output = Arc::clone(&process.lock().unwrap().output);
 		let start = process.lock().unwrap().start;
 
 		// 4. Loop as watchdog
+		info!("P2Pool | Entering watchdog mode... woof!");
 		loop {
 			// Set timer
 			let now = Instant::now();
@@ -440,7 +467,7 @@ impl Helper {
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
-				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			// Check RESTART
@@ -454,7 +481,7 @@ impl Helper {
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
-				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().state = ProcessState::Waiting;
 				break
 			// Check if the process is secretly died without us knowing :)
@@ -466,7 +493,7 @@ impl Helper {
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI, because sometimes the 900ms event loop can't catch it.
-				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			}
@@ -482,7 +509,7 @@ impl Helper {
 			drop(lock);
 
 			// Always update from output
-			PubP2poolApi::update_from_output(&pub_api, &output, start.elapsed(), &regex);
+			PubP2poolApi::update_from_output(&pub_api, &output_full, &output_buf, start.elapsed(), &regex);
 
 			// Read API file into string
 			if let Ok(string) = Self::read_p2pool_api(&path) {
@@ -494,7 +521,8 @@ impl Helper {
 			}
 
 			// Check if logs need resetting
-			Self::check_reset_output(&output, ProcessName::P2pool);
+			Self::check_reset_output_full(&output_full, ProcessName::P2pool);
+			Self::check_reset_gui_p2pool_output(&gui_api);
 
 			// Sleep (only if 900ms hasn't passed)
 			let elapsed = now.elapsed().as_millis();
@@ -523,13 +551,13 @@ impl Helper {
 //		}
 //	}
 //
-//	// Just sets some signals for the watchdog thread to pick up on.
-//	pub fn stop_p2pool(helper: &Arc<Mutex<Self>>) {
-//		info!("P2Pool | Attempting to stop...");
-//		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Stop;
-//		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
-//	}
-//
+	// Just sets some signals for the watchdog thread to pick up on.
+	pub fn stop_xmrig(helper: &Arc<Mutex<Self>>) {
+		info!("P2Pool | Attempting to stop...");
+		helper.lock().unwrap().xmrig.lock().unwrap().signal = ProcessSignal::Stop;
+		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
+	}
+
 //	// The "restart frontend" to a "frontend" function.
 //	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
 //	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
@@ -559,6 +587,7 @@ impl Helper {
 
 		// Print arguments & user settings to console
 		crate::disk::print_dash(&format!("XMRig | Launch arguments: {:#?}", args));
+		info!("XMRig | Using path: [{}]", path.display());
 
 		// Spawn watchdog thread
 		let process = Arc::clone(&helper.lock().unwrap().xmrig);
@@ -571,36 +600,27 @@ impl Helper {
 		});
 	}
 
-	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
-	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
+	// Takes in some [State/Xmrig] and parses it to build the actual command arguments.
+	// Returns the [Vec] of actual arguments, and mutates the [ImgXmrig] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
-	pub fn build_xmrig_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> Vec<String> {
+	pub fn build_xmrig_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf) -> Vec<String> {
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
-		let mut api_path = path.clone();
-		api_path.pop();
 
 		// [Simple]
 		if state.simple {
 			// Build the xmrig argument
-			let (ip, rpc, zmq) = crate::node::enum_to_ip_rpc_zmq_tuple(state.node);         // Get: (IP, RPC, ZMQ)
-			args.push("--wallet".to_string());   args.push(state.address.clone());          // Wallet address
-			args.push("--host".to_string());     args.push(ip.to_string());                 // IP Address
-			args.push("--rpc-port".to_string()); args.push(rpc.to_string());                // RPC Port
-			args.push("--zmq-port".to_string()); args.push(zmq.to_string());                // ZMQ Port
-			args.push("--data-api".to_string()); args.push(api_path.display().to_string()); // API Path
-			args.push("--local-api".to_string()); // Enable API
-			args.push("--no-color".to_string());  // Remove color escape sequences, Gupax terminal can't parse it :(
-			args.push("--mini".to_string());      // P2Pool Mini
-			*helper.lock().unwrap().img_xmrig.lock().unwrap() = ImgP2pool {
-				mini: true,
-				address: state.address.clone(),
-				host: ip.to_string(),
-				rpc: rpc.to_string(),
-				zmq: zmq.to_string(),
-				log_level: "3".to_string(),
-				out_peers: "10".to_string(),
-				in_peers: "10".to_string(),
+			let rig = if state.simple_rig.is_empty() { GUPAX.to_string() } else { state.simple_rig.clone() }; // Rig name
+			args.push("--url".to_string()); args.push("127.0.0.1:3333".to_string());          // Local P2Pool (the default)
+			args.push("--threads".to_string()); args.push(state.current_threads.to_string()); // Threads
+			args.push("--user".to_string()); args.push(rig.clone());                          // Rig name
+			args.push("--no-color".to_string());                                              // No color
+			args.push("--http-host".to_string()); args.push("127.0.0.1".to_string());         // HTTP API IP
+			args.push("--http-port".to_string()); args.push("18088".to_string());             // HTTP API Port
+			if state.pause != 0 { args.push("--pause-on-active".to_string()); args.push(state.pause.to_string()); } // Pause on active
+			*helper.lock().unwrap().img_xmrig.lock().unwrap() = ImgXmrig {
+				threads: state.current_threads.to_string(),
+				url: "127.0.0.1:3333 (Local P2Pool)".to_string(),
 			};
 
 		// [Advanced]
@@ -608,20 +628,14 @@ impl Helper {
 			// Overriding command arguments
 			if !state.arguments.is_empty() {
 				// This parses the input and attemps to fill out
-				// the [ImgP2pool]... This is pretty bad code...
+				// the [ImgXmrig]... This is pretty bad code...
 				let mut last = "";
 				let lock = helper.lock().unwrap();
 				let mut xmrig_image = lock.img_xmrig.lock().unwrap();
 				for arg in state.arguments.split_whitespace() {
 					match last {
-						"--mini"      => xmrig_image.mini = true,
-						"--wallet"    => xmrig_image.address = arg.to_string(),
-						"--host"      => xmrig_image.host = arg.to_string(),
-						"--rpc-port"  => xmrig_image.rpc = arg.to_string(),
-						"--zmq-port"  => xmrig_image.zmq = arg.to_string(),
-						"--loglevel"  => xmrig_image.log_level = arg.to_string(),
-						"--out-peers" => xmrig_image.out_peers = arg.to_string(),
-						"--in-peers"  => xmrig_image.in_peers = arg.to_string(),
+						"--threads" => xmrig_image.threads = arg.to_string(),
+						"--url"     => xmrig_image.url = arg.to_string(),
 						_ => (),
 					}
 					args.push(arg.to_string());
@@ -629,27 +643,22 @@ impl Helper {
 				}
 			// Else, build the argument
 			} else {
-				args.push("--wallet".to_string());    args.push(state.address.clone());          // Wallet
-				args.push("--host".to_string());      args.push(state.selected_ip.to_string());  // IP
-				args.push("--rpc-port".to_string());  args.push(state.selected_rpc.to_string()); // RPC
-				args.push("--zmq-port".to_string());  args.push(state.selected_zmq.to_string()); // ZMQ
-				args.push("--loglevel".to_string());  args.push(state.log_level.to_string());    // Log Level
-				args.push("--out-peers".to_string()); args.push(state.out_peers.to_string());    // Out Peers
-				args.push("--in-peers".to_string());  args.push(state.in_peers.to_string());     // In Peers
-				args.push("--data-api".to_string());  args.push(api_path.display().to_string()); // API Path
-				args.push("--local-api".to_string());               // Enable API
-				args.push("--no-color".to_string());                // Remove color escape sequences
-				if state.mini { args.push("--mini".to_string()); }; // Mini
-				*helper.lock().unwrap().img_xmrig.lock().unwrap() = ImgP2pool {
-					mini: state.mini,
-					address: state.address.clone(),
-					host: state.selected_ip.to_string(),
-					rpc: state.selected_rpc.to_string(),
-					zmq: state.selected_zmq.to_string(),
-					log_level: state.log_level.to_string(),
-					out_peers: state.out_peers.to_string(),
-					in_peers: state.in_peers.to_string(),
-				}
+				let api_ip = if state.api_ip == "localhost" { "127.0.0.1".to_string() } else { state.api_ip.to_string() }; // XMRig doesn't understand [localhost]
+				let url = format!("{}:{}", state.selected_ip, state.selected_port); // Combine IP:Port into one string
+				args.push("--user".to_string()); args.push(state.address.clone());                // Wallet
+				args.push("--threads".to_string()); args.push(state.current_threads.to_string()); // Threads
+				args.push("--rig-id".to_string()); args.push(state.selected_rig.to_string());     // Rig ID
+				args.push("--url".to_string()); args.push(url.clone());                           // IP/Port
+				args.push("--http-host".to_string()); args.push(api_ip);                          // HTTP API IP
+				args.push("--http-port".to_string()); args.push(state.api_port.to_string());      // HTTP API Port
+				args.push("--no-color".to_string());                         // No color escape codes
+				if state.tls { args.push("--tls".to_string()); }             // TLS
+				if state.keepalive { args.push("--keepalive".to_string()); } // Keepalive
+				if state.pause != 0 { args.push("--pause-on-active".to_string()); args.push(state.pause.to_string()); } // Pause on active
+				*helper.lock().unwrap().img_xmrig.lock().unwrap() = ImgXmrig {
+					url,
+					threads: state.current_threads.to_string(),
+				};
 			}
 		}
 		args
@@ -684,18 +693,21 @@ impl Helper {
 		drop(lock);
 
 		// 3. Spawn PTY read thread
-		let output_clone = Arc::clone(&process.lock().unwrap().output);
+		let output_full = Arc::clone(&process.lock().unwrap().output_full);
+		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 		thread::spawn(move || {
-			Self::read_pty(output_clone, reader);
+			Self::read_pty(output_full, output_buf, reader);
 		});
+		let output_full = Arc::clone(&process.lock().unwrap().output_full);
+		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 
 //		path.pop();
 //		path.push(P2POOL_API_PATH);
 //		let regex = P2poolRegex::new();
-		let output = Arc::clone(&process.lock().unwrap().output);
 		let start = process.lock().unwrap().start;
 
 		// 4. Loop as watchdog
+		info!("XMRig | Entering watchdog mode... woof!");
 		loop {
 			// Set timer
 			let now = Instant::now();
@@ -715,7 +727,7 @@ impl Helper {
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			// Check RESTART
@@ -727,7 +739,7 @@ impl Helper {
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().state = ProcessState::Waiting;
 				break
 			// Check if the process is secretly died without us knowing :)
@@ -738,7 +750,7 @@ impl Helper {
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			}
@@ -754,7 +766,7 @@ impl Helper {
 			drop(lock);
 
 			// Always update from output
-//			PubP2poolApi::update_from_output(&pub_api, &output, start.elapsed(), &regex);
+			PubXmrigApi::update_from_output(&pub_api, &output_buf, start.elapsed());
 //
 //			// Read API file into string
 //			if let Ok(string) = Self::read_xmrig_api(&path) {
@@ -766,7 +778,8 @@ impl Helper {
 //			}
 
 			// Check if logs need resetting
-			Self::check_reset_output(&output, ProcessName::Xmrig);
+			Self::check_reset_output_full(&output_full, ProcessName::Xmrig);
+			Self::check_reset_gui_xmrig_output(&gui_api);
 
 			// Sleep (only if 900ms hasn't passed)
 			let elapsed = now.elapsed().as_millis();
@@ -799,17 +812,10 @@ impl Helper {
 		let xmrig = lock.xmrig.lock().unwrap();
 		// Calculate Gupax's uptime always.
 		let human_time = HumanTime::into_human(lock.instant.elapsed());
-		// If both [P2Pool/XMRig] are alive...
-		if p2pool.is_alive() && xmrig.is_alive() {
-			*gui_api_p2pool = std::mem::take(&mut pub_api_p2pool);
-			*gui_api_xmrig = std::mem::take(&mut pub_api_xmrig);
-		// If only [P2Pool] is alive...
-		} else if p2pool.is_alive() {
-			*gui_api_p2pool = std::mem::take(&mut pub_api_p2pool);
-		// If only [XMRig] is alive...
-		} else if xmrig.is_alive() {
-			*gui_api_xmrig = std::mem::take(&mut pub_api_xmrig);
-		}
+		// If [P2Pool] is alive...
+		if p2pool.is_alive() { PubP2poolApi::combine_gui_pub_api(&mut gui_api_p2pool, &mut pub_api_p2pool); }
+		// If [XMRig] is alive...
+		if xmrig.is_alive() { PubXmrigApi::combine_gui_pub_api(&mut gui_api_xmrig, &mut pub_api_xmrig); }
 
 		// 2. Drop... (almost) EVERYTHING... IN REVERSE!
 		drop(xmrig);
@@ -1134,12 +1140,31 @@ impl PubP2poolApi {
 		}
 	}
 
-	// Mutate [PubP2poolApi] with data the process output.
-	fn update_from_output(public: &Arc<Mutex<Self>>, output: &Arc<Mutex<String>>, elapsed: std::time::Duration, regex: &P2poolRegex) {
-		// 1. Clone output
-		let output = output.lock().unwrap().clone();
+	// The issue with just doing [gui_api = pub_api] is that values get overwritten.
+	// This doesn't matter for any of the values EXCEPT for the output, so we must
+	// manually append it instead of overwriting.
+	// This is used in the "helper" thread.
+	fn combine_gui_pub_api(gui_api: &mut Self, pub_api: &mut Self) {
+		let output = std::mem::take(&mut gui_api.output);
+		let buf = std::mem::take(&mut pub_api.output);
+		*gui_api = Self {
+			output,
+			..std::mem::take(&mut *pub_api)
+		};
+		if !buf.is_empty() { gui_api.output.push_str(&buf); }
+	}
 
-		// 2. Parse STDOUT
+	// Mutate "watchdog"'s [PubP2poolApi] with data the process output.
+	// The [output] & [output_buf] are from the [Process] struct.
+	fn update_from_output(public: &Arc<Mutex<Self>>, output: &Arc<Mutex<String>>, output_buf: &Arc<Mutex<String>>, elapsed: std::time::Duration, regex: &P2poolRegex) {
+		// 1. Take the process's current output buffer and combine it with Pub (if not empty)
+		let mut output_buf = output_buf.lock().unwrap();
+		if !output_buf.is_empty() {
+			public.lock().unwrap().output.push_str(&std::mem::take(&mut *output_buf));
+		}
+
+		// 2. Parse the full STDOUT
+		let output = output.lock().unwrap();
 		let (payouts, xmr) = Self::calc_payouts_and_xmr(&output, &regex);
 
 		// 3. Calculate hour/day/month given elapsed time
@@ -1159,7 +1184,6 @@ impl PubP2poolApi {
 		let mut public = public.lock().unwrap();
 		*public = Self {
 			uptime: HumanTime::into_human(elapsed),
-			output,
 			payouts,
 			xmr,
 			payouts_hour,
@@ -1168,7 +1192,7 @@ impl PubP2poolApi {
 			xmr_hour,
 			xmr_day,
 			xmr_month,
-			..public.clone()
+			..std::mem::take(&mut *public)
 		};
 	}
 
@@ -1236,24 +1260,32 @@ impl PrivP2poolApi {
 
 //---------------------------------------------------------------------------------------------------- [ImgXmrig]
 #[derive(Debug, Clone)]
-pub struct ImgXmrig {}
+pub struct ImgXmrig {
+	pub threads: String,
+	pub url: String,
+}
+
 impl ImgXmrig {
 	pub fn new() -> Self {
-		Self {}
+		Self {
+			threads: "1".to_string(),
+			url: "127.0.0.1:3333 (Local P2Pool)".to_string(),
+		}
 	}
 }
 
 //---------------------------------------------------------------------------------------------------- Public XMRig API
 #[derive(Debug, Clone)]
 pub struct PubXmrigApi {
-	output: String,
-	worker_id: String,
-	resources: HumanNumber,
-	hashrate: HumanNumber,
-	pool: String,
-	diff: HumanNumber,
-	accepted: HumanNumber,
-	rejected: HumanNumber,
+	pub output: String,
+	pub uptime: HumanTime,
+	pub worker_id: String,
+	pub resources: HumanNumber,
+	pub hashrate: HumanNumber,
+	pub pool: String,
+	pub diff: HumanNumber,
+	pub accepted: HumanNumber,
+	pub rejected: HumanNumber,
 }
 
 impl Default for PubXmrigApi {
@@ -1266,6 +1298,7 @@ impl PubXmrigApi {
 	pub fn new() -> Self {
 		Self {
 			output: String::new(),
+			uptime: HumanTime::new(),
 			worker_id: "???".to_string(),
 			resources: HumanNumber::unknown(),
 			hashrate: HumanNumber::unknown(),
@@ -1276,10 +1309,33 @@ impl PubXmrigApi {
 		}
 	}
 
+	fn combine_gui_pub_api(gui_api: &mut Self, pub_api: &mut Self) {
+		let output = std::mem::take(&mut gui_api.output);
+		let buf = std::mem::take(&mut pub_api.output);
+		*gui_api = Self {
+			output,
+			..std::mem::take(&mut *pub_api)
+		};
+		if !buf.is_empty() { gui_api.output.push_str(&buf); }
+	}
+
+	fn update_from_output(public: &Arc<Mutex<Self>>, output_buf: &Arc<Mutex<String>>, elapsed: std::time::Duration) {
+		// 1. Take process output buffer if not empty
+		let mut output_buf = output_buf.lock().unwrap();
+		let mut public = public.lock().unwrap();
+		// 2. Append
+		if !output_buf.is_empty() {
+			public.output.push_str(&std::mem::take(&mut *output_buf));
+		}
+		// 3. Update uptime
+		public.uptime = HumanTime::into_human(elapsed);
+	}
+
 	// Formats raw private data into ready-to-print human readable version.
 	fn from_priv(private: PrivXmrigApi, output: String) -> Self {
 		Self {
 			output: output.clone(),
+			uptime: HumanTime::new(),
 			worker_id: private.worker_id,
 			resources: HumanNumber::from_load(private.resources.load_average),
 			hashrate: HumanNumber::from_hashrate(private.hashrate.total),
