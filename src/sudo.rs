@@ -51,10 +51,17 @@ impl SudoState {
 		}
 	}
 
+	// Resets the state.
+	pub fn reset(state: &Arc<Mutex<Self>>) {
+		Self::wipe(&state);
+		let mut state = state.lock().unwrap();
+		state.testing = false;
+		state.success = false;
+	}
+
 	// Swaps the pass with another 256-capacity String,
 	// zeroizes the old and drops it.
 	pub fn wipe(state: &Arc<Mutex<Self>>) {
-		info!("Sudo | Wiping password with zeros and dropping from memory...");
 		let mut new = String::with_capacity(256);
 		let mut state = state.lock().unwrap();
 		// new is now == old, and vice-versa.
@@ -62,7 +69,7 @@ impl SudoState {
 		// we're wiping & dropping the old pass here.
 		new.zeroize();
 		std::mem::drop(new);
-		info!("Sudo ... Password Wipe OK");
+		info!("Sudo | Password wipe with 0's ... OK");
 	}
 
 	// Spawns a thread and tests sudo with the provided password.

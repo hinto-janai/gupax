@@ -435,13 +435,15 @@ impl ErrorState {
 	// Instead of creating a whole new screen and system, this (ab)uses ErrorState
 	// to ask for the [sudo] when starting XMRig. Yes, yes I know, it's called "ErrorState"
 	// but rewriting the UI code and button stuff might be worse.
-	pub fn ask_sudo(&mut self) {
+	// It also resets the current [SudoState]
+	pub fn ask_sudo(&mut self, state: &Arc<Mutex<SudoState>>) {
 		*self = Self {
 			error: true,
 			msg: String::new(),
 			ferris: ErrorFerris::Sudo,
 			buttons: ErrorButtons::Sudo,
-		}
+		};
+		SudoState::reset(&state)
 	}
 }
 
@@ -1150,10 +1152,10 @@ impl eframe::App for App {
 							let width = (ui.available_width()/3.0)-5.0;
 							if self.xmrig.lock().unwrap().is_alive() {
 								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
-									self.error_state.ask_sudo();
+									self.error_state.ask_sudo(&self.sudo);
 								}
 								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
-									self.error_state.ask_sudo();
+									self.error_state.ask_sudo(&self.sudo);
 								}
 								ui.add_enabled_ui(false, |ui| {
 									ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig");
@@ -1164,7 +1166,7 @@ impl eframe::App for App {
 									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig");
 								});
 								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").clicked() {
-									self.error_state.ask_sudo();
+									self.error_state.ask_sudo(&self.sudo);
 								}
 							}
 						});
