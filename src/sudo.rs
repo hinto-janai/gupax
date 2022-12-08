@@ -42,6 +42,7 @@ pub struct SudoState {
 	pub hide: bool, // Are we hiding the password?
 	pub msg: String, // The message shown to the user if unsuccessful
 	pub pass: String, // The actual password wrapped in a [SecretVec]
+	pub signal: ProcessSignal, // Main GUI will set this depending on if we want [Start] or [Restart]
 }
 
 impl SudoState {
@@ -52,6 +53,7 @@ impl SudoState {
 			hide: true,
 			msg: "".to_string(),
 			pass: String::with_capacity(256),
+			signal: ProcessSignal::None,
 		}
 	}
 
@@ -61,15 +63,15 @@ impl SudoState {
 		let mut state = state.lock().unwrap();
 		state.testing = false;
 		state.success = false;
+		state.signal = ProcessSignal::None;
 	}
 
 	// Swaps the pass with another 256-capacity String,
 	// zeroizes the old and drops it.
 	pub fn wipe(state: &Arc<Mutex<Self>>) {
 		let mut new = String::with_capacity(256);
-		let mut state = state.lock().unwrap();
 		// new is now == old, and vice-versa.
-		std::mem::swap(&mut new, &mut state.pass);
+		std::mem::swap(&mut new, &mut state.lock().unwrap().pass);
 		// we're wiping & dropping the old pass here.
 		new.zeroize();
 		std::mem::drop(new);
@@ -127,7 +129,6 @@ impl SudoState {
 					Ok(Some(code)) => if code.success() {
 						info!("Sudo | Password ... OK!");
 						state.lock().unwrap().success = true;
-						crate::helper::Helper::start_xmrig(&helper, &xmrig, &path);  //----------- Start XMRig
 						break
 					},
 					Ok(None) => {
@@ -143,12 +144,16 @@ impl SudoState {
 					},
 				}
 			}
-			let mut lock = state.lock().unwrap();
-			if !lock.success { lock.msg = "Incorrect password!".to_string(); }
-			drop(lock);
 			sudo.kill();
-			Self::wipe(&state);
-			state.lock().unwrap().testing = false;
+			if state.lock().unwrap().success {
+				match state.lock().unwrap().signal {
+					ProcessSignal::Restart => crate::helper::Helper::restart_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),
+					_ => crate::helper::Helper::start_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),
+				}
+			} else {
+				state.lock().unwrap().msg = "Incorrect password!".to_string();
+				Self::wipe(&state);
+			}
 		});
 	}
 }

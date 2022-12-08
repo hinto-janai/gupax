@@ -43,8 +43,11 @@ use std::{
 	time::*,
 	thread,
 };
+use crate::{
+	constants::*,
+	SudoState,
+};
 use serde::{Serialize,Deserialize};
-use crate::constants::*;
 use num_format::{Buffer,Locale};
 use log::*;
 
@@ -558,29 +561,32 @@ impl Helper {
 		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
 	}
 
-//	// The "restart frontend" to a "frontend" function.
-//	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
-//	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
-//		info!("P2Pool | Attempting to restart...");
-//		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Restart;
-//		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
-//
-//		let helper = Arc::clone(&helper);
-//		let state = state.clone();
-//		let path = path.clone();
-//		// This thread lives to wait, start p2pool then die.
-//		thread::spawn(move || {
-//			while helper.lock().unwrap().p2pool.lock().unwrap().is_alive() {
-//				warn!("P2Pool | Want to restart but process is still alive, waiting...");
-//				thread::sleep(SECOND);
-//			}
-//			// Ok, process is not alive, start the new one!
-//			Self::start_p2pool(&helper, &state, &path);
-//		});
-//		info!("P2Pool | Restart ... OK");
-//	}
+	// The "restart frontend" to a "frontend" function.
+	// Basically calls to kill the current xmrig, waits a little, then starts the below function in a a new thread, then exit.
+	pub fn restart_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
+		info!("XMRig | Attempting to restart...");
+		helper.lock().unwrap().xmrig.lock().unwrap().signal = ProcessSignal::Restart;
+		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
 
-	pub fn start_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf) {
+		let helper = Arc::clone(&helper);
+		let state = state.clone();
+		let path = path.clone();
+		// This thread lives to wait, start xmrig then die.
+		thread::spawn(move || {
+			while helper.lock().unwrap().xmrig.lock().unwrap().is_alive() {
+				warn!("XMRig | Want to restart but process is still alive, waiting...");
+				thread::sleep(SECOND);
+			}
+			// We should reallllly sleep so all the components have a chance to catch up.
+			// Premature starting could miss the [sudo] STDIN timeframe and output it to STDOUT.
+			thread::sleep(std::time::Duration::from_secs(3));
+			// Ok, process is not alive, start the new one!
+			Self::start_xmrig(&helper, &state, &path, sudo);
+		});
+		info!("XMRig | Restart ... OK");
+	}
+
+	pub fn start_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
 		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
 
 		let args = Self::build_xmrig_args_and_mutate_img(helper, state, path);
@@ -596,7 +602,7 @@ impl Helper {
 		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_xmrig);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, priv_api, args, path);
+			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, priv_api, args, path, sudo);
 		});
 	}
 
@@ -606,6 +612,12 @@ impl Helper {
 	pub fn build_xmrig_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf) -> Vec<String> {
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
+		// The actual binary we're executing is [sudo], technically
+		// the XMRig path is just an argument to sudo, so add it.
+		// Before that though, add the ["--prompt"] flag and set it
+		// to emptyness so that it doesn't show up in the output.
+		args.push(r#"--prompt="#.to_string());
+		args.push(path.display().to_string());
 
 		// [Simple]
 		if state.simple {
@@ -666,7 +678,7 @@ impl Helper {
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	#[tokio::main]
-	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
+	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
 		let pair = pty.openpty(portable_pty::PtySize {
@@ -676,11 +688,14 @@ impl Helper {
 			pixel_height: 0,
 		}).unwrap();
 		// 1b. Create command
-		let mut cmd = portable_pty::CommandBuilder::new(path.as_path());
+		let mut cmd = portable_pty::CommandBuilder::new("sudo");
 		cmd.args(args);
 		cmd.cwd(path.as_path().parent().unwrap());
 		// 1c. Create child
 		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
+
+		// 1d. Wait a bit for [sudo].
+		thread::sleep(std::time::Duration::from_secs(3));
 
         // 2. Set process state
         let mut lock = process.lock().unwrap();
@@ -690,6 +705,11 @@ impl Helper {
 		lock.child = Some(Arc::clone(&child_pty));
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
 		lock.stdin = Some(pair.master);
+
+		// 3. Input [sudo] pass, wipe, then drop.
+		writeln!(lock.stdin.as_mut().unwrap(), "{}", sudo.lock().unwrap().pass);
+		SudoState::wipe(&sudo);
+		drop(sudo);
 		drop(lock);
 
 		// 3. Spawn PTY read thread
@@ -712,37 +732,38 @@ impl Helper {
 			// Set timer
 			let now = Instant::now();
 
-			// Check SIGNAL
-			if process.lock().unwrap().signal == ProcessSignal::Stop {
+			// Stop on [Stop/Restart] SIGNAL
+			let signal = process.lock().unwrap().signal;
+			if signal == ProcessSignal::Stop || signal == ProcessSignal::Restart  {
 				child_pty.lock().unwrap().kill();
 				let exit_status = match child_pty.lock().unwrap().wait() {
 					Ok(e) => {
+						let mut process = process.lock().unwrap();
 						if e.success() {
-							process.lock().unwrap().state = ProcessState::Dead; "Successful"
+							if process.signal == ProcessSignal::Stop { process.state = ProcessState::Dead; }
+							"Successful"
 						} else {
-							process.lock().unwrap().state = ProcessState::Failed; "Failed"
+							if process.signal == ProcessSignal::Stop { process.state = ProcessState::Failed; }
+							"Failed"
 						}
 					},
-					_ => { process.lock().unwrap().state = ProcessState::Failed; "Unknown Error" },
+					_ => {
+						let mut process = process.lock().unwrap();
+						if process.signal == ProcessSignal::Stop { process.state = ProcessState::Failed; }
+						"Unknown Error"
+					},
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
-				process.lock().unwrap().signal = ProcessSignal::None;
+				let mut process = process.lock().unwrap();
+				match process.signal {
+					ProcessSignal::Stop    => process.signal = ProcessSignal::None,
+					ProcessSignal::Restart => process.state = ProcessState::Waiting,
+					_ => (),
+				}
 				break
-			// Check RESTART
-			} else if process.lock().unwrap().signal == ProcessSignal::Restart {
-				child_pty.lock().unwrap().kill();
-				let exit_status = match child_pty.lock().unwrap().wait() {
-					Ok(e) => if e.success() { "Successful" } else { "Failed" },
-					_ => "Unknown Error",
-				};
-				let uptime = HumanTime::into_human(start.elapsed());
-				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
-				process.lock().unwrap().state = ProcessState::Waiting;
-				break
-			// Check if the process is secretly died without us knowing :)
+			// Check if the process secretly died without us knowing :)
 			} else if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
 				let exit_status = match code.success() {
 					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },

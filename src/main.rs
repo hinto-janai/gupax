@@ -965,7 +965,7 @@ impl eframe::App for App {
 							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { sudo.hide = !sudo.hide; }
 						});
 						if esc || ui.add_sized([width, height*4.0], Button::new("Leave")).clicked() { self.error_state.reset(); };
-						// If [test_sudo()] finished, reset sudo state + error state.
+						// If [test_sudo()] finished, reset error state.
 						if sudo.success {
 							self.error_state.reset();
 						}
@@ -1164,8 +1164,8 @@ impl eframe::App for App {
 								});
 							} else if self.xmrig.lock().unwrap().is_alive() {
 								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
-//									self.error_state.ask_sudo(&self.sudo);
-//									Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path);
+									self.sudo.lock().unwrap().signal = ProcessSignal::Restart;
+									self.error_state.ask_sudo(&self.sudo);
 								}
 								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
 									Helper::stop_xmrig(&self.helper);
@@ -1179,8 +1179,8 @@ impl eframe::App for App {
 									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig");
 								});
 								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").clicked() {
+									self.sudo.lock().unwrap().signal = ProcessSignal::Start;
 									self.error_state.ask_sudo(&self.sudo);
-//									Helper::start_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path);
 								}
 							}
 						});
