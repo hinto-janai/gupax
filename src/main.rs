@@ -936,7 +936,7 @@ impl eframe::App for App {
 				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state.reset() }
 					},
 					ErrorButtons::Sudo => {
-						let sudo_width = (width/10.0);
+						let sudo_width = width/10.0;
 						let height = ui.available_height()/4.0;
 						let mut sudo = self.sudo.lock().unwrap();
 						let hide = sudo.hide.clone();

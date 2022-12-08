@@ -506,47 +506,276 @@ impl Helper {
 		info!("P2Pool | Watchdog thread exiting... Goodbye!");
 	}
 
-	//---------------------------------------------------------------------------------------------------- XMRig specific
-	// Intermediate function that parses the arguments, and spawns the XMRig watchdog thread.
-	pub fn spawn_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: std::path::PathBuf) {
-		let mut args = Vec::with_capacity(500);
-		if state.simple {
-			let rig_name = if state.simple_rig.is_empty() { GUPAX_VERSION.to_string() } else { state.simple_rig.clone() }; // Rig name
-			args.push(format!("--threads {}", state.current_threads)); // Threads
-			args.push(format!("--user {}", state.simple_rig));         // Rig name
-			args.push(format!("--url 127.0.0.1:3333"));                // Local P2Pool (the default)
-			args.push("--no-color".to_string());                       // No color escape codes
-			if state.pause != 0 { args.push(format!("--pause-on-active {}", state.pause)); } // Pause on active
-		} else {
-			if !state.arguments.is_empty() {
-				for arg in state.arguments.split_whitespace() {
-					args.push(arg.to_string());
-				}
-			} else {
-				args.push(format!("--user {}", state.address.clone()));    // Wallet
-				args.push(format!("--threads {}", state.current_threads)); // Threads
-				args.push(format!("--rig-id {}", state.selected_rig));     // Rig ID
-				args.push(format!("--url {}:{}", state.selected_ip.clone(), state.selected_port.clone())); // IP/Port
-				args.push(format!("--http-host {}", state.api_ip).to_string());   // HTTP API IP
-				args.push(format!("--http-port {}", state.api_port).to_string()); // HTTP API Port
-				args.push("--no-color".to_string());                         // No color escape codes
-				if state.tls { args.push("--tls".to_string()); }             // TLS
-				if state.keepalive { args.push("--keepalive".to_string()); } // Keepalive
-				if state.pause != 0 { args.push(format!("--pause-on-active {}", state.pause)); } // Pause on active
-			}
-		}
-		// Print arguments to console
-		crate::disk::print_dash(&format!("XMRig | Launch arguments ... {:#?}", args));
+	//---------------------------------------------------------------------------------------------------- XMRig specific, most functions are very similar to P2Pool's
+//	// Read P2Pool's API file.
+//	fn read_p2pool_api(path: &std::path::PathBuf) -> Result<String, std::io::Error> {
+//		match std::fs::read_to_string(path) {
+//			Ok(s) => Ok(s),
+//			Err(e) => { warn!("P2Pool API | [{}] read error: {}", path.display(), e); Err(e) },
+//		}
+//	}
+//
+//	// Deserialize the above [String] into a [PrivP2poolApi]
+//	fn str_to_priv_p2pool_api(string: &str) -> Result<PrivP2poolApi, serde_json::Error> {
+//		match serde_json::from_str::<PrivP2poolApi>(string) {
+//			Ok(a) => Ok(a),
+//			Err(e) => { warn!("P2Pool API | Could not deserialize API data: {}", e); Err(e) },
+//		}
+//	}
+//
+//	// Just sets some signals for the watchdog thread to pick up on.
+//	pub fn stop_p2pool(helper: &Arc<Mutex<Self>>) {
+//		info!("P2Pool | Attempting to stop...");
+//		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Stop;
+//		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
+//	}
+//
+//	// The "restart frontend" to a "frontend" function.
+//	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
+//	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
+//		info!("P2Pool | Attempting to restart...");
+//		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Restart;
+//		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
+//
+//		let helper = Arc::clone(&helper);
+//		let state = state.clone();
+//		let path = path.clone();
+//		// This thread lives to wait, start p2pool then die.
+//		thread::spawn(move || {
+//			while helper.lock().unwrap().p2pool.lock().unwrap().is_alive() {
+//				warn!("P2Pool | Want to restart but process is still alive, waiting...");
+//				thread::sleep(SECOND);
+//			}
+//			// Ok, process is not alive, start the new one!
+//			Self::start_p2pool(&helper, &state, &path);
+//		});
+//		info!("P2Pool | Restart ... OK");
+//	}
+
+	pub fn start_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf) {
+		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
+
+		let args = Self::build_xmrig_args_and_mutate_img(helper, state, path);
+
+		// Print arguments & user settings to console
+		crate::disk::print_dash(&format!("XMRig | Launch arguments: {:#?}", args));
 
 		// Spawn watchdog thread
+		let process = Arc::clone(&helper.lock().unwrap().xmrig);
+		let gui_api = Arc::clone(&helper.lock().unwrap().gui_api_xmrig);
+		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_xmrig);
+		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_xmrig);
+		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_xmrig_watchdog(args);
+			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, priv_api, args, path);
 		});
 	}
 
-	// The actual XMRig watchdog tokio runtime.
+	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
+	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
+	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
+	pub fn build_xmrig_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> Vec<String> {
+		let mut args = Vec::with_capacity(500);
+		let path = path.clone();
+		let mut api_path = path.clone();
+		api_path.pop();
+
+		// [Simple]
+		if state.simple {
+			// Build the xmrig argument
+			let (ip, rpc, zmq) = crate::node::enum_to_ip_rpc_zmq_tuple(state.node);         // Get: (IP, RPC, ZMQ)
+			args.push("--wallet".to_string());   args.push(state.address.clone());          // Wallet address
+			args.push("--host".to_string());     args.push(ip.to_string());                 // IP Address
+			args.push("--rpc-port".to_string()); args.push(rpc.to_string());                // RPC Port
+			args.push("--zmq-port".to_string()); args.push(zmq.to_string());                // ZMQ Port
+			args.push("--data-api".to_string()); args.push(api_path.display().to_string()); // API Path
+			args.push("--local-api".to_string()); // Enable API
+			args.push("--no-color".to_string());  // Remove color escape sequences, Gupax terminal can't parse it :(
+			args.push("--mini".to_string());      // P2Pool Mini
+			*helper.lock().unwrap().img_xmrig.lock().unwrap() = ImgP2pool {
+				mini: true,
+				address: state.address.clone(),
+				host: ip.to_string(),
+				rpc: rpc.to_string(),
+				zmq: zmq.to_string(),
+				log_level: "3".to_string(),
+				out_peers: "10".to_string(),
+				in_peers: "10".to_string(),
+			};
+
+		// [Advanced]
+		} else {
+			// Overriding command arguments
+			if !state.arguments.is_empty() {
+				// This parses the input and attemps to fill out
+				// the [ImgP2pool]... This is pretty bad code...
+				let mut last = "";
+				let lock = helper.lock().unwrap();
+				let mut xmrig_image = lock.img_xmrig.lock().unwrap();
+				for arg in state.arguments.split_whitespace() {
+					match last {
+						"--mini"      => xmrig_image.mini = true,
+						"--wallet"    => xmrig_image.address = arg.to_string(),
+						"--host"      => xmrig_image.host = arg.to_string(),
+						"--rpc-port"  => xmrig_image.rpc = arg.to_string(),
+						"--zmq-port"  => xmrig_image.zmq = arg.to_string(),
+						"--loglevel"  => xmrig_image.log_level = arg.to_string(),
+						"--out-peers" => xmrig_image.out_peers = arg.to_string(),
+						"--in-peers"  => xmrig_image.in_peers = arg.to_string(),
+						_ => (),
+					}
+					args.push(arg.to_string());
+					last = arg;
+				}
+			// Else, build the argument
+			} else {
+				args.push("--wallet".to_string());    args.push(state.address.clone());          // Wallet
+				args.push("--host".to_string());      args.push(state.selected_ip.to_string());  // IP
+				args.push("--rpc-port".to_string());  args.push(state.selected_rpc.to_string()); // RPC
+				args.push("--zmq-port".to_string());  args.push(state.selected_zmq.to_string()); // ZMQ
+				args.push("--loglevel".to_string());  args.push(state.log_level.to_string());    // Log Level
+				args.push("--out-peers".to_string()); args.push(state.out_peers.to_string());    // Out Peers
+				args.push("--in-peers".to_string());  args.push(state.in_peers.to_string());     // In Peers
+				args.push("--data-api".to_string());  args.push(api_path.display().to_string()); // API Path
+				args.push("--local-api".to_string());               // Enable API
+				args.push("--no-color".to_string());                // Remove color escape sequences
+				if state.mini { args.push("--mini".to_string()); }; // Mini
+				*helper.lock().unwrap().img_xmrig.lock().unwrap() = ImgP2pool {
+					mini: state.mini,
+					address: state.address.clone(),
+					host: state.selected_ip.to_string(),
+					rpc: state.selected_rpc.to_string(),
+					zmq: state.selected_zmq.to_string(),
+					log_level: state.log_level.to_string(),
+					out_peers: state.out_peers.to_string(),
+					in_peers: state.in_peers.to_string(),
+				}
+			}
+		}
+		args
+	}
+
+	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	#[tokio::main]
-	pub async fn spawn_xmrig_watchdog(args: Vec<String>) {
+	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
+		// 1a. Create PTY
+		let pty = portable_pty::native_pty_system();
+		let pair = pty.openpty(portable_pty::PtySize {
+			rows: 24,
+			cols: 80,
+			pixel_width: 0,
+			pixel_height: 0,
+		}).unwrap();
+		// 1b. Create command
+		let mut cmd = portable_pty::CommandBuilder::new(path.as_path());
+		cmd.args(args);
+		cmd.cwd(path.as_path().parent().unwrap());
+		// 1c. Create child
+		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
+
+        // 2. Set process state
+        let mut lock = process.lock().unwrap();
+        lock.state = ProcessState::Alive;
+        lock.signal = ProcessSignal::None;
+        lock.start = Instant::now();
+		lock.child = Some(Arc::clone(&child_pty));
+		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
+		lock.stdin = Some(pair.master);
+		drop(lock);
+
+		// 3. Spawn PTY read thread
+		let output_clone = Arc::clone(&process.lock().unwrap().output);
+		thread::spawn(move || {
+			Self::read_pty(output_clone, reader);
+		});
+
+//		path.pop();
+//		path.push(P2POOL_API_PATH);
+//		let regex = P2poolRegex::new();
+		let output = Arc::clone(&process.lock().unwrap().output);
+		let start = process.lock().unwrap().start;
+
+		// 4. Loop as watchdog
+		loop {
+			// Set timer
+			let now = Instant::now();
+
+			// Check SIGNAL
+			if process.lock().unwrap().signal == ProcessSignal::Stop {
+				child_pty.lock().unwrap().kill();
+				let exit_status = match child_pty.lock().unwrap().wait() {
+					Ok(e) => {
+						if e.success() {
+							process.lock().unwrap().state = ProcessState::Dead; "Successful"
+						} else {
+							process.lock().unwrap().state = ProcessState::Failed; "Failed"
+						}
+					},
+					_ => { process.lock().unwrap().state = ProcessState::Failed; "Unknown Error" },
+				};
+				let uptime = HumanTime::into_human(start.elapsed());
+				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				process.lock().unwrap().signal = ProcessSignal::None;
+				break
+			// Check RESTART
+			} else if process.lock().unwrap().signal == ProcessSignal::Restart {
+				child_pty.lock().unwrap().kill();
+				let exit_status = match child_pty.lock().unwrap().wait() {
+					Ok(e) => if e.success() { "Successful" } else { "Failed" },
+					_ => "Unknown Error",
+				};
+				let uptime = HumanTime::into_human(start.elapsed());
+				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				process.lock().unwrap().state = ProcessState::Waiting;
+				break
+			// Check if the process is secretly died without us knowing :)
+			} else if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
+				let exit_status = match code.success() {
+					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
+					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
+				};
+				let uptime = HumanTime::into_human(start.elapsed());
+				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				process.lock().unwrap().signal = ProcessSignal::None;
+				break
+			}
+
+			// Check vector of user input
+			let mut lock = process.lock().unwrap();
+			if !lock.input.is_empty() {
+				let input = std::mem::take(&mut lock.input);
+				for line in input {
+					writeln!(lock.stdin.as_mut().unwrap(), "{}", line);
+				}
+			}
+			drop(lock);
+
+			// Always update from output
+//			PubP2poolApi::update_from_output(&pub_api, &output, start.elapsed(), &regex);
+//
+//			// Read API file into string
+//			if let Ok(string) = Self::read_xmrig_api(&path) {
+//				// Deserialize
+//				if let Ok(s) = Self::str_to_priv_xmrig_api(&string) {
+//					// Update the structs.
+//					PubP2poolApi::update_from_priv(&pub_api, &priv_api);
+//				}
+//			}
+
+			// Check if logs need resetting
+			Self::check_reset_output(&output, ProcessName::Xmrig);
+
+			// Sleep (only if 900ms hasn't passed)
+			let elapsed = now.elapsed().as_millis();
+			// Since logic goes off if less than 1000, casting should be safe
+			if elapsed < 900 { std::thread::sleep(std::time::Duration::from_millis((900-elapsed) as u64)); }
+		}
+
+		// 5. If loop broke, we must be done here.
+		info!("XMRig | Watchdog thread exiting... Goodbye!");
 	}
 
 	//---------------------------------------------------------------------------------------------------- The "helper"
