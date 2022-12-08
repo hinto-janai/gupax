@@ -83,7 +83,7 @@ pub const TOKIO_SECOND: tokio::time::Duration = std::time::Duration::from_secs(1
 pub const XMRIG_ADMIN_REASON: &str =
 r#"The large hashrate difference between XMRig and other miners like Monero and P2Pool's built-in miners is mostly due to XMRig configuring CPU MSRs and setting up hugepages. Other miners like Monero or P2Pool's built-in miner do not do this. It can be done manually but it isn't recommended since XMRig does this for you automatically, but only if it has the proper admin priviledges."#;
 // Password buttons
-pub const PASSWORD_TEXT: &str = "Enter sudo/admin password here...";
+pub const PASSWORD_TEXT: &str = "Enter sudo/admin password...";
 pub const PASSWORD_LEAVE: &str = "Return to the previous screen";
 pub const PASSWORD_ENTER: &str = "Attempt with the current password";
 pub const PASSWORD_HIDE: &str = "Toggle hiding/showing the password";

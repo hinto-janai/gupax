@@ -20,8 +20,15 @@
 // Only gets imported in [main.rs] for Unix.
 
 use zeroize::Zeroize;
-use std::sync::{Arc,Mutex};
-use std::thread;
+use std::{
+	thread,
+	sync::{Arc,Mutex},
+	process::*,
+	io::Write,
+};
+use crate::{
+	constants::*,
+};
 use log::*;
 
 #[derive(Debug,Clone)]
@@ -58,18 +65,79 @@ impl SudoState {
 		info!("Sudo ... Password Wipe OK");
 	}
 
+	// Spawns a thread and tests sudo with the provided password.
+	// Sudo takes the password through STDIN via [--stdin].
+	// Sets the appropriate state fields on success/failure.
 	pub fn test_sudo(state: Arc<Mutex<Self>>) {
-		std::thread::spawn(move || {
+		thread::spawn(move || {
+			// Set to testing
 			state.lock().unwrap().testing = true;
-			info!("in test_sudo()");
-			std::thread::sleep(std::time::Duration::from_secs(3));
-			state.lock().unwrap().testing = false;
-			if state.lock().unwrap().pass == "secret" {
-				state.lock().unwrap().msg = "Correct!".to_string();
-			} else {
-				state.lock().unwrap().msg = "Incorrect password!".to_string();
+
+			// Make sure sudo timestamp is reset
+			let reset = Command::new("sudo")
+				.arg("--reset-timestamp")
+				.stdout(Stdio::piped())
+				.stderr(Stdio::piped())
+				.stdin(Stdio::piped())
+				.status();
+			match reset {
+				Ok(_)  => info!("Sudo | Resetting timestamp ... OK"),
+				Err(e) => {
+					error!("Sudo | Couldn't reset timestamp: {}", e);
+					Self::wipe(&state);
+					state.lock().unwrap().msg = format!("Sudo error: {}", e);
+					state.lock().unwrap().testing = false;
+					return
+				},
 			}
+
+			// Spawn testing sudo
+			let mut sudo = Command::new("sudo")
+				.args(["--stdin", "--validate"])
+				.stdout(Stdio::piped())
+				.stderr(Stdio::piped())
+				.stdin(Stdio::piped())
+				.spawn()
+				.unwrap();
+
+			// Write pass to STDIN
+			let mut stdin = sudo.stdin.take().unwrap();
+			stdin.write_all(state.lock().unwrap().pass.as_bytes()).unwrap();
+			drop(stdin);
+
+			// Sudo re-prompts and will hang.
+			// To workaround this, try checking
+			// results for 5 seconds in a loop.
+			let mut success = false;
+			for i in 1..=5 {
+				match sudo.try_wait() {
+					Ok(Some(code)) => if code.success() {
+						info!("Sudo | Password ... OK!");
+						success = true;
+						/* spawn xmrig */
+						break
+					},
+					Ok(None) => {
+						info!("Sudo | Waiting [{}/5]...", i);
+						std::thread::sleep(SECOND);
+					},
+					Err(e) => {
+						error!("Sudo | Couldn't reset timestamp: {}", e);
+						Self::wipe(&state);
+						state.lock().unwrap().msg = format!("Sudo error: {}", e);
+						state.lock().unwrap().testing = false;
+						return
+					},
+				}
+			}
+			//
+			state.lock().unwrap().msg = match success {
+				true  => "OK!".to_string(),
+				false => "Incorrect password!".to_string(),
+			};
+			sudo.kill();
 			Self::wipe(&state);
+			state.lock().unwrap().testing = false;
 		});
 	}
 }
