@@ -278,6 +278,10 @@ impl Xmrig {
 							port: self.port.clone(),
 						};
 						pool_vec[existing_index].1 = pool;
+						self.selected_name = self.name.clone();
+						self.selected_rig = self.rig.clone();
+						self.selected_ip = self.ip.clone();
+						self.selected_port = self.port.clone();
 						info!("Node | S | [index: {}, name: \"{}\", ip: \"{}\", port: {}, rig: \"{}\"]", existing_index+1, self.name, self.ip, self.port, self.rig);
 					}
 				// Else, add to the list

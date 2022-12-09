@@ -556,7 +556,7 @@ impl Helper {
 //
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_xmrig(helper: &Arc<Mutex<Self>>) {
-		info!("P2Pool | Attempting to stop...");
+		info!("XMRig | Attempting to stop...");
 		helper.lock().unwrap().xmrig.lock().unwrap().signal = ProcessSignal::Stop;
 		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
 	}
@@ -656,8 +656,8 @@ impl Helper {
 			// Else, build the argument
 			} else {
 				let api_ip = if state.api_ip == "localhost" || state.api_ip.is_empty() { "127.0.0.1" } else { &state.api_ip }; // XMRig doesn't understand [localhost]
-				let api_port = if state.selected_port.is_empty() { "18088" } else { &state.selected_port };
-				let url = format!("{}:{}", api_ip, api_port); // Combine IP:Port into one string
+				let api_port = if state.api_port.is_empty() { "18088" } else { &state.api_port };
+				let url = format!("{}:{}", state.selected_ip, state.selected_port); // Combine IP:Port into one string
 				args.push("--user".to_string()); args.push(state.address.clone());                // Wallet
 				args.push("--threads".to_string()); args.push(state.current_threads.to_string()); // Threads
 				args.push("--rig-id".to_string()); args.push(state.selected_rig.to_string());     // Rig ID
