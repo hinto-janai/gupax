@@ -139,7 +139,8 @@ r#"Use advanced Gupax settings:
     - Update button
     - Basic toggles
     - P2Pool/XMRig binary path selector
-    - Gupax resolution sliders"#;
+    - Gupax resolution sliders
+    - Gupax start-up tab selector"#;
 pub const GUPAX_SELECT: &str = "Open a file explorer to select a file";
 pub const GUPAX_PATH_P2POOL: &str = "The location of the P2Pool binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 pub const GUPAX_PATH_XMRIG: &str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
@@ -154,7 +155,7 @@ pub const P2POOL_AUTO_NODE: &str = "Automatically ping the community Monero node
 pub const P2POOL_AUTO_SELECT: &str = "Automatically select the fastest community Monero node after pinging";
 pub const P2POOL_SELECT_FASTEST: &str = "Select the fastest community Monero node";
 pub const P2POOL_PING: &str = "Ping the built-in community Monero nodes";
-pub const P2POOL_ADDRESS: &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet for P2Pool mining; wallet addresses are public on P2Pool!";
+pub const P2POOL_ADDRESS: &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
 pub const P2POOL_ARGUMENTS: &str = "Start P2Pool with these arguments and override all below settings; If the [--data-api] & [--local-api] flag is not given, Gupax will append it to the arguments automatically so that the [Status] tab can work";
 pub const P2POOL_SIMPLE: &str =
 r#"Use simple P2Pool settings:
@@ -162,6 +163,7 @@ r#"Use simple P2Pool settings:
     - Default P2Pool settings + Mini"#;
 pub const P2POOL_ADVANCED: &str =
 r#"Use advanced P2Pool settings:
+    - Terminal input
     - Overriding command arguments
     - Manual node list
     - P2Pool Main/Mini selection
@@ -171,6 +173,7 @@ pub const P2POOL_NAME: &str = "Add a unique name to identify this node; Only [A-
 pub const P2POOL_NODE_IP: &str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const P2POOL_RPC_PORT: &str = "Specify the RPC port of the Monero node; [1-65535]";
 pub const P2POOL_ZMQ_PORT: &str = "Specify the ZMQ port of the Monero node; [1-65535]";
+pub const P2POOL_PATH_NOT_EXE: &str = "P2Pool binary not found at the given path in the Gupax tab!";
 
 // Node/Pool list
 pub const LIST_ADD: &str = "Add the current values to the list";
@@ -186,6 +189,7 @@ r#"Use simple XMRig settings:
 	- HTTP API @ localhost:18088"#;
 pub const XMRIG_ADVANCED: &str =
 r#"Use advanced XMRig settings:
+    - Terminal input
 	- Overriding config file
 	- Custom payout address
 	- CPU thread slider
@@ -194,17 +198,18 @@ r#"Use advanced XMRig settings:
 	- Keepalive setting
 	- Custom HTTP API IP/Port"#;
 pub const XMRIG_ARGUMENTS: &str = "Start XMRig with these arguments and override all below settings; If the [http-api] options are not set, Gupax will append it to the arguments automatically so that the [Status] tab can work";
-pub const XMRIG_ADDRESS: &str = "Specify which Monero address to send payouts to; Must be a valid primary address (starts with 4)";
+pub const XMRIG_ADDRESS: &str = "Specify which Monero address to payout to. This does nothing if mining to P2Pool since the address being payed out to will be the one P2Pool started with. This doubles as a rig identifier for P2Pool and some pools.";
 pub const XMRIG_NAME: &str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
 pub const XMRIG_IP: &str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const XMRIG_PORT: &str = "Specify the port of the pool; [1-65535]";
 pub const XMRIG_RIG: &str = "Add an optional rig ID. This will be the name shown on the pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
 pub const XMRIG_PAUSE: &str = "THIS SETTING IS DISABLED IF SET TO [0]. Pause mining if user is active, resume after";
-pub const XMRIG_API_IP: &str = "Specify which IP to bind to for XMRig's HTTP API";
-pub const XMRIG_API_PORT: &str = "Specify which port to bind to for XMRig's HTTP API";
+pub const XMRIG_API_IP: &str = "Specify which IP to bind to for XMRig's HTTP API; If empty: [localhost/127.0.0.1]";
+pub const XMRIG_API_PORT: &str = "Specify which port to bind to for XMRig's HTTP API; If empty: [18088]";
 pub const XMRIG_TLS: &str = "Enable SSL/TLS connections (needs pool support)";
 pub const XMRIG_KEEPALIVE: &str = "Send keepalived packet to prevent timeout (needs pool support)";
 pub const XMRIG_THREADS: &str = "Number of CPU threads to use for mining";
+pub const XMRIG_PATH_NOT_EXE: &str = "XMRig binary not found at the given path in the Gupax tab!";
 
 // CLI argument messages
 pub const ARG_HELP: &str =

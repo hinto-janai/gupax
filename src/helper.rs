@@ -655,14 +655,15 @@ impl Helper {
 				}
 			// Else, build the argument
 			} else {
-				let api_ip = if state.api_ip == "localhost" { "127.0.0.1".to_string() } else { state.api_ip.to_string() }; // XMRig doesn't understand [localhost]
-				let url = format!("{}:{}", state.selected_ip, state.selected_port); // Combine IP:Port into one string
+				let api_ip = if state.api_ip == "localhost" || state.api_ip.is_empty() { "127.0.0.1" } else { &state.api_ip }; // XMRig doesn't understand [localhost]
+				let api_port = if state.selected_port.is_empty() { "18088" } else { &state.selected_port };
+				let url = format!("{}:{}", api_ip, api_port); // Combine IP:Port into one string
 				args.push("--user".to_string()); args.push(state.address.clone());                // Wallet
 				args.push("--threads".to_string()); args.push(state.current_threads.to_string()); // Threads
 				args.push("--rig-id".to_string()); args.push(state.selected_rig.to_string());     // Rig ID
 				args.push("--url".to_string()); args.push(url.clone());                           // IP/Port
-				args.push("--http-host".to_string()); args.push(api_ip);                          // HTTP API IP
-				args.push("--http-port".to_string()); args.push(state.api_port.to_string());      // HTTP API Port
+				args.push("--http-host".to_string()); args.push(api_ip.to_string());              // HTTP API IP
+				args.push("--http-port".to_string()); args.push(api_port.to_string());            // HTTP API Port
 				args.push("--no-color".to_string());                         // No color escape codes
 				if state.tls { args.push("--tls".to_string()); }             // TLS
 				if state.keepalive { args.push("--keepalive".to_string()); } // Keepalive

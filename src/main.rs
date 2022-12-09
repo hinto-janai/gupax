@@ -492,6 +492,11 @@ impl Regexes {
 			port: Regex::new(r#"^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"#).unwrap(),
 		}
 	}
+
+	// Check if a Monero address is correct.
+	pub fn addr_ok(&self, address: &str) -> bool {
+		address.len() == 95 && Regex::is_match(&self.address, &address) && !address.contains('0') && !address.contains('O') && !address.contains('l')
+	}
 }
 
 //---------------------------------------------------------------------------------------------------- Init functions
@@ -1137,7 +1142,16 @@ impl eframe::App for App {
 									ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool");
 									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool");
 								});
-								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").clicked() {
+								// Check if address is okay before allowing to start.
+								let mut text = String::new();
+								if !Regexes::addr_ok(&self.regex, &self.state.p2pool.address) {
+									ui.set_enabled(false);
+									text = P2POOL_ADDRESS.to_string();
+								} else if !Gupax::path_is_exe(&self.state.gupax.p2pool_path) {
+									ui.set_enabled(false);
+									text = P2POOL_PATH_NOT_EXE.to_string();
+								}
+								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start P2Pool").on_disabled_hover_text(text).clicked() {
 									Helper::start_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 							}
@@ -1178,7 +1192,12 @@ impl eframe::App for App {
 									ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig");
 									ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig");
 								});
-								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").clicked() {
+								let mut text = String::new();
+								if !Gupax::path_is_exe(&self.state.gupax.xmrig_path) {
+									ui.set_enabled(false);
+									text = XMRIG_PATH_NOT_EXE.to_string();
+								}
+								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
 									self.sudo.lock().unwrap().signal = ProcessSignal::Start;
 									self.error_state.ask_sudo(&self.sudo);
 								}

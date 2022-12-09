@@ -159,15 +159,9 @@ impl Gupax {
 			if self.xmrig_path.is_empty() {
 				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ➖").color(LIGHT_GRAY)));
 			} else {
-				match crate::disk::into_absolute_path(self.xmrig_path.clone()) {
-					Ok(path) => {
-						if path.is_file() {
-							ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ✔").color(GREEN)))
-						} else {
-							ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED)))
-						}
-					},
-					_ => ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))),
+				match Self::path_is_exe(&self.xmrig_path) {
+					true  => ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ✔").color(GREEN))),
+					false => ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))),
 				};
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
@@ -244,6 +238,15 @@ impl Gupax {
 			ui.separator();
 			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Xmrig, "XMRig")).on_hover_text(GUPAX_TAB_XMRIG).clicked() { self.tab = Tab::Xmrig; }
 		})});
+	}
+
+	// Checks if a path is a valid path to an executable.
+	pub fn path_is_exe(path: &str) -> bool {
+		let path = path.to_string();
+		match crate::disk::into_absolute_path(path) {
+			Ok(path) => if path.is_file() { true } else { false },
+			_ => false,
+		}
 	}
 
 	fn spawn_file_window_thread(file_window: &Arc<Mutex<FileWindow>>, file_type: FileType) {

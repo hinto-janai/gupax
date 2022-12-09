@@ -93,7 +93,7 @@ impl P2pool {
 		if self.address.is_empty() {
 			text = format!("Monero Address [{}/95] ➖", len);
 			color = Color32::LIGHT_GRAY;
-		} else if self.address.len() == 95 && Regex::is_match(&regex.address, &self.address) && ! self.address.contains('0') && ! self.address.contains('O') && ! self.address.contains('l') {
+		} else if Regexes::addr_ok(&regex, &self.address) {
 			text = format!("Monero Address [{}/95] ✔", len);
 			color = Color32::from_rgb(100, 230, 100);
 		} else {
