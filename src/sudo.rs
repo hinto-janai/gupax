@@ -37,6 +37,7 @@ use log::*;
 
 #[derive(Debug,Clone)]
 pub struct SudoState {
+	pub windows: bool, // If this bool is set, this struct is just a dummy so I don't have to change my type signatures :)
 	pub testing: bool, // Are we attempting a sudo test right now?
 	pub success: bool, // Was the sudo test a success?
 	pub hide: bool, // Are we hiding the password?
@@ -46,8 +47,22 @@ pub struct SudoState {
 }
 
 impl SudoState {
+	#[cfg(target_os = "windows")]
 	pub fn new() -> Self {
 		Self {
+			windows: true,
+			testing: false,
+			success: false,
+			hide: true,
+			msg: String::new(),
+			pass: String::new(),
+			signal: ProcessSignal::None,
+		}
+	}
+	#[cfg(target_family = "unix")]
+	pub fn new() -> Self {
+		Self {
+			windows: false,
 			testing: false,
 			success: false,
 			hide: true,

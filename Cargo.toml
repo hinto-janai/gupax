@@ -56,10 +56,12 @@ zeroize = "1.5.7"
 [target.'cfg(unix)'.dependencies]
 tar = "0.4.38"
 flate2 = "1.0"
+sudo = "0.6.0"
 
 # Windows dependencies
 [target.'cfg(windows)'.dependencies]
 zip = "0.6.3"
+is_elevated = "0.1.2"
 
 # For Windows build (icon)
 [target.'cfg(windows)'.build-dependencies]

@@ -616,7 +616,9 @@ impl Helper {
 		// the XMRig path is just an argument to sudo, so add it.
 		// Before that though, add the ["--prompt"] flag and set it
 		// to emptyness so that it doesn't show up in the output.
+		#[cfg(target_family = "unix")] // Of course, only on Unix.
 		args.push(r#"--prompt="#.to_string());
+		#[cfg(target_family = "unix")]
 		args.push(path.display().to_string());
 
 		// [Simple]
@@ -677,6 +679,24 @@ impl Helper {
 		args
 	}
 
+	// We actually spawn [sudo] on Unix, with XMRig being the argument.
+	#[cfg(target_family = "unix")]
+	fn create_xmrig_cmd_unix(args: Vec<String>, path: PathBuf) -> portable_pty::CommandBuilder {
+		let mut cmd = portable_pty::cmdbuilder::CommandBuilder::new("sudo");
+		cmd.args(args);
+		cmd.cwd(path.as_path().parent().unwrap());
+		cmd
+	}
+
+	// Gupax should be admin on Windows, so just spawn XMRig normally.
+	#[cfg(target_os = "windows")]
+	fn create_xmrig_cmd_windows(args: Vec<String>, path: PathBuf) -> portable_pty::CommandBuilder {
+		let mut cmd = portable_pty::cmdbuilder::CommandBuilder::new(path.clone());
+		cmd.args(args);
+		cmd.cwd(path.as_path().parent().unwrap());
+		cmd
+	}
+
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	#[tokio::main]
 	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
@@ -689,13 +709,15 @@ impl Helper {
 			pixel_height: 0,
 		}).unwrap();
 		// 1b. Create command
-		let mut cmd = portable_pty::CommandBuilder::new("sudo");
-		cmd.args(args);
-		cmd.cwd(path.as_path().parent().unwrap());
+		#[cfg(target_os = "windows")]
+		let cmd = Self::create_xmrig_cmd_windows(args, path);
+		#[cfg(target_family = "unix")]
+		let cmd = Self::create_xmrig_cmd_unix(args, path);
 		// 1c. Create child
 		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
 
 		// 1d. Wait a bit for [sudo].
+		#[cfg(target_family = "unix")]
 		thread::sleep(std::time::Duration::from_secs(3));
 
         // 2. Set process state
@@ -708,9 +730,11 @@ impl Helper {
 		lock.stdin = Some(pair.master);
 
 		// 3. Input [sudo] pass, wipe, then drop.
-		writeln!(lock.stdin.as_mut().unwrap(), "{}", sudo.lock().unwrap().pass);
-		SudoState::wipe(&sudo);
-		drop(sudo);
+		if cfg!(unix) {
+			writeln!(lock.stdin.as_mut().unwrap(), "{}", sudo.lock().unwrap().pass);
+			SudoState::wipe(&sudo);
+			drop(sudo);
+		}
 		drop(lock);
 
 		// 3. Spawn PTY read thread

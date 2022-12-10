@@ -167,7 +167,7 @@ impl P2pool {
 		// [Ping Button]
 		ui.set_enabled(!ping.lock().unwrap().pinging);
 		if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
-			Ping::spawn_thread(ping, og);
+			Ping::spawn_thread(ping);
 		}});
 
 		ui.vertical(|ui| {

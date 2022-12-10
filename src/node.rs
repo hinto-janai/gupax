@@ -212,12 +212,11 @@ impl Ping {
 
 	//---------------------------------------------------------------------------------------------------- Main Ping function
 	// Intermediate function for spawning thread
-	pub fn spawn_thread(ping: &Arc<Mutex<Self>>, og: &Arc<Mutex<State>>) {
+	pub fn spawn_thread(ping: &Arc<Mutex<Self>>) {
 		let ping = Arc::clone(ping);
-		let og = Arc::clone(og);
 		std::thread::spawn(move|| {
 			info!("Spawning ping thread...");
-			match Self::ping(ping.clone(), og) {
+			match Self::ping(ping.clone()) {
 				Ok(_) => {
 					info!("Ping ... OK");
 					ping.lock().unwrap().pinged = true;
@@ -228,7 +227,7 @@ impl Ping {
 					ping.lock().unwrap().pinged = false;
 					ping.lock().unwrap().msg = err.to_string();
 				},
-			};
+			}
 			ping.lock().unwrap().pinging = false;
 		});
 	}
@@ -251,7 +250,7 @@ impl Ping {
 	// timeout = BLACK
 	// default = GRAY
 	#[tokio::main]
-	pub async fn ping(ping: Arc<Mutex<Self>>, _og: Arc<Mutex<State>>) -> Result<(), anyhow::Error> {
+	pub async fn ping(ping: Arc<Mutex<Self>>) -> Result<(), anyhow::Error> {
 		// Timer
 		let now = Instant::now();
 

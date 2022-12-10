@@ -62,11 +62,11 @@ mod update;
 mod helper;
 use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*,helper::*};
 
-// Sudo (unix only)
-#[cfg(target_family = "unix")]
+// Sudo (dummy values for Windows)
 mod sudo;
+use crate::sudo::*;
 #[cfg(target_family = "unix")]
-use sudo::*;
+extern crate sudo as sudo_check;
 
 //---------------------------------------------------------------------------------------------------- Struct + Impl
 // The state of the outer main [App].
@@ -122,8 +122,7 @@ pub struct App {
 	p2pool_console: String, // The buffer between the p2pool console and the [Helper]
 	xmrig_console: String, // The buffer between the xmrig console and the [Helper]
 	// Sudo State
-	#[cfg(target_family = "unix")]
-	sudo: Arc<Mutex<SudoState>>,
+	sudo: Arc<Mutex<SudoState>>, // This is just a dummy struct on [Windows].
 	// State from [--flags]
 	no_startup: bool,
 	// Static stuff
@@ -186,7 +185,6 @@ impl App {
 			xmrig_img,
 			p2pool_console: String::with_capacity(10),
 			xmrig_console: String::with_capacity(10),
-			#[cfg(target_family = "unix")]
 			sudo: Arc::new(Mutex::new(SudoState::new())),
 			resizing: false,
 			alpha: 0,
@@ -342,6 +340,19 @@ impl App {
 		info!("Helper | Spawning helper thread...");
 		Helper::spawn_helper(&app.helper);
 		info!("Helper ... OK");
+
+		// Check for privilege. Should be Admin on [Windows] and NOT root on Unix.
+		#[cfg(target_os = "windows")]
+		if !is_elevated::is_elevated() {
+			error!("Windows | Admin user not detected!");
+			app.error_state.set(format!("Gupax was not launched as Administrator!\nBe warned, XMRig might have less hashrate!"), ErrorFerris::Sudo, ErrorButtons::Okay);
+		}
+		#[cfg(target_family = "unix")]
+		if sudo_check::check() != sudo_check::RunningAs::User {
+			let id = sudo_check::check();
+			error!("Unix | Regular user not detected: [{:?}]", id);
+			app.error_state.set(format!("Gupax was launched as: [{:?}]\nPlease launch Gupax with regular user permissions.", id), ErrorFerris::Panic, ErrorButtons::Quit);
+		}
 
 		app
 	}
@@ -588,7 +599,7 @@ fn init_auto(app: &mut App) {
 	let auto_node = app.og.lock().unwrap().p2pool.auto_node;
 	let simple = app.og.lock().unwrap().p2pool.simple;
 	if auto_node && simple {
-		Ping::spawn_thread(&app.ping, &app.og)
+		Ping::spawn_thread(&app.ping)
 	} else {
 		info!("Skipping auto-ping...");
 	}
@@ -1179,7 +1190,10 @@ impl eframe::App for App {
 							} else if self.xmrig.lock().unwrap().is_alive() {
 								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
 									self.sudo.lock().unwrap().signal = ProcessSignal::Restart;
+									#[cfg(target_family = "unix")]
 									self.error_state.ask_sudo(&self.sudo);
+									#[cfg(target_os = "windows")]
+									Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
 								}
 								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
 									Helper::stop_xmrig(&self.helper);
@@ -1197,6 +1211,11 @@ impl eframe::App for App {
 									ui.set_enabled(false);
 									text = XMRIG_PATH_NOT_EXE.to_string();
 								}
+								#[cfg(target_os = "windows")]
+								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
+									Helper::start_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
+								}
+								#[cfg(target_family = "unix")]
 								if ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
 									self.sudo.lock().unwrap().signal = ProcessSignal::Start;
 									self.error_state.ask_sudo(&self.sudo);
