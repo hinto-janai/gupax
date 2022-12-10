@@ -119,7 +119,7 @@ Exceptions (there are always exceptions...):
 - P2Pool hashes are in UPPERCASE
 
 ## Why does Gupax need to be Admin? (on Windows)
-**Simple TL;DR:** Because Windows.  
+**TL;DR:** Because Windows.  
 
 **Slightly more detailed TL;DR:** Rust does not have mature Win32 API wrapper libraries. Although Microsoft has an official ["Rust" library](https://github.com/microsoft/windows-rs), it is quite low-level and using it within Gupax would mean re-implementing a lot of Rust's STDLIB process module code.
 

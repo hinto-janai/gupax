@@ -131,6 +131,7 @@ pub struct App {
 	dir: String, // Directory [Gupax] binary is in
 	resolution: Vec2, // Frame resolution
 	os: &'static str, // OS
+	admin: bool, // Are we admin? (for Windows)
 	os_data_path: PathBuf, // OS data path (e.g: ~/.local/share/gupax)
 	state_path: PathBuf, // State file path
 	node_path: PathBuf, // Node file path
@@ -190,6 +191,7 @@ impl App {
 			alpha: 0,
 			no_startup: false,
 			now,
+			admin: false,
 			exe: String::new(),
 			dir: String::new(),
 			resolution: Vec2::new(APP_DEFAULT_HEIGHT, APP_DEFAULT_WIDTH),
@@ -344,8 +346,9 @@ impl App {
 		// Check for privilege. Should be Admin on [Windows] and NOT root on Unix.
 		#[cfg(target_os = "windows")]
 		if !is_elevated::is_elevated() {
+			app.admin = false;
 			error!("Windows | Admin user not detected!");
-			app.error_state.set(format!("Gupax was not launched as Administrator!\nBe warned, XMRig might have less hashrate!"), ErrorFerris::Sudo, ErrorButtons::Okay);
+			app.error_state.set(format!("Gupax was not launched as Administrator!\nBe warned, XMRig might have less hashrate!"), ErrorFerris::Sudo, ErrorButtons::WindowsAdmin);
 		}
 		#[cfg(target_family = "unix")]
 		if sudo_check::check() != sudo_check::RunningAs::User {
@@ -392,6 +395,7 @@ pub enum ErrorButtons {
 	Okay,
 	Quit,
 	Sudo,
+	WindowsAdmin,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -893,7 +897,10 @@ impl eframe::App for App {
 							Happy => ui.add_sized([width, height], Label::new("--- Success! ---")),
 							_ => ui.add_sized([width, height], Label::new("--- Gupax has encountered an error! ---")),
 						};
-						ui.add_sized([width, height], Label::new(&self.error_state.msg))
+						let height = height/2.0;
+						ui.add_sized([width, height], Label::new(&self.error_state.msg));
+						// Show GitHub rant link for Windows admin problems.
+						ui.add_sized([width, height], Hyperlink::from_label_and_url("[Why does Gupax need to be Admin? (on Windows)]", "https://github.com/hinto-janaiyo/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows"))
 					},
 				};
 				let height = ui.available_height();
@@ -986,7 +993,7 @@ impl eframe::App for App {
 							self.error_state.reset();
 						}
 					},
-					Okay => if esc || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
+					Okay|WindowsAdmin => if esc || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
 					Quit => if ui.add_sized([width, height], Button::new("Quit")).clicked() { exit(1); },
 				}
 			})});
@@ -1046,6 +1053,16 @@ impl eframe::App for App {
 					};
 					ui.separator();
 					// [OS]
+					// Check if admin for windows.
+					// Unix SHOULDN'T be running as root, and the check is done when
+					// [App] is initialized, so no reason to check here.
+					#[cfg(target_os = "windows")]
+					if self.admin {
+						ui.add_sized([width, height], Label::new(self.os));
+					} else {
+						ui.add_sized([width, height], Label::new(RichText::new(self.os).color(RED))).on_hover_text(WINDOWS_NOT_ADMIN);
+					}
+					#[cfg(target_family = "unix")]
 					ui.add_sized([width, height], Label::new(self.os));
 					ui.separator();
 					// [P2Pool/XMRig] Status
