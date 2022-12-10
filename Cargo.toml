@@ -21,6 +21,7 @@ dirs = "4.0.0"
 eframe = "0.19.0"
 egui = "0.19.0"
 egui_extras = { version = "0.19.0", features = ["image"] }
+#--------------------------------------------------------------------------------
 ## [external/egui/crates/eframe/src/native/run.rs] line 41: [.with_srgb(true)]
 ## This line causes a [panic!] inside a Windows VM, from a Linux host.
 ## There are many issue threads and PRs to fix it but for now,
@@ -30,6 +31,7 @@ egui_extras = { version = "0.19.0", features = ["image"] }
 #egui = { path = "external/egui/crates/egui" }
 #egui_glow = { path = "external/egui/crates/egui_glow"}
 #egui_extras = { path = "external/egui/crates/egui_extras", features = ["image"] }
+#--------------------------------------------------------------------------------
 env_logger = "0.9.1"
 figment = { version = "0.10.8", features = ["toml"] }
 hyper = "0.14.20"
@@ -66,6 +68,7 @@ is_elevated = "0.1.2"
 # For Windows build (icon)
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1.12"
+static_vcruntime = "2.0"
 
 # For macOS build (cargo-bundle)
 [package.metadata.bundle]

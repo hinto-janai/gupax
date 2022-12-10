@@ -411,8 +411,8 @@ impl Helper {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
 		let pair = pty.openpty(portable_pty::PtySize {
-			rows: 24,
-			cols: 80,
+			rows: 100,
+			cols: 1000,
 			pixel_width: 0,
 			pixel_height: 0,
 		}).unwrap();
@@ -703,8 +703,8 @@ impl Helper {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
 		let pair = pty.openpty(portable_pty::PtySize {
-			rows: 24,
-			cols: 80,
+			rows: 100,
+			cols: 1000,
 			pixel_width: 0,
 			pixel_height: 0,
 		}).unwrap();

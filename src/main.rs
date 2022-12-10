@@ -345,8 +345,9 @@ impl App {
 
 		// Check for privilege. Should be Admin on [Windows] and NOT root on Unix.
 		#[cfg(target_os = "windows")]
-		if !is_elevated::is_elevated() {
-			app.admin = false;
+		if is_elevated::is_elevated() {
+			app.admin = true;
+		} else {
 			error!("Windows | Admin user not detected!");
 			app.error_state.set(format!("Gupax was not launched as Administrator!\nBe warned, XMRig might have less hashrate!"), ErrorFerris::Sudo, ErrorButtons::WindowsAdmin);
 		}

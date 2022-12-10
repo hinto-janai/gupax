@@ -205,4 +205,4 @@ Depending on the privilege used, Gupax will error/panic:
 - Windows: If not admin, warn the user about potential lower XMRig hashrate
 - Unix: IF admin, panic! Don't allow anything. As it should be.
 
-If you're reading this and have a solution (that isn't using Win32) then please, please, teach me. 
+If you're reading this and have a solution (that isn't using Win32), please... please teach me. 

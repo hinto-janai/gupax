@@ -5,8 +5,13 @@
 // pre-compiled bytes using [include_bytes!()] on the images in [images/].
 #[cfg(windows)]
 fn main() -> std::io::Result<()> {
+	static_vcruntime::metabuild();
 	let mut res = winres::WindowsResource::new();
+	// This sets the icon.
 	res.set_icon("images/icons/icon.ico");
+	// This sets the [Run as Administrator] metadata flag for Windows.
+	// Why do I do this?: [https://github.com/hinto-janaiyo/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows]
+	// TL;DR: Because Windows.
 	res.set_manifest(r#"
 	<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
 		<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
