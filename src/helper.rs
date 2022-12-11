@@ -405,8 +405,7 @@ impl Helper {
 	}
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	#[tokio::main]
-	async fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
+	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
 		let pair = pty.openpty(portable_pty::PtySize {
@@ -714,8 +713,7 @@ impl Helper {
 	}
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	#[tokio::main]
-	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
+	fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
 		let mut pair = pty.openpty(portable_pty::PtySize {

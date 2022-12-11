@@ -601,12 +601,39 @@ fn init_auto(app: &mut App) {
 	}
 
 	// [Auto-Ping]
-	let auto_node = app.og.lock().unwrap().p2pool.auto_node;
-	let simple = app.og.lock().unwrap().p2pool.simple;
-	if auto_node && simple {
+	if app.state.p2pool.auto_node && app.state.p2pool.simple {
 		Ping::spawn_thread(&app.ping)
 	} else {
 		info!("Skipping auto-ping...");
+	}
+
+	// [Auto-P2Pool]
+	if app.state.gupax.auto_p2pool {
+		if !Regexes::addr_ok(&app.regex, &app.state.p2pool.address) {
+			warn!("Gupax | P2Pool address is not valid! Skipping auto-p2pool...");
+		} else if !Gupax::path_is_exe(&app.state.gupax.p2pool_path) {
+			warn!("Gupax | P2Pool path is not an executable! Skipping auto-p2pool...");
+		} else {
+			Helper::start_p2pool(&app.helper, &app.state.p2pool, &app.state.gupax.absolute_p2pool_path);
+		}
+	} else {
+		info!("Skipping auto-xmrig...");
+	}
+
+	// [Auto-XMRig]
+	if app.state.gupax.auto_xmrig {
+		if !Gupax::path_is_exe(&app.state.gupax.xmrig_path) {
+			warn!("Gupax | XMRig path is not an executable! Skipping auto-xmrig...");
+		} else {
+			if cfg!(windows) {
+				Helper::start_xmrig(&app.helper, &app.state.xmrig, &app.state.gupax.absolute_xmrig_path, Arc::clone(&app.sudo));
+			} else {
+				app.sudo.lock().unwrap().signal = ProcessSignal::Start;
+				app.error_state.ask_sudo(&app.sudo);
+			}
+		}
+	} else {
+		info!("Skipping auto-xmrig...");
 	}
 }
 

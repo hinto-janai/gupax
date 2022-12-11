@@ -114,11 +114,16 @@ impl Gupax {
 
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
-					let width = (width - SPACE*7.5)/4.0;
+					let width = (width - SPACE*12.0)/6.0;
 					let height = height/10.0;
-					ui.add_sized([width, height], Checkbox::new(&mut self.auto_update, "Auto-update")).on_hover_text(GUPAX_AUTO_UPDATE);
-					ui.separator();
+					ui.style_mut().override_text_style = Some(egui::TextStyle::Small);
 					ui.add_sized([width, height], Checkbox::new(&mut self.update_via_tor, "Update via Tor")).on_hover_text(GUPAX_UPDATE_VIA_TOR);
+					ui.separator();
+					ui.add_sized([width, height], Checkbox::new(&mut self.auto_update, "Auto-Update")).on_hover_text(GUPAX_AUTO_UPDATE);
+					ui.separator();
+					ui.add_sized([width, height], Checkbox::new(&mut self.auto_p2pool, "Auto-P2Pool")).on_hover_text(GUPAX_AUTO_P2POOL);
+					ui.separator();
+					ui.add_sized([width, height], Checkbox::new(&mut self.auto_xmrig, "Auto-XMRig")).on_hover_text(GUPAX_AUTO_XMRIG);
 					ui.separator();
 					ui.add_sized([width, height], Checkbox::new(&mut self.ask_before_quit, "Ask before quit")).on_hover_text(GUPAX_ASK_BEFORE_QUIT);
 					ui.separator();

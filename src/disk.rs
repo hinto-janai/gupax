@@ -142,6 +142,8 @@ impl State {
 				simple: true,
 				auto_update: true,
 				auto_node: true,
+				auto_p2pool: true,
+				auto_xmrig: true,
 				ask_before_quit: true,
 				save_before_quit: true,
 				#[cfg(not(target_os = "macos"))]
@@ -579,6 +581,8 @@ pub struct Gupax {
 	pub simple: bool,
 	pub auto_update: bool,
 	pub auto_node: bool,
+	pub auto_p2pool: bool,
+	pub auto_xmrig: bool,
 	pub ask_before_quit: bool,
 	pub save_before_quit: bool,
 	pub update_via_tor: bool,

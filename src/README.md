@@ -53,7 +53,9 @@ This is how Gupax works internally when starting up:
 	
 2. **AUTO**
 	- If `auto_update` == `true`, spawn auto-updating thread
-	- If `auto_select` == `true`, spawn community node ping thread
+	- If `auto_ping` == `true`, spawn community node ping thread
+	- If `auto_p2pool` == `true`, spawn P2Pool
+	- If `auto_xmrig` == `true`, spawn XMRig
 
 3. **MAIN**
 	- All data should be initialized at this point, either via `state.toml` or default options
