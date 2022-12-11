@@ -46,6 +46,7 @@ use crate::{
 	constants::*,
 	SudoState,
 };
+use sysinfo::SystemExt;
 use serde::{Serialize,Deserialize};
 use num_format::{Buffer,Locale};
 use log::*;
@@ -67,7 +68,8 @@ const GUI_OUTPUT_LEEWAY: usize = MAX_GUI_OUTPUT_BYTES - 1000;
 // A meta struct holding all the data that gets processed in this thread
 pub struct Helper {
 	pub instant: Instant,                         // Gupax start as an [Instant]
-	pub human_time: HumanTime,                    // Gupax uptime formatting for humans
+	pub uptime: HumanTime,                        // Gupax uptime formatting for humans
+	pub pub_sys: Arc<Mutex<Sys>>,                 // The public API for [sysinfo] that the [Status] tab reads from
 	pub p2pool: Arc<Mutex<Process>>,              // P2Pool process state
 	pub xmrig: Arc<Mutex<Process>>,               // XMRig process state
 	pub gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, // P2Pool API state (for GUI thread)
@@ -87,6 +89,30 @@ pub struct Helper {
 // Since P2Pool & XMRig will be updating their information out of sync,
 // it's the helpers job to lock everything, and move the watchdog [Pub*Api]s
 // on a 1-second interval into the [GUI]'s [Pub*Api] struct, atomically.
+
+//----------------------------------------------------------------------------------------------------
+#[derive(Debug,Clone)]
+pub struct Sys {
+	pub gupax_uptime: String,
+	pub gupax_cpu_usage: String,
+	pub gupax_memory_used_mb: String,
+	pub system_cpu_model: String,
+	pub system_memory: String,
+	pub system_cpu_usage: String,
+}
+
+impl Sys {
+	pub fn new() -> Self {
+		Self {
+			gupax_uptime: "0 seconds".to_string(),
+			gupax_cpu_usage: "???%".to_string(),
+			gupax_memory_used_mb: "??? megabytes".to_string(),
+			system_cpu_usage: "???%".to_string(),
+			system_memory: "???GB / ???GB".to_string(),
+			system_cpu_model: "???".to_string(),
+		}
+	}
+}
 
 //---------------------------------------------------------------------------------------------------- [Process] Struct
 // This holds all the state of a (child) process.
@@ -191,10 +217,11 @@ use tokio::io::{BufReader,AsyncBufReadExt};
 
 impl Helper {
 	//---------------------------------------------------------------------------------------------------- General Functions
-	pub fn new(instant: std::time::Instant, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, gui_api_xmrig: Arc<Mutex<PubXmrigApi>>, img_p2pool: Arc<Mutex<ImgP2pool>>, img_xmrig: Arc<Mutex<ImgXmrig>>) -> Self {
+	pub fn new(instant: std::time::Instant, pub_sys: Arc<Mutex<Sys>>, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, gui_api_xmrig: Arc<Mutex<PubXmrigApi>>, img_p2pool: Arc<Mutex<ImgP2pool>>, img_xmrig: Arc<Mutex<ImgXmrig>>) -> Self {
 		Self {
 			instant,
-			human_time: HumanTime::into_human(instant.elapsed()),
+			pub_sys,
+			uptime: HumanTime::into_human(instant.elapsed()),
 			priv_api_p2pool: Arc::new(Mutex::new(PrivP2poolApi::new())),
 			priv_api_xmrig: Arc::new(Mutex::new(PrivXmrigApi::new())),
 			pub_api_p2pool: Arc::new(Mutex::new(PubP2poolApi::new())),
@@ -255,22 +282,6 @@ impl Helper {
 	}
 
 	//---------------------------------------------------------------------------------------------------- P2Pool specific
-	// Read P2Pool's API file.
-	fn read_p2pool_api(path: &std::path::PathBuf) -> Result<String, std::io::Error> {
-		match std::fs::read_to_string(path) {
-			Ok(s) => Ok(s),
-			Err(e) => { warn!("P2Pool API | [{}] read error: {}", path.display(), e); Err(e) },
-		}
-	}
-
-	// Deserialize the above [String] into a [PrivP2poolApi]
-	fn str_to_priv_p2pool_api(string: &str) -> Result<PrivP2poolApi, serde_json::Error> {
-		match serde_json::from_str::<PrivP2poolApi>(string) {
-			Ok(a) => Ok(a),
-			Err(e) => { warn!("P2Pool API | Could not deserialize API data: {}", e); Err(e) },
-		}
-	}
-
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_p2pool(helper: &Arc<Mutex<Self>>) {
 		info!("P2Pool | Attempting to stop...");
@@ -513,9 +524,9 @@ impl Helper {
 			PubP2poolApi::update_from_output(&pub_api, &output_full, &output_buf, start.elapsed(), &regex);
 
 			// Read API file into string
-			if let Ok(string) = Self::read_p2pool_api(&path) {
+			if let Ok(string) = PrivP2poolApi::read_p2pool_api(&path) {
 				// Deserialize
-				if let Ok(s) = Self::str_to_priv_p2pool_api(&string) {
+				if let Ok(s) = PrivP2poolApi::str_to_priv_p2pool_api(&string) {
 					// Update the structs.
 					PubP2poolApi::update_from_priv(&pub_api, &priv_api);
 				}
@@ -603,7 +614,7 @@ impl Helper {
 	pub fn start_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
 		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
 
-		let args = Self::build_xmrig_args_and_mutate_img(helper, state, path);
+		let (args, api_ip_port) = Self::build_xmrig_args_and_mutate_img(helper, state, path);
 
 		// Print arguments & user settings to console
 		crate::disk::print_dash(&format!("XMRig | Launch arguments: {:#?}", args));
@@ -616,15 +627,16 @@ impl Helper {
 		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_xmrig);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, priv_api, args, path, sudo);
+			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, priv_api, args, path, sudo, api_ip_port);
 		});
 	}
 
 	// Takes in some [State/Xmrig] and parses it to build the actual command arguments.
 	// Returns the [Vec] of actual arguments, and mutates the [ImgXmrig] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
-	pub fn build_xmrig_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf) -> Vec<String> {
+	pub fn build_xmrig_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf) -> (Vec<String>, String) {
 		let mut args = Vec::with_capacity(500);
+		let mut api_ip_port = String::with_capacity(15);
 		let path = path.clone();
 		// The actual binary we're executing is [sudo], technically
 		// the XMRig path is just an argument to sudo, so add it.
@@ -651,6 +663,7 @@ impl Helper {
 				threads: state.current_threads.to_string(),
 				url: "127.0.0.1:3333 (Local P2Pool)".to_string(),
 			};
+			api_ip_port = "127.0.0.1:18088".to_string();
 
 		// [Advanced]
 		} else {
@@ -689,9 +702,10 @@ impl Helper {
 					url,
 					threads: state.current_threads.to_string(),
 				};
+				api_ip_port = format!("{}:{}", api_ip, api_port);
 			}
 		}
-		args
+		(args, api_ip_port)
 	}
 
 	// We actually spawn [sudo] on Unix, with XMRig being the argument.
@@ -712,8 +726,10 @@ impl Helper {
 		cmd
 	}
 
-	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
+	// The XMRig watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
+	// This isn't actually async, a tokio runtime is unfortunately needed because [Hyper] is an async library (HTTP API calls)
+	#[tokio::main]
+	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, api_ip_port: String) {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
 		let mut pair = pty.openpty(portable_pty::PtySize {
@@ -758,9 +774,7 @@ impl Helper {
 		let output_full = Arc::clone(&process.lock().unwrap().output_full);
 		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 
-//		path.pop();
-//		path.push(P2POOL_API_PATH);
-//		let regex = P2poolRegex::new();
+		let client: hyper::Client<hyper::client::HttpConnector> = hyper::Client::builder().build(hyper::client::HttpConnector::new());
 		let start = process.lock().unwrap().start;
 
 		// 5. Loop as watchdog
@@ -838,15 +852,11 @@ impl Helper {
 
 			// Always update from output
 			PubXmrigApi::update_from_output(&pub_api, &output_buf, start.elapsed());
-//
-//			// Read API file into string
-//			if let Ok(string) = Self::read_xmrig_api(&path) {
-//				// Deserialize
-//				if let Ok(s) = Self::str_to_priv_xmrig_api(&string) {
-//					// Update the structs.
-//					PubP2poolApi::update_from_priv(&pub_api, &priv_api);
-//				}
-//			}
+
+			// Send an HTTP API request
+			if let Ok(priv_api) = PrivXmrigApi::request_xmrig_api(client.clone(), &api_ip_port).await {
+				PubXmrigApi::from_priv(&mut pub_api.lock().unwrap(), priv_api);
+			}
 
 			// Check if logs need resetting
 			Self::check_reset_output_full(&output_full, ProcessName::Xmrig);
@@ -863,9 +873,44 @@ impl Helper {
 	}
 
 	//---------------------------------------------------------------------------------------------------- The "helper"
+	fn update_pub_sys_from_sysinfo(sysinfo: &sysinfo::System, pub_sys: &mut Sys, pid: &sysinfo::Pid, helper: &Helper, max_threads: usize) {
+		use sysinfo::{CpuExt,ProcessExt,NetworkExt,NetworksExt};
+		let gupax_uptime = helper.uptime.to_string();
+		let cpu = &sysinfo.cpus()[0];
+		let gupax_cpu_usage = format!("{:.2}%", sysinfo.process(*pid).unwrap().cpu_usage()/(max_threads as f32));
+		let gupax_memory_used_mb = HumanNumber::from_u64(sysinfo.process(*pid).unwrap().memory()/1_000_000);
+		let gupax_memory_used_mb = format!("{} megabytes", gupax_memory_used_mb);
+		let system_cpu_model = format!("{} ({}MHz)", cpu.brand(), cpu.frequency());
+		let system_memory = {
+			let used = (sysinfo.used_memory() as f64)/1_000_000_000.0;
+			let total = (sysinfo.total_memory() as f64)/1_000_000_000.0;
+			format!("{:.3} GB / {:.3} GB", used, total)
+		};
+		let system_cpu_usage = {
+			let mut total: f32 = 0.0;
+			for cpu in sysinfo.cpus() {
+				total += cpu.cpu_usage();
+			}
+			format!("{:.2}%", total/(max_threads as f32))
+		};
+		*pub_sys = Sys {
+			gupax_uptime,
+			gupax_cpu_usage,
+			gupax_memory_used_mb,
+			system_cpu_usage,
+			system_memory,
+			system_cpu_model,
+			..*pub_sys
+		};
+	}
+
 	// The "helper" thread. Syncs data between threads here and the GUI.
-	pub fn spawn_helper(helper: &Arc<Mutex<Self>>) {
+	pub fn spawn_helper(helper: &Arc<Mutex<Self>>, mut sysinfo: sysinfo::System, pid: sysinfo::Pid, max_threads: usize) {
 		let mut helper = Arc::clone(helper);
+		let mut pub_sys = Arc::clone(&helper.lock().unwrap().pub_sys);
+		let sysinfo_cpu = sysinfo::CpuRefreshKind::everything();
+		let sysinfo_processes = sysinfo::ProcessRefreshKind::new().with_cpu();
+
 		thread::spawn(move || {
 		info!("Helper | Hello from helper thread! Entering loop where I will spend the rest of my days...");
 		// Begin loop
@@ -875,31 +920,37 @@ impl Helper {
 
 		// 2. Lock... EVERYTHING!
 		let mut lock = helper.lock().unwrap();
+		// Calculate Gupax's uptime always.
+		lock.uptime = HumanTime::into_human(lock.instant.elapsed());
 		let mut gui_api_p2pool = lock.gui_api_p2pool.lock().unwrap();
 		let mut gui_api_xmrig = lock.gui_api_xmrig.lock().unwrap();
 		let mut pub_api_p2pool = lock.pub_api_p2pool.lock().unwrap();
 		let mut pub_api_xmrig = lock.pub_api_xmrig.lock().unwrap();
 		let p2pool = lock.p2pool.lock().unwrap();
 		let xmrig = lock.xmrig.lock().unwrap();
-		// Calculate Gupax's uptime always.
-		let human_time = HumanTime::into_human(lock.instant.elapsed());
+		let mut lock_pub_sys = pub_sys.lock().unwrap();
 		// If [P2Pool] is alive...
 		if p2pool.is_alive() { PubP2poolApi::combine_gui_pub_api(&mut gui_api_p2pool, &mut pub_api_p2pool); }
 		// If [XMRig] is alive...
 		if xmrig.is_alive() { PubXmrigApi::combine_gui_pub_api(&mut gui_api_xmrig, &mut pub_api_xmrig); }
 
-		// 2. Drop... (almost) EVERYTHING... IN REVERSE!
+		// 2. Selectively refresh [sysinfo] for only what we need (better performance).
+		sysinfo.refresh_cpu_specifics(sysinfo_cpu);
+		sysinfo.refresh_processes_specifics(sysinfo_processes);
+		sysinfo.refresh_memory();
+		Self::update_pub_sys_from_sysinfo(&sysinfo, &mut lock_pub_sys, &pid, &lock, max_threads);
+
+		// 3. Drop... (almost) EVERYTHING... IN REVERSE!
+		drop(lock_pub_sys);
 		drop(xmrig);
 		drop(p2pool);
 		drop(pub_api_xmrig);
 		drop(pub_api_p2pool);
 		drop(gui_api_xmrig);
 		drop(gui_api_p2pool);
-		// Update the time... then drop :)
-		lock.human_time = human_time;
 		drop(lock);
 
-		// 3. Calculate if we should sleep or not.
+		// 4. Calculate if we should sleep or not.
 		// If we should sleep, how long?
 		let elapsed = start.elapsed().as_millis();
 		if elapsed < 1000 {
@@ -908,7 +959,7 @@ impl Helper {
 			std::thread::sleep(std::time::Duration::from_millis((1000-elapsed) as u64));
 		}
 
-		// 4. End loop
+		// 5. End loop
 		}
 
 		// 5. Something has gone terribly wrong if the helper exited this loop.
@@ -1220,7 +1271,7 @@ impl PubP2poolApi {
 		let buf = std::mem::take(&mut pub_api.output);
 		*gui_api = Self {
 			output,
-			..std::mem::take(&mut *pub_api)
+			..std::mem::take(pub_api)
 		};
 		if !buf.is_empty() { gui_api.output.push_str(&buf); }
 	}
@@ -1327,6 +1378,22 @@ impl PrivP2poolApi {
 			connections: 0,
 		}
 	}
+
+	// Read P2Pool's API file to a [String].
+	fn read_p2pool_api(path: &std::path::PathBuf) -> Result<String, std::io::Error> {
+		match std::fs::read_to_string(path) {
+			Ok(s) => Ok(s),
+			Err(e) => { warn!("P2Pool API | [{}] read error: {}", path.display(), e); Err(e) },
+		}
+	}
+
+	// Deserialize the above [String] into a [PrivP2poolApi]
+	fn str_to_priv_p2pool_api(string: &str) -> Result<Self, serde_json::Error> {
+		match serde_json::from_str::<Self>(string) {
+			Ok(a) => Ok(a),
+			Err(e) => { warn!("P2Pool API | Could not deserialize API data: {}", e); Err(e) },
+		}
+	}
 }
 
 //---------------------------------------------------------------------------------------------------- [ImgXmrig]
@@ -1385,7 +1452,7 @@ impl PubXmrigApi {
 		let buf = std::mem::take(&mut pub_api.output);
 		*gui_api = Self {
 			output,
-			..std::mem::take(&mut *pub_api)
+			..std::mem::take(pub_api)
 		};
 		if !buf.is_empty() { gui_api.output.push_str(&buf); }
 	}
@@ -1403,9 +1470,8 @@ impl PubXmrigApi {
 	}
 
 	// Formats raw private data into ready-to-print human readable version.
-	fn from_priv(private: PrivXmrigApi, output: String) -> Self {
-		Self {
-			output: output.clone(),
+	fn from_priv(public: &mut Self, private: PrivXmrigApi) {
+		*public = Self {
 			uptime: HumanTime::new(),
 			worker_id: private.worker_id,
 			resources: HumanNumber::from_load(private.resources.load_average),
@@ -1414,6 +1480,7 @@ impl PubXmrigApi {
 			diff: HumanNumber::from_u128(private.connection.diff),
 			accepted: HumanNumber::from_u128(private.connection.accepted),
 			rejected: HumanNumber::from_u128(private.connection.rejected),
+			..std::mem::take(public)
 		}
 	}
 }
@@ -1439,6 +1506,16 @@ impl PrivXmrigApi {
 			connection: Connection::new(),
 			hashrate: Hashrate::new(),
 		}
+	}
+	// Send an HTTP request to XMRig's API, serialize it into [Self] and return it
+	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_ip_port: &str) -> Result<Self, anyhow::Error> {
+		let request = hyper::Request::builder()
+			.method("GET")
+			.uri("http://".to_string() + api_ip_port + "/1/summary")
+			.body(hyper::Body::empty())?;
+		let mut response = tokio::time::timeout(std::time::Duration::from_millis(500), client.request(request)).await?;
+		let body = hyper::body::to_bytes(response?.body_mut()).await?;
+		Ok(serde_json::from_slice::<Self>(&body)?)
 	}
 }
 

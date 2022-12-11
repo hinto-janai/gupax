@@ -230,7 +230,7 @@ impl Gupax {
 		})});
 		// Saved [Tab]
 		ui.group(|ui| {
-			let height = ui.available_height()/2.0;
+			let height = ui.available_height()/1.85;
 			let width = (width/5.0)-(SPACE*1.93);
 			ui.horizontal(|ui| {
 			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).on_hover_text(GUPAX_TAB_ABOUT).clicked() { self.tab = Tab::About; }

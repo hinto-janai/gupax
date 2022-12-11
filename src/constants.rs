@@ -69,6 +69,7 @@ pub const RED: egui::Color32 = egui::Color32::from_rgb(230, 50, 50);
 pub const GREEN: egui::Color32 = egui::Color32::from_rgb(100, 230, 100);
 pub const YELLOW: egui::Color32 = egui::Color32::from_rgb(230, 230, 100);
 pub const BRIGHT_YELLOW: egui::Color32 = egui::Color32::from_rgb(250, 250, 100);
+pub const BONE: egui::Color32 = egui::Color32::from_rgb(190, 190, 190); // In between LIGHT_GRAY <-> GRAY
 pub const WHITE: egui::Color32 = egui::Color32::WHITE;
 pub const GRAY: egui::Color32 = egui::Color32::GRAY;
 pub const LIGHT_GRAY: egui::Color32 = egui::Color32::LIGHT_GRAY;
@@ -110,6 +111,14 @@ pub const OS: &str = "🐧 Linux";
 pub const OS_NAME: &str = "Linux";
 
 // Tooltips
+// Status
+pub const STATUS_GUPAX_UPTIME: &str = "How long Gupax has been online";
+pub const STATUS_GUPAX_CPU_USAGE: &str = "How much CPU Gupax is currently using. This accounts for all your threads (it is out of 100%)";
+pub const STATUS_GUPAX_MEMORY_USAGE: &str = "How much memory Gupax is currently using in Megabytes";
+pub const STATUS_GUPAX_SYSTEM_CPU_USAGE: &str = "How much CPU your entire system is currently using. This accounts for all your threads (it is out of 100%)";
+pub const STATUS_GUPAX_SYSTEM_MEMORY: &str = "How much memory your entire system has (including swap) and is currently using in Gigabytes";
+pub const STATUS_GUPAX_SYSTEM_CPU_MODEL: &str = "The detected model of your system's CPU and its current frequency";
+
 // Gupax
 pub const GUPAX_UPDATE: &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
 pub const GUPAX_AUTO_UPDATE: &str = "Automatically check for updates at startup";

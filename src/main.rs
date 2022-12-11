@@ -49,6 +49,15 @@ use std::{
 	time::Instant,
 	path::PathBuf,
 };
+// Sysinfo (this controls which info we get)
+use sysinfo::{
+	NetworkExt,
+	CpuExt,
+	ProcessExt,
+	System,
+	SystemExt,
+	PidExt,
+};
 // Modules
 mod ferris;
 mod constants;
@@ -112,6 +121,7 @@ pub struct App {
 	// This holds everything related to the data processed by the "helper thread".
 	// This includes the "helper" threads public P2Pool/XMRig's API.
 	helper: Arc<Mutex<Helper>>,  // [Helper] state, mostly for Gupax uptime
+	pub_sys: Arc<Mutex<Sys>>, // [Sys] state, read by [Status], mutated by [Helper]
 	p2pool: Arc<Mutex<Process>>, // [P2Pool] process state
 	xmrig: Arc<Mutex<Process>>,  // [XMRig] process state
 	p2pool_api: Arc<Mutex<PubP2poolApi>>, // Public ready-to-print P2Pool API made by the "helper" thread
@@ -126,6 +136,8 @@ pub struct App {
 	// State from [--flags]
 	no_startup: bool,
 	// Static stuff
+	pid: sysinfo::Pid, // Gupax's PID
+	max_threads: usize, // Max amount of detected system threads
 	now: Instant, // Internal timer
 	exe: String, // Path for [Gupax] binary
 	dir: String, // Directory [Gupax] binary is in
@@ -160,6 +172,17 @@ impl App {
 		let xmrig_api = Arc::new(Mutex::new(PubXmrigApi::new()));
 		let p2pool_img = Arc::new(Mutex::new(ImgP2pool::new()));
 		let xmrig_img = Arc::new(Mutex::new(ImgXmrig::new()));
+
+		// We give this to the [Helper] thread.
+		let mut sysinfo = sysinfo::System::new_with_specifics(
+			sysinfo::RefreshKind::new()
+			.with_cpu(sysinfo::CpuRefreshKind::everything())
+			.with_processes(sysinfo::ProcessRefreshKind::new().with_cpu())
+			.with_memory());
+		sysinfo.refresh_all();
+		let pid = sysinfo::get_current_pid().unwrap();
+		let pub_sys = Arc::new(Mutex::new(Sys::new()));
+
 		let mut app = Self {
 			tab: Tab::default(),
 			ping: Arc::new(Mutex::new(Ping::new())),
@@ -177,7 +200,7 @@ impl App {
 			restart: Arc::new(Mutex::new(Restart::No)),
 			diff: false,
 			error_state: ErrorState::new(),
-			helper: Arc::new(Mutex::new(Helper::new(now, p2pool.clone(), xmrig.clone(), p2pool_api.clone(), xmrig_api.clone(), p2pool_img.clone(), xmrig_img.clone()))),
+			helper: Arc::new(Mutex::new(Helper::new(now, pub_sys.clone(), p2pool.clone(), xmrig.clone(), p2pool_api.clone(), xmrig_api.clone(), p2pool_img.clone(), xmrig_img.clone()))),
 			p2pool,
 			xmrig,
 			p2pool_api,
@@ -190,6 +213,9 @@ impl App {
 			resizing: false,
 			alpha: 0,
 			no_startup: false,
+			pub_sys,
+			pid,
+			max_threads: num_cpus::get(),
 			now,
 			admin: false,
 			exe: String::new(),
@@ -291,7 +317,7 @@ impl App {
 		//----------------------------------------------------------------------------------------------------
 		let mut og = app.og.lock().unwrap(); // Lock [og]
 		// Handle max threads
-		og.xmrig.max_threads = num_cpus::get();
+		og.xmrig.max_threads = app.max_threads;
 		let current = og.xmrig.current_threads;
 		let max = og.xmrig.max_threads;
 		if current > max {
@@ -340,7 +366,7 @@ impl App {
 
 		// Spawn the "Helper" thread.
 		info!("Helper | Spawning helper thread...");
-		Helper::spawn_helper(&app.helper);
+		Helper::spawn_helper(&app.helper, sysinfo, app.pid, app.max_threads);
 		info!("Helper ... OK");
 
 		// Check for privilege. Should be Admin on [Windows] and NOT root on Unix.
@@ -617,7 +643,7 @@ fn init_auto(app: &mut App) {
 			Helper::start_p2pool(&app.helper, &app.state.p2pool, &app.state.gupax.absolute_p2pool_path);
 		}
 	} else {
-		info!("Skipping auto-xmrig...");
+		info!("Skipping auto-p2pool...");
 	}
 
 	// [Auto-XMRig]
@@ -1044,26 +1070,24 @@ impl eframe::App for App {
 		TopBottomPanel::top("top").show(ctx, |ui| {
 			let width = (self.width - (SPACE*10.0))/5.0;
 			let height = self.height/12.0;
-			ui.group(|ui| {
-			    ui.add_space(4.0);
-				ui.horizontal(|ui| {
-					let style = ui.style_mut();
-					style.override_text_style = Some(Name("Tab".into()));
-					style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
-					style.visuals.selection.bg_fill = Color32::from_rgb(255, 120, 120);
-					style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
-					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).clicked() { self.tab = Tab::About; }
-					ui.separator();
-					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Status, "Status")).clicked() { self.tab = Tab::Status; }
-					ui.separator();
-					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Gupax, "Gupax")).clicked() { self.tab = Tab::Gupax; }
-					ui.separator();
-					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::P2pool, "P2Pool")).clicked() { self.tab = Tab::P2pool; }
-					ui.separator();
-					if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Xmrig, "XMRig")).clicked() { self.tab = Tab::Xmrig; }
-				});
-				ui.add_space(4.0);
+		    ui.add_space(4.0);
+			ui.horizontal(|ui| {
+				let style = ui.style_mut();
+				style.override_text_style = Some(Name("Tab".into()));
+				style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
+				style.visuals.selection.bg_fill = Color32::from_rgb(255, 120, 120);
+				style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
+				if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).clicked() { self.tab = Tab::About; }
+				ui.separator();
+				if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Status, "Status")).clicked() { self.tab = Tab::Status; }
+				ui.separator();
+				if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Gupax, "Gupax")).clicked() { self.tab = Tab::Gupax; }
+				ui.separator();
+				if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::P2pool, "P2Pool")).clicked() { self.tab = Tab::P2pool; }
+				ui.separator();
+				if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Xmrig, "XMRig")).clicked() { self.tab = Tab::Xmrig; }
 			});
+			ui.add_space(4.0);
 		});
 
 		// Bottom: app info + state/process buttons
@@ -1312,7 +1336,7 @@ impl eframe::App for App {
 					});
 				}
 				Tab::Status => {
-					Status::show(self, self.width, self.height, ctx, ui);
+					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
 					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);

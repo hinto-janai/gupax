@@ -142,8 +142,8 @@ impl State {
 				simple: true,
 				auto_update: true,
 				auto_node: true,
-				auto_p2pool: true,
-				auto_xmrig: true,
+				auto_p2pool: false,
+				auto_xmrig: false,
 				ask_before_quit: true,
 				save_before_quit: true,
 				#[cfg(not(target_os = "macos"))]
