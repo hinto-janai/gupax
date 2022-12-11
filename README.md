@@ -1,20 +1,41 @@
 # WORK IN PROGRESS - ETA: December 25th, 2022
 ![banner.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/banner.png)
-**Gupax** (*guh-picks*) is a cross-platform GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
+Gupax (*guh-picks*) is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
+
+**If you just want to see a short 1-minute video on how to download and run Gupax: [click here.](#Video)**
 
 ## Contents
-* [What is Monero, P2Pool, XMRig, and Gupax?](##what-is-monero-p2pool-xmrig-and-gupax)
+* [What is Monero/P2Pool/XMRig/Gupax?](#what-is-monero-p2pool-xmrig-and-gupax)
+* [How-To](#How-To)
+	- [Video](#Video)
+	- [Text](#Text)
+- [Simple](#Simple)
+	- [Gupax](#Gupax)
+	- [P2Pool](#P2Pool)
+	- [XMRig](#XMRig)
+- [Advanced](#Advanced)
+	- [Verifying](#Verifying)
+	- [Command Line](#Command-Line)
+	- [Tor/Arti](#Tor-Arti)
+	- [Logs](#Logs)
+	- [Disk](#Disk)
+	- [Swapping P2Pool/XMRig](#Swapping-P2Pool-XMRig)
+	- [Gupax](#Gupax)
+	- [P2Pool](#P2Pool)
+	- [XMRig](#XMRig)
+- [Connections](#Connections)
 * [Community Monero Nodes](#community-monero-nodes)
-* [Demo](#Demo)
-* [Implementation](#Implementation)
-* [Planned](#Planned)
-* [Goals](#Goals)
 * [Build](#Build)
+	- [General Info](#General-Info)
+	- [Linux](#Linux)
+	- [macOS](#macOS)
+	- [Windows](#Windows)
+* [FAQ](#FAQ)
 
-## What is Monero, P2Pool, XMRig, and Gupax?
+## What is Monero/P2Pool/XMRig/Gupax?
 **Monero** is a secure, private, and untraceable cryptocurrency.
 
-The **[Monero GUI](https://github.com/monero-project/monero-gui)** software lets you run a **Monero node** (among other things). A Monero node connects you to other peers and lets you download Monero's [blockchain](https://en.wikipedia.org/wiki/Blockchain). But you already knew all of this, right?
+The **[Monero GUI](https://github.com/monero-project/monero-gui)** software lets you run a **Monero node** (among other things). A Monero node connects you to other peers and lets you download Monero's [blockchain](https://en.wikipedia.org/wiki/Blockchain).
 
 ***[More info here.](https://github.com/monero-project/monero)***
 
@@ -33,9 +54,9 @@ P2Pool as a concept was [first developed for Bitcoin](https://en.bitcoin.it/wiki
 
 ---
 
-**XMRig** is an optimized miner which lets you **mine Monero at higher speeds.**
+**XMRig** is an optimized miner which **mines Monero at higher speeds.**
 
-Both Monero and P2Pool have built in miners but XMRig is quite faster than both of them. Due to issues like [anti-virus flagging](https://github.com/monero-project/monero-gui/pull/3829#issuecomment-1018191461), it is not feasible to integrate XMRig directly into Monero or P2Pool, however, XMRig is still freely available for anyone to download. The issue is: you have to manually set it up yourself.
+Both Monero and P2Pool have built in miners but XMRig is quite faster than both of them. Due to issues like [anti-virus flagging](https://github.com/monero-project/monero-gui/pull/3829#issuecomment-1018191461), it is not feasible to integrate XMRig directly into Monero or P2Pool, however, XMRig is still freely available for anyone to download with the caveat being: you have to set it up yourself.
 
 ***[More info here.](https://github.com/xmrig/xmrig)***
 
@@ -51,6 +72,61 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 ![stack.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/diagram.png)
 
 With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/XMRig on the other, it is (hopefully) very easy for anyone to start mining Monero at **max hashrate in a decentralized, permissionless, and trustless manner**.
+
+## How-To
+### Video
+### Text
+
+## Simple
+### Gupax
+
+---
+
+### P2Pool
+
+---
+
+### XMRig
+
+## Advanced
+### Verifying
+
+---
+
+### Command Line
+
+---
+
+### Tor/Arti
+
+---
+
+### Logs
+
+---
+
+### Disk
+
+---
+
+### Gupax
+
+---
+
+### P2Pool
+
+---
+
+### XMRig
+
+## Connections
+For transparency, here's all the connections Gupax makes:
+
+| Domain             | Why                                                   | When | Where |
+|--------------------|-------------------------------------------------------|------|-------|
+| https://github.com | Fetching metadata information on packages + download  | `[Gupax]` tab -> `Check for updates` | [`update.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/update.rs) |
+| DNS | DNS connections will usually be handled by your OS (or whatever custom DNS setup you have). If using Tor, DNS requests [*should*](https://tpo.pages.torproject.net/core/doc/rust/arti/) be routed through the Tor network automatically | Same as above | Same as above |
+| Community Monero Nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/node.rs) |
 
 ## Community Monero Nodes
 | Name           | IP/Domain                        | RPC Port |
@@ -76,53 +152,47 @@ With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/X
 
 *Note: Plowsof1 & Plowsof2 have ZMQ port on 18084, the rest are 18083*
 
-## Demo
-https://user-images.githubusercontent.com/101352116/194763334-d8e936c9-a71e-474e-ac65-3a339b96a9d2.mp4
-
-<details>
-<summary>Click me to load images!</summary>
-
-![about.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/about.png)
-![status.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/status.png)
-![gupax.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/gupax.png)
-![p2pool.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/p2pool.png)
-![xmrig.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/tabs/xmrig.png)
-
-</details>
-
-
-## Implementation
-- **OS:** Gupax will be tested for Windows, macOS, and Linux. Maybe the BSDs
-- **Docs:** All Gupax usage will have documentation on GitHub; General P2Pool/XMRig info will also be included
-- **Packaging:** Gupax will be packaged in a bundled zip/tar that includes P2Pool/XMRig, and as a standalone binary that expects you to bring your own P2Pool/XMRig. Both will be the same binary, only difference being the first will include all necessary components. Maybe an installer as well
-- **Efficiency:** The context for Gupax is a ***mining*** machine, it would be too ironic if it impacted the hashrate performance, and so, Gupax uses the very lightweight [Rust egui library](https://github.com/emilk/egui). By default egui is an "immediate mode" GUI, meaning frames are rendered 60x/sec. This is turned off in Gupax so frames are only rendered upon user interaction. This allows for a fast and lightweight GUI. For context, it uses around 5x less CPU when switching around tabs compared to Monero GUI
-
-## Planned
-- **Community Node:** An option to use a trusted community Monero node instead of your own. At a small privacy cost, this allows users to immediately start mining on P2Pool without downloading the entire chain
-- **Update:** Built-in update/upgrader for Gupax/P2Pool/XMRig and an (opt-in) auto-updater that runs at startup
-- **Config:** All the basic configurations you would expect with P2Pool/XMRig (main, mini, peers, thread count, etc)
-- **Status:** Status tab displaying mining statistics using P2Pool & XMRig's APIs
-
-## Goals
-**Gupax is:**
-* A simple GUI solution to P2Pool mining with max hashrate
-* External mining software so Monero GUI isn't plagued with anti-virus issues
-* Fast/lightweight because the context for this software is a ***mining*** computer
-
-**Gupax is not:**
-* A Monero node/wallet
-
 ## Build
-Windows/Linux:
+### General Info
+You need [`cargo`](https://www.rust-lang.org/learn/get-started), Rust's build tool and package manager.
+
+The `--release` profile in Gupax is set to prefer code performance & small binary sizes over compilation speed (see [`Cargo.toml`](https://github.com/hinto-janaiyo/gupax/blob/main/Cargo.toml)). Gupax itself (with all dependencies already built) takes around 1m30s to build (vs 10s on a normal `--release`) with a Ryzen 5950x.
+
+---
+
+### Linux
+You'll need the development versions of libraries like `OpenSSL`, `SQLite`, and maybe some other ones already installed on your system. Read the compiler errors to see which ones are missing from your system and search around to see which packages you'll need to install depending on your distro.
+
+After that, run:
 ```
 cargo build --release
 ```
-On macOS, if you want the binary to have an icon in `Finder`, you must install [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle) and compile with:
+
+---
+
+### macOS
+You'll need [`Xcode`](https://developer.apple.com/xcode/).
+
+On macOS, if you want the binary to have an icon, you must install [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle) and compile with:
 ```
 cargo bundle --release
 ```
 This bundles Gupax into a `Gupax.app`, the way it comes in the pre-built tars for macOS.
 
-The `build.rs` file in the repo root sets the icon in `File Explorer` for Windows. The taskbar icon & App frame icon (for all OS's) get set at runtime using pre-compiled bytes in [`src/constants.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/constants.rs) from [`images`](https://github.com/hinto-janaiyo/gupax/blob/main/images).
+---
 
-The `--release` profile is set to prefer code performance & small binary sizes over compilation speed (see [`Cargo.toml`](https://github.com/hinto-janaiyo/gupax/blob/main/Cargo.toml)). Gupax itself (with all dependencies already built) takes around 1m30s to build (vs 10s on a normal `--release`) with a Ryzen 5950x.
+### Windows
+You'll need [`Visual Studio`](https://learn.microsoft.com/en-us/windows/dev-environment/rust/setup).
+
+There is a `build.rs` file in the repo solely for Windows-specific things:
+1. It sets the icon in `File Explorer`
+2. It statically links `VCRUNTIME140.dll` into Gupax (the binary will not be portable without this)
+
+After installing the development tools, run:
+```
+cargo build --release
+```
+
+This will build Gupax with the MSVC toolchain (`x86_64-pc-windows-msvc`). This is the recommended method and is how the pre-compiled release binaries are built.
+
+## FAQ
