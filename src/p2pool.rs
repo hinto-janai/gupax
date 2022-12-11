@@ -37,14 +37,13 @@ impl P2pool {
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	ui.group(|ui| {
 	if self.simple {
-		let height = height / 2.5;
+		let height = height / 2.4;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
-				let lock = api.lock().unwrap();
-				ui.add_sized([width, height], TextEdit::multiline(&mut lock.output.as_str()));
+				ui.add_sized([width, height], TextEdit::multiline(&mut api.lock().unwrap().output.as_str()));
 			});
 		});
 	//---------------------------------------------------------------------------------------------------- [Advanced] Console

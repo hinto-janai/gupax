@@ -35,23 +35,20 @@ use log::*;
 impl Xmrig {
 	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
-	//---------------------------------------------------------------------------------------------------- Console
-	if self.simple {
+	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	ui.group(|ui| {
+	if self.simple {
 		let height = height / 1.5;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
-				let lock = api.lock().unwrap();
-				ui.add_sized([width, height], TextEdit::multiline(&mut lock.output.as_str()));
+				ui.add_sized([width, height], TextEdit::multiline(&mut api.lock().unwrap().output.as_str()));
 			});
 		});
-	});
 	//---------------------------------------------------------------------------------------------------- [Advanced] Console
 	} else {
-	ui.group(|ui| {
 		let height = height / 2.8;
 		let width = width - SPACE;
 		ui.style_mut().override_text_style = Some(Monospace);
@@ -70,8 +67,8 @@ impl Xmrig {
 			let mut process = process.lock().unwrap(); // Lock
 			if process.is_alive() { process.input.push(buffer); } // Push only if alive
 		}
-	});
 	}
+	});
 
 	//---------------------------------------------------------------------------------------------------- Config
 	if !self.simple {
