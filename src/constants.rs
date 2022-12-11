@@ -69,6 +69,7 @@ pub const RED: egui::Color32 = egui::Color32::from_rgb(230, 50, 50);
 pub const GREEN: egui::Color32 = egui::Color32::from_rgb(100, 230, 100);
 pub const YELLOW: egui::Color32 = egui::Color32::from_rgb(230, 230, 100);
 pub const BRIGHT_YELLOW: egui::Color32 = egui::Color32::from_rgb(250, 250, 100);
+pub const WHITE: egui::Color32 = egui::Color32::WHITE;
 pub const GRAY: egui::Color32 = egui::Color32::GRAY;
 pub const LIGHT_GRAY: egui::Color32 = egui::Color32::LIGHT_GRAY;
 pub const BLACK: egui::Color32 = egui::Color32::BLACK;

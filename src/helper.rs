@@ -632,8 +632,8 @@ impl Helper {
 		// Before that though, add the ["--prompt"] flag and set it
 		// to emptyness so that it doesn't show up in the output.
 		if cfg!(unix) {
-			args.push("--stdin".to_string());
 			args.push(r#"--prompt="#.to_string());
+			args.push("--".to_string());
 			args.push(path.display().to_string());
 		}
 
@@ -718,7 +718,7 @@ impl Helper {
 	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
 		// 1a. Create PTY
 		let pty = portable_pty::native_pty_system();
-		let pair = pty.openpty(portable_pty::PtySize {
+		let mut pair = pty.openpty(portable_pty::PtySize {
 			rows: 100,
 			cols: 1000,
 			pixel_width: 0,
@@ -732,7 +732,16 @@ impl Helper {
 		// 1c. Create child
 		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
 
-        // 2. Set process state
+		// 2. Input [sudo] pass, wipe, then drop.
+		if cfg!(unix) {
+			// 1d. Sleep to wait for [sudo]'s non-echo prompt (on Unix).
+			// this prevents users pass from showing up in the STDOUT.
+			std::thread::sleep(std::time::Duration::from_secs(3));
+			writeln!(pair.master, "{}", sudo.lock().unwrap().pass);
+			SudoState::wipe(&sudo);
+		}
+
+        // 3. Set process state
         let mut lock = process.lock().unwrap();
         lock.state = ProcessState::Alive;
         lock.signal = ProcessSignal::None;
@@ -740,15 +749,9 @@ impl Helper {
 		lock.child = Some(Arc::clone(&child_pty));
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
 		lock.stdin = Some(pair.master);
-
-		// 3. Input [sudo] pass, wipe, then drop.
-		if cfg!(unix) {
-			writeln!(lock.stdin.as_mut().unwrap(), "{}", sudo.lock().unwrap().pass);
-			SudoState::wipe(&sudo);
-		}
 		drop(lock);
 
-		// 3. Spawn PTY read thread
+		// 4. Spawn PTY read thread
 		let output_full = Arc::clone(&process.lock().unwrap().output_full);
 		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 		thread::spawn(move || {
@@ -762,7 +765,7 @@ impl Helper {
 //		let regex = P2poolRegex::new();
 		let start = process.lock().unwrap().start;
 
-		// 4. Loop as watchdog
+		// 5. Loop as watchdog
 		info!("XMRig | Entering watchdog mode... woof!");
 		loop {
 			// Set timer
