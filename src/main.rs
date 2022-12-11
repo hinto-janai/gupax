@@ -1207,14 +1207,23 @@ impl eframe::App for App {
 								});
 							} else if self.xmrig.lock().unwrap().is_alive() {
 								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
-									self.sudo.lock().unwrap().signal = ProcessSignal::Restart;
-									#[cfg(target_family = "unix")]
-									self.error_state.ask_sudo(&self.sudo);
-									#[cfg(target_os = "windows")]
-									Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
+									if cfg!(windows) {
+										Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
+									} else if cfg!(target_os = "macos") {
+										self.sudo.lock().unwrap().signal = ProcessSignal::Restart;
+										self.error_state.ask_sudo(&self.sudo);
+									} else {
+										self.sudo.lock().unwrap().signal = ProcessSignal::Restart;
+										self.error_state.ask_sudo(&self.sudo);
+									}
 								}
 								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
-									Helper::stop_xmrig(&self.helper);
+									if cfg!(target_os = "macos") {
+										self.sudo.lock().unwrap().signal = ProcessSignal::Stop;
+										self.error_state.ask_sudo(&self.sudo);
+									} else {
+										Helper::stop_xmrig(&self.helper);
+									}
 								}
 								ui.add_enabled_ui(false, |ui| {
 									ui.add_sized([width, height], Button::new("⏺")).on_hover_text("Start XMRig");

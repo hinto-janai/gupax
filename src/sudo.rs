@@ -78,7 +78,7 @@ impl SudoState {
 		let mut state = state.lock().unwrap();
 		state.testing = false;
 		state.success = false;
-		state.signal = ProcessSignal::None;
+//		state.signal = ProcessSignal::None;
 	}
 
 	// Swaps the pass with another 256-capacity String,
@@ -163,12 +163,14 @@ impl SudoState {
 			if state.lock().unwrap().success {
 				match state.lock().unwrap().signal {
 					ProcessSignal::Restart => crate::helper::Helper::restart_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),
+					ProcessSignal::Stop => crate::helper::Helper::stop_xmrig(&helper),
 					_ => crate::helper::Helper::start_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),
 				}
 			} else {
 				state.lock().unwrap().msg = "Incorrect password!".to_string();
 				Self::wipe(&state);
 			}
+			state.lock().unwrap().signal = ProcessSignal::None;
 		});
 	}
 }

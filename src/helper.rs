@@ -23,12 +23,11 @@
 // way down and (if possible) asynchronously executing them at the very end.
 //
 // The main GUI thread will interface with this thread by mutating the Arc<Mutex>'s
-// found here, e.g: User clicks [Start P2Pool] -> Arc<Mutex<ProcessSignal> is set
-// indicating to this thread during its loop: "I should start P2Pool!", e.g:
+// found here, e.g: User clicks [Stop P2Pool] -> Arc<Mutex<ProcessSignal> is set
+// indicating to this thread during its loop: "I should stop P2Pool!", e.g:
 //
-//     match p2pool.lock().unwrap().signal {
-//         ProcessSignal::Start => start_p2pool(),
-//         ...
+//     if p2pool.lock().unwrap().signal == ProcessSignal::Stop {
+//         stop_p2pool(),
 //     }
 //
 // This also includes all things related to handling the child processes (P2Pool/XMRig):
@@ -60,7 +59,7 @@ const MAX_PROCESS_OUTPUT_BYTES: usize = 56_000_000;
 // Just a little leeway so a reset will go off before the [String] allocates more memory.
 const PROCESS_OUTPUT_LEEWAY: usize = MAX_PROCESS_OUTPUT_BYTES - 1000;
 // The max bytes the GUI thread should hold
-const MAX_GUI_OUTPUT_BYTES: usize = 1_000_000;
+const MAX_GUI_OUTPUT_BYTES: usize = 500_000;
 const GUI_OUTPUT_LEEWAY: usize = MAX_GUI_OUTPUT_BYTES - 1000;
 
 
@@ -234,7 +233,7 @@ impl Helper {
 		}
 	}
 
-	// For the GUI thread, the max is 1_000_000 bytes.
+	// For the GUI thread
 	fn check_reset_gui_p2pool_output(gui_api: &Arc<Mutex<PubP2poolApi>>) {
 		let mut gui_api = gui_api.lock().unwrap();
 		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
@@ -554,6 +553,25 @@ impl Helper {
 //		}
 //	}
 //
+	// If processes are started with [sudo] on macOS, they must also
+	// be killed with [sudo] (even if I have a direct handle to it as the
+	// parent process...!). This is only needed on macOS, not Linux.
+	fn sudo_kill(pid: u32, sudo: &Arc<Mutex<SudoState>>) -> bool {
+		// Spawn [sudo] to execute [kill] on the given [pid]
+		let mut child = std::process::Command::new("sudo")
+			.args(["--stdin", "kill", "-9", &pid.to_string()])
+			.stdin(Stdio::piped())
+			.spawn().unwrap();
+
+		// Write the [sudo] password to STDIN.
+		let mut stdin = child.stdin.take().unwrap();
+		use std::io::Write;
+		writeln!(stdin, "{}\n", sudo.lock().unwrap().pass);
+
+		// Return exit code of [sudo/kill].
+		child.wait().unwrap().success()
+	}
+
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_xmrig(helper: &Arc<Mutex<Self>>) {
 		info!("XMRig | Attempting to stop...");
@@ -573,13 +591,10 @@ impl Helper {
 		let path = path.clone();
 		// This thread lives to wait, start xmrig then die.
 		thread::spawn(move || {
-			while helper.lock().unwrap().xmrig.lock().unwrap().is_alive() {
+			while helper.lock().unwrap().xmrig.lock().unwrap().state != ProcessState::Waiting {
 				warn!("XMRig | Want to restart but process is still alive, waiting...");
 				thread::sleep(SECOND);
 			}
-			// We should reallllly sleep so all the components have a chance to catch up.
-			// Premature starting could miss the [sudo] STDIN timeframe and output it to STDOUT.
-			thread::sleep(std::time::Duration::from_secs(3));
 			// Ok, process is not alive, start the new one!
 			Self::start_xmrig(&helper, &state, &path, sudo);
 		});
@@ -616,10 +631,11 @@ impl Helper {
 		// the XMRig path is just an argument to sudo, so add it.
 		// Before that though, add the ["--prompt"] flag and set it
 		// to emptyness so that it doesn't show up in the output.
-		#[cfg(target_family = "unix")] // Of course, only on Unix.
-		args.push(r#"--prompt="#.to_string());
-		#[cfg(target_family = "unix")]
-		args.push(path.display().to_string());
+		if cfg!(unix) {
+			args.push("--stdin".to_string());
+			args.push(r#"--prompt="#.to_string());
+			args.push(path.display().to_string());
+		}
 
 		// [Simple]
 		if state.simple {
@@ -716,10 +732,6 @@ impl Helper {
 		// 1c. Create child
 		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
 
-		// 1d. Wait a bit for [sudo].
-		#[cfg(target_family = "unix")]
-		thread::sleep(std::time::Duration::from_secs(3));
-
         // 2. Set process state
         let mut lock = process.lock().unwrap();
         lock.state = ProcessState::Alive;
@@ -733,7 +745,6 @@ impl Helper {
 		if cfg!(unix) {
 			writeln!(lock.stdin.as_mut().unwrap(), "{}", sudo.lock().unwrap().pass);
 			SudoState::wipe(&sudo);
-			drop(sudo);
 		}
 		drop(lock);
 
@@ -757,10 +768,34 @@ impl Helper {
 			// Set timer
 			let now = Instant::now();
 
+			// Check if the process secretly died without us knowing :)
+			if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
+				let exit_status = match code.success() {
+					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
+					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
+				};
+				let uptime = HumanTime::into_human(start.elapsed());
+				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				process.lock().unwrap().signal = ProcessSignal::None;
+				break
+			}
+
 			// Stop on [Stop/Restart] SIGNAL
 			let signal = process.lock().unwrap().signal;
 			if signal == ProcessSignal::Stop || signal == ProcessSignal::Restart  {
-				child_pty.lock().unwrap().kill();
+				// macOS requires [sudo] again to kill [XMRig]
+				if cfg!(target_os = "macos") {
+					// If we're at this point, that means the user has
+					// entered their [sudo] pass again, after we wiped it.
+					// So, we should be able to find it in our [Arc<Mutex<SudoState>>].
+					Self::sudo_kill(child_pty.lock().unwrap().process_id().unwrap(), &sudo);
+					// And... wipe it again (only if we're stopping full).
+					// If we're restarting, the next start will wipe it for us.
+					if signal != ProcessSignal::Restart { SudoState::wipe(&sudo); }
+				} else {
+					child_pty.lock().unwrap().kill();
+				}
 				let exit_status = match child_pty.lock().unwrap().wait() {
 					Ok(e) => {
 						let mut process = process.lock().unwrap();
@@ -787,17 +822,6 @@ impl Helper {
 					ProcessSignal::Restart => process.state = ProcessState::Waiting,
 					_ => (),
 				}
-				break
-			// Check if the process secretly died without us knowing :)
-			} else if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
-				let exit_status = match code.success() {
-					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
-					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
-				};
-				let uptime = HumanTime::into_human(start.elapsed());
-				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
-				process.lock().unwrap().signal = ProcessSignal::None;
 				break
 			}
 
