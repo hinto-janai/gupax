@@ -44,7 +44,6 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 	ui.group(|ui| { ui.vertical(|ui| {
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height*2.0], Label::new(RichText::new("[Gupax]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("Gupax is online");
-		// Uptime
 		let sys = sys.lock().unwrap();
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_GUPAX_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", sys.gupax_uptime)));
@@ -65,7 +64,6 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.set_enabled(p2pool_online);
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height*2.0], Label::new(RichText::new("[P2Pool]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("P2Pool is online").on_disabled_hover_text("P2Pool is offline");
-		// Uptime
 		let api = p2pool_api.lock().unwrap();
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_P2POOL_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
@@ -77,21 +75,33 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.add_sized([width, height], Label::new(RichText::new("XMR Mined").underline().color(BONE))).on_hover_text(STATUS_P2POOL_XMR);
 		ui.add_sized([width, height], Label::new(format!("Total: {} XMR", api.xmr)));
 		ui.add_sized([width, height], Label::new(format!("[{}/hour] [{}/day] [{}/month]", api.xmr_hour, api.xmr_day, api.xmr_month)));
-		ui.add_sized([width, height], Label::new(RichText::new("P2Pool Hashrate [15m/1h/24h]").underline().color(BONE))).on_hover_text(STATUS_P2POOL_HASHRATE);
+		ui.add_sized([width, height], Label::new(RichText::new("Hashrate [15m/1h/24h]").underline().color(BONE))).on_hover_text(STATUS_P2POOL_HASHRATE);
 		ui.add_sized([width, height], Label::new(format!("[{} H/s] [{} H/s] [{} H/s]", api.hashrate_15m, api.hashrate_1h, api.hashrate_24h)));
 		ui.add_sized([width, height], Label::new(RichText::new("Miners Connected").underline().color(BONE))).on_hover_text(STATUS_P2POOL_CONNECTIONS);
 		ui.add_sized([width, height], Label::new(format!("{}", api.connections)));
 		ui.add_sized([width, height], Label::new(RichText::new("Effort").underline().color(BONE))).on_hover_text(STATUS_P2POOL_EFFORT);
 		ui.add_sized([width, height], Label::new(format!("[Average: {}] [Current: {}]", api.average_effort, api.current_effort)));
+		drop(api);
 	})});
 	// [XMRig]
 	ui.group(|ui| { ui.vertical(|ui| {
 		ui.set_enabled(xmrig_online);
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height*2.0], Label::new(RichText::new("[XMRig]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("XMRig is online").on_disabled_hover_text("XMRig is offline");
-		// Uptime
-		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline()));
-		ui.add_sized([width, height], Label::new(format!("{}", xmrig_api.lock().unwrap().uptime)));
+		let api = xmrig_api.lock().unwrap();
+		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_XMRIG_UPTIME);
+		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
+		ui.add_sized([width, height], Label::new(RichText::new("CPU Load Averages").underline().color(BONE))).on_hover_text(STATUS_XMRIG_CPU);
+		ui.add_sized([width, height], Label::new(format!("{}", api.resources)));
+		ui.add_sized([width, height], Label::new(RichText::new("Hashrate Averages").underline().color(BONE))).on_hover_text(STATUS_XMRIG_HASHRATE);
+		ui.add_sized([width, height], Label::new(format!("{}", api.hashrate)));
+		ui.add_sized([width, height], Label::new(RichText::new("Difficulty").underline().color(BONE))).on_hover_text(STATUS_XMRIG_DIFFICULTY);
+		ui.add_sized([width, height], Label::new(format!("{}", api.diff)));
+		ui.add_sized([width, height], Label::new(RichText::new("Shares").underline().color(BONE))).on_hover_text(STATUS_XMRIG_SHARES);
+		ui.add_sized([width, height], Label::new(format!("[Accepted: {}] [Rejected: {}]", api.accepted, api.rejected)));
+		ui.add_sized([width, height], Label::new(RichText::new("Pool").underline().color(BONE))).on_hover_text(STATUS_XMRIG_POOL);
+		ui.add_sized([width, height], Label::new(format!("{}", api.pool)));
+		drop(api);
 	})});
 	});
 }

@@ -923,7 +923,7 @@ impl eframe::App for App {
 				match self.error_state.buttons {
 					StayQuit => {
 						let mut text = "".to_string();
-						if *self.update.lock().unwrap().updating.lock().unwrap() { text = format!("{}\nUpdate is in progress...!", text); }
+						if *self.update.lock().unwrap().updating.lock().unwrap() { text = format!("{}\nUpdate is in progress...! Quitting may cause file corruption!", text); }
 						if self.p2pool.lock().unwrap().is_alive() { text = format!("{}\nP2Pool is online...!", text); }
 						if self.xmrig.lock().unwrap().is_alive() { text = format!("{}\nXMRig is online...!", text); }
 						ui.add_sized([width, height], Label::new("--- Are you sure you want to quit? ---"));

@@ -665,7 +665,7 @@ impl Helper {
 		// [Simple]
 		if state.simple {
 			// Build the xmrig argument
-			let rig = if state.simple_rig.is_empty() { GUPAX.to_string() } else { state.simple_rig.clone() }; // Rig name
+			let rig = if state.simple_rig.is_empty() { GUPAX_VERSION_UNDERSCORE.to_string() } else { state.simple_rig.clone() }; // Rig name
 			args.push("--url".to_string()); args.push("127.0.0.1:3333".to_string());          // Local P2Pool (the default)
 			args.push("--threads".to_string()); args.push(state.current_threads.to_string()); // Threads
 			args.push("--user".to_string()); args.push(rig.clone());                          // Rig name
@@ -869,7 +869,9 @@ impl Helper {
 
 			// Send an HTTP API request
 			if let Ok(priv_api) = PrivXmrigApi::request_xmrig_api(client.clone(), &api_ip_port).await {
-				PubXmrigApi::from_priv(&mut pub_api.lock().unwrap(), priv_api);
+				PubXmrigApi::update_from_priv(&pub_api, priv_api);
+			} else {
+				warn!("XMRig | Could not send HTTP API request to: {}", api_ip_port);
 			}
 
 			// Check if logs need resetting
@@ -1483,9 +1485,9 @@ impl PubXmrigApi {
 	}
 
 	// Formats raw private data into ready-to-print human readable version.
-	fn from_priv(public: &mut Self, private: PrivXmrigApi) {
+	fn update_from_priv(public: &Arc<Mutex<Self>>, private: PrivXmrigApi) {
+		let mut public = public.lock().unwrap();
 		*public = Self {
-			uptime: HumanTime::new(),
 			worker_id: private.worker_id,
 			resources: HumanNumber::from_load(private.resources.load_average),
 			hashrate: HumanNumber::from_hashrate(private.hashrate.total),
@@ -1493,7 +1495,7 @@ impl PubXmrigApi {
 			diff: HumanNumber::from_u128(private.connection.diff),
 			accepted: HumanNumber::from_u128(private.connection.accepted),
 			rejected: HumanNumber::from_u128(private.connection.rejected),
-			..std::mem::take(public)
+			..std::mem::take(&mut *public)
 		}
 	}
 }

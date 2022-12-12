@@ -15,11 +15,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub const GUPAX: &str = concat!("Gupax ", env!("CARGO_PKG_VERSION"));
 pub const GUPAX_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 pub const P2POOL_VERSION: &str = "v2.4";
 pub const XMRIG_VERSION: &str = "v6.18.0";
 pub const COMMIT: &str = include_str!("../.git/refs/heads/main");
+pub const GUPAX_VERSION_UNDERSCORE: &str = concat!("Gupax_", env!("CARGO_PKG_VERSION"));
 
 // App frame resolution, [4:3] aspect ratio, [1.33:1]
 pub const APP_MIN_WIDTH: f32 = 640.0;
@@ -126,6 +126,13 @@ pub const STATUS_P2POOL_HASHRATE: &str = "The total amount of hashrate your P2Po
 pub const STATUS_P2POOL_SHARES: &str = "The total amount of shares found on P2Pool";
 pub const STATUS_P2POOL_EFFORT: &str = "The average amount of effort needed to find a share, and the current effort";
 pub const STATUS_P2POOL_CONNECTIONS: &str = "The total amount of miner connections on this P2Pool";
+//--
+pub const STATUS_XMRIG_UPTIME: &str = "How long XMRig has been online";
+pub const STATUS_XMRIG_CPU: &str = "The average CPU load of XMRig";
+pub const STATUS_XMRIG_HASHRATE: &str = "The average hashrate of XMRig";
+pub const STATUS_XMRIG_DIFFICULTY: &str = "The current difficulty of the job XMRig is working on";
+pub const STATUS_XMRIG_SHARES: &str = "The amount of accepted and rejected shares";
+pub const STATUS_XMRIG_POOL: &str = "The pool XMRig is currently mining to";
 
 // Gupax
 pub const GUPAX_UPDATE: &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
