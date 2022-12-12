@@ -1,16 +1,40 @@
-# v0.7.0
-## Prototype Release
+# v0.9.0
+## Beta Release
+* Connected `[Start/Stop/Restart]` buttons to actual processes:
+	- Current state (settings that may or may not be saved) are passed to the process when (re)starting
+	- Uptime & Exit status display when process is stopped
+	- Added colors for process state:
+		```
+		GREEN = Process is online and healthy
+		YELLOW = Process is in the middle of (re)starting/stopping
+		RED = Process is offline, and failed when exiting
+		GRAY = Process is offline
+		```
+* Added `PTY` (actual terminals) for P2Pool/XMRig:
+	- Scrollable logs up to 500k bytes (6000~ lines) before refresh
+	- All STDOUT/STDERR relayed to GUI (buffered, lazily read)
+	- `Advanced` tabs have input (STDIN) relayed to process (buffered, 1~sec delay)
+* Added `sudo` screen for XMRig (macOS/Linux):
+	- Tests password for validity
+	- Starts XMRig with `sudo` for MSR mod & hugepages
+	- Wipes password memory with zeros after usage
+* Added `Status` tab:
+	- Refreshes all stats once per second
+	- Gupax/System stats
+	- P2Pool stats via API file
+	- XMRig stats via HTTP API
 * Added `Simple` XMRig tab:
 	- Console
 	- Thread slider
 	- Pause on active slider (Windows/macOS only)
 * Added `Advanced` XMRig tab:
 	- Includes all simple features
+	- STDIN input
 	- Manual pool database, select/add/edit/delete a custom `Name/IP/Port/RigID` (max 1000 pools), saved at:
 	    - Windows: `C:\Users\USER\AppData\Roaming\Gupax\pool.toml`
 	    - macOS: `/Users/USER/Library/Application Support/Gupax/pool.toml`
 	    - Linux: `/home/USER/.local/share/gupax/pool.toml`
-	- Overriding `config.json` option
+	- Overriding command arguments
 	- Manual Monero address option
 	- HTTP API IP/Port option
 	- TLS option
@@ -21,15 +45,23 @@
 	- `Update-via-Tor` setting
 	- `Ask-before-quit` setting
 	- `Save-before-quit` setting
+	- `Auto-P2Pool` setting (starts P2Pool on Gupax startup)
+	- `Auto-XMRig` setting (starts XMRig on Gupax startup)
 * Added `Advanced` Gupax tab:
 	- Includes all simple features
 	- P2Pool binary path selector
 	- XMRig binary path selector
 	- Gupax window width/height adjuster
-* Default resolution change `1280x720, 16:9` -> `1280x800, 16:10`
+	- Startup Tab selector
 * Added plowsof to community nodes:
 	- Plowsof1: `IP: node.monerodevs.org, RPC: 18089, ZMQ: 18084`
 	- Plowsof2: `IP: node2.monerodevs.org, RPC: 18089, ZMQ: 18084`
+* Default resolution change `1280x720, 16:9` -> `1280x960, 4:3`
+* Added fade-in/out of black when resizing resolution
+* Added more internal documentation (`src/README.md`)
+* Added many, many `info` & `debug` logs (accessible via env variable `RUST_LOG`)
+* Bunch of fixes, optimizations, etc.
+
 
 ---
 
