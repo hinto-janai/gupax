@@ -213,12 +213,14 @@ impl Ping {
 	//---------------------------------------------------------------------------------------------------- Main Ping function
 	// Intermediate function for spawning thread
 	pub fn spawn_thread(ping: &Arc<Mutex<Self>>) {
+		info!("Spawning ping thread...");
 		let ping = Arc::clone(ping);
 		std::thread::spawn(move|| {
-			info!("Spawning ping thread...");
-			match Self::ping(ping.clone()) {
-				Ok(_) => {
+			let now = Instant::now();
+			match Self::ping(&ping) {
+				Ok(msg) => {
 					info!("Ping ... OK");
+					ping.lock().unwrap().msg = msg;
 					ping.lock().unwrap().pinged = true;
 					ping.lock().unwrap().auto_selected = false;
 				},
@@ -228,6 +230,7 @@ impl Ping {
 					ping.lock().unwrap().msg = err.to_string();
 				},
 			}
+			info!("Ping ... Took [{}] seconds...", now.elapsed().as_secs_f32());
 			ping.lock().unwrap().pinging = false;
 		});
 	}
@@ -250,9 +253,10 @@ impl Ping {
 	// timeout = BLACK
 	// default = GRAY
 	#[tokio::main]
-	pub async fn ping(ping: Arc<Mutex<Self>>) -> Result<(), anyhow::Error> {
+	pub async fn ping(ping: &Arc<Mutex<Self>>) -> Result<String, anyhow::Error> {
 		// Timer
 		let now = Instant::now();
+		let ping = Arc::clone(ping);
 
 		// Start ping
 		ping.lock().unwrap().pinging = true;
@@ -268,8 +272,8 @@ impl Ping {
 		// Random User Agent
 		let rand_user_agent = crate::Pkg::get_user_agent();
 		// Handle vector
-		let mut handles = vec![];
-		let node_vec = Arc::new(Mutex::new(Vec::new()));
+		let mut handles = Vec::with_capacity(NODE_IPS.len());
+		let node_vec = Arc::new(Mutex::new(Vec::with_capacity(NODE_IPS.len())));
 
 		for ip in NODE_IPS {
 			let client = client.clone();
@@ -288,18 +292,19 @@ impl Ping {
 		for handle in handles {
 			handle.await?;
 		}
-		let node_vec = node_vec.lock().unwrap().clone();
 
-		let info = format!("Fastest node: {}ms ... {} @ {}", node_vec[0].ms, node_vec[0].id, node_vec[0].ip);
-		info!("Ping | {}", info);
-		info!("Ping | Took [{}] seconds...", now.elapsed().as_secs_f32());
+		let node_vec = std::mem::take(&mut *node_vec.lock().unwrap());
+		let fastest_info = format!("Fastest node: {}ms ... {} @ {}", node_vec[0].ms, node_vec[0].id, node_vec[0].ip);
+
+		let info = format!("Cleaning up connections");
+		info!("Ping | {}...", info);
 		let mut ping = ping.lock().unwrap();
 			ping.fastest = node_vec[0].id;
 			ping.nodes = node_vec;
 			ping.prog = 100.0;
 			ping.msg = info;
 			drop(ping);
-		Ok(())
+		Ok(fastest_info)
 	}
 
 	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {

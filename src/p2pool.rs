@@ -35,6 +35,7 @@ impl P2pool {
 	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
+	debug!("P2Pool Tab | Rendering [Console]");
 	ui.group(|ui| {
 	if self.simple {
 		let height = height / 2.4;
@@ -71,6 +72,7 @@ impl P2pool {
 
 	//---------------------------------------------------------------------------------------------------- Args
 	if !self.simple {
+		debug!("P2Pool Tab | Rendering [Arguments]");
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/10.0) - SPACE;
 			ui.style_mut().override_text_style = Some(Monospace);
@@ -82,6 +84,7 @@ impl P2pool {
 	}
 
 	//---------------------------------------------------------------------------------------------------- Address
+	debug!("P2Pool Tab | Rendering [Address]");
 	ui.group(|ui| {
 		let width = width - SPACE;
 		ui.spacing_mut().text_edit_width = (width)-(SPACE*3.0);
@@ -117,6 +120,7 @@ impl P2pool {
 		// saves me the hassle of wrapping [state: State] completely
 		// and [.lock().unwrap()]ing it everywhere.
 		// Two atomic bools = enough to represent this data
+		debug!("P2Pool Tab | Running [auto-select] check");
 		if self.auto_select {
 			let mut ping = ping.lock().unwrap();
 			// If we haven't auto_selected yet, auto-select and turn it off
@@ -129,6 +133,7 @@ impl P2pool {
 
 		ui.vertical(|ui| {
 		ui.horizontal(|ui| {
+			debug!("P2Pool Tab | Rendering [Ping List]");
 			// [Ping List]
 			let id = self.node;
 			let ip = enum_to_ip(id);
@@ -143,6 +148,7 @@ impl P2pool {
 					}
 				}
 			}
+			debug!("P2Pool Tab | Rendering [ComboBox] of Community Nodes");
 			let text = RichText::new(format!(" ⏺ {}ms | {} | {}", ms, id, ip)).color(color);
 			ComboBox::from_id_source("community_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
 				for data in ping.lock().unwrap().nodes.iter() {
@@ -156,6 +162,7 @@ impl P2pool {
 
 		ui.add_space(5.0);
 
+		debug!("P2Pool Tab | Rendering [Select fastest ... Ping] buttons");
 		ui.horizontal(|ui| {
 		let width = (width/2.0)-4.0;
 		// [Select fastest node]
@@ -189,15 +196,11 @@ impl P2pool {
 		});
 		});
 
+		debug!("P2Pool Tab | Rendering [Auto-*] buttons");
 		ui.group(|ui| {
 		ui.horizontal(|ui| {
 			let width = (width/2.0)-(SPACE*1.75);
 			// [Auto-node] + [Auto-select]
-//			let mut style = (*ctx.style()).clone();
-//			style.spacing.icon_width_inner = width / 16.0;
-//			style.spacing.icon_width = width / 6.0;
-//			style.spacing.icon_spacing = 20.0;
-//			ctx.set_style(style);
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_select, "Auto-select")).on_hover_text(P2POOL_AUTO_SELECT);
 			ui.separator();
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_node, "Auto-node")).on_hover_text(P2POOL_AUTO_NODE);
@@ -205,6 +208,7 @@ impl P2pool {
 
 	//---------------------------------------------------------------------------------------------------- Advanced
 	} else {
+		debug!("P2Pool Tab | Rendering [Node List] elements");
 		let mut incorrect_input = false; // This will disable [Add/Delete] on bad input
 		// [Monero node IP/RPC/ZMQ]
 		ui.horizontal(|ui| {
@@ -302,6 +306,7 @@ impl P2pool {
 			ui.spacing_mut().slider_width = width - 8.0;
 			ui.spacing_mut().icon_width = width / 25.0;
 			// [Ping List]
+			debug!("P2Pool Tab | Rendering [Node List]");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
 			ComboBox::from_id_source("manual_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
 				let mut n = 0;
@@ -416,6 +421,7 @@ impl P2pool {
 		});
 		ui.add_space(5.0);
 
+		debug!("P2Pool Tab | Rendering [Main/Mini/Peers/Log] elements");
 		// [Main/Mini]
 		ui.horizontal(|ui| {
 		let height = height/4.0;

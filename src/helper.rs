@@ -251,6 +251,7 @@ impl Helper {
 	// The actual [String] holds 56_000_000, but this allows for some leeway so it doesn't allocate more memory.
 	// This will also append a message showing it was reset.
 	fn check_reset_output_full(output_full: &Arc<Mutex<String>>, name: ProcessName) {
+		debug!("{} Watchdog | Resetting [output_full]...", name);
 		let mut output_full = output_full.lock().unwrap();
 		if output_full.len() > PROCESS_OUTPUT_LEEWAY {
 			info!("{} | Output is nearing {} bytes, resetting!", MAX_PROCESS_OUTPUT_BYTES, name);
@@ -258,10 +259,12 @@ impl Helper {
 			output_full.clear();
 			output_full.push_str(&text);
 		}
+		debug!("{} Watchdog | Resetting [output_full] ... OK", name);
 	}
 
 	// For the GUI thread
 	fn check_reset_gui_p2pool_output(gui_api: &Arc<Mutex<PubP2poolApi>>) {
+		debug!("P2Pool Watchdog | Resetting GUI output...");
 		let mut gui_api = gui_api.lock().unwrap();
 		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
 			info!("P2Pool | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
@@ -269,9 +272,11 @@ impl Helper {
 			gui_api.output.clear();
 			gui_api.output.push_str(&text);
 		}
+		debug!("P2Pool Watchdog | Resetting GUI output ... OK");
 	}
 
 	fn check_reset_gui_xmrig_output(gui_api: &Arc<Mutex<PubXmrigApi>>) {
+		debug!("XMRig Watchdog | Resetting GUI output...");
 		let mut gui_api = gui_api.lock().unwrap();
 		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
 			info!("XMRig | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
@@ -279,6 +284,7 @@ impl Helper {
 			gui_api.output.clear();
 			gui_api.output.push_str(&text);
 		}
+		debug!("XMRig Watchdog | Resetting GUI output ... OK");
 	}
 
 	//---------------------------------------------------------------------------------------------------- P2Pool specific
@@ -306,6 +312,7 @@ impl Helper {
 				thread::sleep(SECOND);
 			}
 			// Ok, process is not alive, start the new one!
+			info!("P2Pool | Old process seems dead, starting new one!");
 			Self::start_p2pool(&helper, &state, &path);
 		});
 		info!("P2Pool | Restart ... OK");
@@ -418,6 +425,7 @@ impl Helper {
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
 		// 1a. Create PTY
+		debug!("P2Pool | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
 		let pair = pty.openpty(portable_pty::PtySize {
 			rows: 100,
@@ -426,13 +434,16 @@ impl Helper {
 			pixel_height: 0,
 		}).unwrap();
 		// 1b. Create command
+		debug!("P2Pool | Creating command...");
 		let mut cmd = portable_pty::CommandBuilder::new(path.as_path());
 		cmd.args(args);
 		cmd.cwd(path.as_path().parent().unwrap());
 		// 1c. Create child
+		debug!("P2Pool | Creating child...");
 		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
 
         // 2. Set process state
+		debug!("P2Pool | Setting process state...");
         let mut lock = process.lock().unwrap();
         lock.state = ProcessState::Alive;
         lock.signal = ProcessSignal::None;
@@ -443,6 +454,7 @@ impl Helper {
 		drop(lock);
 
 		// 3. Spawn PTY read thread
+		debug!("P2Pool | Spawning PTY read thread...");
 		let output_full = Arc::clone(&process.lock().unwrap().output_full);
 		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 		thread::spawn(move || {
@@ -453,6 +465,8 @@ impl Helper {
 
 		path.pop();
 		path.push(P2POOL_API_PATH);
+
+		debug!("P2Pool | Cleaning old API files...");
 		// Attempt to remove stale API file
 		match std::fs::remove_file(&path) {
 			Ok(_) => info!("P2Pool | Attempting to remove stale API file ... OK"),
@@ -475,9 +489,27 @@ impl Helper {
 		loop {
 			// Set timer
 			let now = Instant::now();
+			debug!("P2Pool Watchdog | ----------- Start of loop -----------");
+
+			// Check if the process is secretly died without us knowing :)
+			if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
+				debug!("P2Pool Watchdog | Process secretly died! Getting exit status");
+				let exit_status = match code.success() {
+					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
+					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
+				};
+				let uptime = HumanTime::into_human(start.elapsed());
+				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				// This is written directly into the GUI, because sometimes the 900ms event loop can't catch it.
+				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				process.lock().unwrap().signal = ProcessSignal::None;
+				debug!("P2Pool Watchdog | Secret dead process reap OK, breaking");
+				break
+			}
 
 			// Check SIGNAL
 			if process.lock().unwrap().signal == ProcessSignal::Stop {
+				debug!("P2Pool Watchdog | Stop SIGNAL caught");
 				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
 				// Wait to get the exit status
 				let exit_status = match child_pty.lock().unwrap().wait() {
@@ -491,13 +523,15 @@ impl Helper {
 					_ => { process.lock().unwrap().state = ProcessState::Failed; "Unknown Error" },
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
-				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
 				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
+				debug!("P2Pool Watchdog | Stop SIGNAL done, breaking");
 				break
 			// Check RESTART
 			} else if process.lock().unwrap().signal == ProcessSignal::Restart {
+				debug!("P2Pool Watchdog | Restart SIGNAL caught");
 				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
 				// Wait to get the exit status
 				let exit_status = match child_pty.lock().unwrap().wait() {
@@ -505,22 +539,11 @@ impl Helper {
 					_ => "Unknown Error",
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
-				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
+				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
 				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().state = ProcessState::Waiting;
-				break
-			// Check if the process is secretly died without us knowing :)
-			} else if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
-				let exit_status = match code.success() {
-					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
-					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
-				};
-				let uptime = HumanTime::into_human(start.elapsed());
-				info!("P2Pool | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				// This is written directly into the GUI, because sometimes the 900ms event loop can't catch it.
-				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
-				process.lock().unwrap().signal = ProcessSignal::None;
+				debug!("P2Pool Watchdog | Restart SIGNAL done, breaking");
 				break
 			}
 
@@ -529,15 +552,18 @@ impl Helper {
 			if !lock.input.is_empty() {
 				let input = std::mem::take(&mut lock.input);
 				for line in input {
+					debug!("P2Pool Watchdog | User input not empty, writing to STDIN: [{}]", line);
 					writeln!(lock.stdin.as_mut().unwrap(), "{}", line);
 				}
 			}
 			drop(lock);
 
 			// Always update from output
+			debug!("P2Pool Watchdog | Starting [update_from_output()]");
 			PubP2poolApi::update_from_output(&pub_api, &output_full, &output_buf, start.elapsed(), &regex);
 
 			// Read API file into string
+			debug!("P2Pool Watchdog | Attempting API file read");
 			if let Ok(string) = PrivP2poolApi::read_p2pool_api(&path) {
 				// Deserialize
 				if let Ok(s) = PrivP2poolApi::str_to_priv_p2pool_api(&string) {
@@ -547,17 +573,24 @@ impl Helper {
 			}
 
 			// Check if logs need resetting
+			debug!("P2Pool Watchdog | Attempting log reset check");
 			Self::check_reset_output_full(&output_full, ProcessName::P2pool);
 			Self::check_reset_gui_p2pool_output(&gui_api);
 
 			// Sleep (only if 900ms hasn't passed)
 			let elapsed = now.elapsed().as_millis();
 			// Since logic goes off if less than 1000, casting should be safe
-			if elapsed < 900 { std::thread::sleep(std::time::Duration::from_millis((900-elapsed) as u64)); }
+			if elapsed < 900 {
+				let sleep = (900-elapsed) as u64;
+				debug!("P2Pool Watchdog | END OF LOOP - Sleeping for [{}]ms...", sleep);
+				std::thread::sleep(std::time::Duration::from_millis(sleep));
+			} else {
+				debug!("P2Pool Watchdog | END OF LOOP - Not sleeping!");
+			}
 		}
 
 		// 5. If loop broke, we must be done here.
-		info!("P2Pool | Watchdog thread exiting... Goodbye!");
+		info!("P2Pool Watchdog | Watchdog thread exiting... Goodbye!");
 	}
 
 	//---------------------------------------------------------------------------------------------------- XMRig specific, most functions are very similar to P2Pool's
@@ -620,6 +653,7 @@ impl Helper {
 				thread::sleep(SECOND);
 			}
 			// Ok, process is not alive, start the new one!
+			info!("XMRig | Old process seems dead, starting new one!");
 			Self::start_xmrig(&helper, &state, &path, sudo);
 		});
 		info!("XMRig | Restart ... OK");
@@ -745,6 +779,7 @@ impl Helper {
 	#[tokio::main]
 	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, api_ip_port: String) {
 		// 1a. Create PTY
+		debug!("XMRig | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
 		let mut pair = pty.openpty(portable_pty::PtySize {
 			rows: 100,
@@ -753,15 +788,18 @@ impl Helper {
 			pixel_height: 0,
 		}).unwrap();
 		// 1b. Create command
+		debug!("XMRig | Creating command...");
 		#[cfg(target_os = "windows")]
 		let cmd = Self::create_xmrig_cmd_windows(args, path);
 		#[cfg(target_family = "unix")]
 		let cmd = Self::create_xmrig_cmd_unix(args, path);
 		// 1c. Create child
+		debug!("XMRig | Creating child...");
 		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
 
 		// 2. Input [sudo] pass, wipe, then drop.
 		if cfg!(unix) {
+			debug!("XMRig | Inputting [sudo] and wiping...");
 			// 1d. Sleep to wait for [sudo]'s non-echo prompt (on Unix).
 			// this prevents users pass from showing up in the STDOUT.
 			std::thread::sleep(std::time::Duration::from_secs(3));
@@ -770,6 +808,7 @@ impl Helper {
 		}
 
         // 3. Set process state
+		debug!("XMRig | Setting process state...");
         let mut lock = process.lock().unwrap();
         lock.state = ProcessState::Alive;
         lock.signal = ProcessSignal::None;
@@ -780,6 +819,7 @@ impl Helper {
 		drop(lock);
 
 		// 4. Spawn PTY read thread
+		debug!("XMRig | Spawning PTY read thread...");
 		let output_full = Arc::clone(&process.lock().unwrap().output_full);
 		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 		thread::spawn(move || {
@@ -796,9 +836,11 @@ impl Helper {
 		loop {
 			// Set timer
 			let now = Instant::now();
+			debug!("XMRig Watchdog | ----------- Start of loop -----------");
 
 			// Check if the process secretly died without us knowing :)
 			if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
+				debug!("XMRig Watchdog | Process secretly died on us! Getting exit status...");
 				let exit_status = match code.success() {
 					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
 					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
@@ -807,12 +849,14 @@ impl Helper {
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
 				process.lock().unwrap().signal = ProcessSignal::None;
+				debug!("XMRig Watchdog | Secret dead process reap OK, breaking");
 				break
 			}
 
 			// Stop on [Stop/Restart] SIGNAL
 			let signal = process.lock().unwrap().signal;
 			if signal == ProcessSignal::Stop || signal == ProcessSignal::Restart  {
+				debug!("XMRig Watchdog | Stop/Restart SIGNAL caught");
 				// macOS requires [sudo] again to kill [XMRig]
 				if cfg!(target_os = "macos") {
 					// If we're at this point, that means the user has
@@ -851,6 +895,7 @@ impl Helper {
 					ProcessSignal::Restart => process.state = ProcessState::Waiting,
 					_ => (),
 				}
+				debug!("XMRig Watchdog | Stop/Restart SIGNAL done, breaking");
 				break
 			}
 
@@ -859,33 +904,44 @@ impl Helper {
 			if !lock.input.is_empty() {
 				let input = std::mem::take(&mut lock.input);
 				for line in input {
+					debug!("XMRig Watchdog | User input not empty, writing to STDIN: [{}]", line);
 					writeln!(lock.stdin.as_mut().unwrap(), "{}", line);
 				}
 			}
 			drop(lock);
 
 			// Always update from output
+			debug!("XMRig Watchdog | Starting [update_from_output()]");
 			PubXmrigApi::update_from_output(&pub_api, &output_buf, start.elapsed());
 
 			// Send an HTTP API request
+			debug!("XMRig Watchdog | Attempting HTTP API request...");
 			if let Ok(priv_api) = PrivXmrigApi::request_xmrig_api(client.clone(), &api_ip_port).await {
+				debug!("XMRig Watchdog | HTTP API request OK, attempting [update_from_priv()]");
 				PubXmrigApi::update_from_priv(&pub_api, priv_api);
 			} else {
-				warn!("XMRig | Could not send HTTP API request to: {}", api_ip_port);
+				warn!("XMRig Watchdog | Could not send HTTP API request to: {}", api_ip_port);
 			}
 
 			// Check if logs need resetting
+			debug!("XMRig Watchdog | Attempting log reset check");
 			Self::check_reset_output_full(&output_full, ProcessName::Xmrig);
 			Self::check_reset_gui_xmrig_output(&gui_api);
 
 			// Sleep (only if 900ms hasn't passed)
 			let elapsed = now.elapsed().as_millis();
 			// Since logic goes off if less than 1000, casting should be safe
-			if elapsed < 900 { std::thread::sleep(std::time::Duration::from_millis((900-elapsed) as u64)); }
+			if elapsed < 900 {
+				let sleep = (900-elapsed) as u64;
+				debug!("XMRig Watchdog | END OF LOOP - Sleeping for [{}]ms...", sleep);
+				std::thread::sleep(std::time::Duration::from_millis(sleep));
+			} else {
+				debug!("XMRig Watchdog | END OF LOOP - Not sleeping!");
+			}
 		}
 
 		// 5. If loop broke, we must be done here.
-		info!("XMRig | Watchdog thread exiting... Goodbye!");
+		info!("XMRig Watchdog | Watchdog thread exiting... Goodbye!");
 	}
 
 	//---------------------------------------------------------------------------------------------------- The "helper"
@@ -933,38 +989,56 @@ impl Helper {
 		loop {
 		// 1. Loop init timestamp
 		let start = Instant::now();
+		debug!("Helper | ----------- Start of loop -----------");
+
+		//
+		// Ignore the invasive [debug!()] messages on the right side of the code.
+		// The reason why they are there are so that it's extremely easy to track
+		// down the culprit of an [Arc<Mutex>] deadlock. I know, they're ugly.
+		//
 
 		// 2. Lock... EVERYTHING!
-		let mut lock = helper.lock().unwrap();
+		let mut lock = helper.lock().unwrap();                                     debug!("Helper | Locking (1/8) ... [helper]");
 		// Calculate Gupax's uptime always.
 		lock.uptime = HumanTime::into_human(lock.instant.elapsed());
-		let mut gui_api_p2pool = lock.gui_api_p2pool.lock().unwrap();
-		let mut gui_api_xmrig = lock.gui_api_xmrig.lock().unwrap();
-		let mut pub_api_p2pool = lock.pub_api_p2pool.lock().unwrap();
-		let mut pub_api_xmrig = lock.pub_api_xmrig.lock().unwrap();
-		let p2pool = lock.p2pool.lock().unwrap();
-		let xmrig = lock.xmrig.lock().unwrap();
-		let mut lock_pub_sys = pub_sys.lock().unwrap();
+		let mut gui_api_p2pool = lock.gui_api_p2pool.lock().unwrap();              debug!("Helper | Locking (2/8) ... [gui_api_p2pool]");
+		let mut gui_api_xmrig = lock.gui_api_xmrig.lock().unwrap();                debug!("Helper | Locking (3/8) ... [gui_api_xmrig]");
+		let mut pub_api_p2pool = lock.pub_api_p2pool.lock().unwrap();              debug!("Helper | Locking (4/8) ... [pub_api_p2pool]");
+		let mut pub_api_xmrig = lock.pub_api_xmrig.lock().unwrap();                debug!("Helper | Locking (5/8) ... [pub_api_xmrig]");
+		let p2pool = lock.p2pool.lock().unwrap();                                  debug!("Helper | Locking (6/8) ... [p2pool]");
+		let xmrig = lock.xmrig.lock().unwrap();                                    debug!("Helper | Locking (7/8) ... [xmrig]");
+		let mut lock_pub_sys = pub_sys.lock().unwrap();                            debug!("Helper | Locking (8/8) ... [pub_sys]");
 		// If [P2Pool] is alive...
-		if p2pool.is_alive() { PubP2poolApi::combine_gui_pub_api(&mut gui_api_p2pool, &mut pub_api_p2pool); }
+		if p2pool.is_alive() {
+			debug!("Helper | P2Pool is alive! Running [combine_gui_pub_api()]");
+			PubP2poolApi::combine_gui_pub_api(&mut gui_api_p2pool, &mut pub_api_p2pool);
+		} else {
+			debug!("Helper | P2Pool is dead! Skipping...");
+		}
 		// If [XMRig] is alive...
-		if xmrig.is_alive() { PubXmrigApi::combine_gui_pub_api(&mut gui_api_xmrig, &mut pub_api_xmrig); }
+		if xmrig.is_alive() {
+			debug!("Helper | XMRig is alive! Running [combine_gui_pub_api()]");
+			PubXmrigApi::combine_gui_pub_api(&mut gui_api_xmrig, &mut pub_api_xmrig);
+		} else {
+			debug!("Helper | XMRig is dead! Skipping...");
+		}
 
 		// 2. Selectively refresh [sysinfo] for only what we need (better performance).
-		sysinfo.refresh_cpu_specifics(sysinfo_cpu);
-		sysinfo.refresh_processes_specifics(sysinfo_processes);
-		sysinfo.refresh_memory();
+		sysinfo.refresh_cpu_specifics(sysinfo_cpu);                debug!("Helper | Sysinfo refresh (1/3) ... [cpu]");
+		sysinfo.refresh_processes_specifics(sysinfo_processes);    debug!("Helper | Sysinfo refresh (2/3) ... [processes]");
+		sysinfo.refresh_memory();                                  debug!("Helper | Sysinfo refresh (3/3) ... [memory]");
+		debug!("Helper | Sysinfo OK, running [update_pub_sys_from_sysinfo()]");
 		Self::update_pub_sys_from_sysinfo(&sysinfo, &mut lock_pub_sys, &pid, &lock, max_threads);
 
 		// 3. Drop... (almost) EVERYTHING... IN REVERSE!
-		drop(lock_pub_sys);
-		drop(xmrig);
-		drop(p2pool);
-		drop(pub_api_xmrig);
-		drop(pub_api_p2pool);
-		drop(gui_api_xmrig);
-		drop(gui_api_p2pool);
-		drop(lock);
+		drop(lock_pub_sys);     debug!("Helper | Unlocking (1/8) ... [pub_sys]");
+		drop(xmrig);            debug!("Helper | Unlocking (2/8) ... [xmrig]");
+		drop(p2pool);           debug!("Helper | Unlocking (3/8) ... [p2pool]");
+		drop(pub_api_xmrig);    debug!("Helper | Unlocking (4/8) ... [pub_api_xmrig]");
+		drop(pub_api_p2pool);   debug!("Helper | Unlocking (5/8) ... [pub_api_p2pool]");
+		drop(gui_api_xmrig);    debug!("Helper | Unlocking (6/8) ... [gui_api_xmrig]");
+		drop(gui_api_p2pool);   debug!("Helper | Unlocking (7/8) ... [gui_api_p2pool]");
+		drop(lock);             debug!("Helper | Unlocking (8/8) ... [helper]");
 
 		// 4. Calculate if we should sleep or not.
 		// If we should sleep, how long?
@@ -972,7 +1046,11 @@ impl Helper {
 		if elapsed < 1000 {
 			// Casting from u128 to u64 should be safe here, because [elapsed]
 			// is less than 1000, meaning it can fit into a u64 easy.
-			std::thread::sleep(std::time::Duration::from_millis((1000-elapsed) as u64));
+			let sleep = (1000-elapsed) as u64;
+			debug!("Helper | END OF LOOP - Sleeping for [{}]ms...", sleep);
+			std::thread::sleep(std::time::Duration::from_millis(sleep));
+		} else {
+			debug!("Helper | END OF LOOP - Not sleeping!");
 		}
 
 		// 5. End loop

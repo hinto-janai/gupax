@@ -36,6 +36,7 @@ impl Xmrig {
 	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
+	debug!("XMRig Tab | Rendering [Console]");
 	ui.group(|ui| {
 	if self.simple {
 		let height = height / 1.5;
@@ -70,8 +71,9 @@ impl Xmrig {
 	}
 	});
 
-	//---------------------------------------------------------------------------------------------------- Config
+	//---------------------------------------------------------------------------------------------------- Arguments
 	if !self.simple {
+		debug!("XMRig Tab | Rendering [Arguments]");
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/10.0) - SPACE;
 			ui.style_mut().override_text_style = Some(Monospace);
@@ -81,6 +83,7 @@ impl Xmrig {
 		})});
 		ui.set_enabled(self.arguments.is_empty());
 	//---------------------------------------------------------------------------------------------------- Address
+		debug!("XMRig Tab | Rendering [Address]");
 		ui.group(|ui| {
 			let width = width - SPACE;
 			ui.spacing_mut().text_edit_width = (width)-(SPACE*3.0);
@@ -106,6 +109,7 @@ impl Xmrig {
 
 	//---------------------------------------------------------------------------------------------------- Threads
 	if self.simple { ui.add_space(SPACE); }
+	debug!("XMRig Tab | Rendering [Threads]");
 	ui.vertical(|ui| {
 		let width = width/10.0;
 		ui.spacing_mut().icon_width = width / 25.0;
@@ -129,7 +133,8 @@ impl Xmrig {
 
 //		});
 	} else {
-		let _height = height / 10.0;
+		debug!("XMRig Tab | Rendering [Pool List] elements");
+//		let _height = height / 10.0;
 		let width = ui.available_width() - 10.0;
 		let mut incorrect_input = false; // This will disable [Add/Delete] on bad input
 		// [Pool IP/Port]
@@ -226,7 +231,8 @@ impl Xmrig {
 			// [Manual node selection]
 			ui.spacing_mut().slider_width = width - 8.0;
 			ui.spacing_mut().icon_width = width / 25.0;
-			// [Ping List]
+			// [Node List]
+			debug!("XMRig Tab | Rendering [Node List] ComboBox");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
 			ComboBox::from_id_source("manual_pool").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
 				let mut n = 0;
@@ -345,7 +351,8 @@ impl Xmrig {
 		});
 		ui.add_space(5.0);
 
-		// [HTTP API IP/Port] + [TLS + Keepalive]
+		debug!("XMRig Tab | Rendering [API] TextEdits");
+		// [HTTP API IP/Port]
 		ui.group(|ui| { ui.horizontal(|ui| {
 		ui.vertical(|ui| {
 			let width = width/10.0;
@@ -396,6 +403,7 @@ impl Xmrig {
 
 		ui.separator();
 
+		debug!("XMRig Tab | Rendering [TLS/Keepalive] buttons");
 		ui.vertical(|ui| {
 			// TLS/Keepalive
 			ui.horizontal(|ui| {

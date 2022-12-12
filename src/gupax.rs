@@ -83,6 +83,7 @@ pub enum Ratio {
 impl Gupax {
 	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_path: &Path, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, error_state: &mut ErrorState, restart: &Arc<Mutex<Restart>>, width: f32, height: f32, frame: &mut eframe::Frame, ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
+		debug!("Gupax Tab | Rendering [Update] button + progress bar");
 		ui.group(|ui| {
 				// These are in unnecessary [ui.vertical()]'s
 				// because I need to use [ui.set_enabled]s, but I can't
@@ -112,6 +113,7 @@ impl Gupax {
 				});
 		});
 
+		debug!("Gupax Tab | Rendering bool buttons");
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
 					let width = (width - SPACE*12.0)/6.0;
@@ -133,6 +135,7 @@ impl Gupax {
 
 		if self.simple { return }
 
+		debug!("Gupax Tab | Rendering P2Pool/XMRig path selection");
 		// P2Pool/XMRig binary path selection
 		ui.add_space(SPACE);
 		ui.style_mut().override_text_style = Some(Monospace);
@@ -182,6 +185,7 @@ impl Gupax {
 		drop(guard);
 
 		// Gupax App resolution sliders
+		debug!("Gupax Tab | Rendering resolution sliders");
 		ui.vertical(|ui| {
 			let width = width/10.0;
 			ui.spacing_mut().icon_width = width / 25.0;
@@ -229,6 +233,7 @@ impl Gupax {
 			}
 		})});
 		// Saved [Tab]
+		debug!("Gupax Tab | Rendering [Tab] selector");
 		ui.group(|ui| {
 			let height = ui.available_height()/1.85;
 			let width = (width/5.0)-(SPACE*1.93);

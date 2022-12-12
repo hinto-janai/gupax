@@ -166,6 +166,7 @@ impl App {
 
 	fn new(now: Instant) -> Self {
 		info!("Initializing App Struct...");
+		debug!("App Init | P2Pool & XMRig processes...");
 		let p2pool = Arc::new(Mutex::new(Process::new(ProcessName::P2pool, String::new(), PathBuf::new())));
 		let xmrig = Arc::new(Mutex::new(Process::new(ProcessName::Xmrig, String::new(), PathBuf::new())));
 		let p2pool_api = Arc::new(Mutex::new(PubP2poolApi::new()));
@@ -173,6 +174,7 @@ impl App {
 		let p2pool_img = Arc::new(Mutex::new(ImgP2pool::new()));
 		let xmrig_img = Arc::new(Mutex::new(ImgXmrig::new()));
 
+		debug!("App Init | Sysinfo...");
 		// We give this to the [Helper] thread.
 		let mut sysinfo = sysinfo::System::new_with_specifics(
 			sysinfo::RefreshKind::new()
@@ -183,6 +185,7 @@ impl App {
 		let pid = sysinfo::get_current_pid().unwrap();
 		let pub_sys = Arc::new(Mutex::new(Sys::new()));
 
+		debug!("App Init | The rest of the [App]...");
 		let mut app = Self {
 			tab: Tab::default(),
 			ping: Arc::new(Mutex::new(Ping::new())),
@@ -232,6 +235,7 @@ impl App {
 			regex: Regexes::new(),
 		};
 		//---------------------------------------------------------------------------------------------------- App init data that *could* panic
+		debug!("App Init | Getting EXE path...");
 		let mut panic = String::new();
 		// Get exe path
 		app.exe = match get_exe() {
@@ -249,6 +253,7 @@ impl App {
 			Err(e) => { panic = format!("get_os_data_path(): {}", e); app.error_state.set(panic.clone(), ErrorFerris::Panic, ErrorButtons::Quit); PathBuf::new() },
 		};
 
+		debug!("App Init | Setting TOML path...");
 		// Set [*.toml] path
 		app.state_path = app.os_data_path.clone();
 		app.state_path.push("state.toml");
@@ -260,9 +265,11 @@ impl App {
 		// Apply arg state
 		// It's not safe to [--reset] if any of the previous variables
 		// are unset (null path), so make sure we just abort if the [panic] String contains something.
+		debug!("App Init | Applying argument state...");
 		let mut app = parse_args(app, panic);
 
 		// Read disk state
+		debug!("App Init | Reading disk state...");
 		use TomlError::*;
 		app.state = match State::get(&app.state_path) {
 			Ok(toml) => toml,
@@ -281,6 +288,7 @@ impl App {
 		};
 		app.og = Arc::new(Mutex::new(app.state.clone()));
 		// Read node list
+		debug!("App Init | Reading node list...");
 		app.og_node_vec = match Node::get(&app.node_path) {
 			Ok(toml) => toml,
 			Err(err) => {
@@ -297,6 +305,7 @@ impl App {
 			},
 		};
 		// Read pool list
+		debug!("App Init | Reading pool list...");
 		app.og_pool_vec = match Pool::get(&app.pool_path) {
 			Ok(toml) => toml,
 			Err(err) => {
@@ -317,6 +326,7 @@ impl App {
 		//----------------------------------------------------------------------------------------------------
 		let mut og = app.og.lock().unwrap(); // Lock [og]
 		// Handle max threads
+		debug!("App Init | Handling max thread overflow...");
 		og.xmrig.max_threads = app.max_threads;
 		let current = og.xmrig.current_threads;
 		let max = og.xmrig.max_threads;
@@ -324,6 +334,7 @@ impl App {
 			og.xmrig.current_threads = max;
 		}
 		// Handle [node_vec] overflow
+		debug!("App Init | Handling [node_vec] overflow");
 		if og.p2pool.selected_index > app.og_node_vec.len() {
 			warn!("App | Overflowing manual node index [{} > {}], resetting to 1", og.p2pool.selected_index, app.og_node_vec.len());
 			let (name, node) = app.og_node_vec[0].clone();
@@ -339,6 +350,7 @@ impl App {
 			app.state.p2pool.selected_zmq = node.zmq;
 		}
 		// Handle [pool_vec] overflow
+		debug!("App Init | Handling [pool_vec] overflow...");
 		if og.xmrig.selected_index > app.og_pool_vec.len() {
 			warn!("App | Overflowing manual pool index [{} > {}], resetting to 1", og.xmrig.selected_index, app.og_pool_vec.len());
 			let (name, pool) = app.og_pool_vec[0].clone();
@@ -351,16 +363,24 @@ impl App {
 			app.state.xmrig.selected_ip = pool.ip;
 			app.state.xmrig.selected_port = pool.port;
 		}
+
 		// Apply TOML values to [Update]
+		debug!("App Init | Applying TOML values to [Update]...");
 		let p2pool_path = og.gupax.absolute_p2pool_path.clone();
 		let xmrig_path = og.gupax.absolute_xmrig_path.clone();
 		let tor = og.gupax.update_via_tor;
 		app.update = Arc::new(Mutex::new(Update::new(app.exe.clone(), p2pool_path, xmrig_path, tor)));
+
+
+		debug!("App Init | Setting state Gupax version...");
 		// Set state version as compiled in version
 		og.version.lock().unwrap().gupax = GUPAX_VERSION.to_string();
 		app.state.version.lock().unwrap().gupax = GUPAX_VERSION.to_string();
+
+		debug!("App Init | Setting saved [Tab]...");
 		// Set saved [Tab]
 		app.tab = app.state.gupax.tab;
+
 		drop(og); // Unlock [og]
 		info!("App ... OK");
 
@@ -370,6 +390,7 @@ impl App {
 		info!("Helper ... OK");
 
 		// Check for privilege. Should be Admin on [Windows] and NOT root on Unix.
+		debug!("App Init | Checking for privilege level...");
 		#[cfg(target_os = "windows")]
 		if is_elevated::is_elevated() {
 			app.admin = true;
@@ -835,6 +856,7 @@ impl eframe::App for App {
 		// *-------*
 		// | DEBUG |
 		// *-------*
+		debug!("App | ----------- Start of [update()] -----------");
 
 		// If [F11] was pressed, reverse [fullscreen] bool
         if ctx.input_mut().consume_key(Modifiers::NONE, Key::F11) {
@@ -843,10 +865,12 @@ impl eframe::App for App {
         }
 
 		// Refresh AT LEAST once a second
+		debug!("App | Refreshing frame once per second");
 		ctx.request_repaint_after(SECOND);
 
 		// This sets the top level Ui dimensions.
 		// Used as a reference for other uis.
+		debug!("App | Setting width/height");
 		CentralPanel::default().show(ctx, |ui| {
 			let available_width = ui.available_width();
 			if self.width != available_width {
@@ -863,6 +887,7 @@ impl eframe::App for App {
 		// while the user was readjusting the frame. It's a pretty heavy operation and looks
 		// buggy when calling it that many times. Looking for a [must_resize] in addtion to
 		// checking if the user is hovering over the app means that we only have call it once.
+		debug!("App | Checking if we need to resize");
 		if self.must_resize && ctx.is_pointer_over_area() {
 			self.resizing = true;
 			self.must_resize = false;
@@ -899,6 +924,7 @@ impl eframe::App for App {
 		}
 
 		// If there's an error, display [ErrorState] on the whole screen until user responds
+		debug!("App | Checking if there is an error in [ErrorState]");
 		if self.error_state.error {
 			CentralPanel::default().show(ctx, |ui| {
 			ui.vertical_centered(|ui| {
@@ -1058,6 +1084,7 @@ impl eframe::App for App {
 		// The struct fields are compared directly because [Version]
 		// contains Arc<Mutex>'s that cannot be compared easily.
 		// They don't need to be compared anyway.
+		debug!("App | Checking diff between [og] & [state]");
 		let og = self.og.lock().unwrap();
 		if og.gupax != self.state.gupax || og.p2pool != self.state.p2pool || og.xmrig != self.state.xmrig || self.og_node_vec != self.node_vec {
 			self.diff = true;
@@ -1067,6 +1094,7 @@ impl eframe::App for App {
 		drop(og);
 
 		// Top: Tabs
+		debug!("App | Rendering TOP tabs");
 		TopBottomPanel::top("top").show(ctx, |ui| {
 			let width = (self.width - (SPACE*10.0))/5.0;
 			let height = self.height/12.0;
@@ -1091,6 +1119,7 @@ impl eframe::App for App {
 		});
 
 		// Bottom: app info + state/process buttons
+		debug!("App | Rendering BOTTOM bar");
 		TopBottomPanel::bottom("bottom").show(ctx, |ui| {
 			let height = self.height/20.0;
 			ui.style_mut().override_text_style = Some(Name("Bottom".into()));
@@ -1308,6 +1337,7 @@ impl eframe::App for App {
 		});
 
 		// Middle panel, contents of the [Tab]
+		debug!("App | Rendering CENTRAL_PANEL (tab contents)");
 		CentralPanel::default().show(ctx, |ui| {
 			// This sets the Ui dimensions after Top/Bottom are filled
 			self.width = ui.available_width();
@@ -1315,6 +1345,7 @@ impl eframe::App for App {
 			ui.style_mut().override_text_style = Some(TextStyle::Body);
 			match self.tab {
 				Tab::About => {
+					debug!("App | Entering [About] Tab");
 					ui.add_space(10.0);
 					ui.vertical_centered(|ui| {
 						// Display [Gupax] banner at max, 1/4 the available length
@@ -1336,15 +1367,19 @@ impl eframe::App for App {
 					});
 				}
 				Tab::Status => {
+					debug!("App | Entering [Status] Tab");
 					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, self.p2pool.lock().unwrap().is_alive(), self.xmrig.lock().unwrap().is_alive(), self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
+					debug!("App | Entering [Gupax] Tab");
 					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
 				}
 				Tab::P2pool => {
+					debug!("App | Entering [P2Pool] Tab");
 					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_console, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
+					debug!("App | Entering [XMRig] Tab");
 					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_console, self.width, self.height, ctx, ui);
 				}
 			}
