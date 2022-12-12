@@ -16,10 +16,10 @@ Gupax (*guh-picks*) is a (Windows|macOS|Linux) GUI for mining [**Monero**](https
 - [Advanced](#Advanced)
 	- [Verifying](#Verifying)
 	- [Command Line](#Command-Line)
-	- [Tor/Arti](#Tor-Arti)
+	- [Tor/Arti](#TorArti)
 	- [Logs](#Logs)
 	- [Disk](#Disk)
-	- [Swapping P2Pool/XMRig](#Swapping-P2Pool-XMRig)
+	- [Swapping P2Pool/XMRig](#Swapping-P2PoolXMRig)
 	- [Gupax](#Gupax)
 	- [P2Pool](#P2Pool)
 	- [XMRig](#XMRig)
@@ -106,6 +106,10 @@ With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/X
 ---
 
 ### Disk
+
+---
+
+### Swapping P2Pool/XMRig
 
 ---
 

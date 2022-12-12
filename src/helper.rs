@@ -453,6 +453,20 @@ impl Helper {
 
 		path.pop();
 		path.push(P2POOL_API_PATH);
+		// Attempt to remove stale API file
+		match std::fs::remove_file(&path) {
+			Ok(_) => info!("P2Pool | Attempting to remove stale API file ... OK"),
+			Err(e) => warn!("P2Pool | Attempting to remove stale API file ... FAIL ... {}", e),
+		}
+		// Attempt to create a default empty one.
+		use std::io::Write;
+		if let Ok(_) = std::fs::File::create(&path) {
+			let text = r#"{"hashrate_15m":0,"hashrate_1h":0,"hashrate_24h":0,"shares_found":0,"average_effort":0.0,"current_effort":0.0,"connections":0}"#;
+			match std::fs::write(&path, text) {
+				Ok(_) => info!("P2Pool | Creating default empty API file ... OK"),
+				Err(e) => warn!("P2Pool | Creating default empty API file ... FAIL ... {}", e),
+			}
+		}
 		let regex = P2poolRegex::new();
 		let start = process.lock().unwrap().start;
 
@@ -528,7 +542,7 @@ impl Helper {
 				// Deserialize
 				if let Ok(s) = PrivP2poolApi::str_to_priv_p2pool_api(&string) {
 					// Update the structs.
-					PubP2poolApi::update_from_priv(&pub_api, &priv_api);
+					PubP2poolApi::update_from_priv(&pub_api, s);
 				}
 			}
 
@@ -1319,9 +1333,8 @@ impl PubP2poolApi {
 	}
 
 	// Mutate [PubP2poolApi] with data from a [PrivP2poolApi] and the process output.
-	fn update_from_priv(public: &Arc<Mutex<Self>>, private: &Arc<Mutex<PrivP2poolApi>>) {
+	fn update_from_priv(public: &Arc<Mutex<Self>>, private: PrivP2poolApi) {
 		// priv -> pub conversion
-		let private = private.lock().unwrap();
 		let mut public = public.lock().unwrap();
 		*public = Self {
 			hashrate_15m: HumanNumber::from_u128(private.hashrate_15m),
@@ -1331,8 +1344,8 @@ impl PubP2poolApi {
 			average_effort: HumanNumber::to_percent(private.average_effort),
 			current_effort: HumanNumber::to_percent(private.current_effort),
 			connections: HumanNumber::from_u16(private.connections),
-			..public.clone()
-		}
+			..std::mem::take(&mut *public)
+		};
 	}
 
 	// Essentially greps the output for [x.xxxxxxxxxxxx XMR] where x = a number.

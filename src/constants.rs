@@ -118,6 +118,14 @@ pub const STATUS_GUPAX_MEMORY_USAGE: &str = "How much memory Gupax is currently 
 pub const STATUS_GUPAX_SYSTEM_CPU_USAGE: &str = "How much CPU your entire system is currently using. This accounts for all your threads (it is out of 100%)";
 pub const STATUS_GUPAX_SYSTEM_MEMORY: &str = "How much memory your entire system has (including swap) and is currently using in Gigabytes";
 pub const STATUS_GUPAX_SYSTEM_CPU_MODEL: &str = "The detected model of your system's CPU and its current frequency";
+//--
+pub const STATUS_P2POOL_UPTIME: &str = "How long P2Pool has been online";
+pub const STATUS_P2POOL_PAYOUTS: &str = "The total amount of payouts received and an extrapolated estimate of how many you will receive. Warning: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
+pub const STATUS_P2POOL_XMR: &str = "The total amount of XMR mined via P2Pool and an extrapolated estimate of how many you will mine in the future. Warning: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
+pub const STATUS_P2POOL_HASHRATE: &str = "The total amount of hashrate your P2Pool has pointed at it in 15 minute, 1 hour, and 24 hour averages";
+pub const STATUS_P2POOL_SHARES: &str = "The total amount of shares found on P2Pool";
+pub const STATUS_P2POOL_EFFORT: &str = "The average amount of effort needed to find a share, and the current effort";
+pub const STATUS_P2POOL_CONNECTIONS: &str = "The total amount of miner connections on this P2Pool";
 
 // Gupax
 pub const GUPAX_UPDATE: &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";

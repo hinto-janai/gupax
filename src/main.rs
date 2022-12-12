@@ -1041,7 +1041,7 @@ impl eframe::App for App {
 							let color = if hide { BLACK } else { BRIGHT_YELLOW };
 							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { sudo.hide = !sudo.hide; }
 						});
-						if esc || ui.add_sized([width, height*4.0], Button::new("Leave")).clicked() { self.error_state.reset(); };
+						if (esc && !sudo.testing) || ui.add_sized([width, height*4.0], Button::new("Leave")).clicked() { self.error_state.reset(); };
 						// If [test_sudo()] finished, reset error state.
 						if sudo.success {
 							self.error_state.reset();
@@ -1336,7 +1336,7 @@ impl eframe::App for App {
 					});
 				}
 				Tab::Status => {
-					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, self.width, self.height, ctx, ui);
+					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, self.p2pool.lock().unwrap().is_alive(), self.xmrig.lock().unwrap().is_alive(), self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
 					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
