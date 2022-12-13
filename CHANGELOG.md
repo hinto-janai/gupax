@@ -1,3 +1,14 @@
+# v1.0.0
+## Updates
+*
+
+## Fixes
+*
+
+
+---
+
+
 # v0.9.0
 ## Beta Release
 * Connected `[Start/Stop/Restart]` buttons to actual processes:
