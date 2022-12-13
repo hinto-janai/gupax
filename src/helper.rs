@@ -369,6 +369,7 @@ impl Helper {
 				out_peers: "10".to_string(),
 				in_peers: "10".to_string(),
 			};
+			api_path.push(P2POOL_API_PATH);
 
 		// [Advanced]
 		} else {
@@ -417,7 +418,8 @@ impl Helper {
 					log_level: state.log_level.to_string(),
 					out_peers: state.out_peers.to_string(),
 					in_peers: state.in_peers.to_string(),
-				}
+				};
+				api_path.push(P2POOL_API_PATH);
 			}
 		}
 		(args, api_path)

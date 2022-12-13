@@ -63,12 +63,12 @@ pub const XMRIG_API_URI: &str = "1/summary"; // The default relative URI of XMRi
 // Process state tooltips (online, offline, etc)
 pub const P2POOL_ALIVE:  &str = "P2Pool is online";
 pub const P2POOL_DEAD:   &str = "P2Pool is offline";
-pub const P2POOL_FAILED: &str = "P2Pool is offline, and failed when exiting";
+pub const P2POOL_FAILED: &str = "P2Pool is offline and failed when exiting";
 pub const P2POOL_MIDDLE: &str = "P2Pool is in the middle of (re)starting/stopping";
 
 pub const XMRIG_ALIVE:  &str = "XMRig is online";
 pub const XMRIG_DEAD:   &str = "XMRig is offline";
-pub const XMRIG_FAILED: &str = "XMRig is offline, and failed when exiting";
+pub const XMRIG_FAILED: &str = "XMRig is offline and failed when exiting";
 pub const XMRIG_MIDDLE: &str = "XMRig is in the middle of (re)starting/stopping";
 
 // This is the typical space added when using

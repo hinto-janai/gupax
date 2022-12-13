@@ -5,11 +5,25 @@
 	- Uptime & Exit status display when process is stopped
 	- Added colors for process state:
 		```
-		GREEN = Process is online and healthy
-		YELLOW = Process is in the middle of (re)starting/stopping
-		RED = Process is offline, and failed when exiting
-		GRAY = Process is offline
+		GREEN  | Process is online and healthy
+		YELLOW | Process is in the middle of (re)starting/stopping
+		RED    | Process is offline, and failed when exiting
+		GRAY   | Process is offline
 		```
+* Added keyboard shortcuts:
+	```
+	*--------------------------------------*
+	|             Key shortcuts            |
+	|--------------------------------------|
+	|             F11 | Fullscreen         |
+	|          Escape | Quit screen        |
+	|      Left/Right | Switch Tabs        |
+	|              Up | Start/Restart      |
+	|            Down | Stop               |
+	|               S | Save               |
+	|               R | Reset              |
+	*--------------------------------------*
+	```
 * Added `PTY` (actual terminals) for P2Pool/XMRig:
 	- Scrollable logs up to 500k bytes (6000~ lines) before refresh
 	- All STDOUT/STDERR relayed to GUI (buffered, lazily read)
