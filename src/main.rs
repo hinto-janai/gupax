@@ -562,9 +562,60 @@ impl Regexes {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- [Pressed] enum
+// These represent the keys pressed during the frame.
+// I could use egui's [Key] but there is no option for
+// a [None] and wrapping [key_pressed] like [Option<egui::Key>]
+// meant that I had to destructure like this:
+//     if let Some(egui::Key)) = key_pressed { /* do thing */ }
+//
+// That's ugly, so these are used instead so a simple compare can be used.
+#[derive(Debug,Clone,Eq,PartialEq)]
+enum KeyPressed {
+	F11,
+	Left,
+	Right,
+	Up,
+	Down,
+	Esc,
+	S,
+	R,
+	None,
+}
+
+impl KeyPressed {
+	fn is_f11(&self) -> bool {
+		*self == Self::F11
+	}
+	fn is_left(&self) -> bool {
+		*self == Self::Left
+	}
+	fn is_right(&self) -> bool {
+		*self == Self::Right
+	}
+	fn is_up(&self) -> bool {
+		*self == Self::Up
+	}
+	fn is_down(&self) -> bool {
+		*self == Self::Down
+	}
+	fn is_esc(&self) -> bool {
+		*self == Self::Esc
+	}
+	fn is_s(&self) -> bool {
+		*self == Self::S
+	}
+	fn is_r(&self) -> bool {
+		*self == Self::R
+	}
+	fn is_none(&self) -> bool {
+		*self == Self::None
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- Init functions
 fn init_text_styles(ctx: &egui::Context, width: f32) {
-	let scale = width / 26.666;
+	let scale = width / 30.0;
 	let mut style = (*ctx.style()).clone();
 	style.text_styles = [
 		(Small, FontId::new(scale/3.0, Proportional)),
@@ -859,14 +910,73 @@ impl eframe::App for App {
 		debug!("App | ----------- Start of [update()] -----------");
 
 		// If [F11] was pressed, reverse [fullscreen] bool
-        if ctx.input_mut().consume_key(Modifiers::NONE, Key::F11) {
+		let mut input = ctx.input_mut();
+		let mut key: KeyPressed = {
+			if input.consume_key(Modifiers::NONE, Key::F11) {
+				KeyPressed::F11
+			} else if input.consume_key(Modifiers::NONE, Key::ArrowLeft) {
+				KeyPressed::Left
+			} else if input.consume_key(Modifiers::NONE, Key::ArrowRight) {
+				KeyPressed::Right
+			} else if input.consume_key(Modifiers::NONE, Key::ArrowUp) {
+				KeyPressed::Up
+			} else if input.consume_key(Modifiers::NONE, Key::ArrowDown) {
+				KeyPressed::Down
+			} else if input.consume_key(Modifiers::NONE, Key::Escape) {
+				KeyPressed::Esc
+			} else if input.consume_key(Modifiers::NONE, Key::S) {
+				KeyPressed::S
+			} else if input.consume_key(Modifiers::NONE, Key::R) {
+				KeyPressed::R
+			} else {
+				KeyPressed::None
+			}
+		};
+		drop(input);
+
+        if key.is_f11() {
             let info = frame.info();
             frame.set_fullscreen(!info.window_info.fullscreen);
+		// Change Tabs LEFT
+        } else if key.is_left() {
+			match self.tab {
+				Tab::About  => self.tab = Tab::Xmrig,
+				Tab::Status => self.tab = Tab::About,
+				Tab::Gupax  => self.tab = Tab::Status,
+				Tab::P2pool => self.tab = Tab::Gupax,
+				Tab::Xmrig  => self.tab = Tab::P2pool,
+			};
+		// Change Tabs RIGHT
+        } else if key.is_right() {
+			match self.tab {
+				Tab::About  => self.tab = Tab::Status,
+				Tab::Status => self.tab = Tab::Gupax,
+				Tab::Gupax  => self.tab = Tab::P2pool,
+				Tab::P2pool => self.tab = Tab::Xmrig,
+				Tab::Xmrig  => self.tab = Tab::About,
+			};
         }
 
 		// Refresh AT LEAST once a second
 		debug!("App | Refreshing frame once per second");
 		ctx.request_repaint_after(SECOND);
+
+		// Get P2Pool/XMRig process state.
+		// These values are checked multiple times so
+		// might as well check only once here to save
+		// on a bunch of [.lock().unwrap()]s.
+		debug!("App | Locking and collecting P2Pool state...");
+		let p2pool = self.p2pool.lock().unwrap();
+		let p2pool_is_alive = p2pool.is_alive();
+		let p2pool_is_waiting = p2pool.is_waiting();
+		let p2pool_state = p2pool.state;
+		drop(p2pool);
+		debug!("App | Locking and collecting XMRig state...");
+		let xmrig = self.xmrig.lock().unwrap();
+		let xmrig_is_alive = xmrig.is_alive();
+		let xmrig_is_waiting = xmrig.is_waiting();
+		let xmrig_state = xmrig.state;
+		drop(xmrig);
 
 		// This sets the top level Ui dimensions.
 		// Used as a reference for other uis.
@@ -950,8 +1060,8 @@ impl eframe::App for App {
 					StayQuit => {
 						let mut text = "".to_string();
 						if *self.update.lock().unwrap().updating.lock().unwrap() { text = format!("{}\nUpdate is in progress...! Quitting may cause file corruption!", text); }
-						if self.p2pool.lock().unwrap().is_alive() { text = format!("{}\nP2Pool is online...!", text); }
-						if self.xmrig.lock().unwrap().is_alive() { text = format!("{}\nXMRig is online...!", text); }
+						if p2pool_is_alive { text = format!("{}\nP2Pool is online...!", text); }
+						if xmrig_is_alive { text = format!("{}\nXMRig is online...!", text); }
 						ui.add_sized([width, height], Label::new("--- Are you sure you want to quit? ---"));
 						ui.add_sized([width, height], Label::new(text))
 					},
@@ -985,18 +1095,15 @@ impl eframe::App for App {
 				};
 				let height = ui.available_height();
 
-				// Capture [Esc] key
-				let esc = ctx.input_mut().consume_key(Modifiers::NONE, Key::Escape);
-
 				match self.error_state.buttons {
 					YesNo   => {
 						if ui.add_sized([width, height/2.0], Button::new("Yes")).clicked() { self.error_state.reset() }
 						// If [Esc] was pressed, assume [No]
-				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { exit(0); }
+				        if key.is_esc() || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { exit(0); }
 					},
 					StayQuit => {
 						// If [Esc] was pressed, assume [Stay]
-				        if esc || ui.add_sized([width, height/2.0], Button::new("Stay")).clicked() {
+				        if key.is_esc() || ui.add_sized([width, height/2.0], Button::new("Stay")).clicked() {
 							self.error_state = ErrorState::new();
 						}
 						if ui.add_sized([width, height/2.0], Button::new("Quit")).clicked() { exit(0); }
@@ -1020,7 +1127,7 @@ impl eframe::App for App {
 								Err(e) => self.error_state.set(format!("State reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 							};
 						}
-				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state.reset() }
+				        if key.is_esc() || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state.reset() }
 					},
 					ResetNode => {
 						if ui.add_sized([width, height/2.0], Button::new("Yes")).clicked() {
@@ -1038,7 +1145,7 @@ impl eframe::App for App {
 								Err(e) => self.error_state.set(format!("Node reset fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 							};
 						}
-				        if esc || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state.reset() }
+				        if key.is_esc() || ui.add_sized([width, height/2.0], Button::new("No")).clicked() { self.error_state.reset() }
 					},
 					ErrorButtons::Sudo => {
 						let sudo_width = width/10.0;
@@ -1067,13 +1174,13 @@ impl eframe::App for App {
 							let color = if hide { BLACK } else { BRIGHT_YELLOW };
 							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { sudo.hide = !sudo.hide; }
 						});
-						if (esc && !sudo.testing) || ui.add_sized([width, height*4.0], Button::new("Leave")).clicked() { self.error_state.reset(); };
+						if (key.is_esc() && !sudo.testing) || ui.add_sized([width, height*4.0], Button::new("Leave")).clicked() { self.error_state.reset(); };
 						// If [test_sudo()] finished, reset error state.
 						if sudo.success {
 							self.error_state.reset();
 						}
 					},
-					Okay|WindowsAdmin => if esc || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
+					Okay|WindowsAdmin => if key.is_esc() || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
 					Quit => if ui.add_sized([width, height], Button::new("Quit")).clicked() { exit(1); },
 				}
 			})});
@@ -1148,14 +1255,14 @@ impl eframe::App for App {
 					ui.separator();
 					// [P2Pool/XMRig] Status
 					use ProcessState::*;
-					match self.p2pool.lock().unwrap().state {
+					match p2pool_state {
 						Alive  => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(GREEN))).on_hover_text(P2POOL_ALIVE),
 						Dead   => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(GRAY))).on_hover_text(P2POOL_DEAD),
 						Failed => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(RED))).on_hover_text(P2POOL_FAILED),
 						Middle|Waiting => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(YELLOW))).on_hover_text(P2POOL_MIDDLE),
 					};
 					ui.separator();
-					match self.xmrig.lock().unwrap().state {
+					match xmrig_state {
 						Alive  => ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(GREEN))).on_hover_text(XMRIG_ALIVE),
 						Dead   => ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(GRAY))).on_hover_text(XMRIG_DEAD),
 						Failed => ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(RED))).on_hover_text(XMRIG_FAILED),
@@ -1172,7 +1279,7 @@ impl eframe::App for App {
 				ui.group(|ui| {
 					ui.set_enabled(self.diff);
 					let width = width / 2.0;
-					if ui.add_sized([width, height], Button::new("Reset")).on_hover_text("Reset changes").clicked() {
+					if key.is_r() || ui.add_sized([width, height], Button::new("Reset")).on_hover_text("Reset changes").clicked() {
 						let og = self.og.lock().unwrap().clone();
 						self.state.gupax = og.gupax;
 						self.state.p2pool = og.p2pool;
@@ -1180,7 +1287,7 @@ impl eframe::App for App {
 						self.node_vec = self.og_node_vec.clone();
 						self.pool_vec = self.og_pool_vec.clone();
 					}
-					if ui.add_sized([width, height], Button::new("Save")).on_hover_text("Save changes").clicked() {
+					if key.is_s() || ui.add_sized([width, height], Button::new("Save")).on_hover_text("Save changes").clicked() {
 						match State::save(&mut self.state, &self.state_path) {
 							Ok(_) => {
 								let mut og = self.og.lock().unwrap();
@@ -1230,17 +1337,17 @@ impl eframe::App for App {
 						});
 						ui.group(|ui| {
 							let width = (ui.available_width()/3.0)-5.0;
-							if self.p2pool.lock().unwrap().is_waiting() {
+							if p2pool_is_waiting {
 								ui.add_enabled_ui(false, |ui| {
 									ui.add_sized([width, height], Button::new("⟲")).on_disabled_hover_text("Restart P2Pool");
 									ui.add_sized([width, height], Button::new("⏹")).on_disabled_hover_text("Stop P2Pool");
 									ui.add_sized([width, height], Button::new("▶")).on_disabled_hover_text("Start P2Pool");
 								});
-							} else if self.p2pool.lock().unwrap().is_alive() {
-								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() {
+							} else if p2pool_is_alive {
+								if key.is_up() || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() {
 									Helper::restart_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
-								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() {
+								if key.is_down() || ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() {
 									Helper::stop_p2pool(&self.helper);
 								}
 								ui.add_enabled_ui(false, |ui| {
@@ -1260,7 +1367,7 @@ impl eframe::App for App {
 									ui.set_enabled(false);
 									text = P2POOL_PATH_NOT_EXE.to_string();
 								}
-								if ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start P2Pool").on_disabled_hover_text(text).clicked() {
+								if key.is_up() || ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start P2Pool").on_disabled_hover_text(text).clicked() {
 									Helper::start_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 							}
@@ -1279,14 +1386,14 @@ impl eframe::App for App {
 						});
 						ui.group(|ui| {
 							let width = (ui.available_width()/3.0)-5.0;
-							if self.xmrig.lock().unwrap().is_waiting() {
+							if xmrig_is_waiting {
 								ui.add_enabled_ui(false, |ui| {
 									ui.add_sized([width, height], Button::new("⟲")).on_disabled_hover_text("Restart XMRig");
 									ui.add_sized([width, height], Button::new("⏹")).on_disabled_hover_text("Stop XMRig");
 									ui.add_sized([width, height], Button::new("▶")).on_disabled_hover_text("Start XMRig");
 								});
-							} else if self.xmrig.lock().unwrap().is_alive() {
-								if ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
+							} else if xmrig_is_alive {
+								if key.is_up() || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
 									if cfg!(windows) {
 										Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
 									} else if cfg!(target_os = "macos") {
@@ -1297,7 +1404,7 @@ impl eframe::App for App {
 										self.error_state.ask_sudo(&self.sudo);
 									}
 								}
-								if ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
+								if key.is_down() || ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
 									if cfg!(target_os = "macos") {
 										self.sudo.lock().unwrap().signal = ProcessSignal::Stop;
 										self.error_state.ask_sudo(&self.sudo);
@@ -1319,11 +1426,11 @@ impl eframe::App for App {
 									text = XMRIG_PATH_NOT_EXE.to_string();
 								}
 								#[cfg(target_os = "windows")]
-								if ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
+								if key.is_up() || ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
 									Helper::start_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
 								}
 								#[cfg(target_family = "unix")]
-								if ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
+								if key.is_up() || ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
 									self.sudo.lock().unwrap().signal = ProcessSignal::Start;
 									self.error_state.ask_sudo(&self.sudo);
 								}
@@ -1346,29 +1453,37 @@ impl eframe::App for App {
 			match self.tab {
 				Tab::About => {
 					debug!("App | Entering [About] Tab");
+					let width = self.width;
+					let height = self.height/30.0;
+					let max_height = self.height;
 					ui.add_space(10.0);
 					ui.vertical_centered(|ui| {
-						// Display [Gupax] banner at max, 1/4 the available length
-						self.img.banner.show_max_size(ui, Vec2::new(self.width, self.height/4.0));
-						ui.label("Gupax is a cross-platform GUI for mining");
-						ui.hyperlink_to("[Monero]", "https://www.github.com/monero-project/monero");
-						ui.label("on the decentralized");
-						ui.hyperlink_to("[P2Pool]", "https://www.github.com/SChernykh/p2pool");
-						ui.label("using the dedicated");
-						ui.hyperlink_to("[XMRig]", "https://www.github.com/xmrig/xmrig");
-						ui.label("miner for max hashrate");
+						ui.set_max_height(max_height);
+						// Display [Gupax] banner
+						self.img.banner.show_max_size(ui, Vec2::new(width, height*3.0));
+						ui.add_sized([width, height], Label::new("Gupax is a cross-platform GUI for mining"));
+						ui.add_sized([width, height], Hyperlink::from_label_and_url("[Monero]", "https://www.github.com/monero-project/monero"));
+						ui.add_sized([width, height], Label::new("on"));
+						ui.add_sized([width, height], Hyperlink::from_label_and_url("[P2Pool]", "https://www.github.com/SChernykh/p2pool"));
+						ui.add_sized([width, height], Label::new("using"));
+						ui.add_sized([width, height], Hyperlink::from_label_and_url("[XMRig]", "https://www.github.com/xmrig/xmrig"));
 
-						ui.add_space(ui.available_height()/1.8);
-						ui.hyperlink_to("Powered by egui", "https://github.com/emilk/egui");
-						ui.hyperlink_to("Made by hinto-janaiyo".to_string(), "https://gupax.io");
-						ui.label("egui is licensed under MIT & Apache-2.0");
-						ui.label("Gupax, P2Pool, and XMRig are licensed under GPLv3");
-						if cfg!(debug_assertions) { ui.label(format!("{}", self.now.elapsed().as_secs_f64())); }
+						ui.add_space(SPACE*3.0);
+						ui.style_mut().override_text_style = Some(Monospace);
+						ui.add_sized([width, height], Label::new(KEYBOARD_SHORTCUTS));
+						ui.style_mut().override_text_style = Some(Body);
+						ui.add_space(SPACE*3.0);
+
+						ui.add_sized([width, height], Hyperlink::from_label_and_url("Powered by egui", "https://github.com/emilk/egui"));
+						ui.add_sized([width, height], Hyperlink::from_label_and_url("Made by hinto-janaiyo".to_string(), "https://gupax.io"));
+						ui.add_sized([width, height], Label::new("egui is licensed under MIT & Apache-2.0"));
+						ui.add_sized([width, height], Label::new("Gupax, P2Pool, and XMRig are licensed under GPLv3"));
+						if cfg!(debug_assertions) { ui.label(format!("Gupax is running in debug mode - {}", self.now.elapsed().as_secs_f64())); }
 					});
 				}
 				Tab::Status => {
 					debug!("App | Entering [Status] Tab");
-					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, self.p2pool.lock().unwrap().is_alive(), self.xmrig.lock().unwrap().is_alive(), self.width, self.height, ctx, ui);
+					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
 					debug!("App | Entering [Gupax] Tab");

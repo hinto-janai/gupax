@@ -36,7 +36,7 @@ use egui::{
 pub struct Status {}
 
 impl Status {
-pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_online: bool, xmrig_online: bool, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
 	let width = (width/3.0)-(SPACE*1.666);
 	let min_height = height/1.14;
 	let height = height/25.0;
@@ -64,7 +64,7 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 	// [P2Pool]
 	ui.group(|ui| { ui.vertical(|ui| {
 		debug!("Status Tab | Rendering [P2Pool]");
-		ui.set_enabled(p2pool_online);
+		ui.set_enabled(p2pool_alive);
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height*2.0], Label::new(RichText::new("[P2Pool]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("P2Pool is online").on_disabled_hover_text("P2Pool is offline");
 		let api = p2pool_api.lock().unwrap();
@@ -89,7 +89,7 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 	// [XMRig]
 	ui.group(|ui| { ui.vertical(|ui| {
 		debug!("Status Tab | Rendering [XMRig]");
-		ui.set_enabled(xmrig_online);
+		ui.set_enabled(xmrig_alive);
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height*2.0], Label::new(RichText::new("[XMRig]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("XMRig is online").on_disabled_hover_text("XMRig is offline");
 		let api = xmrig_api.lock().unwrap();

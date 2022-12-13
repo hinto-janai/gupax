@@ -40,6 +40,19 @@ pub const HORIZONTAL: &str = "--------------------------------------------";
 // The text to separate my "process stopped, here's stats" text from the process output in the console.
 pub const HORI_CONSOLE: &str = "---------------------------------------------------------------------------------------------------------------------------";
 
+// Keyboard shortcuts
+pub const KEYBOARD_SHORTCUTS: &str =
+r#"*--------------------------------------*
+|             Key shortcuts            |
+|--------------------------------------|
+|             F11 | Fullscreen         |
+|          Escape | Quit screen        |
+|      Left/Right | Switch Tabs        |
+|              Up | Start/Restart      |
+|            Down | Stop               |
+|               S | Save               |
+|               R | Reset              |
+*--------------------------------------*"#;
 // P2Pool & XMRig default API stuff
 #[cfg(target_os = "windows")]
 pub const P2POOL_API_PATH: &str = r"local\stats"; // The default relative FS path of P2Pool's local API

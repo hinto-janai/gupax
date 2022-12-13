@@ -2,7 +2,7 @@
 ![banner.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/banner.png)
 Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
 
-**If you just want to see a short 1-minute video on how to download and run Gupax: [click here.](#Video)**
+**To see a 1-minute video on how to download and run Gupax: [click here.](#Video)**
 
 ## Contents
 * [What is Monero/P2Pool/XMRig/Gupax?](#what-is-monero-p2pool-xmrig-and-gupax)

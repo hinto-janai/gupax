@@ -558,6 +558,12 @@ impl Helper {
 			}
 			drop(lock);
 
+
+			// Check if logs need resetting
+			debug!("P2Pool Watchdog | Attempting log reset check");
+			Self::check_reset_output_full(&output_full, ProcessName::P2pool);
+			Self::check_reset_gui_p2pool_output(&gui_api);
+
 			// Always update from output
 			debug!("P2Pool Watchdog | Starting [update_from_output()]");
 			PubP2poolApi::update_from_output(&pub_api, &output_full, &output_buf, start.elapsed(), &regex);
@@ -571,11 +577,6 @@ impl Helper {
 					PubP2poolApi::update_from_priv(&pub_api, s);
 				}
 			}
-
-			// Check if logs need resetting
-			debug!("P2Pool Watchdog | Attempting log reset check");
-			Self::check_reset_output_full(&output_full, ProcessName::P2pool);
-			Self::check_reset_gui_p2pool_output(&gui_api);
 
 			// Sleep (only if 900ms hasn't passed)
 			let elapsed = now.elapsed().as_millis();
@@ -910,6 +911,11 @@ impl Helper {
 			}
 			drop(lock);
 
+			// Check if logs need resetting
+			debug!("XMRig Watchdog | Attempting log reset check");
+			Self::check_reset_output_full(&output_full, ProcessName::Xmrig);
+			Self::check_reset_gui_xmrig_output(&gui_api);
+
 			// Always update from output
 			debug!("XMRig Watchdog | Starting [update_from_output()]");
 			PubXmrigApi::update_from_output(&pub_api, &output_buf, start.elapsed());
@@ -922,11 +928,6 @@ impl Helper {
 			} else {
 				warn!("XMRig Watchdog | Could not send HTTP API request to: {}", api_ip_port);
 			}
-
-			// Check if logs need resetting
-			debug!("XMRig Watchdog | Attempting log reset check");
-			Self::check_reset_output_full(&output_full, ProcessName::Xmrig);
-			Self::check_reset_gui_xmrig_output(&gui_api);
 
 			// Sleep (only if 900ms hasn't passed)
 			let elapsed = now.elapsed().as_millis();
@@ -978,8 +979,33 @@ impl Helper {
 
 	// The "helper" thread. Syncs data between threads here and the GUI.
 	pub fn spawn_helper(helper: &Arc<Mutex<Self>>, mut sysinfo: sysinfo::System, pid: sysinfo::Pid, max_threads: usize) {
-		let mut helper = Arc::clone(helper);
-		let mut pub_sys = Arc::clone(&helper.lock().unwrap().pub_sys);
+		// The ordering of these locks is _very_ important. They MUST be in sync with how the main GUI thread locks stuff
+		// or a deadlock will occur given enough time. They will eventually both want to lock the [Arc<Mutex>] the other
+		// thread is already locking. Yes, I figured this out the hard way, hence the vast amount of debug!() messages.
+		// Example of different order (BAD!):
+		//
+		// GUI Main       -> locks [p2pool] first
+		// Helper         -> locks [gui_api_p2pool] first
+		// GUI Status Tab -> trys to lock [gui_api_p2pool] -> CAN'T
+		// Helper         -> trys to lock [p2pool] -> CAN'T
+		//
+		// These two threads are now in a deadlock because both
+		// are trying to access locks the other one already has.
+		//
+		// The locking order here must be in the same chronological
+		// order as the main GUI thread (top to bottom).
+
+		let helper = Arc::clone(helper);
+		let lock = helper.lock().unwrap();
+		let p2pool = Arc::clone(&lock.p2pool);
+		let xmrig = Arc::clone(&lock.xmrig);
+		let pub_sys = Arc::clone(&lock.pub_sys);
+		let gui_api_p2pool = Arc::clone(&lock.gui_api_p2pool);
+		let gui_api_xmrig = Arc::clone(&lock.gui_api_xmrig);
+		let pub_api_p2pool = Arc::clone(&lock.pub_api_p2pool);
+		let pub_api_xmrig = Arc::clone(&lock.pub_api_xmrig);
+		drop(lock);
+
 		let sysinfo_cpu = sysinfo::CpuRefreshKind::everything();
 		let sysinfo_processes = sysinfo::ProcessRefreshKind::new().with_cpu();
 
@@ -991,23 +1017,21 @@ impl Helper {
 		let start = Instant::now();
 		debug!("Helper | ----------- Start of loop -----------");
 
-		//
 		// Ignore the invasive [debug!()] messages on the right side of the code.
 		// The reason why they are there are so that it's extremely easy to track
 		// down the culprit of an [Arc<Mutex>] deadlock. I know, they're ugly.
-		//
 
 		// 2. Lock... EVERYTHING!
-		let mut lock = helper.lock().unwrap();                                     debug!("Helper | Locking (1/8) ... [helper]");
+		let mut lock = helper.lock().unwrap();                                debug!("Helper | Locking (1/8) ... [helper]");
+		let p2pool = p2pool.lock().unwrap();                                  debug!("Helper | Locking (2/8) ... [p2pool]");
+		let xmrig = xmrig.lock().unwrap();                                    debug!("Helper | Locking (3/8) ... [xmrig]");
+		let mut lock_pub_sys = pub_sys.lock().unwrap();                       debug!("Helper | Locking (4/8) ... [pub_sys]");
+		let mut gui_api_p2pool = gui_api_p2pool.lock().unwrap();              debug!("Helper | Locking (5/8) ... [gui_api_p2pool]");
+		let mut gui_api_xmrig = gui_api_xmrig.lock().unwrap();                debug!("Helper | Locking (6/8) ... [gui_api_xmrig]");
+		let mut pub_api_p2pool = pub_api_p2pool.lock().unwrap();              debug!("Helper | Locking (7/8) ... [pub_api_p2pool]");
+		let mut pub_api_xmrig = pub_api_xmrig.lock().unwrap();                debug!("Helper | Locking (8/8) ... [pub_api_xmrig]");
 		// Calculate Gupax's uptime always.
 		lock.uptime = HumanTime::into_human(lock.instant.elapsed());
-		let mut gui_api_p2pool = lock.gui_api_p2pool.lock().unwrap();              debug!("Helper | Locking (2/8) ... [gui_api_p2pool]");
-		let mut gui_api_xmrig = lock.gui_api_xmrig.lock().unwrap();                debug!("Helper | Locking (3/8) ... [gui_api_xmrig]");
-		let mut pub_api_p2pool = lock.pub_api_p2pool.lock().unwrap();              debug!("Helper | Locking (4/8) ... [pub_api_p2pool]");
-		let mut pub_api_xmrig = lock.pub_api_xmrig.lock().unwrap();                debug!("Helper | Locking (5/8) ... [pub_api_xmrig]");
-		let p2pool = lock.p2pool.lock().unwrap();                                  debug!("Helper | Locking (6/8) ... [p2pool]");
-		let xmrig = lock.xmrig.lock().unwrap();                                    debug!("Helper | Locking (7/8) ... [xmrig]");
-		let mut lock_pub_sys = pub_sys.lock().unwrap();                            debug!("Helper | Locking (8/8) ... [pub_sys]");
 		// If [P2Pool] is alive...
 		if p2pool.is_alive() {
 			debug!("Helper | P2Pool is alive! Running [combine_gui_pub_api()]");
@@ -1056,7 +1080,7 @@ impl Helper {
 		// 5. End loop
 		}
 
-		// 5. Something has gone terribly wrong if the helper exited this loop.
+		// 6. Something has gone terribly wrong if the helper exited this loop.
 		let text = "HELPER THREAD HAS ESCAPED THE LOOP...!";
 		error!("{}", text);error!("{}", text);error!("{}", text);panic!("{}", text);
 
