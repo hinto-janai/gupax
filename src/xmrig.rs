@@ -60,7 +60,7 @@ impl Xmrig {
 			});
 		});
 		ui.separator();
-		let response = ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(buffer), r#"Commands: [h]ashrate, [p]ause, [r]esume, re[s]ults, [c]onnection"#));
+		let response = ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(buffer), r#"Commands: [h]ashrate, [p]ause, [r]esume, re[s]ults, [c]onnection"#)).on_hover_text(XMRIG_INPUT);
 		// If the user pressed enter, dump buffer contents into the process STDIN
 		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
 			response.request_focus();                  // Get focus back

@@ -119,6 +119,13 @@ pub fn print_dash(toml: &str) {
 	info!("{}", HORIZONTAL);
 }
 
+// Write str to console with [debug!] surrounded by "---"
+pub fn print_dash_debug(toml: &str) {
+	info!("{}", HORIZONTAL);
+	for i in toml.lines() { debug!("{}", i); }
+	info!("{}", HORIZONTAL);
+}
+
 // Turn relative paths into absolute paths
 pub fn into_absolute_path(path: String) -> Result<PathBuf, TomlError> {
 	let path = PathBuf::from(path);
@@ -395,11 +402,11 @@ impl Node {
 
 	// Save [Node] onto disk file [node.toml]
 	pub fn save(vec: &[(String, Self)], path: &PathBuf) -> Result<(), TomlError> {
-		info!("Node | Saving to disk...");
+		info!("Node | Saving to disk ... [{}]", path.display());
 		let string = Self::to_string(vec)?;
 		match fs::write(path, string) {
-			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
-			Err(err) => { error!("Couldn't overwrite TOML file"); Err(TomlError::Io(err)) },
+			Ok(_) => { info!("Node | Save ... OK"); Ok(()) },
+			Err(err) => { error!("Node | Couldn't overwrite file"); Err(TomlError::Io(err)) },
 		}
 	}
 
@@ -497,11 +504,11 @@ impl Pool {
 	}
 
 	pub fn save(vec: &[(String, Self)], path: &PathBuf) -> Result<(), TomlError> {
-		info!("Pool | Saving to disk...");
+		info!("Pool | Saving to disk ... [{}]", path.display());
 		let string = Self::to_string(vec)?;
 		match fs::write(path, string) {
-			Ok(_) => { info!("TOML save ... OK"); Ok(()) },
-			Err(err) => { error!("Couldn't overwrite TOML file"); Err(TomlError::Io(err)) },
+			Ok(_) => { info!("Pool | Save ... OK"); Ok(()) },
+			Err(err) => { error!("Pool | Couldn't overwrite file"); Err(TomlError::Io(err)) },
 		}
 	}
 }

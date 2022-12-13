@@ -167,10 +167,11 @@ impl SudoState {
 					_ => crate::helper::Helper::start_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),
 				}
 			} else {
-				state.lock().unwrap().msg = "Incorrect password!".to_string();
+				state.lock().unwrap().msg = "Incorrect password! (or sudo timeout)".to_string();
 				Self::wipe(&state);
 			}
 			state.lock().unwrap().signal = ProcessSignal::None;
+			state.lock().unwrap().testing = false;
 		});
 	}
 }

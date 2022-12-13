@@ -289,7 +289,7 @@ impl App {
 		app.og = Arc::new(Mutex::new(app.state.clone()));
 		// Read node list
 		debug!("App Init | Reading node list...");
-		app.og_node_vec = match Node::get(&app.node_path) {
+		app.node_vec = match Node::get(&app.node_path) {
 			Ok(toml) => toml,
 			Err(err) => {
 				error!("Node ... {}", err);
@@ -304,9 +304,12 @@ impl App {
 				Node::new_vec()
 			},
 		};
+		app.og_node_vec = app.node_vec.clone();
+		debug!("Node Vec:");
+		debug!("{:#?}", app.node_vec);
 		// Read pool list
 		debug!("App Init | Reading pool list...");
-		app.og_pool_vec = match Pool::get(&app.pool_path) {
+		app.pool_vec = match Pool::get(&app.pool_path) {
 			Ok(toml) => toml,
 			Err(err) => {
 				error!("Pool ... {}", err);
@@ -321,7 +324,10 @@ impl App {
 				Pool::new_vec()
 			},
 		};
-		app.pool_vec = app.og_pool_vec.clone();
+		app.og_pool_vec = app.pool_vec.clone();
+		debug!("Pool Vec:");
+		debug!("{:#?}", app.pool_vec);
+
 
 		//----------------------------------------------------------------------------------------------------
 		let mut og = app.og.lock().unwrap(); // Lock [og]
@@ -1167,6 +1173,7 @@ impl eframe::App for App {
 							let box_width = (ui.available_width()/2.0)-5.0;
 							if (response.lost_focus() && ui.input().key_pressed(Key::Enter)) ||
 							ui.add_sized([box_width, height], Button::new("Enter")).on_hover_text(PASSWORD_ENTER).clicked() {
+								response.request_focus();
 								if !sudo.testing {
 									SudoState::test_sudo(self.sudo.clone(), &self.helper.clone(), &self.state.xmrig, &self.state.gupax.absolute_xmrig_path);
 								}
@@ -1187,13 +1194,17 @@ impl eframe::App for App {
 			return
 		}
 
-		// Compare [og == state] and the [node_vec] and enable diff if found.
+		// Compare [og == state] & [node_vec/pool_vec] and enable diff if found.
 		// The struct fields are compared directly because [Version]
 		// contains Arc<Mutex>'s that cannot be compared easily.
 		// They don't need to be compared anyway.
 		debug!("App | Checking diff between [og] & [state]");
 		let og = self.og.lock().unwrap();
-		if og.gupax != self.state.gupax || og.p2pool != self.state.p2pool || og.xmrig != self.state.xmrig || self.og_node_vec != self.node_vec {
+		if og.gupax != self.state.gupax       ||
+			og.p2pool != self.state.p2pool    ||
+			og.xmrig != self.state.xmrig      ||
+			self.og_node_vec != self.node_vec ||
+			self.og_pool_vec != self.pool_vec {
 			self.diff = true;
 		} else {
 			self.diff = false;
@@ -1299,11 +1310,11 @@ impl eframe::App for App {
 								self.error_state.set(format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::Okay);
 							},
 						};
-						match Node::save(&self.og_node_vec, &self.node_path) {
+						match Node::save(&self.node_vec, &self.node_path) {
 							Ok(_) => self.og_node_vec = self.node_vec.clone(),
 							Err(e) => self.error_state.set(format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::Okay),
 						};
-						match Pool::save(&self.og_pool_vec, &self.pool_path) {
+						match Pool::save(&self.pool_vec, &self.pool_path) {
 							Ok(_) => self.og_pool_vec = self.pool_vec.clone(),
 							Err(e) => self.error_state.set(format!("Pool list: {}", e), ErrorFerris::Error, ErrorButtons::Okay),
 						};

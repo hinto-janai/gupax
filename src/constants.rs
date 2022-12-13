@@ -198,7 +198,11 @@ pub const P2POOL_AUTO_SELECT: &str = "Automatically select the fastest community
 pub const P2POOL_SELECT_FASTEST: &str = "Select the fastest community Monero node";
 pub const P2POOL_PING: &str = "Ping the built-in community Monero nodes";
 pub const P2POOL_ADDRESS: &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
-pub const P2POOL_ARGUMENTS: &str = "Start P2Pool with these arguments and override all below settings; If the [--data-api] & [--local-api] flag is not given, Gupax will append it to the arguments automatically so that the [Status] tab can work";
+pub const P2POOL_INPUT: &str = "Send a command to P2Pool";
+pub const P2POOL_ARGUMENTS: &str =
+r#"WARNING: Use [--no-color] and make sure to set [--data-api <PATH>] & [--local-api] so that the [Status] can work!
+
+Start P2Pool with these arguments and override all below settings"#;
 pub const P2POOL_SIMPLE: &str =
 r#"Use simple P2Pool settings:
     - Remote community Monero node
@@ -239,7 +243,11 @@ r#"Use advanced XMRig settings:
 	- TLS setting
 	- Keepalive setting
 	- Custom HTTP API IP/Port"#;
-pub const XMRIG_ARGUMENTS: &str = "Start XMRig with these arguments and override all below settings; If the [http-api] options are not set, Gupax will append it to the arguments automatically so that the [Status] tab can work";
+pub const XMRIG_INPUT: &str = "Send a command to XMRig";
+pub const XMRIG_ARGUMENTS: &str =
+r#"WARNING: Use [--no-color] and make sure to set [--http-host <IP>] & [--http-port <PORT>] so that the [Status] can work!
+
+Start XMRig with these arguments and override all below settings"#;
 pub const XMRIG_ADDRESS: &str = "Specify which Monero address to payout to. This does nothing if mining to P2Pool since the address being payed out to will be the one P2Pool started with. This doubles as a rig identifier for P2Pool and some pools.";
 pub const XMRIG_NAME: &str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
 pub const XMRIG_IP: &str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";

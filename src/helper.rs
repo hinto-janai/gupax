@@ -322,10 +322,10 @@ impl Helper {
 	pub fn start_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
 		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
 
-		let args = Self::build_p2pool_args_and_mutate_img(helper, state, path);
+		let (args, api_path) = Self::build_p2pool_args_and_mutate_img(helper, state, path);
 
 		// Print arguments & user settings to console
-		crate::disk::print_dash(&format!("P2Pool | Launch arguments: {:#?}", args));
+		crate::disk::print_dash(&format!("P2Pool | Launch arguments: {:#?} | API Path: {:#?}", args, api_path));
 
 		// Spawn watchdog thread
 		let process = Arc::clone(&helper.lock().unwrap().p2pool);
@@ -334,14 +334,14 @@ impl Helper {
 		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_p2pool);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, priv_api, args, path);
+			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, priv_api, args, path, api_path);
 		});
 	}
 
 	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
 	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
-	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> Vec<String> {
+	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> (Vec<String>, PathBuf) {
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
 		let mut api_path = path.clone();
@@ -389,6 +389,7 @@ impl Helper {
 						"--loglevel"  => p2pool_image.log_level = arg.to_string(),
 						"--out-peers" => p2pool_image.out_peers = arg.to_string(),
 						"--in-peers"  => p2pool_image.in_peers = arg.to_string(),
+						"--data-api"  => api_path = PathBuf::from(arg),
 						_ => (),
 					}
 					args.push(arg.to_string());
@@ -419,11 +420,11 @@ impl Helper {
 				}
 			}
 		}
-		args
+		(args, api_path)
 	}
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, mut path: std::path::PathBuf) {
+	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path: std::path::PathBuf) {
 		// 1a. Create PTY
 		debug!("P2Pool | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -463,18 +464,15 @@ impl Helper {
 		let output_full = Arc::clone(&process.lock().unwrap().output_full);
 		let output_buf = Arc::clone(&process.lock().unwrap().output_buf);
 
-		path.pop();
-		path.push(P2POOL_API_PATH);
-
 		debug!("P2Pool | Cleaning old API files...");
 		// Attempt to remove stale API file
-		match std::fs::remove_file(&path) {
+		match std::fs::remove_file(&api_path) {
 			Ok(_) => info!("P2Pool | Attempting to remove stale API file ... OK"),
 			Err(e) => warn!("P2Pool | Attempting to remove stale API file ... FAIL ... {}", e),
 		}
 		// Attempt to create a default empty one.
 		use std::io::Write;
-		if let Ok(_) = std::fs::File::create(&path) {
+		if let Ok(_) = std::fs::File::create(&api_path) {
 			let text = r#"{"hashrate_15m":0,"hashrate_1h":0,"hashrate_24h":0,"shares_found":0,"average_effort":0.0,"current_effort":0.0,"connections":0}"#;
 			match std::fs::write(&path, text) {
 				Ok(_) => info!("P2Pool | Creating default empty API file ... OK"),
@@ -570,7 +568,7 @@ impl Helper {
 
 			// Read API file into string
 			debug!("P2Pool Watchdog | Attempting API file read");
-			if let Ok(string) = PrivP2poolApi::read_p2pool_api(&path) {
+			if let Ok(string) = PrivP2poolApi::read_p2pool_api(&api_path) {
 				// Deserialize
 				if let Ok(s) = PrivP2poolApi::str_to_priv_p2pool_api(&string) {
 					// Update the structs.
@@ -685,7 +683,8 @@ impl Helper {
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
 	pub fn build_xmrig_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf) -> (Vec<String>, String) {
 		let mut args = Vec::with_capacity(500);
-		let mut api_ip_port = String::with_capacity(15);
+		let mut api_ip = String::with_capacity(15);
+		let mut api_port = String::with_capacity(5);
 		let path = path.clone();
 		// The actual binary we're executing is [sudo], technically
 		// the XMRig path is just an argument to sudo, so add it.
@@ -712,7 +711,8 @@ impl Helper {
 				threads: state.current_threads.to_string(),
 				url: "127.0.0.1:3333 (Local P2Pool)".to_string(),
 			};
-			api_ip_port = "127.0.0.1:18088".to_string();
+			api_ip = "127.0.0.1".to_string();
+			api_port = "18088".to_string();
 
 		// [Advanced]
 		} else {
@@ -725,8 +725,10 @@ impl Helper {
 				let mut xmrig_image = lock.img_xmrig.lock().unwrap();
 				for arg in state.arguments.split_whitespace() {
 					match last {
-						"--threads" => xmrig_image.threads = arg.to_string(),
-						"--url"     => xmrig_image.url = arg.to_string(),
+						"--threads"   => xmrig_image.threads = arg.to_string(),
+						"--url"       => xmrig_image.url = arg.to_string(),
+						"--http-host" => api_ip = arg.to_string(),
+						"--http-port" => api_port = arg.to_string(),
 						_ => (),
 					}
 					args.push(arg.to_string());
@@ -734,8 +736,9 @@ impl Helper {
 				}
 			// Else, build the argument
 			} else {
-				let api_ip = if state.api_ip == "localhost" || state.api_ip.is_empty() { "127.0.0.1" } else { &state.api_ip }; // XMRig doesn't understand [localhost]
-				let api_port = if state.api_port.is_empty() { "18088" } else { &state.api_port };
+				// XMRig doesn't understand [localhost]
+				api_ip = if state.api_ip == "localhost" || state.api_ip.is_empty() { "127.0.0.1".to_string() } else { state.api_ip.to_string() };
+				api_port = if state.api_port.is_empty() { "18088".to_string() } else { state.api_port.to_string() };
 				let url = format!("{}:{}", state.selected_ip, state.selected_port); // Combine IP:Port into one string
 				args.push("--user".to_string()); args.push(state.address.clone());                // Wallet
 				args.push("--threads".to_string()); args.push(state.current_threads.to_string()); // Threads
@@ -751,10 +754,9 @@ impl Helper {
 					url,
 					threads: state.current_threads.to_string(),
 				};
-				api_ip_port = format!("{}:{}", api_ip, api_port);
 			}
 		}
-		(args, api_ip_port)
+		(args, format!("{}:{}", api_ip, api_port))
 	}
 
 	// We actually spawn [sudo] on Unix, with XMRig being the argument.
