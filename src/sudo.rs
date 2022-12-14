@@ -46,6 +46,12 @@ pub struct SudoState {
 	pub signal: ProcessSignal, // Main GUI will set this depending on if we want [Start] or [Restart]
 }
 
+impl Default for SudoState {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl SudoState {
 	#[cfg(target_os = "windows")]
 	pub fn new() -> Self {
@@ -74,7 +80,7 @@ impl SudoState {
 
 	// Resets the state.
 	pub fn reset(state: &Arc<Mutex<Self>>) {
-		Self::wipe(&state);
+		Self::wipe(state);
 		let mut state = state.lock().unwrap();
 		state.testing = false;
 		state.success = false;
@@ -159,7 +165,7 @@ impl SudoState {
 					},
 				}
 			}
-			sudo.kill();
+			if let Err(e) = sudo.kill() { error!("Sudo | Kill error: {}", e); }
 			if state.lock().unwrap().success {
 				match state.lock().unwrap().signal {
 					ProcessSignal::Restart => crate::helper::Helper::restart_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),

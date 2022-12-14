@@ -37,7 +37,7 @@
 use std::{
 	sync::{Arc,Mutex},
 	path::PathBuf,
-	process::{Command,Stdio},
+	process::Stdio,
 	fmt::Write,
 	time::*,
 	thread,
@@ -48,7 +48,7 @@ use crate::{
 };
 use sysinfo::SystemExt;
 use serde::{Serialize,Deserialize};
-use num_format::{Buffer,Locale};
+use sysinfo::{CpuExt,ProcessExt};
 use log::*;
 
 //---------------------------------------------------------------------------------------------------- Constants
@@ -114,6 +114,12 @@ impl Sys {
 	}
 }
 
+impl Default for Sys {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- [Process] Struct
 // This holds all the state of a (child) process.
 // The main GUI thread will use this to display console text, online state, etc.
@@ -154,7 +160,7 @@ pub struct Process {
 
 //---------------------------------------------------------------------------------------------------- [Process] Impl
 impl Process {
-	pub fn new(name: ProcessName, args: String, path: PathBuf) -> Self {
+	pub fn new(name: ProcessName, _args: String, _path: PathBuf) -> Self {
 		Self {
 			name,
 			state: ProcessState::Dead,
@@ -210,11 +216,16 @@ pub enum ProcessName {
 
 impl std::fmt::Display for ProcessState  { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "{:#?}", self) } }
 impl std::fmt::Display for ProcessSignal { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "{:#?}", self) } }
-impl std::fmt::Display for ProcessName   { fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "{:#?}", self) } }
+impl std::fmt::Display for ProcessName   {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		match *self {
+			ProcessName::P2pool => write!(f, "P2Pool"),
+			ProcessName::Xmrig => write!(f, "XMRig"),
+		}
+	}
+}
 
 //---------------------------------------------------------------------------------------------------- [Helper]
-use tokio::io::{BufReader,AsyncBufReadExt};
-
 impl Helper {
 	//---------------------------------------------------------------------------------------------------- General Functions
 	pub fn new(instant: std::time::Instant, pub_sys: Arc<Mutex<Sys>>, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, gui_api_xmrig: Arc<Mutex<PubXmrigApi>>, img_p2pool: Arc<Mutex<ImgP2pool>>, img_xmrig: Arc<Mutex<ImgXmrig>>) -> Self {
@@ -242,8 +253,8 @@ impl Helper {
 		let mut stdout = std::io::BufReader::new(reader).lines();
 		while let Some(Ok(line)) = stdout.next() {
 //			println!("{}", line); // For debugging.
-			writeln!(output_full.lock().unwrap(), "{}", line);
-			writeln!(output_buf.lock().unwrap(), "{}", line);
+			if let Err(e) = writeln!(output_full.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
+			if let Err(e) = writeln!(output_buf.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
 		}
 	}
 
@@ -280,7 +291,7 @@ impl Helper {
 		let mut gui_api = gui_api.lock().unwrap();
 		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
 			info!("XMRig | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
-			let text = format!("{}\nP2Pool GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you, but your stats will be fine (at least for around a month) since they rely on an internal log!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
+			let text = format!("{}\nXMRig GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you, but your stats will be fine (at least for around a month) since they rely on an internal log!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
 			gui_api.output.clear();
 			gui_api.output.push_str(&text);
 		}
@@ -302,7 +313,7 @@ impl Helper {
 		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Restart;
 		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
 
-		let helper = Arc::clone(&helper);
+		let helper = Arc::clone(helper);
 		let state = state.clone();
 		let path = path.clone();
 		// This thread lives to wait, start p2pool then die.
@@ -344,7 +355,7 @@ impl Helper {
 	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> (Vec<String>, PathBuf) {
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
-		let mut api_path = path.clone();
+		let mut api_path = path;
 		api_path.pop();
 
 		// [Simple]
@@ -426,7 +437,7 @@ impl Helper {
 	}
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path: std::path::PathBuf) {
+	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, _priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path: std::path::PathBuf) {
 		// 1a. Create PTY
 		debug!("P2Pool | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -474,7 +485,7 @@ impl Helper {
 		}
 		// Attempt to create a default empty one.
 		use std::io::Write;
-		if let Ok(_) = std::fs::File::create(&api_path) {
+		if std::fs::File::create(&api_path).is_ok() {
 			let text = r#"{"hashrate_15m":0,"hashrate_1h":0,"hashrate_24h":0,"shares_found":0,"average_effort":0.0,"current_effort":0.0,"connections":0}"#;
 			match std::fs::write(&path, text) {
 				Ok(_) => info!("P2Pool | Creating default empty API file ... OK"),
@@ -510,7 +521,8 @@ impl Helper {
 			// Check SIGNAL
 			if process.lock().unwrap().signal == ProcessSignal::Stop {
 				debug!("P2Pool Watchdog | Stop SIGNAL caught");
-				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
+				// This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
+				if let Err(e) = child_pty.lock().unwrap().kill() { error!("P2Pool Watchdog | Kill error: {}", e); }
 				// Wait to get the exit status
 				let exit_status = match child_pty.lock().unwrap().wait() {
 					Ok(e) => {
@@ -532,7 +544,8 @@ impl Helper {
 			// Check RESTART
 			} else if process.lock().unwrap().signal == ProcessSignal::Restart {
 				debug!("P2Pool Watchdog | Restart SIGNAL caught");
-				child_pty.lock().unwrap().kill(); // This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
+				// This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
+				if let Err(e) = child_pty.lock().unwrap().kill() { error!("P2Pool Watchdog | Kill error: {}", e); }
 				// Wait to get the exit status
 				let exit_status = match child_pty.lock().unwrap().wait() {
 					Ok(e) => if e.success() { "Successful" } else { "Failed" },
@@ -553,7 +566,7 @@ impl Helper {
 				let input = std::mem::take(&mut lock.input);
 				for line in input {
 					debug!("P2Pool Watchdog | User input not empty, writing to STDIN: [{}]", line);
-					writeln!(lock.stdin.as_mut().unwrap(), "{}", line);
+					if let Err(e) = writeln!(lock.stdin.as_mut().unwrap(), "{}", line) { error!("P2Pool Watchdog | STDIN error: {}", e); }
 				}
 			}
 			drop(lock);
@@ -624,7 +637,7 @@ impl Helper {
 		// Write the [sudo] password to STDIN.
 		let mut stdin = child.stdin.take().unwrap();
 		use std::io::Write;
-		writeln!(stdin, "{}\n", sudo.lock().unwrap().pass);
+		if let Err(e) = writeln!(stdin, "{}\n", sudo.lock().unwrap().pass) { error!("Sudo Kill | STDIN error: {}", e); }
 
 		// Return exit code of [sudo/kill].
 		child.wait().unwrap().success()
@@ -644,7 +657,7 @@ impl Helper {
 		helper.lock().unwrap().xmrig.lock().unwrap().signal = ProcessSignal::Restart;
 		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
 
-		let helper = Arc::clone(&helper);
+		let helper = Arc::clone(helper);
 		let state = state.clone();
 		let path = path.clone();
 		// This thread lives to wait, start xmrig then die.
@@ -704,7 +717,7 @@ impl Helper {
 			let rig = if state.simple_rig.is_empty() { GUPAX_VERSION_UNDERSCORE.to_string() } else { state.simple_rig.clone() }; // Rig name
 			args.push("--url".to_string()); args.push("127.0.0.1:3333".to_string());          // Local P2Pool (the default)
 			args.push("--threads".to_string()); args.push(state.current_threads.to_string()); // Threads
-			args.push("--user".to_string()); args.push(rig.clone());                          // Rig name
+			args.push("--user".to_string()); args.push(rig);                                  // Rig name
 			args.push("--no-color".to_string());                                              // No color
 			args.push("--http-host".to_string()); args.push("127.0.0.1".to_string());         // HTTP API IP
 			args.push("--http-port".to_string()); args.push("18088".to_string());             // HTTP API Port
@@ -782,7 +795,7 @@ impl Helper {
 	// The XMRig watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	// This isn't actually async, a tokio runtime is unfortunately needed because [Hyper] is an async library (HTTP API calls)
 	#[tokio::main]
-	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, mut path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, api_ip_port: String) {
+	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, _priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, api_ip_port: String) {
 		// 1a. Create PTY
 		debug!("XMRig | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -808,7 +821,7 @@ impl Helper {
 			// 1d. Sleep to wait for [sudo]'s non-echo prompt (on Unix).
 			// this prevents users pass from showing up in the STDOUT.
 			std::thread::sleep(std::time::Duration::from_secs(3));
-			writeln!(pair.master, "{}", sudo.lock().unwrap().pass);
+			if let Err(e) = writeln!(pair.master, "{}", sudo.lock().unwrap().pass) { error!("XMRig | Sudo STDIN error: {}", e); };
 			SudoState::wipe(&sudo);
 		}
 
@@ -872,7 +885,7 @@ impl Helper {
 					// If we're restarting, the next start will wipe it for us.
 					if signal != ProcessSignal::Restart { SudoState::wipe(&sudo); }
 				} else {
-					child_pty.lock().unwrap().kill();
+					if let Err(e) = child_pty.lock().unwrap().kill() { error!("XMRig Watchdog | Kill error: {}", e); }
 				}
 				let exit_status = match child_pty.lock().unwrap().wait() {
 					Ok(e) => {
@@ -910,7 +923,7 @@ impl Helper {
 				let input = std::mem::take(&mut lock.input);
 				for line in input {
 					debug!("XMRig Watchdog | User input not empty, writing to STDIN: [{}]", line);
-					writeln!(lock.stdin.as_mut().unwrap(), "{}", line);
+					if let Err(e) = writeln!(lock.stdin.as_mut().unwrap(), "{}", line) { error!("XMRig Watchdog | STDIN error: {}", e); };
 				}
 			}
 			drop(lock);
@@ -951,7 +964,6 @@ impl Helper {
 
 	//---------------------------------------------------------------------------------------------------- The "helper"
 	fn update_pub_sys_from_sysinfo(sysinfo: &sysinfo::System, pub_sys: &mut Sys, pid: &sysinfo::Pid, helper: &Helper, max_threads: usize) {
-		use sysinfo::{CpuExt,ProcessExt,NetworkExt,NetworksExt};
 		let gupax_uptime = helper.uptime.to_string();
 		let cpu = &sysinfo.cpus()[0];
 		let gupax_cpu_usage = format!("{:.2}%", sysinfo.process(*pid).unwrap().cpu_usage()/(max_threads as f32));
@@ -977,7 +989,6 @@ impl Helper {
 			system_cpu_usage,
 			system_memory,
 			system_cpu_model,
-			..*pub_sys
 		};
 	}
 
@@ -1083,11 +1094,6 @@ impl Helper {
 
 		// 5. End loop
 		}
-
-		// 6. Something has gone terribly wrong if the helper exited this loop.
-		let text = "HELPER THREAD HAS ESCAPED THE LOOP...!";
-		error!("{}", text);error!("{}", text);error!("{}", text);panic!("{}", text);
-
 		});
 	}
 }
@@ -1100,6 +1106,12 @@ use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct HumanTime(Duration);
+
+impl Default for HumanTime {
+	fn default() -> Self {
+		Self::new()
+	}
+}
 
 impl HumanTime {
 	pub fn new() -> HumanTime {
@@ -1143,7 +1155,7 @@ impl std::fmt::Display for HumanTime {
 		let minutes = day_secs % 3600 / 60;
 		let seconds = day_secs % 60;
 
-		let ref mut started = false;
+		let started = &mut false;
 		Self::plural(f, started, "year", years)?;
 		Self::plural(f, started, "month", months)?;
 		Self::plural(f, started, "day", days)?;
@@ -1409,7 +1421,7 @@ impl PubP2poolApi {
 
 		// 2. Parse the full STDOUT
 		let output = output.lock().unwrap();
-		let (payouts, xmr) = Self::calc_payouts_and_xmr(&output, &regex);
+		let (payouts, xmr) = Self::calc_payouts_and_xmr(&output, regex);
 
 		// 3. Calculate hour/day/month given elapsed time
 		let elapsed_as_secs_f64 = elapsed.as_secs_f64();
@@ -1632,9 +1644,9 @@ impl PrivXmrigApi {
 	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_ip_port: &str) -> Result<Self, anyhow::Error> {
 		let request = hyper::Request::builder()
 			.method("GET")
-			.uri("http://".to_string() + api_ip_port + "/1/summary")
+			.uri("http://".to_string() + api_ip_port + XMRIG_API_URI)
 			.body(hyper::Body::empty())?;
-		let mut response = tokio::time::timeout(std::time::Duration::from_millis(500), client.request(request)).await?;
+		let response = tokio::time::timeout(std::time::Duration::from_millis(500), client.request(request)).await?;
 		let body = hyper::body::to_bytes(response?.body_mut()).await?;
 		Ok(serde_json::from_slice::<Self>(&body)?)
 	}

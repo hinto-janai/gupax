@@ -32,7 +32,7 @@ use regex::Regex;
 use log::*;
 
 impl P2pool {
-	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, _og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	debug!("P2Pool Tab | Rendering [Console]");
@@ -63,7 +63,7 @@ impl P2pool {
 		// If the user pressed enter, dump buffer contents into the process STDIN
 		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
 			response.request_focus();                  // Get focus back
-			let mut buffer = std::mem::take(buffer);   // Take buffer
+			let buffer = std::mem::take(buffer);       // Take buffer
 			let mut process = process.lock().unwrap(); // Lock
 			if process.is_alive() { process.input.push(buffer); } // Push only if alive
 		}
@@ -95,7 +95,7 @@ impl P2pool {
 		if self.address.is_empty() {
 			text = format!("Monero Address [{}/95] ➖", len);
 			color = Color32::LIGHT_GRAY;
-		} else if Regexes::addr_ok(&regex, &self.address) {
+		} else if Regexes::addr_ok(regex, &self.address) {
 			text = format!("Monero Address [{}/95] ✔", len);
 			color = Color32::from_rgb(100, 230, 100);
 		} else {

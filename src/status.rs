@@ -16,7 +16,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	Helper,
 	PubP2poolApi,
 	PubXmrigApi,
 	ImgP2pool,
@@ -27,7 +26,6 @@ use crate::{
 use std::sync::{Arc,Mutex};
 use log::*;
 use egui::{
-	containers::*,
 	Label,RichText,TextStyle
 };
 
@@ -36,7 +34,7 @@ use egui::{
 pub struct Status {}
 
 impl Status {
-pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, _p2pool_img: &Arc<Mutex<ImgP2pool>>, _xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	let width = (width/3.0)-(SPACE*1.666);
 	let min_height = height/1.14;
 	let height = height/25.0;
@@ -48,17 +46,17 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.add_sized([width, height*2.0], Label::new(RichText::new("[Gupax]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("Gupax is online");
 		let sys = sys.lock().unwrap();
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_GUPAX_UPTIME);
-		ui.add_sized([width, height], Label::new(format!("{}", sys.gupax_uptime)));
+		ui.add_sized([width, height], Label::new(sys.gupax_uptime.to_string()));
 		ui.add_sized([width, height], Label::new(RichText::new("Gupax CPU").underline().color(BONE))).on_hover_text(STATUS_GUPAX_CPU_USAGE);
-		ui.add_sized([width, height], Label::new(format!("{}", sys.gupax_cpu_usage)));
+		ui.add_sized([width, height], Label::new(sys.gupax_cpu_usage.to_string()));
 		ui.add_sized([width, height], Label::new(RichText::new("Gupax Memory").underline().color(BONE))).on_hover_text(STATUS_GUPAX_MEMORY_USAGE);
-		ui.add_sized([width, height], Label::new(format!("{}", sys.gupax_memory_used_mb)));
+		ui.add_sized([width, height], Label::new(sys.gupax_memory_used_mb.to_string()));
 		ui.add_sized([width, height], Label::new(RichText::new("System CPU").underline().color(BONE))).on_hover_text(STATUS_GUPAX_SYSTEM_CPU_USAGE);
-		ui.add_sized([width, height], Label::new(format!("{}", sys.system_cpu_usage)));
+		ui.add_sized([width, height], Label::new(sys.system_cpu_usage.to_string()));
 		ui.add_sized([width, height], Label::new(RichText::new("System Memory").underline().color(BONE))).on_hover_text(STATUS_GUPAX_SYSTEM_MEMORY);
-		ui.add_sized([width, height], Label::new(format!("{}", sys.system_memory)));
+		ui.add_sized([width, height], Label::new(sys.system_memory.to_string()));
 		ui.add_sized([width, height], Label::new(RichText::new("System CPU Model").underline().color(BONE))).on_hover_text(STATUS_GUPAX_SYSTEM_CPU_MODEL);
-		ui.add_sized([width, height], Label::new(format!("{}", sys.system_cpu_model)));
+		ui.add_sized([width, height], Label::new(sys.system_cpu_model.to_string()));
 		drop(sys);
 	})});
 	// [P2Pool]
@@ -104,7 +102,7 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.add_sized([width, height], Label::new(RichText::new("Shares").underline().color(BONE))).on_hover_text(STATUS_XMRIG_SHARES);
 		ui.add_sized([width, height], Label::new(format!("[Accepted: {}] [Rejected: {}]", api.accepted, api.rejected)));
 		ui.add_sized([width, height], Label::new(RichText::new("Pool").underline().color(BONE))).on_hover_text(STATUS_XMRIG_POOL);
-		ui.add_sized([width, height], Label::new(format!("{}", api.pool)));
+		ui.add_sized([width, height], Label::new(api.pool.to_string()));
 		drop(api);
 	})});
 	});

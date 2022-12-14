@@ -140,6 +140,12 @@ pub fn into_absolute_path(path: String) -> Result<PathBuf, TomlError> {
 }
 
 //---------------------------------------------------------------------------------------------------- [State] Impl
+impl Default for State {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl State {
 	pub fn new() -> Self {
 		let max_threads = num_cpus::get();

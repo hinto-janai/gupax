@@ -33,7 +33,7 @@ use regex::Regex;
 use log::*;
 
 impl Xmrig {
-	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	debug!("XMRig Tab | Rendering [Console]");
@@ -64,7 +64,7 @@ impl Xmrig {
 		// If the user pressed enter, dump buffer contents into the process STDIN
 		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
 			response.request_focus();                  // Get focus back
-			let mut buffer = std::mem::take(buffer);   // Take buffer
+			let buffer = std::mem::take(buffer);       // Take buffer
 			let mut process = process.lock().unwrap(); // Lock
 			if process.is_alive() { process.input.push(buffer); } // Push only if alive
 		}
@@ -127,14 +127,12 @@ impl Xmrig {
 	});
 
 	//---------------------------------------------------------------------------------------------------- Simple
-	let height = ui.available_height();
 	if self.simple {
 //		ui.group(|ui|
 
 //		});
 	} else {
 		debug!("XMRig Tab | Rendering [Pool List] elements");
-//		let _height = height / 10.0;
 		let width = ui.available_width() - 10.0;
 		let mut incorrect_input = false; // This will disable [Add/Delete] on bad input
 		// [Pool IP/Port]

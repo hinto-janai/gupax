@@ -81,7 +81,7 @@ pub enum Ratio {
 
 //---------------------------------------------------------------------------------------------------- Gupax
 impl Gupax {
-	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_path: &Path, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, error_state: &mut ErrorState, restart: &Arc<Mutex<Restart>>, width: f32, height: f32, frame: &mut eframe::Frame, ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_path: &Path, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, error_state: &mut ErrorState, restart: &Arc<Mutex<Restart>>, width: f32, height: f32, frame: &mut eframe::Frame, _ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		debug!("Gupax Tab | Rendering [Update] button + progress bar");
 		ui.group(|ui| {
@@ -95,7 +95,7 @@ impl Gupax {
 				ui.vertical(|ui| {
 					ui.set_enabled(!updating);
 					if ui.add_sized([width, height], Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
-						Update::spawn_thread(og, &self, state_path, update, error_state, restart);
+						Update::spawn_thread(og, self, state_path, update, error_state, restart);
 					}
 				});
 				ui.vertical(|ui| {
@@ -254,7 +254,7 @@ impl Gupax {
 	pub fn path_is_exe(path: &str) -> bool {
 		let path = path.to_string();
 		match crate::disk::into_absolute_path(path) {
-			Ok(path) => if path.is_file() { true } else { false },
+			Ok(path) => path.is_file(),
 			_ => false,
 		}
 	}

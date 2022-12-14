@@ -49,15 +49,8 @@ use std::{
 	time::Instant,
 	path::PathBuf,
 };
-// Sysinfo (this controls which info we get)
-use sysinfo::{
-	NetworkExt,
-	CpuExt,
-	ProcessExt,
-	System,
-	SystemExt,
-	PidExt,
-};
+// Sysinfo
+use sysinfo::SystemExt;
 // Modules
 mod ferris;
 mod constants;
@@ -468,6 +461,12 @@ pub struct ErrorState {
 	buttons: ErrorButtons, // Which buttons to display?
 }
 
+impl Default for ErrorState {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl ErrorState {
 	pub fn new() -> Self {
 		Self {
@@ -514,7 +513,7 @@ impl ErrorState {
 			ferris: ErrorFerris::Sudo,
 			buttons: ErrorButtons::Sudo,
 		};
-		SudoState::reset(&state)
+		SudoState::reset(state)
 	}
 }
 
@@ -564,7 +563,7 @@ impl Regexes {
 
 	// Check if a Monero address is correct.
 	pub fn addr_ok(&self, address: &str) -> bool {
-		address.len() == 95 && Regex::is_match(&self.address, &address) && !address.contains('0') && !address.contains('O') && !address.contains('l')
+		address.len() == 95 && Regex::is_match(&self.address, address) && !address.contains('0') && !address.contains('O') && !address.contains('l')
 	}
 }
 
@@ -728,13 +727,11 @@ fn init_auto(app: &mut App) {
 	if app.state.gupax.auto_xmrig {
 		if !Gupax::path_is_exe(&app.state.gupax.xmrig_path) {
 			warn!("Gupax | XMRig path is not an executable! Skipping auto-xmrig...");
+		} else if cfg!(windows) {
+			Helper::start_xmrig(&app.helper, &app.state.xmrig, &app.state.gupax.absolute_xmrig_path, Arc::clone(&app.sudo));
 		} else {
-			if cfg!(windows) {
-				Helper::start_xmrig(&app.helper, &app.state.xmrig, &app.state.gupax.absolute_xmrig_path, Arc::clone(&app.sudo));
-			} else {
-				app.sudo.lock().unwrap().signal = ProcessSignal::Start;
-				app.error_state.ask_sudo(&app.sudo);
-			}
+			app.sudo.lock().unwrap().signal = ProcessSignal::Start;
+			app.error_state.ask_sudo(&app.sudo);
 		}
 	} else {
 		info!("Skipping auto-xmrig...");
@@ -917,7 +914,7 @@ impl eframe::App for App {
 
 		// If [F11] was pressed, reverse [fullscreen] bool
 		let mut input = ctx.input_mut();
-		let mut key: KeyPressed = {
+		let key: KeyPressed = {
 			if input.consume_key(Modifiers::NONE, Key::F11) {
 				KeyPressed::F11
 			} else if input.consume_key(Modifiers::NONE, Key::ArrowLeft) {
@@ -975,13 +972,13 @@ impl eframe::App for App {
 		let p2pool = self.p2pool.lock().unwrap();
 		let p2pool_is_alive = p2pool.is_alive();
 		let p2pool_is_waiting = p2pool.is_waiting();
-		let p2pool_state = p2pool.state;
+		let p2pool_state = ProcessState::Alive;
 		drop(p2pool);
 		debug!("App | Locking and collecting XMRig state...");
 		let xmrig = self.xmrig.lock().unwrap();
 		let xmrig_is_alive = xmrig.is_alive();
 		let xmrig_is_waiting = xmrig.is_waiting();
-		let xmrig_state = xmrig.state;
+		let xmrig_state = ProcessState::Alive;
 		drop(xmrig);
 
 		// This sets the top level Ui dimensions.
@@ -1157,7 +1154,7 @@ impl eframe::App for App {
 						let sudo_width = width/10.0;
 						let height = ui.available_height()/4.0;
 						let mut sudo = self.sudo.lock().unwrap();
-						let hide = sudo.hide.clone();
+						let hide = sudo.hide;
 						ui.style_mut().override_text_style = Some(Monospace);
 						if sudo.testing {
 							ui.add_sized([width, height], Spinner::new().size(height));
@@ -1409,9 +1406,6 @@ impl eframe::App for App {
 								if key.is_up() || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
 									if cfg!(windows) {
 										Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
-									} else if cfg!(target_os = "macos") {
-										self.sudo.lock().unwrap().signal = ProcessSignal::Restart;
-										self.error_state.ask_sudo(&self.sudo);
 									} else {
 										self.sudo.lock().unwrap().signal = ProcessSignal::Restart;
 										self.error_state.ask_sudo(&self.sudo);
@@ -1493,7 +1487,6 @@ impl eframe::App for App {
 						ui.add_sized([width, height], Hyperlink::from_label_and_url("Made by hinto-janaiyo".to_string(), "https://gupax.io"));
 						ui.add_sized([width, height], Label::new("egui is licensed under MIT & Apache-2.0"));
 						ui.add_sized([width, height], Label::new("Gupax, P2Pool, and XMRig are licensed under GPLv3"));
-						if cfg!(debug_assertions) { ui.label(format!("Gupax is running in debug mode - {}", self.now.elapsed().as_secs_f64())); }
 					});
 				}
 				Tab::Status => {

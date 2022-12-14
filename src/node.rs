@@ -16,7 +16,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	State,
 	constants::*,
 };
 use serde::{Serialize,Deserialize};
@@ -197,6 +196,12 @@ pub struct Ping {
 	pub auto_selected: bool,
 }
 
+impl Default for Ping {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl Ping {
 	pub fn new() -> Self {
 		Self {
@@ -254,11 +259,8 @@ impl Ping {
 	// default = GRAY
 	#[tokio::main]
 	pub async fn ping(ping: &Arc<Mutex<Self>>) -> Result<String, anyhow::Error> {
-		// Timer
-		let now = Instant::now();
-		let ping = Arc::clone(ping);
-
 		// Start ping
+		let ping = Arc::clone(ping);
 		ping.lock().unwrap().pinging = true;
 		ping.lock().unwrap().prog = 0.0;
 		let percent = (100.0 / ((NODE_IPS.len()) as f32)).floor();
@@ -296,7 +298,7 @@ impl Ping {
 		let node_vec = std::mem::take(&mut *node_vec.lock().unwrap());
 		let fastest_info = format!("Fastest node: {}ms ... {} @ {}", node_vec[0].ms, node_vec[0].id, node_vec[0].ip);
 
-		let info = format!("Cleaning up connections");
+		let info = "Cleaning up connections".to_string();
 		info!("Ping | {}...", info);
 		let mut ping = ping.lock().unwrap();
 			ping.fastest = node_vec[0].id;
@@ -309,9 +311,9 @@ impl Ping {
 
 	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
 		let id = ip_to_enum(ip);
-		let now = Instant::now();
 		let ms;
 		let info;
+		let now = Instant::now();
 		match tokio::time::timeout(Duration::from_secs(5), client.request(request)).await {
 			Ok(_) => {
 				ms = now.elapsed().as_millis();

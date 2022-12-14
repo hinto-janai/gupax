@@ -58,7 +58,7 @@ r#"*--------------------------------------*
 pub const P2POOL_API_PATH: &str = r"local\stats"; // The default relative FS path of P2Pool's local API
 #[cfg(target_family = "unix")]
 pub const P2POOL_API_PATH: &str = "local/stats";
-pub const XMRIG_API_URI: &str = "1/summary"; // The default relative URI of XMRig's API
+pub const XMRIG_API_URI: &str = "/1/summary"; // The default relative URI of XMRig's API
 
 // Process state tooltips (online, offline, etc)
 pub const P2POOL_ALIVE:  &str = "P2Pool is online";
