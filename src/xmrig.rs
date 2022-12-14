@@ -209,7 +209,7 @@ impl Xmrig {
 				if self.rig.is_empty() {
 					text = format!(" Rig [ {}/30 ]➖", len);
 					color = LIGHT_GRAY;
-				} else if Regex::is_match(&regex.name, &self.name) {
+				} else if Regex::is_match(&regex.name, &self.rig) {
 					text = format!(" Rig [ {}/30 ]✔", len);
 					color = GREEN;
 				} else {
