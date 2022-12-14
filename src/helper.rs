@@ -266,27 +266,27 @@ impl Helper {
 	// Reset output if larger than max bytes.
 	// This will also append a message showing it was reset.
 	fn check_reset_gui_p2pool_output(gui_api: &Arc<Mutex<PubP2poolApi>>) {
-		debug!("P2Pool Watchdog | Resetting GUI output...");
+		debug!("P2Pool Watchdog | Checking if GUI output needs reset...");
 		let mut gui_api = gui_api.lock().unwrap();
 		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
 			info!("P2Pool | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
-			let text = format!("{}\nP2Pool GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you, but your stats will be fine (at least for around a month) since they rely on an internal log!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
+			let text = format!("{}\nP2Pool GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
 			gui_api.output.clear();
 			gui_api.output.push_str(&text);
+			debug!("P2Pool Watchdog | Resetting GUI output ... OK");
 		}
-		debug!("P2Pool Watchdog | Resetting GUI output ... OK");
 	}
 
 	fn check_reset_gui_xmrig_output(gui_api: &Arc<Mutex<PubXmrigApi>>) {
-		debug!("XMRig Watchdog | Resetting GUI output...");
+		debug!("XMRig Watchdog | Checking if GUI output needs reset...");
 		let mut gui_api = gui_api.lock().unwrap();
 		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
 			info!("XMRig | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
-			let text = format!("{}\nXMRig GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you, but your stats will be fine (at least for around a month) since they rely on an internal log!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
+			let text = format!("{}\nXMRig GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
 			gui_api.output.clear();
 			gui_api.output.push_str(&text);
+			debug!("XMRig Watchdog | Resetting GUI output ... OK");
 		}
-		debug!("XMRig Watchdog | Resetting GUI output ... OK");
 	}
 
 	//---------------------------------------------------------------------------------------------------- P2Pool specific
