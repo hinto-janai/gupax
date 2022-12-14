@@ -972,13 +972,13 @@ impl eframe::App for App {
 		let p2pool = self.p2pool.lock().unwrap();
 		let p2pool_is_alive = p2pool.is_alive();
 		let p2pool_is_waiting = p2pool.is_waiting();
-		let p2pool_state = ProcessState::Alive;
+		let p2pool_state = p2pool.state;
 		drop(p2pool);
 		debug!("App | Locking and collecting XMRig state...");
 		let xmrig = self.xmrig.lock().unwrap();
 		let xmrig_is_alive = xmrig.is_alive();
 		let xmrig_is_waiting = xmrig.is_waiting();
-		let xmrig_state = ProcessState::Alive;
+		let xmrig_state = xmrig.state;
 		drop(xmrig);
 
 		// This sets the top level Ui dimensions.
@@ -1487,6 +1487,7 @@ impl eframe::App for App {
 						ui.add_sized([width, height], Hyperlink::from_label_and_url("Made by hinto-janaiyo".to_string(), "https://gupax.io"));
 						ui.add_sized([width, height], Label::new("egui is licensed under MIT & Apache-2.0"));
 						ui.add_sized([width, height], Label::new("Gupax, P2Pool, and XMRig are licensed under GPLv3"));
+						if cfg!(debug_assertions) { ui.label(format!("Gupax is running in debug mode - {}", self.now.elapsed().as_secs_f64())); }
 					});
 				}
 				Tab::Status => {
