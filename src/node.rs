@@ -49,18 +49,17 @@ pub const RINO: &str = "node.community.rino.io:18081";
 pub const SETH: &str = "node.sethforprivacy.com:18089";
 pub const SUPPORTXMR: &str = "node.supportxmr.com:18081";
 pub const SUPPORTXMR_IR: &str = "node.supportxmr.ir:18081";
-pub const SINGAPORE: &str = "singapore.node.xmr.pm:18089";
 pub const XMRVSBEAST: &str = "p2pmd.xmrvsbeast.com:18081";
 
-pub const NODE_IPS: [&str; 18] = [
+pub const NODE_IPS: [&str; 17] = [
 	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,MAJESTICBANK_IS,MAJESTICBANK_SU,
-	MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,SINGAPORE,XMRVSBEAST,
+	MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
 ];
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum NodeEnum {
 	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,Monerujo,Plowsof1,
-	Plowsof2,Rino,Feather1,Feather2,Seth,SupportXmr,SupportXmrIr,Singapore,XmrVsBeast,
+	Plowsof2,Rino,Feather1,Feather2,Seth,SupportXmr,SupportXmrIr,XmrVsBeast,
 }
 
 impl std::fmt::Display for NodeEnum {
@@ -112,7 +111,6 @@ pub fn ip_to_enum(ip: &'static str) -> NodeEnum {
 		PLOWSOF_2       => Plowsof2,
 		RINO            => Rino,
 		SETH            => Seth,
-		SINGAPORE       => Singapore,
 		SUPPORTXMR      => SupportXmr,
 		SUPPORTXMR_IR   => SupportXmrIr,
 		_               => XmrVsBeast,
@@ -135,7 +133,6 @@ pub fn enum_to_ip(node: NodeEnum) -> &'static str {
 		Plowsof2       => PLOWSOF_2,
 		Rino           => RINO,
 		Seth           => SETH,
-		Singapore      => SINGAPORE,
 		SupportXmr     => SUPPORTXMR,
 		SupportXmrIr   => SUPPORTXMR_IR,
 		_              => XMRVSBEAST

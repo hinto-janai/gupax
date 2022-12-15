@@ -9,13 +9,14 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 * [How-To](#How-To)
 	- [Video](#Video)
 	- [Text](#Text)
-- [Simple](#Simple)
+* [Simple](#Simple)
 	- [Gupax](#Gupax)
 	- [P2Pool](#P2Pool)
 	- [XMRig](#XMRig)
-- [Advanced](#Advanced)
+* [Advanced](#Advanced)
 	- [Verifying](#Verifying)
 	- [Command Line](#Command-Line)
+	- [Resolution](#Resolution)
 	- [Tor/Arti](#TorArti)
 	- [Logs](#Logs)
 	- [Disk](#Disk)
@@ -23,7 +24,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 	- [Gupax](#Gupax)
 	- [P2Pool](#P2Pool)
 	- [XMRig](#XMRig)
-- [Connections](#Connections)
+* [Connections](#Connections)
 * [Community Monero Nodes](#community-monero-nodes)
 * [Build](#Build)
 	- [General Info](#General-Info)
@@ -31,6 +32,11 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 	- [macOS](#macOS)
 	- [Windows](#Windows)
 * [FAQ](#FAQ)
+	- [Where are updates downloaded from?](#where-are-updates-downloaded-from)
+	- [Can I quit mid-update?](#can-i-quit-mid-update)
+	- [How much memory does Gupax use?](#how-much-memory-does-gupax-use)
+	- [How is sudo handled? (on macOS/Linux)](#how-is-sudo-handled-on-macos-linux)
+	- [Why does Gupax need to be Admin? (on Windows)](#why-does-gupax-need-to-be-admin-on-windows)
 
 ## What is Monero/P2Pool/XMRig/Gupax?
 **Monero** is a secure, private, and untraceable cryptocurrency.
@@ -133,28 +139,25 @@ For transparency, here's all the connections Gupax makes:
 | Community Monero Nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/node.rs) |
 
 ## Community Monero Nodes
-| Name           | IP/Domain                        | RPC Port |
-|----------------|----------------------------------|----------|
-| C3pool         | node.c3pool.com                  | 18081    |
-| Cake           | xmr-node.cakewallet.com          | 18081    |
-| CakeEu         | xmr-node-eu.cakewallet.com       | 18081    |
-| CakeUk         | xmr-node-uk.cakewallet.com       | 18081    |
-| CakeUs         | xmr-node-usa-east.cakewallet.com | 18081    |
-| Feather1       | selsta1.featherwallet.net        | 18081    |
-| Feather2       | selsta2.featherwallet.net        | 18081    |
-| MajesticBankIs | node.majesticbank.is             | 18089    |
-| MajesticBankSu | node.majesticbank.su             | 18089    |
-| Monerujo       | nodex.monerujo.io                | 18081    |
-| Plowsof1       | node.monerodevs.org              | 18089    |
-| Plowsof2       | node2.monerodevs.org             | 18089    |
-| Rino           | node.community.rino.io           | 18081    |
-| Seth           | node.sethforprivacy.com          | 18089    |
-| Singapore      | singapore.node.xmr               | 18081    |
-| SupportXmr     | node.supportxmr.com              | 18081    |
-| SupportXmrIr   | node.supportxmr.ir               | 18089    |
-| XmrVsBeast     | p2pmd.xmrvsbeast.com             | 18081    |
-
-*Note: Plowsof1 & Plowsof2 have ZMQ port on 18084, the rest are 18083*
+| Name                                                  | IP/Domain                        | RPC Port | ZMQ Port |
+|-------------------------------------------------------|----------------------------------|----------|----------|
+| [C3pool](https://www.c3pool.com)                      | node.c3pool.com                  | 18081    | 18083    |
+| [Cake](https://cakewallet.com)                        | xmr-node.cakewallet.com          | 18081    | 18083    |
+| [CakeEu](https://cakewallet.com)                      | xmr-node-eu.cakewallet.com       | 18081    | 18083    |
+| [CakeUk](https://cakewallet.com)                      | xmr-node-uk.cakewallet.com       | 18081    | 18083    |
+| [CakeUs](https://cakewallet.com)                      | xmr-node-usa-east.cakewallet.com | 18081    | 18083    |
+| [Feather1](https://github.com/feather-wallet/feather) | selsta1.featherwallet.net        | 18081    | 18083    |
+| [Feather2](https://github.com/feather-wallet/feather) | selsta2.featherwallet.net        | 18081    | 18083    |
+| [MajesticBankIs](https://www.majesticbank.sc)         | node.majesticbank.is             | 18089    | 18083    |
+| [MajesticBankSu](https://www.majesticbank.sc)         | node.majesticbank.su             | 18089    | 18083    |
+| [Monerujo](https://www.monerujo.io)                   | nodex.monerujo.io                | 18081    | 18083    |
+| [Plowsof1](https://github.com/plowsof)                | node.monerodevs.org              | 18089    | 18084    |
+| [Plowsof2](https://github.com/plowsof)                | node2.monerodevs.org             | 18089    | 18084    |
+| [Rino](https://cakewallet.com)                        | node.community.rino.io           | 18081    | 18083    |
+| [Seth](https://github.com/sethforprivacy)             | node.sethforprivacy.com          | 18089    | 18083    |
+| [SupportXmr](https://www.supportxmr.com)              | node.supportxmr.com              | 18081    | 18083    |
+| [SupportXmrIr](https://www.supportxmr.com)            | node.supportxmr.ir               | 18089    | 18083    |
+| [XmrVsBeast](https://xmrvsbeast.com)                  | p2pmd.xmrvsbeast.com             | 18081    | 18083    |
 
 ## Build
 ### General Info
@@ -200,3 +203,36 @@ cargo build --release
 This will build Gupax with the MSVC toolchain (`x86_64-pc-windows-msvc`). This is the recommended method and is how the pre-compiled release binaries are built.
 
 ## FAQ
+### Where are updates downloaded from?
+The latest versions are downloaded using the GitHub API.
+* Gupax [`https://github.com/hinto-janaiyo/gupax`](https://github.com/hinto-janaiyo/gupax)
+* P2Pool [`https://github.com/SChernykh/p2pool`](https://github.com/SChernykh/p2pool)
+* XMRig [`https://github.com/xmrig/xmrig`](https://github.com/xmrig/xmrig)
+
+GitHub's API blocks request that do not have an HTTP `User-Agent` header. [For privacy, Gupax randomly uses a recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/update.rs#L134)
+
+---
+
+### Can I quit mid-update?
+Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store temporary downloaded files, there aren't measures in place to revert an upgrade once the file swapping has actually started. If you quit Gupax anytime before the `Upgrading packages` phase (after metadata, download, extraction), you will technically be safe but this is not recommended as it is risky, especially since these updates can be very fast.
+
+If you started an update, you should let it finish. If the update has been stuck for a *long* time, it may be worth quitting Gupax. The worst that can happen is that your `Gupax/P2Pool/XMRig` binaries may be moved/deleted. Those can be easily redownloaded. Your actual `Gupax` user data (settings, custom nodes, pools, etc) is never touched.
+
+---
+
+### How much memory does Gupax use?
+Gupax itself uses around 100-300 megabytes of memory.
+
+Gupax also holds up to [500,000 bytes](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/helper.rs#L63) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-2 hours.
+
+Memory usage should *never* be above 400~ megabytes. If you see Gupax using more than this, please send a bug report.
+
+---
+
+### How is sudo handled? (on macOS/Linux)
+[See here for more info.](https://github.com/hinto-janaiyo/gupax/tree/main/src#sudo)
+
+---
+
+### Why does Gupax need to be Admin? (on Windows)
+[See here for more info.](https://github.com/hinto-janaiyo/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows)

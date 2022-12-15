@@ -265,27 +265,16 @@ impl Helper {
 
 	// Reset output if larger than max bytes.
 	// This will also append a message showing it was reset.
-	fn check_reset_gui_p2pool_output(gui_api: &Arc<Mutex<PubP2poolApi>>) {
-		debug!("P2Pool Watchdog | Checking if GUI output needs reset...");
-		let mut gui_api = gui_api.lock().unwrap();
-		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
-			info!("P2Pool | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
-			let text = format!("{}\nP2Pool GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
-			gui_api.output.clear();
-			gui_api.output.push_str(&text);
-			debug!("P2Pool Watchdog | Resetting GUI output ... OK");
-		}
-	}
-
-	fn check_reset_gui_xmrig_output(gui_api: &Arc<Mutex<PubXmrigApi>>) {
-		debug!("XMRig Watchdog | Checking if GUI output needs reset...");
-		let mut gui_api = gui_api.lock().unwrap();
-		if gui_api.output.len() > GUI_OUTPUT_LEEWAY {
-			info!("XMRig | Output is nearing {} bytes, resetting!", MAX_GUI_OUTPUT_BYTES);
-			let text = format!("{}\nXMRig GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you!\n{}\n\n\n\n", HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
-			gui_api.output.clear();
-			gui_api.output.push_str(&text);
-			debug!("XMRig Watchdog | Resetting GUI output ... OK");
+	fn check_reset_gui_output(output: &mut String, name: ProcessName) {
+		let len = output.len();
+		if len > GUI_OUTPUT_LEEWAY {
+			info!("{} Watchdog | Output is nearing {} bytes, resetting!", name, MAX_GUI_OUTPUT_BYTES);
+			let text = format!("{}\n{} GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you!\n{}\n\n\n\n", name, HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
+			output.clear();
+			output.push_str(&text);
+			debug!("{} Watchdog | Resetting GUI output ... OK", name);
+		} else {
+			debug!("{} Watchdog | GUI output reset not needed! Current byte length ... {}", name, len);
 		}
 	}
 
@@ -478,7 +467,7 @@ impl Helper {
 		use std::io::Write;
 		if std::fs::File::create(&api_path).is_ok() {
 			let text = r#"{"hashrate_15m":0,"hashrate_1h":0,"hashrate_24h":0,"shares_found":0,"average_effort":0.0,"current_effort":0.0,"connections":0}"#;
-			match std::fs::write(&path, text) {
+			match std::fs::write(&api_path, text) {
 				Ok(_) => info!("P2Pool | Creating default empty API file ... OK"),
 				Err(e) => warn!("P2Pool | Creating default empty API file ... FAIL ... {}", e),
 			}
@@ -565,7 +554,9 @@ impl Helper {
 
 			// Check if logs need resetting
 			debug!("P2Pool Watchdog | Attempting GUI log reset check");
-			Self::check_reset_gui_p2pool_output(&gui_api);
+			let mut lock = gui_api.lock().unwrap();
+			Self::check_reset_gui_output(&mut lock.output, ProcessName::P2pool);
+			drop(lock);
 
 			// Always update from output
 			debug!("P2Pool Watchdog | Starting [update_from_output()]");
@@ -905,7 +896,9 @@ impl Helper {
 
 			// Check if logs need resetting
 			debug!("XMRig Watchdog | Attempting GUI log reset check");
-			Self::check_reset_gui_xmrig_output(&gui_api);
+			let mut lock = gui_api.lock().unwrap();
+			Self::check_reset_gui_output(&mut lock.output, ProcessName::Xmrig);
+			drop(lock);
 
 			// Always update from output
 			debug!("XMRig Watchdog | Starting [update_from_output()]");
