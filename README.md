@@ -41,13 +41,13 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 ## What is Monero/P2Pool/XMRig/Gupax?
 **Monero** is a secure, private, and untraceable cryptocurrency.
 
-The **[Monero GUI](https://github.com/monero-project/monero-gui)** software lets you run a **Monero node** (among other things). A Monero node connects you to other peers and lets you download Monero's [blockchain](https://en.wikipedia.org/wiki/Blockchain).
+The [Monero GUI](https://github.com/monero-project/monero-gui) software lets you run a Monero node (among other things). A Monero node connects you to other peers and lets you download Monero's [blockchain](https://en.wikipedia.org/wiki/Blockchain).
 
 ***[More info here.](https://github.com/monero-project/monero)***
 
 ---
 
-**P2Pool** is software that lets you create/join **decentralized peer-to-peer Monero mining pools.**
+**P2Pool** is software that lets you create/join decentralized peer-to-peer Monero mining pools.
 
 P2Pool as a concept was [first developed for Bitcoin](https://en.bitcoin.it/wiki/P2Pool) but was [never fully realized](https://github.com/p2pool/p2pool) due to many limitations. These limitations were fixed when SChernykh rewrote P2Pool from scratch for Monero. P2Pool combines the best of solo mining and traditional pool mining:
 
@@ -60,7 +60,7 @@ P2Pool as a concept was [first developed for Bitcoin](https://en.bitcoin.it/wiki
 
 ---
 
-**XMRig** is an optimized miner which **mines Monero at higher speeds.**
+**XMRig** is an optimized miner which mines Monero at higher speeds.
 
 Both Monero and P2Pool have built in miners but XMRig is quite faster than both of them. Due to issues like [anti-virus flagging](https://github.com/monero-project/monero-gui/pull/3829#issuecomment-1018191461), it is not feasible to integrate XMRig directly into Monero or P2Pool, however, XMRig is still freely available for anyone to download with the caveat being: you have to set it up yourself.
 
@@ -75,9 +75,11 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 2. **Monero GUI** runs the ***Monero node***
 3. **Gupax** runs ***P2Pool/XMRig***
 
-![stack.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/diagram.png)
+![local.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/local.png)
 
-With Monero GUI managing the Monero node on one side and Gupax managing P2Pool/XMRig on the other, it is (hopefully) very easy for anyone to start mining Monero at **max hashrate in a decentralized, permissionless, and trustless manner**.
+By default, though, Gupax will use a [Community Monero Node](#community-monero-nodes) so you don't even have to run your own full Monero node to start mining on P2Pool:
+
+![community.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/community.png)
 
 ## How-To
 ### Video
@@ -214,9 +216,9 @@ GitHub's API blocks request that do not have an HTTP `User-Agent` header. [For p
 ---
 
 ### Can I quit mid-update?
-Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store temporary downloaded files, there aren't measures in place to revert an upgrade once the file swapping has actually started. If you quit Gupax anytime before the `Upgrading packages` phase (after metadata, download, extraction), you will technically be safe but this is not recommended as it is risky, especially since these updates can be very fast.
-
 If you started an update, you should let it finish. If the update has been stuck for a *long* time, it may be worth quitting Gupax. The worst that can happen is that your `Gupax/P2Pool/XMRig` binaries may be moved/deleted. Those can be easily redownloaded. Your actual `Gupax` user data (settings, custom nodes, pools, etc) is never touched.
+
+Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store temporary downloaded files, there aren't measures in place to revert an upgrade once the file swapping has actually started. If you quit Gupax anytime before the `Upgrading packages` phase (after metadata, download, extraction), you will technically be safe but this is not recommended as it is risky, especially since these updates can be very fast.
 
 ---
 
