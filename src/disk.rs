@@ -154,7 +154,6 @@ impl State {
 			gupax: Gupax {
 				simple: true,
 				auto_update: true,
-				auto_node: true,
 				auto_p2pool: false,
 				auto_xmrig: false,
 				ask_before_quit: true,
@@ -175,7 +174,7 @@ impl State {
 			p2pool: P2pool {
 				simple: true,
 				mini: true,
-				auto_node: true,
+				auto_ping: true,
 				auto_select: true,
 				out_peers: 10,
 				in_peers: 10,
@@ -200,13 +199,13 @@ impl State {
 				arguments: String::with_capacity(300),
 				address: String::with_capacity(96),
 				name: "Local P2Pool".to_string(),
-				rig: "Gupax".to_string(),
+				rig: GUPAX_VERSION_UNDERSCORE.to_string(),
 				ip: "localhost".to_string(),
 				port: "3333".to_string(),
 				selected_index: 0,
 				selected_name: "Local P2Pool".to_string(),
 				selected_ip: "localhost".to_string(),
-				selected_rig: "Gupax".to_string(),
+				selected_rig: GUPAX_VERSION_UNDERSCORE.to_string(),
 				selected_port: "3333".to_string(),
 				api_ip: "localhost".to_string(),
 				api_port: "18088".to_string(),
@@ -436,7 +435,7 @@ impl Node {
 impl Pool {
 	pub fn p2pool() -> Self {
 		Self {
-			rig: "Gupax".to_string(),
+			rig: GUPAX_VERSION_UNDERSCORE.to_string(),
 			ip: "localhost".to_string(),
 			port: "3333".to_string(),
 		}
@@ -593,7 +592,6 @@ pub struct State {
 pub struct Gupax {
 	pub simple: bool,
 	pub auto_update: bool,
-	pub auto_node: bool,
 	pub auto_p2pool: bool,
 	pub auto_xmrig: bool,
 	pub ask_before_quit: bool,
@@ -613,7 +611,7 @@ pub struct Gupax {
 pub struct P2pool {
 	pub simple: bool,
 	pub mini: bool,
-	pub auto_node: bool,
+	pub auto_ping: bool,
 	pub auto_select: bool,
 	pub out_peers: u16,
 	pub in_peers: u16,

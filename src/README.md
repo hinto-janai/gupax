@@ -65,22 +65,6 @@ This is how Gupax works internally when starting up:
 	- If `ask_before_quit` == `true`, ask before quitting
 	- Kill processes, kill connections, exit
 
-## Disk
-Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created. Given a slightly corrupted state file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). Merging silently in the background is a good non-interactive way to handle this. The node/pool database cannot be merged, and if given a corrupted file, Gupax will show an un-recoverable error screen. If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error screen.
-
-| OS       | Data Folder                              | Example                                        |
-|----------|----------------------------------------- |------------------------------------------------|
-| Windows  | `{FOLDERID_LocalAppData}`                | C:\Users\Alice\AppData\Roaming\Gupax           |
-| macOS    | `$HOME`/Library/Application Support      | /Users/Alice/Library/Application Support/Gupax |
-| Linux    | `$XDG_DATA_HOME` or `$HOME`/.local/share | /home/alice/.local/share/gupax                 |
-
-The current files saved to disk:
-* `state.toml` Gupax state/settings
-* `node.toml` The manual node database used for P2Pool advanced
-* `pool.toml` The manual pool database used for XMRig advanced
-
-Arti (Tor) also needs to save cache and state. It uses the same file/folder conventions.
-
 ## Scale
 Every frame, the max available `[width, height]` are calculated, and those are used as a baseline for the Top/Bottom bars, containing the tabs and status bar. After that, all available space is given to the middle ui elements. The scale is calculated every frame so that all elements can scale immediately as the user adjusts it; this doesn't take as much CPU as you might think since frames are only rendered on user interaction. Some elements are subtracted a fixed number because the `ui.seperator()`'s add some fixed space which needs to be accounted for.
 
@@ -100,7 +84,7 @@ Windows:
 - XMRig: `XMRig\xmrig.exe`
 
 macOS:
-- Gupax: `Gupax.app/.../Gupax` (Gupax is packaged as an `.app` on macOS)
+- Gupax: `Gupax.app/Contents/MacOS/gupax` (Gupax is packaged as an `.app` on macOS)
 - P2Pool: `p2pool/p2pool`
 - XMRig: `xmrig/xmrig`
 

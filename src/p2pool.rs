@@ -203,7 +203,7 @@ impl P2pool {
 			// [Auto-node] + [Auto-select]
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_select, "Auto-select")).on_hover_text(P2POOL_AUTO_SELECT);
 			ui.separator();
-			ui.add_sized([width, height], Checkbox::new(&mut self.auto_node, "Auto-node")).on_hover_text(P2POOL_AUTO_NODE);
+			ui.add_sized([width, height], Checkbox::new(&mut self.auto_ping, "Auto-ping")).on_hover_text(P2POOL_AUTO_NODE);
 		})});
 
 	//---------------------------------------------------------------------------------------------------- Advanced

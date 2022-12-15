@@ -25,7 +25,7 @@
 
 //---------------------------------------------------------------------------------------------------- Imports
 use anyhow::{anyhow,Error};
-use arti_client::{TorClient};
+use arti_client::TorClient;
 use arti_hyper::*;
 use crate::{
 	constants::GUPAX_VERSION,
@@ -106,9 +106,7 @@ const XMRIG_EXTENSION: &str = "-linux-static-x64.tar.gz";
 
 #[cfg(target_os = "windows")]
 const GUPAX_BINARY: &str = "Gupax.exe";
-#[cfg(target_os = "macos")]
-const GUPAX_BINARY: &str = "Gupax";
-#[cfg(target_os = "linux")]
+#[cfg(target_family = "unix")]
 const GUPAX_BINARY: &str = "gupax";
 
 #[cfg(target_os = "windows")]

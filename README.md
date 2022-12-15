@@ -34,8 +34,9 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 * [FAQ](#FAQ)
 	- [Where are updates downloaded from?](#where-are-updates-downloaded-from)
 	- [Can I quit mid-update?](#can-i-quit-mid-update)
+	- [Bundled vs Standalone](#bundled-vs-standalone)
 	- [How much memory does Gupax use?](#how-much-memory-does-gupax-use)
-	- [How is sudo handled? (on macOS/Linux)](#how-is-sudo-handled-on-macos-linux)
+	- [How is sudo handled? (on macOS/Linux)](#how-is-sudo-handled-on-macoslinux)
 	- [Why does Gupax need to be Admin? (on Windows)](#why-does-gupax-need-to-be-admin-on-windows)
 
 ## What is Monero/P2Pool/XMRig/Gupax?
@@ -84,6 +85,19 @@ By default, though, Gupax will use a [Community Monero Node](#community-monero-n
 ## How-To
 ### Video
 ### Text
+1. [Download the bundled version of Gupax for your OS here](https://github.com/hinto-janaiyo/gupax/releases) or from [gupax.io](https://gupax.io/downloads)
+2. Extract somewhere (Desktop, Documents, etc)
+3. Launch Gupax
+4. Input your Monero address in the `[P2Pool]` tab
+5. Select a [`Community Monero Node`](#community-monero-nodes) that you trust
+5. Start P2Pool
+6. Start XMRig
+
+You are now mining to your own instance of P2Pool, welcome to the world of decentralized peer-to-peer mining!
+
+_Notes:_
+- _[What is bundled? What is standalone?](#bundled-vs-standalone)_
+- _If you'd like to get deeper into the settings, see [Advanced.](#advanced)_
 
 ## Simple
 ### Gupax
@@ -98,26 +112,163 @@ By default, though, Gupax will use a [Community Monero Node](#community-monero-n
 
 ## Advanced
 ### Verifying
+It is recommended to verify the hash and PGP signature of the download before using Gupax.
 
+Download the [`SHA256SUM`](https://github.com/hinto-janaiyo/gupax/releases/latest) file, download and import my [`PGP key`](https://github.com/hinto-janaiyo/gupax/blob/main/pgp/hinto-janaiyo.asc), and verify:
+```bash
+sha256sum -c SHA256SUM
+gpg --import hinto-janaiyo.asc
+gpg --verify SHA256SUM
+```
+
+Q: How can I be sure the P2Pool/XMRig bundled with Gupax hasn't been tampered with?  
+A: Verify the hash.
+
+You can always compare the hash of the `P2Pool/XMRig` bundled with Gupax with the official hashes found here:
+- https://github.com/SChernykh/p2pool/releases
+- https://github.com/xmrig/xmrig/releases
+
+Make sure the _version_ you are comparing against is correct. If they match, you can be sure they are the exact same. Verifying the PGP signature is also recommended:
+- P2Pool - [`SChernykh.asc`](https://github.com/monero-project/gitian.sigs/blob/master/gitian-pubkeys/SChernykh.asc)
+- XMRig - [`xmrig.asc`](https://github.com/xmrig/xmrig/blob/master/doc/gpg_keys/xmrig.asc)
+ 
 ---
 
 ### Command Line
+Gupax comes with some command line options:
+```
+USAGE: ./gupax [--flag]
+
+    --help         Print this help message
+    --version      Print version and build info
+    --state        Print Gupax state
+    --nodes        Print the manual node list
+    --no-startup   Disable all auto-startup settings for this instance
+    --reset-state  Reset all Gupax state (your settings)
+    --reset-nodes  Reset the manual node list in the [P2Pool] tab
+    --reset-pools  Reset the manual pool list in the [XMRig] tab
+    --reset-all    Reset the state, the manual node list, and the manual pool list
+    --ferris       Print an extremely cute crab
+```
+
+By default, Gupax has `auto-update` & `auto-ping` enabled. This can only be turned off in the GUI which causes a chicken-and-egg problem. To get around this, start Gupax with `--no-startup`. This will disable all `auto` features for that instance.
+
+---
+
+### Resolution
+The default resolution of Gupax is `1280x960` which is a `4:3` aspect ratio.
+
+This can be changed by dragging the corner of the window itself or by using the resolution sliders in the `Gupax Advanced` tab. After a resolution change, Gupax will fade-in/out of black and will take a second to resize all the UI elements to scale correctly to the new resolution.
+
+If you have changed your OS's pixel scaling, you may need to resize Gupax to see all UI correctly.
+
+The minimum window size is: `640x480`  
+The maximum window size is: `2560x1920`  
+Fullscreen mode can also be entered by pressing `F11`.
 
 ---
 
 ### Tor/Arti
+By default, Gupax updates via Tor. In particular, it uses [`Arti`](https://gitlab.torproject.org/tpo/core/arti), the official Rust implementation of Tor.
 
----
+Instead of bootstrapping onto the Tor network every time, Arti saves state/cache about the Tor network (circuits, guards, etc) for later reuse onto the disk:
 
-### Logs
+State:
+| OS       | Data Folder                                                   |
+|----------|---------------------------------------------------------------|
+| Windows  | `C:\Users\USER\AppData\Local\torproject\Arti\data`            |
+| macOS    | `/Users/USER/Library/Application Support/org.torproject.Arti` |
+| Linux    | `/home/USER/.local/share/arti`                                |
+
+Cache:
+| OS       | Data Folder                                                   |
+|----------|---------------------------------------------------------------|
+| Windows  | `C:\Users\USER\AppData\Local\torproject\Arti\cache`           |
+| macOS    | `/Users/USER/Library/Caches/org.torproject.Arti`              |
+| Linux    | `/home/USER/.cache/arti`                                      |
 
 ---
 
 ### Disk
+Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created.
+
+Given a slightly corrupted `state.toml` file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). The node/pool database cannot be merged.
+
+If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error screen.
+
+| OS       | Data Folder                              | Example                                         |
+|----------|------------------------------------------|-------------------------------------------------|
+| Windows  | `{FOLDERID_RoamingAppData}`              | `C:\Users\USER\AppData\Roaming\Gupax`           |
+| macOS    | `$HOME`/Library/Application Support      | `/Users/USER/Library/Application Support/Gupax` |
+| Linux    | `$XDG_DATA_HOME` or `$HOME`/.local/share | `/home/USER/.local/share/gupax`                 |
+
+The current files saved to disk:
+* `state.toml` Gupax state/settings
+* `node.toml` The manual node database used for P2Pool advanced
+* `pool.toml` The manual pool database used for XMRig advanced
+
+---
+
+### Logs
+Gupax has console logs that show with increasing detail, what exactly it is is doing.
+
+There are multiple log filter levels but by default, `INFO` and above are enabled.
+To view more detailed console debug information, start Gupax with the environment variable `RUST_LOG` set to a log level like so:
+```bash
+RUST_LOG=(trace|debug|info|warn|error) ./gupax
+```
+For example:
+```bash
+RUST_LOG=debug ./gupax
+```
+
+In general:
+- `ERROR` means something has gone wrong and that something will likely break
+- `WARN` means something has gone wrong, but things will likely be fine
+- `INFO` logs are general info about what Gupax (the GUI thread) is currently doing
+- `DEBUG` logs are much more verbose and include what EVERY thread is doing (not just the main GUI thread)
+- `TRACE` logs are insanely verbose and shows the logs of the libraries Gupax uses (HTTP connections, GUI polling, etc)
 
 ---
 
 ### Swapping P2Pool/XMRig
+If you downloaded Gupax standalone and want to use your own `P2Pool/XMRig` binaries and/or want to swap them, you can:
+- Edit the PATH in `Gupax Advanced` to point at the new binaries
+- Change the binary itself
+
+By default, Gupax will look for `P2Pool/XMRig` in folders next to itself:
+
+Windows:
+```
+Gupax\
+├─ Gupax.exe
+├─ P2Pool\
+│  ├─ p2pool.exe
+├─ XMRig\
+   ├─ xmrig.exe
+```
+
+macOS (Gupax is packaged as an `.app` on macOS):
+```
+Gupax.app/Contents/MacOS/
+├─ gupax
+├─ p2pool/
+│  ├─ p2pool
+├─ xmrig/
+   ├─ xmrig
+```
+
+Linux:
+```
+gupax/
+├─ gupax
+├─ p2pool/
+│  ├─ p2pool
+├─ xmrig/
+   ├─ xmrig
+```
+
+Be warned: Gupax will use your custom PATH/binary and will replace them if you use `Check for updates` in the `[Gupax]` tab.
 
 ---
 
@@ -137,8 +288,8 @@ For transparency, here's all the connections Gupax makes:
 | Domain             | Why                                                   | When | Where |
 |--------------------|-------------------------------------------------------|------|-------|
 | https://github.com | Fetching metadata information on packages + download  | `[Gupax]` tab -> `Check for updates` | [`update.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/update.rs) |
-| DNS | DNS connections will usually be handled by your OS (or whatever custom DNS setup you have). If using Tor, DNS requests [*should*](https://tpo.pages.torproject.net/core/doc/rust/arti/) be routed through the Tor network automatically | Same as above | Same as above |
 | Community Monero Nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/node.rs) |
+| DNS | DNS connections will usually be handled by your OS (or whatever custom DNS setup you have). If using Tor, DNS requests for updates [*should*](https://tpo.pages.torproject.net/core/doc/rust/arti/) be routed through the Tor network automatically | All of the above | All of the above |
 
 ## Community Monero Nodes
 | Name                                                  | IP/Domain                        | RPC Port | ZMQ Port |
@@ -219,6 +370,13 @@ GitHub's API blocks request that do not have an HTTP `User-Agent` header. [For p
 If you started an update, you should let it finish. If the update has been stuck for a *long* time, it may be worth quitting Gupax. The worst that can happen is that your `Gupax/P2Pool/XMRig` binaries may be moved/deleted. Those can be easily redownloaded. Your actual `Gupax` user data (settings, custom nodes, pools, etc) is never touched.
 
 Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store temporary downloaded files, there aren't measures in place to revert an upgrade once the file swapping has actually started. If you quit Gupax anytime before the `Upgrading packages` phase (after metadata, download, extraction), you will technically be safe but this is not recommended as it is risky, especially since these updates can be very fast.
+
+---
+
+### Bundled vs Standalone
+`Bundled` Gupax comes the latest version of P2Pool/XMRig already in the `zip/tar`.
+
+`Standlone` only contains the Gupax executable.
 
 ---
 

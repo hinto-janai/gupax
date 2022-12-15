@@ -704,7 +704,7 @@ fn init_auto(app: &mut App) {
 	}
 
 	// [Auto-Ping]
-	if app.state.p2pool.auto_node && app.state.p2pool.simple {
+	if app.state.p2pool.auto_ping && app.state.p2pool.simple {
 		Ping::spawn_thread(&app.ping)
 	} else {
 		info!("Skipping auto-ping...");
