@@ -19,7 +19,7 @@ pub const GUPAX_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 pub const P2POOL_VERSION: &str = "v2.5";
 pub const XMRIG_VERSION: &str = "v6.18.0";
 pub const COMMIT: &str = include_str!("../.git/refs/heads/main");
-pub const GUPAX_VERSION_UNDERSCORE: &str = concat!("Gupax_", env!("CARGO_PKG_VERSION"));
+pub const GUPAX_VERSION_UNDERSCORE: &str = concat!("Gupax_v", env!("CARGO_PKG_VERSION"));
 
 // App frame resolution, [4:3] aspect ratio, [1.33:1]
 pub const APP_MIN_WIDTH: f32 = 640.0;
@@ -215,7 +215,7 @@ r#"Use advanced P2Pool settings:
     - P2Pool Main/Mini selection
     - Out/In peer setting
     - Log level setting"#;
-pub const P2POOL_NAME: &str = "Add a unique name to identify this node; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const P2POOL_NAME: &str = "Add a unique name to identify this node; Only [A-Za-z0-9-_.] and spaces allowed; Max length = 30 characters";
 pub const P2POOL_NODE_IP: &str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const P2POOL_RPC_PORT: &str = "Specify the RPC port of the Monero node; [1-65535]";
 pub const P2POOL_ZMQ_PORT: &str = "Specify the ZMQ port of the Monero node; [1-65535]";
@@ -249,7 +249,7 @@ r#"WARNING: Use [--no-color] and make sure to set [--http-host <IP>] & [--http-p
 
 Start XMRig with these arguments and override all below settings"#;
 pub const XMRIG_ADDRESS: &str = "Specify which Monero address to payout to. This does nothing if mining to P2Pool since the address being payed out to will be the one P2Pool started with. This doubles as a rig identifier for P2Pool and some pools.";
-pub const XMRIG_NAME: &str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+pub const XMRIG_NAME: &str = "Add a unique name to identify this pool; Only [A-Za-z0-9-_.] and spaces allowed; Max length = 30 characters";
 pub const XMRIG_IP: &str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const XMRIG_PORT: &str = "Specify the port of the pool; [1-65535]";
 pub const XMRIG_RIG: &str = "Add an optional rig ID. This will be the name shown on the pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
