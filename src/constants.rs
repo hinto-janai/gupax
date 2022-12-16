@@ -42,17 +42,18 @@ pub const HORI_CONSOLE: &str = "------------------------------------------------
 
 // Keyboard shortcuts
 pub const KEYBOARD_SHORTCUTS: &str =
-r#"*--------------------------------------*
-|             Key shortcuts            |
-|--------------------------------------|
-|             F11 | Fullscreen         |
-|          Escape | Quit screen        |
-|      Left/Right | Switch Tabs        |
-|              Up | Start/Restart      |
-|            Down | Stop               |
-|               S | Save               |
-|               R | Reset              |
-*--------------------------------------*"#;
+r#"*---------------------------------------*
+|             Key shortcuts             |
+|---------------------------------------|
+|             F11 | Fullscreen          |
+|          Escape | Quit screen         |
+|              Up | Start/Restart       |
+|            Down | Stop                |
+|               Z | Switch to Left Tab  |
+|               X | Switch to Right Tab |
+|               S | Save                |
+|               R | Reset               |
+*---------------------------------------*"#;
 // P2Pool & XMRig default API stuff
 #[cfg(target_os = "windows")]
 pub const P2POOL_API_PATH: &str = r"local\stats"; // The default relative FS path of P2Pool's local API
@@ -219,7 +220,10 @@ pub const P2POOL_NAME: &str = "Add a unique name to identify this node; Only [A-
 pub const P2POOL_NODE_IP: &str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const P2POOL_RPC_PORT: &str = "Specify the RPC port of the Monero node; [1-65535]";
 pub const P2POOL_ZMQ_PORT: &str = "Specify the ZMQ port of the Monero node; [1-65535]";
-pub const P2POOL_PATH_NOT_EXE: &str = "P2Pool binary not found at the given path in the Gupax tab!";
+pub const P2POOL_PATH_NOT_FILE: &str = "P2Pool binary not found at the given PATH in the Gupax tab!";
+pub const P2POOL_PATH_NOT_VALID: &str = "P2Pool binary at the given PATH in the Gupax tab doesn't look like P2Pool!";
+pub const P2POOL_PATH_OK: &str = "P2Pool was found at the given PATH";
+pub const P2POOL_PATH_EMPTY: &str = "P2Pool PATH is empty";
 
 // Node/Pool list
 pub const LIST_ADD: &str = "Add the current values to the list";
@@ -259,7 +263,10 @@ pub const XMRIG_API_PORT: &str = "Specify which port to bind to for XMRig's HTTP
 pub const XMRIG_TLS: &str = "Enable SSL/TLS connections (needs pool support)";
 pub const XMRIG_KEEPALIVE: &str = "Send keepalive packets to prevent timeout (needs pool support)";
 pub const XMRIG_THREADS: &str = "Number of CPU threads to use for mining";
-pub const XMRIG_PATH_NOT_EXE: &str = "XMRig binary not found at the given path in the Gupax tab!";
+pub const XMRIG_PATH_NOT_FILE: &str = "XMRig binary not found at the given PATH in the Gupax tab!";
+pub const XMRIG_PATH_NOT_VALID: &str = "XMRig binary at the given PATH in the Gupax tab doesn't look like XMRig!";
+pub const XMRIG_PATH_OK: &str = "XMRig was found at the given PATH";
+pub const XMRIG_PATH_EMPTY: &str = "XMRig PATH is empty";
 
 // CLI argument messages
 pub const ARG_HELP: &str =

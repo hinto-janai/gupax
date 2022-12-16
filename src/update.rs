@@ -168,6 +168,39 @@ const UPGRADE: &str = "----------------- Upgrade ------------------";
 //const MSG_EXTRACT: &'static str = "Extracting packages";
 //const MSG_UPGRADE: &'static str = "Upgrading packages";
 
+//---------------------------------------------------------------------------------------------------- General functions
+pub fn check_p2pool_path(path: &str) -> bool {
+	let path = match crate::disk::into_absolute_path(path.to_string()) {
+		Ok(p) => p,
+		Err(e) => return false,
+	};
+	let path = match path.file_name() {
+		Some(p) => p,
+		None => { error!("Couldn't get P2Pool file name"); return false; },
+	};
+	if path == ACCEPTABLE_P2POOL[0] || path == ACCEPTABLE_P2POOL[1] || path == ACCEPTABLE_P2POOL[2] || path == ACCEPTABLE_P2POOL[3] {
+		true
+	} else {
+		false
+	}
+}
+
+pub fn check_xmrig_path(path: &str) -> bool {
+	let path = match crate::disk::into_absolute_path(path.to_string()) {
+		Ok(p) => p,
+		Err(e) => return false,
+	};
+	let path = match path.file_name() {
+		Some(p) => p,
+		None => { error!("Couldn't get XMRig file name"); return false; },
+	};
+	if path == ACCEPTABLE_XMRIG[0] || path == ACCEPTABLE_XMRIG[1] || path == ACCEPTABLE_XMRIG[2] || path == ACCEPTABLE_XMRIG[3] {
+		true
+	} else {
+		false
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- Update struct/impl
 // Contains values needed during update
 // Progress bar structure:

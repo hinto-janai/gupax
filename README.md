@@ -14,6 +14,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 * [Advanced](#Advanced)
 	- [Verifying](#Verifying)
 	- [Command Line](#Command-Line)
+	- [Key Shortcuts](#Key-Shortcuts)
 	- [Resolution](#Resolution)
 	- [Tor/Arti](#TorArti)
 	- [Logs](#Logs)
@@ -183,6 +184,27 @@ USAGE: ./gupax [--flag]
 ```
 
 By default, Gupax has `auto-update` & `auto-ping` enabled. This can only be turned off in the GUI which causes a chicken-and-egg problem. To get around this, start Gupax with `--no-startup`. This will disable all `auto` features for that instance.
+
+---
+
+### Key Shortcuts
+The letter keys (Z/X/S/R) will only work if nothing is in focus, i.e, you _are not_ editing a text box.
+
+An ALT+F4 will also trigger the exit confirm screen (if enabled).
+```
+*---------------------------------------*
+|             Key shortcuts             |
+|---------------------------------------|
+|             F11 | Fullscreen          |
+|          Escape | Quit screen         |
+|              Up | Start/Restart       |
+|            Down | Stop                |
+|               Z | Switch to Left Tab  |
+|               X | Switch to Right Tab |
+|               S | Save                |
+|               R | Reset               |
+*---------------------------------------*
+```
 
 ---
 

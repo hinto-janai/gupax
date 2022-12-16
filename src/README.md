@@ -2,7 +2,6 @@
 * [Structure](#Structure)
 * [Thread Model](#Thread-Model)
 * [Bootstrap](#Bootstrap)
-* [Disk](#Disk)
 * [Scale](#Scale)
 * [Naming Scheme](#naming-scheme)
 * [Sudo](#Sudo)

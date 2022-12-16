@@ -143,18 +143,15 @@ impl Gupax {
 		let text_edit = (ui.available_width()/10.0)-SPACE;
 		ui.horizontal(|ui| {
 			if self.p2pool_path.is_empty() {
-				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ➖").color(LIGHT_GRAY)));
+				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ➖").color(LIGHT_GRAY))).on_hover_text(P2POOL_PATH_EMPTY);
 			} else {
-				match crate::disk::into_absolute_path(self.p2pool_path.clone()) {
-					Ok(path) => {
-						if path.is_file() {
-							ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ✔").color(GREEN)))
-						} else {
-							ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(RED)))
-						}
-					},
-					_ => ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(RED))),
-				};
+				if !Self::path_is_file(&self.p2pool_path) {
+					ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(RED))).on_hover_text(P2POOL_PATH_NOT_FILE);
+				} else if !crate::update::check_p2pool_path(&self.p2pool_path) {
+					ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(RED))).on_hover_text(P2POOL_PATH_NOT_VALID);
+				} else {
+					ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ✔").color(GREEN))).on_hover_text(P2POOL_PATH_OK);
+				}
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);
@@ -165,12 +162,15 @@ impl Gupax {
 		});
 		ui.horizontal(|ui| {
 			if self.xmrig_path.is_empty() {
-				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ➖").color(LIGHT_GRAY)));
+				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ➖").color(LIGHT_GRAY))).on_hover_text(XMRIG_PATH_EMPTY);
 			} else {
-				match Self::path_is_exe(&self.xmrig_path) {
-					true  => ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ✔").color(GREEN))),
-					false => ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))),
-				};
+				if !Self::path_is_file(&self.xmrig_path) {
+					ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))).on_hover_text(XMRIG_PATH_NOT_FILE);
+				} else if !crate::update::check_xmrig_path(&self.xmrig_path) {
+					ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))).on_hover_text(XMRIG_PATH_NOT_VALID);
+				} else {
+					ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ✔").color(GREEN))).on_hover_text(XMRIG_PATH_OK);
+				}
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);
@@ -250,8 +250,8 @@ impl Gupax {
 		})});
 	}
 
-	// Checks if a path is a valid path to an executable.
-	pub fn path_is_exe(path: &str) -> bool {
+	// Checks if a path is a valid path to a file.
+	pub fn path_is_file(path: &str) -> bool {
 		let path = path.to_string();
 		match crate::disk::into_absolute_path(path) {
 			Ok(path) => path.is_file(),
