@@ -275,7 +275,7 @@ impl State {
 				Ok(o) => o,
 				Err(e) => { error!("State | Couldn't serialize default file: {}", e); return Err(TomlError::Serialize(e)) },
 		};
-		fs::write(path, &string)?;
+		fs::write(path, string)?;
 		info!("State | Write ... OK");
 		Ok(new)
 	}
@@ -400,7 +400,7 @@ impl Node {
 		info!("Node | Creating new default...");
 		let new = Self::new_vec();
 		let string = Self::to_string(&Self::new_vec())?;
-		fs::write(path, &string)?;
+		fs::write(path, string)?;
 		info!("Node | Write ... OK");
 		Ok(new)
 	}
@@ -503,7 +503,7 @@ impl Pool {
 		info!("Pool | Creating new default...");
 		let new = Self::new_vec();
 		let string = Self::to_string(&Self::new_vec())?;
-		fs::write(path, &string)?;
+		fs::write(path, string)?;
 		info!("Pool | Write ... OK");
 		Ok(new)
 	}

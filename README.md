@@ -125,7 +125,7 @@ P2Pool Simple allows you to ping & connect to a [Community Monero Node](#communi
 
 To start P2Pool, first input the Monero address you'd like to receive payouts from. You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!
 
-**Be aware: [There are negative privacy implications when using Monero node not in your control.](https://www.getmonero.org/resources/moneropedia/remote-node.html)** Select a community node that you trust. If you'd like to manually specify a node to connect to, see [Advanced.](#advanced)
+**Warning: [There are negative privacy and security implications when using Monero node not in your control.](https://www.getmonero.org/resources/moneropedia/remote-node.html)** Select a community node that you trust, or better yet, run your own node. If you'd like to manually specify a node to connect to, see [Advanced.](#advanced)
 
 ---
 
@@ -285,7 +285,7 @@ In general:
 ---
 
 ### Swapping P2Pool/XMRig
-If you downloaded Gupax standalone and want to use your own `P2Pool/XMRig` binaries and/or want to swap them, you can:
+If you want to use your own `P2Pool/XMRig` binaries and/or want to swap them, you can:
 - Edit the PATH in `Gupax Advanced` to point at the new binaries
 - Change the binary itself
 
@@ -403,7 +403,7 @@ The manual pool list allows you save and connect up-to 1000 custom Pools (regard
 |------------|---------------------------------------------------------------|--------------------------------------------------------|----------------|
 | `Name`     | A unique name to identify this pool (only for Gupax purposes) | Only `[A-Za-z0-9-_.]` and spaces allowed               | 30 characters  |
 | `IP`       | The pool IP to connect to with XMRig                          | It must be a valid IPv4 address or a valid domain name | 255 characters |
-| `Port`     | The port of pool                                              | `[1-65535]`                                            | 5 characters   | 
+| `Port`     | The port of the pool                                          | `[1-65535]`                                            | 5 characters   | 
 | `Rig`      | An optional rig ID; This will be the name shown on the pool   | Only `[A-Za-z0-9-_]` and spaces allowed                | 30 characters  |
 
 The HTTP API textboxes allow you to change to IP/Port XMRig's HTTP API opens up on:

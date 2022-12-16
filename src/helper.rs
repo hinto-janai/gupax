@@ -492,7 +492,16 @@ impl Helper {
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI, because sometimes the 900ms event loop can't catch it.
-				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				if let Err(e) = writeln!(
+					gui_api.lock().unwrap().output,
+					"{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
+					HORI_CONSOLE,
+					uptime,
+					exit_status,
+					HORI_CONSOLE
+				) {
+					error!("P2Pool Watchdog | GUI Uptime/Exit status write failed: {}", e);
+				}
 				process.lock().unwrap().signal = ProcessSignal::None;
 				debug!("P2Pool Watchdog | Secret dead process reap OK, breaking");
 				break
@@ -517,7 +526,16 @@ impl Helper {
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
-				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				if let Err(e) = writeln!(
+					gui_api.lock().unwrap().output,
+					"{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
+					HORI_CONSOLE,
+					uptime,
+					exit_status,
+					HORI_CONSOLE
+				) {
+					error!("P2Pool Watchdog | GUI Uptime/Exit status write failed: {}", e);
+				}
 				process.lock().unwrap().signal = ProcessSignal::None;
 				debug!("P2Pool Watchdog | Stop SIGNAL done, breaking");
 				break
@@ -534,7 +552,16 @@ impl Helper {
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
-				writeln!(gui_api.lock().unwrap().output, "{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				if let Err(e) = writeln!(
+					gui_api.lock().unwrap().output,
+					"{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
+					HORI_CONSOLE,
+					uptime,
+					exit_status,
+					HORI_CONSOLE
+				) {
+					error!("P2Pool Watchdog | GUI Uptime/Exit status write failed: {}", e);
+				}
 				process.lock().unwrap().state = ProcessState::Waiting;
 				debug!("P2Pool Watchdog | Restart SIGNAL done, breaking");
 				break
@@ -831,7 +858,16 @@ impl Helper {
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				if let Err(e) = writeln!(
+					gui_api.lock().unwrap().output,
+					"{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
+					HORI_CONSOLE,
+					uptime,
+					exit_status,
+					HORI_CONSOLE
+				) {
+					error!("XMRig Watchdog | GUI Uptime/Exit status write failed: {}", e);
+				}
 				process.lock().unwrap().signal = ProcessSignal::None;
 				debug!("XMRig Watchdog | Secret dead process reap OK, breaking");
 				break
@@ -872,7 +908,16 @@ impl Helper {
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
-				writeln!(gui_api.lock().unwrap().output, "{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n", HORI_CONSOLE, uptime, exit_status, HORI_CONSOLE);
+				if let Err(e) = writeln!(
+					gui_api.lock().unwrap().output,
+					"{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
+					HORI_CONSOLE,
+					uptime,
+					exit_status,
+					HORI_CONSOLE
+				) {
+					error!("XMRig Watchdog | GUI Uptime/Exit status write failed: {}", e);
+				}
 				let mut process = process.lock().unwrap();
 				match process.signal {
 					ProcessSignal::Stop    => process.signal = ProcessSignal::None,

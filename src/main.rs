@@ -150,7 +150,7 @@ pub struct App {
 impl App {
 	fn cc(cc: &eframe::CreationContext<'_>, app: Self) -> Self {
 		let resolution = cc.integration_info.window_info.size;
-		init_text_styles(&cc.egui_ctx, resolution[0] as f32);
+		init_text_styles(&cc.egui_ctx, resolution[0]);
 		Self {
 			resolution,
 			..app
