@@ -530,7 +530,7 @@ Gupax itself uses around 100-300 megabytes of memory.
 
 Gupax also holds up to [500,000 bytes](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/helper.rs#L63) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-2 hours.
 
-Memory usage should *never* be above 400~ megabytes. If you see Gupax using more than this, please send a bug report.
+Memory usage should *never* be above 500~ megabytes. If you see Gupax using more than this, please send a bug report.
 
 ---
 

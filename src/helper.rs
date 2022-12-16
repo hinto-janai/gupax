@@ -1406,8 +1406,8 @@ impl PubP2poolApi {
 		// Total XMR
 		let per_sec = xmr / elapsed_as_secs_f64;
 		let xmr_hour = (per_sec * 60.0) * 60.0;
-		let xmr_day = payouts_hour * 24.0;
-		let xmr_month = payouts_day * 30.0;
+		let xmr_day = xmr_hour * 24.0;
+		let xmr_month = xmr_day * 30.0;
 
 		// 6. Mutate the struct with the new info
 		let mut public = public.lock().unwrap();
