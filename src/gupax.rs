@@ -161,7 +161,7 @@ impl Gupax {
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				Self::spawn_file_window_thread(file_window, FileType::P2pool);
 			}
-			ui.add_sized([ui.available_width()-SPACE, height], TextEdit::hint_text(TextEdit::singleline(&mut self.p2pool_path), GUPAX_PATH_P2POOL));
+			ui.add_sized([ui.available_width()-SPACE, height], TextEdit::singleline(&mut self.p2pool_path)).on_hover_text(GUPAX_PATH_P2POOL);
 		});
 		ui.horizontal(|ui| {
 			if self.xmrig_path.is_empty() {
@@ -177,7 +177,7 @@ impl Gupax {
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				Self::spawn_file_window_thread(file_window, FileType::Xmrig);
 			}
-			ui.add_sized([ui.available_width()-SPACE, height], TextEdit::hint_text(TextEdit::singleline(&mut self.xmrig_path), GUPAX_PATH_XMRIG));
+			ui.add_sized([ui.available_width()-SPACE, height], TextEdit::singleline(&mut self.xmrig_path)).on_hover_text(GUPAX_PATH_XMRIG);
 		});
 		let mut guard = file_window.lock().unwrap();
 		if guard.picked_p2pool { self.p2pool_path = guard.p2pool_path.clone(); guard.picked_p2pool = false; }

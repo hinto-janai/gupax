@@ -98,15 +98,48 @@ _Notes:_
 - _If you'd like to get deeper into the settings, see [Advanced.](#advanced)_
 
 ## Simple
+The `Gupax/P2Pool/XMRig` tabs have two versions, `Simple` & `Advanced`.
+
+`Simple` is for a minimal & working out-of-the-box configuration.
+
 ### Gupax
+In this tab, there is the updater and general Gupax settings.
+
+If `Check for updates` is pressed, Gupax will compare your current `Gupax/P2Pool/XMRig` versions against the latest releases using the [GitHub API](#where-are-updates-downloaded-from) and update them automatically if needed.
+
+Below that, there are some general Gupax settings:
+| Setting            | Function  |
+|--------------------|-----------| 
+| `Update via Tor`   | Causes updates to be fetched via the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required
+| `Auto-Update`      | Gupax will automatically check for updates at startup
+| `Auto-P2Pool`      | Gupax will automatically start P2Pool at startup
+| `Auto-XMRig`       | Gupax will automatically start XMRig at startup
+| `Ask before quit`  | Gupax will ask before quitting (and notify if there are any updates/processes still alive)
+| `Save before quit` | Gupax will automatically saved any un-saved setting on quit
 
 ---
 
 ### P2Pool
+P2Pool Simple allows you to ping & connect to a [Community Monero Node](#community-monero-nodes) and start your own local P2Pool instance.
+
+To start P2Pool, first input the Monero address you'd like to receive payouts from. You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!
+
+**Be aware: [There are negative privacy implications when using Monero node not in your control.](https://www.getmonero.org/resources/moneropedia/remote-node.html)** Select a community node that you trust. If you'd like to manually specify a node to connect to, see [Advanced.](#advanced)
 
 ---
 
 ### XMRig
+XMRig Simple has a log output box, a thread slider, and `Pause-on-active` setting.
+
+If XMRig is started with `Pause-on-active` with a value greater than 0, XMRig will automatically pause for that many seconds if it detects any user activity (mouse movements, keyboard clicks). [This setting is only available on Windows/macOS.](https://xmrig.com/docs/miner/config/misc#pause-on-active)
+
+**Windows:**  
+Gupax will automatically launch XMRig with administrator privileges to activate [mining optimizations.](https://xmrig.com/docs/miner/randomx-optimization-guide) XMRig also needs a [signed WinRing0 driver (© 2007-2009 OpenLibSys.org)](https://xmrig.com/docs/miner/randomx-optimization-guide/msr#manual-configuration) to access MSR registers. This is the file next to XMRig called `WinRing0x64.sys`. This comes in the bundled version of Gupax. If missing/deleted, a copy is packaged with all [Windows XMRig releases.](https://github.com/xmrig/xmrig/releases/) A direct standalone version is also provided, [here.](https://github.com/xmrig/xmrig/blob/master/bin/WinRing0/WinRing0x64.sys)
+
+**macOS/Linux:**  
+Gupax will prompt for your `sudo` password to start XMRig with and do all the things above.
+
+XMRig Simple will always mine to your own local P2Pool (`localhost:3333`), if you'd like to manually specify a pool to mine to, see [Advanced](#advanced).
 
 ## Advanced
 ### Verifying
@@ -266,19 +299,93 @@ gupax/
    ├─ xmrig
 ```
 
-Be warned: Gupax will use your custom PATH/binary and will replace them if you use `Check for updates` in the `[Gupax]` tab.
-
 ---
 
 ### Gupax
+Along with the updater and settings mentioned in [Simple](#simple), `Gupax Advanced` allows you to change:
+- The PATH of where Gupax looks for P2Pool/XMRig
+- Gupax's resolution
+- The selected tab on startup
+
+**Warning:** Gupax will use your custom PATH/binary and will replace them if you use `Check for updates` in the `[Gupax]` tab. There are sanity checks in place, however. Your PATH MUST end in a value that _appears_ correct or else the updater will refuse to start:
+| Binary   | Accepted values                  | Good PATH       | Bad PATH |
+|----------|----------------------------------|-----------------|----------|
+| `P2Pool` | `P2POOL, P2Pool, P2pool, p2pool` | `P2pool/p2pool` | `Documents/my_really_important_file`
+| `XMRig`  | `XMRIG, XMRig, Xmrig, xmrig`     | `XMRig/XMRig`   | `Desktop/`
+
+If using Windows, the PATH _must_ end with `.exe`.
 
 ---
 
 ### P2Pool
+P2Pool Advanced has:
+- Terminal input
+- Overriding command arguments
+- Manual node list
+- P2Pool Main/Mini selection
+- Out/In peer setting
+- Log level setting
+
+The overriding command arguments will completely override your Gupax settings and start P2Pool with those arguments.  
+**Warning:** If using this setting, use `--no-color` and make sure to set `--data-api <PATH>` & `--local-api` so that the `[Status]` tab can work!
+
+The manual node list allows you save and connect up-to 1000 custom Monero nodes:
+| Data Field | Purpose                                                       | Limits                                                 | Max Length     |
+|------------|---------------------------------------------------------------|--------------------------------------------------------|----------------|
+| `Name`     | A unique name to identify this node (only for Gupax purposes) | Only `[A-Za-z0-9-_.]` and spaces allowed               | 30 characters  |
+| `IP`       | The Monero Node IP to connect to with P2Pool                  | It must be a valid IPv4 address or a valid domain name | 255 characters |
+| `RPC`      | The RPC port of the Monero node                               | `[1-65535]`                                            | 5 characters   | 
+| `ZMQ`      | The ZMQ port of the Monero node                               | `[1-65535]`                                            | 5 characters   | 
+
+The `Main/Mini` selector allows you to change which P2Pool sidechain you mine on:
+| P2Pool Sidechain | Description                                                  | Use-case                                  |
+|------------------|--------------------------------------------------------------|-------------------------------------------|
+| `Main`           | More miners, finds blocks faster, has a higher difficulty    | Suitable for miners with MORE than 50kH/s |
+| `Mini`           | Less miners, finds blocks slower, has a lower difficulty     | Suitable for miners with LESS than 50kH/s |
+
+The remaining sliders control miscellaneous settings:
+| Slider      | Purpose                                                     | Default | Min/Max Range |
+|-------------|-------------------------------------------------------------|---------|---------------|
+| `Out peers` | How many out-bound peers P2Pool will connect to             | `10`    | `10..450`     |
+| `In peers`  | How many in-bound peers P2Pool will allow to connect to you | `10`    | `10..450`     |
+| `Log level` | Verbosity of the P2Pool console log                         | `3`     | `0..6`        |
+
 
 ---
 
 ### XMRig
+XMRig Advanced has:
+- Terminal input
+- Overriding command arguments
+- Custom payout address
+- CPU thread slider
+- Manual pool list
+- Custom HTTP API IP/Port
+- TLS setting
+- Keepalive setting
+
+The overriding command arguments will completely override your Gupax settings and start XMRig with those arguments.  
+**Warned:** If using this setting, use `[--no-color]` and make sure to set `[--http-host <IP>]` & `[--http-port <PORT>]` so that the `[Status]` tab can work!
+
+The manual pool list allows you save and connect up-to 1000 custom Pools (regardless if P2Pool or not):
+| Data Field | Purpose                                                       | Limits                                                 | Max Length     |
+|------------|---------------------------------------------------------------|--------------------------------------------------------|----------------|
+| `Name`     | A unique name to identify this pool (only for Gupax purposes) | Only `[A-Za-z0-9-_.]` and spaces allowed               | 30 characters  |
+| `IP`       | The pool IP to connect to with XMRig                          | It must be a valid IPv4 address or a valid domain name | 255 characters |
+| `Port`     | The port of pool                                              | `[1-65535]`                                            | 5 characters   | 
+| `Rig`      | An optional rig ID; This will be the name shown on the pool   | Only `[A-Za-z0-9-_]` and spaces allowed                | 30 characters  |
+
+The HTTP API textboxes allow you to change to IP/Port XMRig's HTTP API opens up on:
+| Data Field      | Purpose                                       | Default               | Limits                                                 | Max Length
+|-----------------|-----------------------------------------------|-----------------------|--------------------------------------------------------|----------------|
+| `HTTPS API IP`  | The IP XMRig's HTTP API server will bind to   | `localhost/127.0.0.1` | It must be a valid IPv4 address or a valid domain name | 255 characters |
+| `HTTP API Port` | The port XMRig's HTTP API server will bind to | `18088`               | `[1-65535]`                                            | 5 characters   |
+
+The remaining buttons control miscellaneous settings (both are disabled by default, as P2Pool does not require them):
+| Button           | Purpose                                                                   |
+|------------------|---------------------------------------------------------------------------|
+| `TLS Connection` | Enables SSL/TLS connections (needs pool support)                          |
+| `Keepalive`      | Enables sending keepalive packets to prevent timeout (needs pool support) |
 
 ## Connections
 For transparency, here's all the connections Gupax makes:
@@ -290,6 +397,15 @@ For transparency, here's all the connections Gupax makes:
 | DNS | DNS connections will usually be handled by your OS (or whatever custom DNS setup you have). If using Tor, DNS requests for updates [*should*](https://tpo.pages.torproject.net/core/doc/rust/arti/) be routed through the Tor network automatically | All of the above | All of the above |
 
 ## Community Monero Nodes
+These are the community nodes used by Gupax in the `[P2Pool Simple]` tab. If you would like to have a node added/removed, please submit an [Issue](https://github.com/hinto-janaiyo/gupax/issues) with the reasoning.
+
+In general, a suitable node needs to:
+- Be fast
+- Have good uptime
+- Have RPC enabled
+- Have ZMQ enabled
+- Have an owner known by the general Monero community
+
 | Name                                                  | IP/Domain                        | RPC Port | ZMQ Port |
 |-------------------------------------------------------|----------------------------------|----------|----------|
 | [C3pool](https://www.c3pool.com)                      | node.c3pool.com                  | 18081    | 18083    |

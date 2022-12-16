@@ -1091,9 +1091,16 @@ impl eframe::App for App {
 							_ => ui.add_sized([width, height], Label::new("--- Gupax has encountered an error! ---")),
 						};
 						let height = height/2.0;
-						ui.add_sized([width, height], Label::new(&self.error_state.msg));
 						// Show GitHub rant link for Windows admin problems.
-						ui.add_sized([width, height], Hyperlink::from_label_and_url("[Why does Gupax need to be Admin? (on Windows)]", "https://github.com/hinto-janaiyo/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows"))
+						if cfg!(windows) && self.error_state.buttons == ErrorButtons::WindowsAdmin {
+							ui.add_sized([width, height], Hyperlink::from_label_and_url(
+								"[Why does Gupax need to be Admin? (on Windows)]",
+								"https://github.com/hinto-janaiyo/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows"
+							));
+							ui.add_sized([width, height], Label::new(&self.error_state.msg))
+						} else {
+							ui.add_sized([width, height], Label::new(&self.error_state.msg))
+						}
 					},
 				};
 				let height = ui.available_height();

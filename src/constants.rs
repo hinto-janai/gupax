@@ -188,8 +188,8 @@ pub const GUPAX_PATH_P2POOL: &str = "The location of the P2Pool binary: Both abs
 pub const GUPAX_PATH_XMRIG: &str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 
 // P2Pool
-pub const P2POOL_MAIN: &str = "Use the P2Pool main-chain. This P2Pool finds shares faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
-pub const P2POOL_MINI: &str = "Use the P2Pool mini-chain. This P2Pool finds shares slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
+pub const P2POOL_MAIN: &str = "Use the P2Pool main-chain. This P2Pool finds blocks faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
+pub const P2POOL_MINI: &str = "Use the P2Pool mini-chain. This P2Pool finds blocks slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
 pub const P2POOL_OUT: &str = "How many out-bound peers to connect to? (you connecting to others)";
 pub const P2POOL_IN: &str = "How many in-bound peers to allow? (others connecting to you)";
 pub const P2POOL_LOG: &str = "Verbosity of the console log";
@@ -200,7 +200,7 @@ pub const P2POOL_PING: &str = "Ping the built-in community Monero nodes";
 pub const P2POOL_ADDRESS: &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
 pub const P2POOL_INPUT: &str = "Send a command to P2Pool";
 pub const P2POOL_ARGUMENTS: &str =
-r#"WARNING: Use [--no-color] and make sure to set [--data-api <PATH>] & [--local-api] so that the [Status] can work!
+r#"WARNING: Use [--no-color] and make sure to set [--data-api <PATH>] & [--local-api] so that the [Status] tab can work!
 
 Start P2Pool with these arguments and override all below settings"#;
 pub const P2POOL_SIMPLE: &str =
@@ -236,16 +236,16 @@ r#"Use simple XMRig settings:
 pub const XMRIG_ADVANCED: &str =
 r#"Use advanced XMRig settings:
     - Terminal input
-	- Overriding config file
+	- Overriding command arguments
 	- Custom payout address
 	- CPU thread slider
 	- Manual pool list
+	- Custom HTTP API IP/Port
 	- TLS setting
-	- Keepalive setting
-	- Custom HTTP API IP/Port"#;
+	- Keepalive setting"#;
 pub const XMRIG_INPUT: &str = "Send a command to XMRig";
 pub const XMRIG_ARGUMENTS: &str =
-r#"WARNING: Use [--no-color] and make sure to set [--http-host <IP>] & [--http-port <PORT>] so that the [Status] can work!
+r#"WARNING: Use [--no-color] and make sure to set [--http-host <IP>] & [--http-port <PORT>] so that the [Status] tab can work!
 
 Start XMRig with these arguments and override all below settings"#;
 pub const XMRIG_ADDRESS: &str = "Specify which Monero address to payout to. This does nothing if mining to P2Pool since the address being payed out to will be the one P2Pool started with. This doubles as a rig identifier for P2Pool and some pools.";
@@ -257,7 +257,7 @@ pub const XMRIG_PAUSE: &str = "THIS SETTING IS DISABLED IF SET TO [0]. Pause min
 pub const XMRIG_API_IP: &str = "Specify which IP to bind to for XMRig's HTTP API; If empty: [localhost/127.0.0.1]";
 pub const XMRIG_API_PORT: &str = "Specify which port to bind to for XMRig's HTTP API; If empty: [18088]";
 pub const XMRIG_TLS: &str = "Enable SSL/TLS connections (needs pool support)";
-pub const XMRIG_KEEPALIVE: &str = "Send keepalived packet to prevent timeout (needs pool support)";
+pub const XMRIG_KEEPALIVE: &str = "Send keepalive packets to prevent timeout (needs pool support)";
 pub const XMRIG_THREADS: &str = "Number of CPU threads to use for mining";
 pub const XMRIG_PATH_NOT_EXE: &str = "XMRig binary not found at the given path in the Gupax tab!";
 
