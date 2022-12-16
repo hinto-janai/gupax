@@ -20,9 +20,9 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 	- [Logs](#Logs)
 	- [Disk](#Disk)
 	- [Swapping P2Pool/XMRig](#Swapping-P2PoolXMRig)
-	- [Gupax](#Gupax)
-	- [P2Pool](#P2Pool)
-	- [XMRig](#XMRig)
+	- [Gupax](#Gupax-1)
+	- [P2Pool](#P2Pool-1)
+	- [XMRig](#XMRig-1)
 * [Connections](#Connections)
 * [Community Monero Nodes](#community-monero-nodes)
 * [Build](#Build)
@@ -121,7 +121,7 @@ Below that, there are some general Gupax settings:
 ---
 
 ### P2Pool
-P2Pool Simple allows you to ping & connect to a [Community Monero Node](#community-monero-nodes) and start your own local P2Pool instance.
+P2Pool Simple allows you to ping & connect to a [Community Monero Node](#community-monero-nodes) and start your own local P2Pool instance on the `Mini` sidechain.
 
 To start P2Pool, first input the Monero address you'd like to receive payouts from. You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!
 
@@ -364,6 +364,15 @@ The `Main/Mini` selector allows you to change which P2Pool sidechain you mine on
 |------------------|--------------------------------------------------------------|-------------------------------------------|
 | `Main`           | More miners, finds blocks faster, has a higher difficulty    | Suitable for miners with MORE than 50kH/s |
 | `Mini`           | Less miners, finds blocks slower, has a lower difficulty     | Suitable for miners with LESS than 50kH/s |
+
+Given enough time, both `Main` and `Mini` will result in the same reward (as will solo mining):
+| Mining Method    | Share Behavior                              | Payout/Output Behavior             | Example                                    | Total (it's the same) |
+|------------------|---------------------------------------------|------------------------------------|--------------------------------------------|-----------------------|
+| `P2Pool Main`    | LESS frequent shares that are MORE valuable | Results in MORE outputs worth LESS | 20 shares, 100 outputs worth `0.006 XMR`   | `0.6 XMR`             |
+| `P2Pool Mini`    | MORE frequent shares that are LESS valuable | Results in LESS outputs worth MORE | 100 shares, 20 outputs worth `0.03 XMR`    | `0.6 XMR`             |
+| `Solo mining`    | No shares, only payouts                     | 1 output                           | 1 output worth the block reward: `0.6 XMR` | `0.6 XMR`             |
+
+In the end, it doesn't matter _too much_ which sidechain you pick, it will all average out. Getting LESS but more valuable outputs may be desired, however, since the transaction cost to combine all of them (`sweep_all`) will be cheaper due to being comprised of less outputs.
 
 The remaining sliders control miscellaneous settings:
 | Slider      | Purpose                                                     | Default | Min/Max Range |
