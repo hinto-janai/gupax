@@ -284,12 +284,12 @@ impl Ping {
 				.header("User-Agent", rand_user_agent)
 				.body(hyper::Body::from(r#"{"jsonrpc":"2.0","id":"0","method":"get_info"}"#))
 				.unwrap();
-			let handle = tokio::spawn(async move { Self::response(client, request, ip, ping, percent, node_vec).await });
+			let handle = tokio::task::spawn(async move { Self::response(client, request, ip, ping, percent, node_vec).await; });
 			handles.push(handle);
 		}
 
 		for handle in handles {
-			handle.await?;
+			handle.await;
 		}
 
 		let node_vec = std::mem::take(&mut *node_vec.lock().unwrap());

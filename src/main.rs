@@ -175,7 +175,10 @@ impl App {
 			.with_processes(sysinfo::ProcessRefreshKind::new().with_cpu())
 			.with_memory());
 		sysinfo.refresh_all();
-		let pid = sysinfo::get_current_pid().unwrap();
+		let pid = match sysinfo::get_current_pid() {
+			Ok(pid) => pid,
+			Err(e) => { error!("App Init | Failed to get sysinfo PID: {}", e); exit(1) }
+		};
 		let pub_sys = Arc::new(Mutex::new(Sys::new()));
 
 		debug!("App Init | The rest of the [App]...");
@@ -275,6 +278,7 @@ impl App {
 					Deserialize(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Format(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Merge(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					_ => (),
 				};
 				State::new()
 			},
@@ -291,8 +295,9 @@ impl App {
 					Path(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Serialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Deserialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Format(e) => app.error_state.set(format!("Node file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Merge(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 				};
 				Node::new_vec()
 			},
@@ -311,8 +316,9 @@ impl App {
 					Path(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Serialize(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Deserialize(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Format(e) => app.error_state.set(format!("Pool file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 					Merge(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
 				};
 				Pool::new_vec()
 			},

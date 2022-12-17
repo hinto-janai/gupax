@@ -347,10 +347,22 @@ impl Node {
 		let size = nodes.keys().len();
 		let mut vec = Vec::with_capacity(size);
 		for (key, values) in nodes.iter() {
+			let ip = match values.get("ip") {
+				Some(ip) => ip.to_string(),
+				None => { error!("Node | [None] at [ip] parse"); return Err(TomlError::Parse("[None] at [ip] parse")) },
+			};
+			let rpc = match values.get("rpc") {
+				Some(rpc) => rpc.to_string(),
+				None => { error!("Node | [None] at [rpc] parse"); return Err(TomlError::Parse("[None] at [rpc] parse")) },
+			};
+			let zmq = match values.get("zmq") {
+				Some(zmq) => zmq.to_string(),
+				None => { error!("Node | [None] at [zmq] parse"); return Err(TomlError::Parse("[None] at [zmq] parse")) },
+			};
 			let node = Node {
-				ip: values.get("ip").unwrap().as_str().unwrap().to_string(),
-				rpc: values.get("rpc").unwrap().as_str().unwrap().to_string(),
-				zmq: values.get("zmq").unwrap().as_str().unwrap().to_string(),
+				ip,
+				rpc,
+				zmq,
 			};
 			vec.push((key.clone(), node));
 		}
@@ -459,10 +471,22 @@ impl Pool {
 		let size = pools.keys().len();
 		let mut vec = Vec::with_capacity(size);
 		for (key, values) in pools.iter() {
+			let rig = match values.get("rig") {
+				Some(rig) => rig.to_string(),
+				None => { error!("Pool | [None] at [rig] parse"); return Err(TomlError::Parse("[None] at [rig] parse")) },
+			};
+			let ip = match values.get("ip") {
+				Some(ip) => ip.to_string(),
+				None => { error!("Pool | [None] at [ip] parse"); return Err(TomlError::Parse("[None] at [ip] parse")) },
+			};
+			let port = match values.get("port") {
+				Some(port) => port.to_string(),
+				None => { error!("Pool | [None] at [port] parse"); return Err(TomlError::Parse("[None] at [port] parse")) },
+			};
 			let pool = Pool {
-				rig: values.get("rig").unwrap().as_str().unwrap().to_string(),
-				ip: values.get("ip").unwrap().as_str().unwrap().to_string(),
-				port: values.get("port").unwrap().as_str().unwrap().to_string(),
+				rig,
+				ip,
+				port,
 			};
 			vec.push((key.clone(), pool));
 		}
@@ -527,6 +551,7 @@ pub enum TomlError {
 	Deserialize(toml::de::Error),
 	Merge(figment::Error),
 	Format(std::fmt::Error),
+	Parse(&'static str),
 }
 
 impl Display for TomlError {
@@ -539,6 +564,7 @@ impl Display for TomlError {
 			Deserialize(err) => write!(f, "{}: Deserialize | {}", ERROR, err),
 			Merge(err)       => write!(f, "{}: Merge | {}", ERROR, err),
 			Format(err)      => write!(f, "{}: Format | {}", ERROR, err),
+			Parse(err)      => write!(f, "{}: Parse | {}", ERROR, err),
 		}
 	}
 }
