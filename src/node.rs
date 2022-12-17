@@ -367,7 +367,7 @@ impl Ping {
 		}
 
 		for handle in handles {
-			handle.await;
+			handle.await?;
 		}
 
 		let node_vec = std::mem::take(&mut *node_vec.lock().unwrap());

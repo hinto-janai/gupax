@@ -157,6 +157,12 @@ impl App {
 		}
 	}
 
+	fn save_before_quit(&mut self) {
+		if let Err(e) = State::save(&mut self.state, &self.state_path) { error!("State file: {}", e); }
+		if let Err(e) = Node::save(&self.node_vec, &self.node_path) { error!("Node list: {}", e); }
+		if let Err(e) = Pool::save(&self.pool_vec, &self.pool_path) { error!("Pool list: {}", e); }
+	}
+
 	fn new(now: Instant) -> Self {
 		info!("Initializing App Struct...");
 		debug!("App Init | P2Pool & XMRig processes...");
@@ -908,10 +914,18 @@ fn main() {
 
 impl eframe::App for App {
 	fn on_close_event(&mut self) -> bool {
-		if self.state.gupax.ask_before_quit {
+		// If we're already on the [ask_before_quit] screen and
+		// the user tries to exit again, exit.
+		if self.error_state.buttons == ErrorButtons::StayQuit {
+			if self.state.gupax.save_before_quit { self.save_before_quit(); }
+			true
+		// Else, set up the [ask_before_quit] screen (if enabled).
+		} else if self.state.gupax.ask_before_quit {
 			self.error_state.set("", ErrorFerris::Oops, ErrorButtons::StayQuit);
 			false
+		// Else, just quit.
 		} else {
+			if self.state.gupax.save_before_quit { self.save_before_quit(); }
 			true
 		}
 	}
@@ -1130,7 +1144,10 @@ impl eframe::App for App {
 				        if key.is_esc() || ui.add_sized([width, height/2.0], Button::new("Stay")).clicked() {
 							self.error_state = ErrorState::new();
 						}
-						if ui.add_sized([width, height/2.0], Button::new("Quit")).clicked() { exit(0); }
+						if ui.add_sized([width, height/2.0], Button::new("Quit")).clicked() {
+							if self.state.gupax.save_before_quit { self.save_before_quit(); }
+							exit(0);
+						}
 					},
 					// This code handles the [state.toml/node.toml] resetting, [panic!]'ing if it errors once more
 					// Another error after this either means an IO error or permission error, which Gupax can't fix.

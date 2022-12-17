@@ -886,8 +886,8 @@ impl Helper {
 					// And... wipe it again (only if we're stopping full).
 					// If we're restarting, the next start will wipe it for us.
 					if signal != ProcessSignal::Restart { SudoState::wipe(&sudo); }
-				} else {
-					if let Err(e) = child_pty.lock().unwrap().kill() { error!("XMRig Watchdog | Kill error: {}", e); }
+				} else if let Err(e) = child_pty.lock().unwrap().kill() {
+					error!("XMRig Watchdog | Kill error: {}", e);
 				}
 				let exit_status = match child_pty.lock().unwrap().wait() {
 					Ok(e) => {
