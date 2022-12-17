@@ -164,17 +164,40 @@ impl P2pool {
 
 		debug!("P2Pool Tab | Rendering [Select fastest ... Ping] buttons");
 		ui.horizontal(|ui| {
-		let width = (width/2.0)-4.0;
-		// [Select fastest node]
-		if ui.add_sized([width, height], Button::new("Select fastest node")).on_hover_text(P2POOL_SELECT_FASTEST).clicked() && ping.lock().unwrap().pinged {
-  				self.node = ping.lock().unwrap().fastest;
-  			}
-
-		// [Ping Button]
-		ui.set_enabled(!ping.lock().unwrap().pinging);
-		if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
-			Ping::spawn_thread(ping);
-		}});
+			let width = (width/5.0)-6.0;
+			// [Select random node]
+			if ui.add_sized([width, height], Button::new("Select random node")).on_hover_text(P2POOL_SELECT_RANDOM).clicked() {
+				self.node = NodeEnum::get_random(&self.node);
+			}
+			// [Select fastest node]
+			if ui.add_sized([width, height], Button::new("Select fastest node")).on_hover_text(P2POOL_SELECT_FASTEST).clicked() && ping.lock().unwrap().pinged {
+				self.node = ping.lock().unwrap().fastest;
+			}
+			// [Ping Button]
+			ui.add_enabled_ui(!ping.lock().unwrap().pinging, |ui| {
+				if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
+					Ping::spawn_thread(ping);
+				}
+			});
+			// [Last <-]
+			if ui.add_sized([width, height], Button::new("⬅ Last")).on_hover_text(P2POOL_SELECT_LAST).clicked() {
+				let ping = ping.lock().unwrap();
+				match ping.pinged {
+					true  => self.node = NodeEnum::get_last_from_ping(&self.node, &ping.nodes),
+					false => self.node = NodeEnum::get_last(&self.node),
+				}
+				drop(ping);
+			}
+			// [Next ->]
+			if ui.add_sized([width, height], Button::new("Next ➡")).on_hover_text(P2POOL_SELECT_NEXT).clicked() {
+				let ping = ping.lock().unwrap();
+				match ping.pinged {
+					true  => self.node = NodeEnum::get_next_from_ping(&self.node, &ping.nodes),
+					false => self.node = NodeEnum::get_next(&self.node),
+				}
+				drop(ping);
+			}
+		});
 
 		ui.vertical(|ui| {
 			let height = height / 2.0;

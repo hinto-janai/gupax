@@ -19,6 +19,7 @@ use crate::{
 	constants::*,
 };
 use serde::{Serialize,Deserialize};
+use rand::{thread_rng, Rng};
 use std::time::{Instant,Duration};
 use std::sync::{Arc,Mutex};
 use egui::Color32;
@@ -56,10 +57,86 @@ pub const NODE_IPS: [&str; 17] = [
 	MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
 ];
 
+pub const COMMUNITY_NODE_LENGTH: usize = NODE_IPS.len();
+
 #[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum NodeEnum {
 	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,Monerujo,Plowsof1,
 	Plowsof2,Rino,Feather1,Feather2,Seth,SupportXmr,SupportXmrIr,XmrVsBeast,
+}
+
+impl NodeEnum {
+	fn get_index(&self) -> usize {
+		match self {
+			C3pool         => 0,
+			Cake           => 1,
+			CakeEu         => 2,
+			CakeUk         => 3,
+			CakeUs         => 4,
+			Feather1       => 5,
+			Feather2       => 6,
+			MajesticBankIs => 7,
+			MajesticBankSu => 8,
+			Monerujo       => 9,
+			Plowsof1       => 10,
+			Plowsof2       => 11,
+			Rino           => 12,
+			Seth           => 13,
+			SupportXmr     => 14,
+			SupportXmrIr   => 15,
+			_              => 16,
+		}
+	}
+
+	// Return a random node (that isn't the one already selected).
+	pub fn get_random(&self) -> Self {
+		let index = Self::get_index(self);
+		let mut rand = thread_rng().gen_range(0..COMMUNITY_NODE_LENGTH);
+		while rand == index {
+			rand = thread_rng().gen_range(0..COMMUNITY_NODE_LENGTH);
+		}
+		ip_to_enum(NODE_IPS[rand])
+	}
+
+	// Return the node [-1] of this one (wraps around)
+	pub fn get_last(&self) -> Self {
+		let index = Self::get_index(self);
+		if index == 0 {
+			ip_to_enum(NODE_IPS[COMMUNITY_NODE_LENGTH-1])
+		} else {
+			ip_to_enum(NODE_IPS[index-1])
+		}
+	}
+
+	// Return the node [+1] of this one (wraps around)
+	pub fn get_next(&self) -> Self {
+		let index = Self::get_index(self);
+		if index == COMMUNITY_NODE_LENGTH-1 {
+			ip_to_enum(NODE_IPS[0])
+		} else {
+			ip_to_enum(NODE_IPS[index+1])
+		}
+	}
+
+	// This returns relative to the ping.
+	pub fn get_last_from_ping(&self, nodes: &Vec<NodeData>) -> Self {
+		let mut found = false;
+		let mut last = *self;
+		for data in nodes {
+			if found { return last }
+			if *self == data.id { found = true; } else { last = data.id; }
+		}
+		last
+	}
+
+	pub fn get_next_from_ping(&self, nodes: &Vec<NodeData>) -> Self {
+		let mut found = false;
+		for data in nodes {
+			if found { return data.id }
+			if *self == data.id { found = true; }
+		}
+		*self
+	}
 }
 
 impl std::fmt::Display for NodeEnum {
@@ -225,6 +302,7 @@ impl Ping {
 					ping.lock().unwrap().msg = msg;
 					ping.lock().unwrap().pinged = true;
 					ping.lock().unwrap().auto_selected = false;
+					ping.lock().unwrap().prog = 100.0;
 				},
 				Err(err) => {
 					error!("Ping ... FAIL ... {}", err);
@@ -260,7 +338,7 @@ impl Ping {
 		let ping = Arc::clone(ping);
 		ping.lock().unwrap().pinging = true;
 		ping.lock().unwrap().prog = 0.0;
-		let percent = (100.0 / ((NODE_IPS.len()) as f32)).floor();
+		let percent = (100.0 / (COMMUNITY_NODE_LENGTH as f32)).floor();
 
 		// Create HTTP client
 		let info = "Creating HTTP Client".to_string();
@@ -271,8 +349,8 @@ impl Ping {
 		// Random User Agent
 		let rand_user_agent = crate::Pkg::get_user_agent();
 		// Handle vector
-		let mut handles = Vec::with_capacity(NODE_IPS.len());
-		let node_vec = Arc::new(Mutex::new(Vec::with_capacity(NODE_IPS.len())));
+		let mut handles = Vec::with_capacity(COMMUNITY_NODE_LENGTH);
+		let node_vec = Arc::new(Mutex::new(Vec::with_capacity(COMMUNITY_NODE_LENGTH)));
 
 		for ip in NODE_IPS {
 			let client = client.clone();
@@ -300,7 +378,6 @@ impl Ping {
 		let mut ping = ping.lock().unwrap();
 			ping.fastest = node_vec[0].id;
 			ping.nodes = node_vec;
-			ping.prog = 100.0;
 			ping.msg = info;
 			drop(ping);
 		Ok(fastest_info)
