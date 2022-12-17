@@ -348,15 +348,24 @@ impl Node {
 		let mut vec = Vec::with_capacity(size);
 		for (key, values) in nodes.iter() {
 			let ip = match values.get("ip") {
-				Some(ip) => ip.to_string(),
+				Some(ip) => match ip.as_str() {
+					Some(ip) => ip.to_string(),
+					None => { error!("Node | [None] at [ip] parse"); return Err(TomlError::Parse("[None] at [ip] parse")) },
+				},
 				None => { error!("Node | [None] at [ip] parse"); return Err(TomlError::Parse("[None] at [ip] parse")) },
 			};
 			let rpc = match values.get("rpc") {
-				Some(rpc) => rpc.to_string(),
+				Some(rpc) => match rpc.as_str() {
+					Some(rpc) => rpc.to_string(),
+					None => { error!("Node | [None] at [rpc] parse"); return Err(TomlError::Parse("[None] at [rpc] parse")) },
+				},
 				None => { error!("Node | [None] at [rpc] parse"); return Err(TomlError::Parse("[None] at [rpc] parse")) },
 			};
 			let zmq = match values.get("zmq") {
-				Some(zmq) => zmq.to_string(),
+				Some(zmq) => match zmq.as_str() {
+					Some(zmq) => zmq.to_string(),
+					None => { error!("Node | [None] at [zmq] parse"); return Err(TomlError::Parse("[None] at [zmq] parse")) },
+				},
 				None => { error!("Node | [None] at [zmq] parse"); return Err(TomlError::Parse("[None] at [zmq] parse")) },
 			};
 			let node = Node {
@@ -470,17 +479,27 @@ impl Pool {
 		};
 		let size = pools.keys().len();
 		let mut vec = Vec::with_capacity(size);
+		// We have to do [.as_str()] -> [.to_string()] to get rid of the \"...\" that gets added on.
 		for (key, values) in pools.iter() {
 			let rig = match values.get("rig") {
-				Some(rig) => rig.to_string(),
+				Some(rig) => match rig.as_str() {
+					Some(rig) => rig.to_string(),
+					None => { error!("Pool | [None] at [rig] parse"); return Err(TomlError::Parse("[None] at [rig] parse")) },
+				},
 				None => { error!("Pool | [None] at [rig] parse"); return Err(TomlError::Parse("[None] at [rig] parse")) },
 			};
 			let ip = match values.get("ip") {
-				Some(ip) => ip.to_string(),
+				Some(ip) => match ip.as_str() {
+					Some(ip) => ip.to_string(),
+					None => { error!("Pool | [None] at [ip] parse"); return Err(TomlError::Parse("[None] at [ip] parse")) },
+				},
 				None => { error!("Pool | [None] at [ip] parse"); return Err(TomlError::Parse("[None] at [ip] parse")) },
 			};
 			let port = match values.get("port") {
-				Some(port) => port.to_string(),
+				Some(port) => match port.as_str() {
+					Some(port) => port.to_string(),
+					None => { error!("Pool | [None] at [port] parse"); return Err(TomlError::Parse("[None] at [port] parse")) },
+				},
 				None => { error!("Pool | [None] at [port] parse"); return Err(TomlError::Parse("[None] at [port] parse")) },
 			};
 			let pool = Pool {

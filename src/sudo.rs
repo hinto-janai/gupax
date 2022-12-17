@@ -165,7 +165,7 @@ impl SudoState {
 					},
 				}
 			}
-			if let Err(e) = sudo.kill() { error!("Sudo | Kill error: {}", e); }
+			if let Err(e) = sudo.kill() { warn!("Sudo | Kill error (it probably already exited): {}", e); }
 			if state.lock().unwrap().success {
 				match state.lock().unwrap().signal {
 					ProcessSignal::Restart => crate::helper::Helper::restart_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),

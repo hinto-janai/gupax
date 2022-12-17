@@ -1308,7 +1308,7 @@ impl eframe::App for App {
 				ui.group(|ui| {
 					ui.set_enabled(self.diff);
 					let width = width / 2.0;
-					if key.is_r() && !wants_input || ui.add_sized([width, height], Button::new("Reset")).on_hover_text("Reset changes").clicked() {
+					if key.is_r() && !wants_input && self.diff || ui.add_sized([width, height], Button::new("Reset")).on_hover_text("Reset changes").clicked() {
 						let og = self.og.lock().unwrap().clone();
 						self.state.gupax = og.gupax;
 						self.state.p2pool = og.p2pool;
@@ -1316,7 +1316,7 @@ impl eframe::App for App {
 						self.node_vec = self.og_node_vec.clone();
 						self.pool_vec = self.og_pool_vec.clone();
 					}
-					if key.is_s() && !wants_input || ui.add_sized([width, height], Button::new("Save")).on_hover_text("Save changes").clicked() {
+					if key.is_s() && !wants_input && self.diff || ui.add_sized([width, height], Button::new("Save")).on_hover_text("Save changes").clicked() {
 						match State::save(&mut self.state, &self.state_path) {
 							Ok(_) => {
 								let mut og = self.og.lock().unwrap();
