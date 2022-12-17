@@ -134,10 +134,10 @@ const ACCEPTABLE_P2POOL: [&str; 4] = ["P2POOL", "P2Pool", "P2pool", "p2pool"];
 const FAKE_USER_AGENT: [&str; 50] = [
 	"Wget/1.16.3","Wget/1.17","Wget/1.17.1","Wget/1.18","Wget/1.18","Wget/1.19","Wget/1.19.1","Wget/1.19.2","Wget/1.19.3","Wget/1.19.4",
 	"Wget/1.19.5","Wget/1.20","Wget/1.20.1","Wget/1.20.2","Wget/1.20.3","Wget/1.21","Wget/1.21.1","Wget/1.21.2","Wget/1.21.3",
-	"curl/7.64.1","curl/7.65.0","curl/7.65.1","curl/7.65.2","curl/7.65.3","curl/7.66.0","curl/7.67.0","curl/7.68.0","curl/7.69.0",
+	"curl/7.65.0","curl/7.65.1","curl/7.65.2","curl/7.65.3","curl/7.66.0","curl/7.67.0","curl/7.68.0","curl/7.69.0",
 	"curl/7.69.1","curl/7.70.0","curl/7.70.1","curl/7.71.0","curl/7.71.1","curl/7.72.0","curl/7.73.0","curl/7.74.0","curl/7.75.0",
 	"curl/7.76.0","curl/7.76.1","curl/7.77.0","curl/7.78.0","curl/7.79.0","curl/7.79.1","curl/7.80.0","curl/7.81.0","curl/7.82.0",
-	"curl/7.83.0","curl/7.83.1","curl/7.84.0","curl/7.85.0",
+	"curl/7.83.0","curl/7.83.1","curl/7.84.0","curl/7.85.0","curl/7.86.0"
 ];
 
 const MSG_NONE: &str = "No update in progress";
@@ -162,11 +162,6 @@ const COMPARE: &str = "----------------- Compare ------------------";
 const DOWNLOAD: &str = "----------------- Download -----------------";
 const EXTRACT: &str = "----------------- Extract ------------------";
 const UPGRADE: &str = "----------------- Upgrade ------------------";
-
-// These two are sequential and not async so no need for a constant message.
-// The package in question will be known at runtime, so that will be printed.
-//const MSG_EXTRACT: &'static str = "Extracting packages";
-//const MSG_UPGRADE: &'static str = "Upgrading packages";
 
 //---------------------------------------------------------------------------------------------------- General functions
 pub fn check_p2pool_path(path: &str) -> bool {
@@ -251,18 +246,18 @@ impl Update {
 		Ok(tmp_dir)
 	}
 
-	// Get a HTTPS client. Uses [Arti] if Tor is enabled.
+	// Get an HTTPS client. Uses [Arti] if Tor is enabled.
 	// The base type looks something like [hyper::Client<...>].
 	// This is then wrapped with the custom [ClientEnum] type to implement
-	// returning either a [Tor+TLS|TLS-only] client AT RUNTIME BASED ON USER SETTINGS
+	// dynamically returning either a [Tor+TLS|TLS-only] client at based on user settings.
 	//     tor == true?  => return Tor client
 	//     tor == false? => return normal TLS client
 	//
 	// Since functions that take generic INPUT are much easier to implement,
 	// [get_response()] just takes a [hyper::Client<C>], which is passed to
 	// it via deconstructing this [ClientEnum] with a match, like so:
-	//     ClientEnum::Tor(T)   => get_reponse(... T ...)
-	//     ClientEnum::Https(H) => get_reponse(... H ...)
+	//     ClientEnum::Tor(T)   => get_response(... T ...)
+	//     ClientEnum::Https(H) => get_response(... H ...)
 	//
 	pub fn get_client(tor: bool) -> Result<ClientEnum, anyhow::Error> {
 		if tor {
@@ -311,7 +306,7 @@ impl Update {
 		// to overwrite it with an update, so set an error.
 		// Doesnt seem like you can [match] on array indexes
 		// so that explains the ridiculous if/else.
-		if file == ACCEPTABLE_P2POOL[0] || file == ACCEPTABLE_P2POOL[1] || file == ACCEPTABLE_P2POOL[2] || file == ACCEPTABLE_P2POOL[3] {
+		if check_p2pool_path(file) {
 			info!("Update | Using P2Pool path: [{}]", p2pool_path.display());
 		} else {
 			warn!("Update | Aborting update, incorrect P2Pool path: [{}]", file);
@@ -335,7 +330,7 @@ impl Update {
 			},
 			None => { error_state.set("Provided XMRig path could not be found", ErrorFerris::Error, ErrorButtons::Okay); return; },
 		};
-		if file == ACCEPTABLE_XMRIG[0] || file == ACCEPTABLE_XMRIG[1] || file == ACCEPTABLE_XMRIG[2] || file == ACCEPTABLE_XMRIG[3] {
+		if check_xmrig_path(file) {
 			info!("Update | Using XMRig path: [{}]", xmrig_path.display());
 		} else {
 			warn!("Update | Aborting update, incorrect XMRig path: [{}]", file);
@@ -354,8 +349,8 @@ impl Update {
 		let state_path = state_path.to_path_buf();
 		let update = Arc::clone(update);
 		let restart = Arc::clone(restart);
+		info!("Spawning update thread...");
 		std::thread::spawn(move|| {
-			info!("Spawning update thread...");
 			match Update::start(update.clone(), og.clone(), state_ver.clone(), restart) {
 				Ok(_) => {
 					info!("Update | Saving state...");
@@ -364,14 +359,14 @@ impl Update {
 					match State::save(&mut og.lock().unwrap(), &state_path) {
 						Ok(_) => info!("Update ... OK"),
 						Err(e) => {
-							warn!("Update | Saving state ... FAIL ... {}", e);
+							warn!("Update | Saving state ... FAIL: {}", e);
 							og.lock().unwrap().version = original_version;
 							*update.lock().unwrap().msg.lock().unwrap() = "Saving new versions into state failed".to_string();
 						},
 					};
 				}
 				Err(e) => {
-					info!("Update ... FAIL ... {}", e);
+					info!("Update ... FAIL: {}", e);
 					*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
 				},
 			};
@@ -399,10 +394,9 @@ impl Update {
 		info!("Update | {}", INIT);
 
 		// Get temporary directory
-		*update.lock().unwrap().msg.lock().unwrap() = MSG_TMP.to_string();
-		// Cannot lock Arc<Mutex> twice in same line
-		// so there will be some intermediate variables.
-		info!("Update | {}", MSG_TMP.to_string());
+		let msg = MSG_TMP.to_string();
+		info!("Update | {}", msg);
+		*update.lock().unwrap().msg.lock().unwrap() = msg;
 		let tmp_dir = Self::get_tmp_dir()?;
 		std::fs::create_dir(&tmp_dir)?;
 
@@ -418,13 +412,18 @@ impl Update {
 		*update.lock().unwrap().prog.lock().unwrap() = 5.0;
 
 		// Create Tor/HTTPS client
-		if update.lock().unwrap().tor {
-			*update.lock().unwrap().msg.lock().unwrap() = MSG_TOR.to_string()
+		let mut lock = update.lock().unwrap();
+		let tor = lock.tor;
+		if tor {
+			let msg = MSG_TOR.to_string();
+			info!("Update | {}", msg);
+			*lock.msg.lock().unwrap() = msg;
 		} else {
-			*update.lock().unwrap().msg.lock().unwrap() = MSG_HTTPS.to_string()
+			let msg = MSG_HTTPS.to_string();
+			info!("Update | {}", msg);
+			*lock.msg.lock().unwrap() = msg;
 		}
-		info!("Update | {}", update.lock().unwrap().msg.lock().unwrap());
-		let tor = update.lock().unwrap().tor;
+		drop(lock);
 		let mut client = Self::get_client(tor)?;
 		*update.lock().unwrap().prog.lock().unwrap() += 5.0;
 		info!("Update | Init ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
@@ -499,7 +498,7 @@ impl Update {
 			info!("Update | Metadata ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
 		} else {
 			error!("Update | Metadata ... FAIL");
-			return Err(anyhow!("Metadata fetch failed", ))
+			return Err(anyhow!("Metadata fetch failed"))
 		}
 
 		//---------------------------------------------------------------------------------------------------- Compare
@@ -508,13 +507,13 @@ impl Update {
 		let mut vec3 = vec![];
 		let mut new_pkgs = vec![];
 		for pkg in vec2.iter() {
-			let new_ver = pkg.new_ver.lock().unwrap().to_owned();
+			let new_ver = pkg.new_ver.lock().unwrap().clone();
 			let diff;
 			let old_ver;
 			let name;
 			match pkg.name {
 				Gupax  => {
-					// Compare against the built-in compiled version as well as a in-memory version
+					// Compare against the built-in compiled version as well as an in-memory version
 					// that gets updated during an update. This prevents the updater always thinking
 					// there's a new Gupax update since the user didnt restart and is still technically
 					// using the old version (even though the underlying binary was updated).
@@ -612,7 +611,7 @@ impl Update {
 			info!("Update | Download ... OK ... {}%", *update.lock().unwrap().prog.lock().unwrap());
 		} else {
 			error!("Update | Download ... FAIL");
-			return Err(anyhow!("Download failed", ))
+			return Err(anyhow!("Download failed"))
 		}
 
 		//---------------------------------------------------------------------------------------------------- Extract
@@ -633,11 +632,10 @@ impl Update {
 		info!("Update | Extract ... OK ... {}%", *update.lock().unwrap().prog.lock().unwrap());
 
 		//---------------------------------------------------------------------------------------------------- Upgrade
-		// 0. Walk directories
-		// 1. If basename matches known binary name, start
-		// 2. Rename tmp path into current path
-		// 3a. Update [State/Version]
-		// 3b. Gupax version is builtin to binary, so no state change needed
+		// 1. Walk directories
+		// 2. If basename matches known binary name, start
+		// 3. Rename tmp path into current path
+		// 4. Update [State/Version]
 		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_UPGRADE, new_pkgs);
 		info!("Update | {}", UPGRADE);
 		// If this bool doesn't get set, something has gone wrong because
@@ -647,7 +645,7 @@ impl Update {
 			let entry = entry?.clone();
 			// If not a file, continue
 			if ! entry.file_type().is_file() { continue }
-			let basename = entry.file_name().to_str().ok_or_else(|| anyhow::Error::msg("WalkDir basename failed"))?;
+			let basename = entry.file_name().to_str().ok_or_else(|| anyhow!("WalkDir basename failed"))?;
 			match basename {
 				GUPAX_BINARY|P2POOL_BINARY|XMRIG_BINARY => {
 					found = true;
@@ -678,10 +676,13 @@ impl Update {
 						std::fs::rename(&path, tmp_windows)?;
 					}
 					info!("Update | Moving new [{}] -> [{}]", entry.path().display(), path.display());
+					// Create folder for [P2Pool/XMRig]
 					if name == P2pool || name == Xmrig {
-						std::fs::create_dir_all(std::path::Path::new(&path).parent().ok_or_else(|| anyhow::Error::msg(format!("{} path failed", name)))?)?;
+						std::fs::create_dir_all(path.parent().ok_or_else(|| anyhow!(format!("{} path failed", name)))?)?;
 					}
+					// Move downloaded path into old path
 					std::fs::rename(entry.path(), path)?;
+					// Update [State] version
 					match name {
 						Gupax  => {
 							state_ver.lock().unwrap().gupax = Pkg::get_new_pkg_version(Gupax, &vec4)?;
@@ -696,7 +697,7 @@ impl Update {
 				_ => (),
 			}
 		}
-		if !found { return Err(anyhow::Error::msg("Fatal error: Package binary could not be found")) }
+		if !found { return Err(anyhow!("Fatal error: Package binary could not be found")) }
 
 		// Remove tmp dir (on Unix)
 		#[cfg(target_family = "unix")]
@@ -718,8 +719,8 @@ impl Update {
 
 #[derive(Debug,Clone)]
 pub enum ClientEnum {
-    Tor(Client<ArtiHttpConnector<tor_rtcompat::PreferredRuntime, tls_api_native_tls::TlsConnector>>),
-    Https(Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>),
+    Tor(hyper::Client<ArtiHttpConnector<tor_rtcompat::PreferredRuntime, tls_api_native_tls::TlsConnector>>),
+    Https(hyper::Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>),
 }
 
 //---------------------------------------------------------------------------------------------------- Pkg struct/impl
@@ -808,7 +809,7 @@ impl Pkg {
 		// the [Location] header... only if Reqwest had custom
 		// connectors so I didn't have to manually do this...
 		if response.headers().contains_key(LOCATION) {
-			let request = Self::get_request(response.headers().get(LOCATION).unwrap().to_str()?.to_string(), user_agent)?;
+			let request = Self::get_request(response.headers().get(LOCATION).ok_or_else(|| anyhow!("HTTP Location header GET failed"))?.to_str()?.to_string(), user_agent)?;
 			response = client.request(request).await?;
 		}
 		let body = hyper::body::to_bytes(response.into_body()).await?;
@@ -824,7 +825,7 @@ impl Pkg {
 				return Ok(pkg.new_ver.lock().unwrap().to_string())
 			}
 		}
-		Err(anyhow::Error::msg("Couldn't find new_pkg_version"))
+		Err(anyhow!("Couldn't find new_pkg_version"))
 	}
 }
 
