@@ -30,6 +30,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 	- [Linux](#Linux)
 	- [macOS](#macOS)
 	- [Windows](#Windows)
+* [License](#License)
 * [FAQ](#FAQ)
 	- [Where are updates downloaded from?](#where-are-updates-downloaded-from)
 	- [Can I quit mid-update?](#can-i-quit-mid-update)
@@ -499,6 +500,13 @@ cargo build --release
 ```
 
 This will build Gupax with the MSVC toolchain (`x86_64-pc-windows-msvc`). This is the recommended method and is how the pre-compiled release binaries are built.
+
+## License
+The GUI library Gupax uses is [egui](https://github.com/emilk/egui). It is licensed under [MIT](https://github.com/emilk/egui/blob/master/LICENSE-MIT) & [Apache 2.0.](https://github.com/emilk/egui/blob/master/LICENSE-APACHE)
+
+[Many other libraries are used that have various licenses.](https://github.com/hinto-janaiyo/gupax/blob/master/Cargo.toml)
+
+[Gupax](https://github.com/hinto-janaiyo/gupax/blob/master/LICENSE), [P2Pool](https://github.com/SChernykh/p2pool/blob/master/LICENSE), and [XMRig](https://github.com/xmrig/xmrig/blob/master/LICENSE) are licensed under the GNU General Public License v3.0.
 
 ## FAQ
 ### Where are updates downloaded from?
