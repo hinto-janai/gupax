@@ -269,7 +269,7 @@ impl Helper {
 		let len = output.len();
 		if len > GUI_OUTPUT_LEEWAY {
 			info!("{} Watchdog | Output is nearing {} bytes, resetting!", name, MAX_GUI_OUTPUT_BYTES);
-			let text = format!("{}\n{} GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you!\n{}\n\n\n\n", name, HORI_CONSOLE, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
+			let text = format!("{}\n{} GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you!\n{}\n\n\n\n", HORI_CONSOLE, name, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
 			output.clear();
 			output.push_str(&text);
 			debug!("{} Watchdog | Resetting GUI output ... OK", name);
