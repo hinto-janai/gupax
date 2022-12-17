@@ -1713,3 +1713,179 @@ impl Hashrate {
 		}
 	}
 }
+
+//---------------------------------------------------------------------------------------------------- TESTS
+#[cfg(test)]
+mod test {
+	#[test]
+	fn calc_payouts_and_xmr_from_output_p2pool() {
+		use crate::helper::{PubP2poolApi,P2poolRegex};
+		use std::sync::{Arc,Mutex};
+		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
+		let output_parse = Arc::new(Mutex::new(String::from(
+			r#"You received a payout of 5.000000000001 XMR in block 1111
+			You received a payout of 5.000000000001 XMR in block 1112
+			You received a payout of 5.000000000001 XMR in block 1113"#
+		)));
+		let output_pub = Arc::new(Mutex::new(String::new()));
+		let elapsed = std::time::Duration::from_secs(60);
+		let regex = P2poolRegex::new();
+		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &regex);
+		let public = public.lock().unwrap();
+		println!("{:#?}", public);
+		assert_eq!(public.payouts,       3);
+		assert_eq!(public.payouts_hour,  180.0);
+		assert_eq!(public.payouts_day,   4320.0);
+		assert_eq!(public.payouts_month, 129600.0);
+		assert_eq!(public.xmr,           15.000000000003);
+		assert_eq!(public.xmr_hour,      900.00000000018);
+		assert_eq!(public.xmr_day,       21600.00000000432);
+		assert_eq!(public.xmr_month,     648000.0000001296);
+	}
+
+	#[test]
+	fn serde_priv_p2pool_api() {
+		let data =
+			r#"{
+				"hashrate_15m": 12,
+				"hashrate_1h": 11111,
+				"hashrate_24h": 468967,
+				"total_hashes": 2019283840922394082390,
+				"shares_found": 289037,
+				"average_effort": 915.563,
+				"current_effort": 129.297,
+				"connections": 123,
+				"incoming_connections": 96
+			}"#;
+		use crate::helper::PrivP2poolApi;
+		let priv_api = PrivP2poolApi::str_to_priv_p2pool_api(data).unwrap();
+		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
+		println!("{}", json);
+		let data_after_ser =
+r#"{
+  "hashrate_15m": 12,
+  "hashrate_1h": 11111,
+  "hashrate_24h": 468967,
+  "shares_found": 289037,
+  "average_effort": 915.563,
+  "current_effort": 129.297,
+  "connections": 123
+}"#;
+		assert_eq!(data_after_ser, json)
+	}
+
+	#[test]
+	fn serde_priv_xmrig_api() {
+		let data =
+		r#"{
+		    "id": "6226e3sd0cd1a6es",
+		    "worker_id": "hinto",
+		    "uptime": 123,
+		    "restricted": true,
+		    "resources": {
+		        "memory": {
+		            "free": 123,
+		            "total": 123123,
+		            "resident_set_memory": 123123123
+		        },
+		        "load_average": [10.97, 10.58, 10.47],
+		        "hardware_concurrency": 12
+		    },
+		    "features": ["api", "asm", "http", "hwloc", "tls", "opencl", "cuda"],
+		    "results": {
+		        "diff_current": 123,
+		        "shares_good": 123,
+		        "shares_total": 123,
+		        "avg_time": 123,
+		        "avg_time_ms": 123,
+		        "hashes_total": 123,
+		        "best": [123, 123, 123, 13, 123, 123, 123, 123, 123, 123],
+		        "error_log": []
+		    },
+		    "algo": "rx/0",
+		    "connection": {
+		        "pool": "localhost:3333",
+		        "ip": "127.0.0.1",
+		        "uptime": 123,
+		        "uptime_ms": 123,
+		        "ping": 0,
+		        "failures": 0,
+		        "tls": null,
+		        "tls-fingerprint": null,
+		        "algo": "rx/0",
+		        "diff": 123,
+		        "accepted": 123,
+		        "rejected": 123,
+		        "avg_time": 123,
+		        "avg_time_ms": 123,
+		        "hashes_total": 123,
+		        "error_log": []
+		    },
+		    "version": "6.18.0",
+		    "kind": "miner",
+		    "ua": "XMRig/6.18.0 (Linux x86_64) libuv/2.0.0-dev gcc/10.2.1",
+		    "cpu": {
+		        "brand": "blah blah blah",
+		        "family": 1,
+		        "model": 2,
+		        "stepping": 0,
+		        "proc_info": 123,
+		        "aes": true,
+		        "avx2": true,
+		        "x64": true,
+		        "64_bit": true,
+		        "l2": 123123,
+		        "l3": 123123,
+		        "cores": 12,
+		        "threads": 24,
+		        "packages": 1,
+		        "nodes": 1,
+		        "backend": "hwloc/2.8.0a1-git",
+		        "msr": "ryzen_19h",
+		        "assembly": "ryzen",
+		        "arch": "x86_64",
+		        "flags": ["aes", "vaes", "avx", "avx2", "bmi2", "osxsave", "pdpe1gb", "sse2", "ssse3", "sse4.1", "popcnt", "cat_l3"]
+		    },
+		    "donate_level": 0,
+		    "paused": false,
+		    "algorithms": ["cn/1", "cn/2", "cn/r", "cn/fast", "cn/half", "cn/xao", "cn/rto", "cn/rwz", "cn/zls", "cn/double", "cn/ccx", "cn-lite/1", "cn-heavy/0", "cn-heavy/tube", "cn-heavy/xhv", "cn-pico", "cn-pico/tlo", "cn/upx2", "rx/0", "rx/wow", "rx/arq", "rx/graft", "rx/sfx", "rx/keva", "argon2/chukwa", "argon2/chukwav2", "argon2/ninja", "astrobwt", "astrobwt/v2", "ghostrider"],
+		    "hashrate": {
+		        "total": [111.11, 111.11, 111.11],
+		        "highest": 111.11,
+		        "threads": [
+		            [111.11, 111.11, 111.11]
+		        ]
+		    },
+		    "hugepages": true
+		}"#;
+		use crate::helper::PrivXmrigApi;
+		let priv_api = serde_json::from_str::<PrivXmrigApi>(&data).unwrap();
+		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
+		println!("{}", json);
+		let data_after_ser =
+r#"{
+  "worker_id": "hinto",
+  "resources": {
+    "load_average": [
+      10.97,
+      10.58,
+      10.47
+    ]
+  },
+  "connection": {
+    "pool": "localhost:3333",
+    "diff": 123,
+    "accepted": 123,
+    "rejected": 123
+  },
+  "hashrate": {
+    "total": [
+      111.11,
+      111.11,
+      111.11
+    ]
+  }
+}"#;
+		assert_eq!(data_after_ser, json)
+	}
+}

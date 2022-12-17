@@ -293,3 +293,24 @@ pub const ARG_COPYRIGHT: &str =
 r#"Gupax is licensed under GPLv3.
 For more information, see link below:
 <https://github.com/hinto-janaiyo/gupax>"#;
+
+//---------------------------------------------------------------------------------------------------- TESTS
+#[cfg(test)]
+mod test {
+	#[test]
+	fn gupax_version_is_semver() {
+		assert_eq!(crate::GUPAX_VERSION.len(), 6);
+	}
+
+	#[test]
+	fn app_ratio_is_4_by_3() {
+		assert_eq!(format!("{:.3}", crate::APP_MIN_WIDTH/crate::APP_MIN_HEIGHT), "1.333");
+		assert_eq!(format!("{:.3}", crate::APP_MAX_WIDTH/crate::APP_MAX_HEIGHT), "1.333");
+		assert_eq!(format!("{:.3}", crate::APP_DEFAULT_WIDTH/crate::APP_DEFAULT_HEIGHT), "1.333");
+	}
+
+	#[test]
+	fn git_commit_is_41_chars() {
+		assert_eq!(crate::COMMIT.len(), 41);
+	}
+}

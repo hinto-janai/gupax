@@ -151,74 +151,10 @@ impl State {
 		let max_threads = num_cpus::get();
 		let current_threads = if max_threads == 1 { 1 } else { max_threads / 2 };
 		Self {
-			gupax: Gupax {
-				simple: true,
-				auto_update: true,
-				auto_p2pool: false,
-				auto_xmrig: false,
-				ask_before_quit: true,
-				save_before_quit: true,
-				#[cfg(not(target_os = "macos"))]
-				update_via_tor: true,
-				#[cfg(target_os = "macos")] // Arti library has issues on macOS
-				update_via_tor: false,
-				p2pool_path: DEFAULT_P2POOL_PATH.to_string(),
-				xmrig_path: DEFAULT_XMRIG_PATH.to_string(),
-				absolute_p2pool_path: into_absolute_path(DEFAULT_P2POOL_PATH.to_string()).unwrap(),
-				absolute_xmrig_path: into_absolute_path(DEFAULT_XMRIG_PATH.to_string()).unwrap(),
-				selected_width: APP_DEFAULT_WIDTH as u16,
-				selected_height: APP_DEFAULT_HEIGHT as u16,
-				ratio: Ratio::Width,
-				tab: Tab::About,
-			},
-			p2pool: P2pool {
-				simple: true,
-				mini: true,
-				auto_ping: true,
-				auto_select: true,
-				out_peers: 10,
-				in_peers: 10,
-				log_level: 3,
-				node: crate::NodeEnum::C3pool,
-				arguments: String::new(),
-				address: String::with_capacity(96),
-				name: "Local Monero Node".to_string(),
-				ip: "localhost".to_string(),
-				rpc: "18081".to_string(),
-				zmq: "18083".to_string(),
-				selected_index: 0,
-				selected_name: "Local Monero Node".to_string(),
-				selected_ip: "localhost".to_string(),
-				selected_rpc: "18081".to_string(),
-				selected_zmq: "18083".to_string(),
-			},
-			xmrig: Xmrig {
-				simple: true,
-				pause: 0,
-				simple_rig: String::with_capacity(30),
-				arguments: String::with_capacity(300),
-				address: String::with_capacity(96),
-				name: "Local P2Pool".to_string(),
-				rig: GUPAX_VERSION_UNDERSCORE.to_string(),
-				ip: "localhost".to_string(),
-				port: "3333".to_string(),
-				selected_index: 0,
-				selected_name: "Local P2Pool".to_string(),
-				selected_ip: "localhost".to_string(),
-				selected_rig: GUPAX_VERSION_UNDERSCORE.to_string(),
-				selected_port: "3333".to_string(),
-				api_ip: "localhost".to_string(),
-				api_port: "18088".to_string(),
-				tls: false,
-				keepalive: false,
-				current_threads,
-				max_threads,
-			},
-			version: Arc::new(Mutex::new(Version {
-				gupax: GUPAX_VERSION.to_string(),
-				p2pool: P2POOL_VERSION.to_string(),
-				xmrig: XMRIG_VERSION.to_string(),
-			})),
+			gupax: Gupax::default(),
+			p2pool: P2pool::default(),
+			xmrig: Xmrig::with_threads(max_threads, current_threads),
+			version: Arc::new(Mutex::new(Version::default())),
 		}
 	}
 
@@ -234,6 +170,14 @@ impl State {
 				warn!("State | String -> State ... FAIL ... {}", err);
 				Err(TomlError::Deserialize(err))
 			},
+		}
+	}
+
+	// Conver [State] to [String]
+	pub fn to_string(&self) -> Result<String, TomlError> {
+		match toml::ser::to_string(self) {
+			Ok(s) => Ok(s),
+			Err(e) => { error!("State | Couldn't serialize default file: {}", e); Err(TomlError::Serialize(e)) },
 		}
 	}
 
@@ -261,7 +205,10 @@ impl State {
 			Ok(s) => Ok(s),
 			Err(_) => {
 				warn!("State | Attempting merge...");
-				Self::merge(string, path)
+				match Self::merge(&string) {
+					Ok(mut new) => { Self::save(&mut new, path)?; Ok(new) },
+					Err(e)  => Err(e),
+				}
 			},
 		}
 	}
@@ -271,10 +218,7 @@ impl State {
 	pub fn create_new(path: &PathBuf) -> Result<Self, TomlError> {
 		info!("State | Creating new default...");
 		let new = Self::new();
-		let string = match toml::ser::to_string(&new) {
-				Ok(o) => o,
-				Err(e) => { error!("State | Couldn't serialize default file: {}", e); return Err(TomlError::Serialize(e)) },
-		};
+		let string = Self::to_string(&new)?;
 		fs::write(path, string)?;
 		info!("State | Write ... OK");
 		Ok(new)
@@ -302,18 +246,12 @@ impl State {
 
 	// Take [String] as input, merge it with whatever the current [default] is,
 	// leaving behind old keys+values and updating [default] with old valid ones.
-	// Automatically overwrite current file.
-	pub fn merge(old: String, path: &PathBuf) -> Result<Self, TomlError> {
-		let default = match toml::ser::to_string(&Self::new()) {
-			Ok(string) => { info!("State | Default TOML parse ... OK"); string },
-			Err(err) => { error!("State | Couldn't parse default TOML into string"); return Err(TomlError::Serialize(err)) },
-		};
-		let mut new: Self = match Figment::new().merge(Toml::string(&old)).merge(Toml::string(&default)).extract() {
+	pub fn merge(old: &str) -> Result<Self, TomlError> {
+		let default = toml::ser::to_string(&Self::new()).unwrap();
+		let new: Self = match Figment::from(Toml::string(&default)).merge(Toml::string(&old)).extract() {
 			Ok(new) => { info!("State | TOML merge ... OK"); new },
 			Err(err) => { error!("State | Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
 		};
-		// Attempt save
-		Self::save(&mut new, path)?;
 		Ok(new)
 	}
 }
@@ -704,4 +642,323 @@ pub struct Version {
 	pub gupax: String,
 	pub p2pool: String,
 	pub xmrig: String,
+}
+
+//---------------------------------------------------------------------------------------------------- [State] Defaults
+impl Default for Gupax {
+	fn default() -> Self {
+		Self {
+			simple: true,
+			auto_update: true,
+			auto_p2pool: false,
+			auto_xmrig: false,
+			ask_before_quit: true,
+			save_before_quit: true,
+			#[cfg(not(target_os = "macos"))]
+			update_via_tor: true,
+			#[cfg(target_os = "macos")] // Arti library has issues on macOS
+			update_via_tor: false,
+			p2pool_path: DEFAULT_P2POOL_PATH.to_string(),
+			xmrig_path: DEFAULT_XMRIG_PATH.to_string(),
+			absolute_p2pool_path: into_absolute_path(DEFAULT_P2POOL_PATH.to_string()).unwrap(),
+			absolute_xmrig_path: into_absolute_path(DEFAULT_XMRIG_PATH.to_string()).unwrap(),
+			selected_width: APP_DEFAULT_WIDTH as u16,
+			selected_height: APP_DEFAULT_HEIGHT as u16,
+			ratio: Ratio::Width,
+			tab: Tab::About,
+		}
+	}
+}
+impl Default for P2pool {
+	fn default() -> Self {
+		Self {
+			simple: true,
+			mini: true,
+			auto_ping: true,
+			auto_select: true,
+			out_peers: 10,
+			in_peers: 10,
+			log_level: 3,
+			node: crate::NodeEnum::C3pool,
+			arguments: String::new(),
+			address: String::with_capacity(96),
+			name: "Local Monero Node".to_string(),
+			ip: "localhost".to_string(),
+			rpc: "18081".to_string(),
+			zmq: "18083".to_string(),
+			selected_index: 0,
+			selected_name: "Local Monero Node".to_string(),
+			selected_ip: "localhost".to_string(),
+			selected_rpc: "18081".to_string(),
+			selected_zmq: "18083".to_string(),
+		}
+	}
+}
+impl Xmrig {
+	fn with_threads(max_threads: usize, current_threads: usize) -> Self {
+		let mut xmrig = Self::default();
+		Self {
+			max_threads,
+			current_threads,
+			..xmrig
+		}
+	}
+}
+impl Default for Xmrig {
+	fn default() -> Self {
+		Self {
+			simple: true,
+			pause: 0,
+			simple_rig: String::with_capacity(30),
+			arguments: String::with_capacity(300),
+			address: String::with_capacity(96),
+			name: "Local P2Pool".to_string(),
+			rig: GUPAX_VERSION_UNDERSCORE.to_string(),
+			ip: "localhost".to_string(),
+			port: "3333".to_string(),
+			selected_index: 0,
+			selected_name: "Local P2Pool".to_string(),
+			selected_ip: "localhost".to_string(),
+			selected_rig: GUPAX_VERSION_UNDERSCORE.to_string(),
+			selected_port: "3333".to_string(),
+			api_ip: "localhost".to_string(),
+			api_port: "18088".to_string(),
+			tls: false,
+			keepalive: false,
+			current_threads: 1,
+			max_threads: 1,
+		}
+	}
+}
+impl Default for Version {
+	fn default() -> Self {
+		Self {
+			gupax: GUPAX_VERSION.to_string(),
+			p2pool: P2POOL_VERSION.to_string(),
+			xmrig: XMRIG_VERSION.to_string(),
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- TESTS
+#[cfg(test)]
+mod test {
+	#[test]
+	fn serde_default_state() {
+		let state = crate::State::new();
+		let string = crate::State::to_string(&state).unwrap();
+		crate::State::from_str(&string).unwrap();
+	}
+	#[test]
+	fn serde_default_node() {
+		let node = crate::Node::new_vec();
+		let string = crate::Node::to_string(&node).unwrap();
+		crate::Node::from_str_to_vec(&string).unwrap();
+	}
+	#[test]
+	fn serde_default_pool() {
+		let pool = crate::Pool::new_vec();
+		let string = crate::Pool::to_string(&pool).unwrap();
+		crate::Pool::from_str_to_vec(&string).unwrap();
+	}
+
+	#[test]
+	fn serde_custom_state() {
+		let state = r#"
+			[gupax]
+			simple = true
+			auto_update = true
+			auto_p2pool = false
+			auto_xmrig = false
+			ask_before_quit = true
+			save_before_quit = true
+			update_via_tor = true
+			p2pool_path = "p2pool/p2pool"
+			xmrig_path = "xmrig/xmrig"
+			absolute_p2pool_path = "/home/hinto/p2pool/p2pool"
+			absolute_xmrig_path = "/home/hinto/xmrig/xmrig"
+			selected_width = 1280
+			selected_height = 960
+			tab = "About"
+			ratio = "Width"
+
+			[p2pool]
+			simple = true
+			mini = true
+			auto_ping = true
+			auto_select = true
+			out_peers = 10
+			in_peers = 450
+			log_level = 3
+			node = "Seth"
+			arguments = ""
+			address = "44hintoFpuo3ugKfcqJvh5BmrsTRpnTasJmetKC4VXCt6QDtbHVuixdTtsm6Ptp7Y8haXnJ6j8Gj2dra8CKy5ewz7Vi9CYW"
+			name = "Local Monero Node"
+			ip = "192.168.1.123"
+			rpc = "18089"
+			zmq = "18083"
+			selected_index = 0
+			selected_name = "Local Monero Node"
+			selected_ip = "192.168.1.123"
+			selected_rpc = "18089"
+			selected_zmq = "18083"
+
+			[xmrig]
+			simple = true
+			pause = 0
+			simple_rig = ""
+			arguments = ""
+			tls = false
+			keepalive = false
+			max_threads = 32
+			current_threads = 16
+			address = ""
+			api_ip = "localhost"
+			api_port = "18088"
+			name = "linux"
+			rig = "Gupax"
+			ip = "192.168.1.122"
+			port = "3333"
+			selected_index = 1
+			selected_name = "linux"
+			selected_rig = "Gupax"
+			selected_ip = "192.168.1.122"
+			selected_port = "3333"
+
+			[version]
+			gupax = "v1.0.0"
+			p2pool = "v2.5"
+			xmrig = "v6.18.0"
+		"#;
+		let state = crate::State::from_str(state).unwrap();
+		crate::State::to_string(&state).unwrap();
+	}
+
+	#[test]
+	fn serde_custom_node() {
+		let node = r#"
+			['Local Monero Node']
+			ip = "localhost"
+			rpc = "18081"
+			zmq = "18083"
+
+			['asdf-_. ._123']
+			ip = "localhost"
+			rpc = "11"
+			zmq = "1234"
+
+			['aaa     bbb']
+			ip = "192.168.2.333"
+			rpc = "1"
+			zmq = "65535"
+		"#;
+		let node = crate::Node::from_str_to_vec(node).unwrap();
+		crate::Node::to_string(&node).unwrap();
+	}
+
+	#[test]
+	fn serde_custom_pool() {
+		let pool = r#"
+			['Local P2Pool']
+			rig = "Gupax_v1.0.0"
+			ip = "localhost"
+			port = "3333"
+
+			['aaa xx .. -']
+			rig = "Gupax"
+			ip = "192.168.22.22"
+			port = "1"
+
+			['           a']
+			rig = "Gupax_v1.0.0"
+			ip = "127.0.0.1"
+			port = "65535"
+		"#;
+		let pool = crate::Pool::from_str_to_vec(pool).unwrap();
+		crate::Pool::to_string(&pool).unwrap();
+	}
+
+	// Make sure we keep the user's old values that are still
+	// valid but discard the ones that don't exist anymore.
+	#[test]
+	fn merge_state() {
+		let bad_state = r#"
+			[gupax]
+			SETTING_THAT_DOESNT_EXIST_ANYMORE = 123123
+			simple = false
+			auto_update = true
+			auto_p2pool = false
+			auto_xmrig = false
+			ask_before_quit = true
+			save_before_quit = true
+			update_via_tor = true
+			p2pool_path = "p2pool/p2pool"
+			xmrig_path = "xmrig/xmrig"
+			absolute_p2pool_path = ""
+			absolute_xmrig_path = ""
+			selected_width = 0
+			selected_height = 0
+			tab = "About"
+			ratio = "Width"
+
+			[p2pool]
+			SETTING_THAT_DOESNT_EXIST_ANYMORE = "String"
+			simple = true
+			mini = true
+			auto_ping = true
+			auto_select = true
+			out_peers = 10
+			in_peers = 450
+			log_level = 6
+			node = "Seth"
+			arguments = ""
+			address = "44hintoFpuo3ugKfcqJvh5BmrsTRpnTasJmetKC4VXCt6QDtbHVuixdTtsm6Ptp7Y8haXnJ6j8Gj2dra8CKy5ewz7Vi9CYW"
+			name = "Local Monero Node"
+			ip = "localhost"
+			rpc = "18081"
+			zmq = "18083"
+			selected_index = 0
+			selected_name = "Local Monero Node"
+			selected_ip = "localhost"
+			selected_rpc = "18081"
+			selected_zmq = "18083"
+
+			[xmrig]
+			SETTING_THAT_DOESNT_EXIST_ANYMORE = true
+			simple = true
+			pause = 0
+			simple_rig = ""
+			arguments = ""
+			tls = false
+			keepalive = false
+			max_threads = 32
+			current_threads = 16
+			address = ""
+			api_ip = "localhost"
+			api_port = "18088"
+			name = "Local P2Pool"
+			rig = "Gupax_v1.0.0"
+			ip = "localhost"
+			port = "3333"
+			selected_index = 0
+			selected_name = "Local P2Pool"
+			selected_rig = "Gupax_v1.0.0"
+			selected_ip = "localhost"
+			selected_port = "3333"
+
+			[version]
+			gupax = "v1.0.0"
+			p2pool = "v2.5"
+			xmrig = "v6.18.0"
+		"#.to_string();
+		let merged_state = crate::State::merge(&bad_state).unwrap();
+		let merged_state = crate::State::to_string(&merged_state).unwrap();
+		println!("{}", merged_state);
+		assert!(merged_state.contains("simple = false"));
+		assert!(merged_state.contains("in_peers = 450"));
+		assert!(merged_state.contains("log_level = 6"));
+		assert!(merged_state.contains(r#"node = "Seth""#));
+		assert!(!merged_state.contains("SETTING_THAT_DOESNT_EXIST_ANYMORE"));
+		assert!(merged_state.contains("44hintoFpuo3ugKfcqJvh5BmrsTRpnTasJmetKC4VXCt6QDtbHVuixdTtsm6Ptp7Y8haXnJ6j8Gj2dra8CKy5ewz7Vi9CYW"));
+	}
 }

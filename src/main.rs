@@ -471,6 +471,7 @@ pub struct ErrorState {
 	msg: String, // What message to display?
 	ferris: ErrorFerris, // Which ferris to display?
 	buttons: ErrorButtons, // Which buttons to display?
+	quit_twice: bool, // This indicates the user tried to quit on the [ask_before_quit] screen
 }
 
 impl Default for ErrorState {
@@ -486,6 +487,7 @@ impl ErrorState {
 			msg: "Unknown Error".to_string(),
 			ferris: ErrorFerris::Oops,
 			buttons: ErrorButtons::Okay,
+			quit_twice: false,
 		}
 	}
 
@@ -506,6 +508,7 @@ impl ErrorState {
 			msg: msg.into(),
 			ferris,
 			buttons,
+			quit_twice: false,
 		};
 	}
 
@@ -524,6 +527,7 @@ impl ErrorState {
 			msg: String::new(),
 			ferris: ErrorFerris::Sudo,
 			buttons: ErrorButtons::Sudo,
+			quit_twice: false,
 		};
 		SudoState::reset(state)
 	}
@@ -914,14 +918,16 @@ fn main() {
 
 impl eframe::App for App {
 	fn on_close_event(&mut self) -> bool {
-		// If we're already on the [ask_before_quit] screen and
-		// the user tries to exit again, exit.
-		if self.error_state.buttons == ErrorButtons::StayQuit {
-			if self.state.gupax.save_before_quit { self.save_before_quit(); }
-			true
-		// Else, set up the [ask_before_quit] screen (if enabled).
-		} else if self.state.gupax.ask_before_quit {
+		if self.state.gupax.ask_before_quit {
+			// If we're already on the [ask_before_quit] screen and
+			// the user tried to exit again, exit.
+			if self.error_state.quit_twice {
+				if self.state.gupax.save_before_quit { self.save_before_quit(); }
+				return true
+			}
+			// Else, set the error
 			self.error_state.set("", ErrorFerris::Oops, ErrorButtons::StayQuit);
+			self.error_state.quit_twice = true;
 			false
 		// Else, just quit.
 		} else {
@@ -1551,5 +1557,25 @@ impl eframe::App for App {
 				}
 			}
 		});
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- TESTS
+#[cfg(test)]
+mod test {
+	#[test]
+	fn build_app() {
+		let mut app = crate::App::new(std::time::Instant::now());
+		crate::init_auto(&mut app);
+	}
+
+	#[test]
+	fn build_regex() {
+		crate::Regexes::new();
+	}
+
+	#[test]
+	fn build_images() {
+		crate::Images::new();
 	}
 }

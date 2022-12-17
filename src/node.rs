@@ -58,6 +58,7 @@ pub const NODE_IPS: [&str; 17] = [
 ];
 
 pub const COMMUNITY_NODE_LENGTH: usize = NODE_IPS.len();
+pub const COMMUNITY_NODE_MAX_CHARS: usize = 14;
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum NodeEnum {
@@ -65,7 +66,17 @@ pub enum NodeEnum {
 	Plowsof2,Rino,Feather1,Feather2,Seth,SupportXmr,SupportXmrIr,XmrVsBeast,
 }
 
+impl Default for NodeEnum {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl NodeEnum {
+	fn new() -> Self {
+		ip_to_enum(NODE_IPS[0])
+	}
+
 	fn get_index(&self) -> usize {
 		match self {
 			C3pool         => 0,
@@ -280,7 +291,7 @@ impl Ping {
 	pub fn new() -> Self {
 		Self {
 			nodes: NodeData::new_vec(),
-			fastest: NodeEnum::C3pool,
+			fastest: NodeEnum::new(),
 			pinging: false,
 			msg: "No ping in progress".to_string(),
 			prog: 0.0,
@@ -415,5 +426,25 @@ impl Ping {
 		ping.prog += percent;
 		drop(ping);
 		node_vec.lock().unwrap().push(NodeData { id: ip_to_enum(ip), ip, ms, color, });
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- TESTS
+#[cfg(test)]
+mod test {
+	#[test]
+	fn validate_node_ips() {
+		for ip in crate::NODE_IPS {
+			assert!(ip.len() < 255);
+			assert!(ip.is_ascii());
+			assert!(ip.ends_with(":18081") || ip.ends_with(":18089"));
+		}
+	}
+
+	#[test]
+	fn spacing() {
+		for ip in crate::NODE_IPS {
+			assert!(crate::format_enum(crate::ip_to_enum(ip)).len() == crate::COMMUNITY_NODE_MAX_CHARS);
+		}
 	}
 }
