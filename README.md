@@ -465,7 +465,7 @@ You need [`cargo`](https://www.rust-lang.org/learn/get-started), Rust's build to
 
 The `--release` profile in Gupax is set to prefer code performance & small binary sizes over compilation speed (see [`Cargo.toml`](https://github.com/hinto-janaiyo/gupax/blob/main/Cargo.toml)). Gupax itself (with all dependencies already built) takes around 1m30s to build (vs 10s on a normal `--release`) with a Ryzen 5950x.
 
-There are `20` unit tests throughout the codebase files, you should probably run:
+There are `21` unit tests throughout the codebase files, you should probably run:
 ```
 cargo test
 ```

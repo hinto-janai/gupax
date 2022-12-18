@@ -1355,7 +1355,7 @@ impl ImgP2pool {
 //---------------------------------------------------------------------------------------------------- Public P2Pool API
 // Helper/GUI threads both have a copy of this, Helper updates
 // the GUI's version on a 1-second interval from the private data.
-#[derive(Debug, Clone)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct PubP2poolApi {
 	// Output
 	pub output: String,
@@ -1414,13 +1414,13 @@ impl PubP2poolApi {
 	// manually append it instead of overwriting.
 	// This is used in the "helper" thread.
 	fn combine_gui_pub_api(gui_api: &mut Self, pub_api: &mut Self) {
-		let output = std::mem::take(&mut gui_api.output);
+		let mut output = std::mem::take(&mut gui_api.output);
 		let buf = std::mem::take(&mut pub_api.output);
+		if !buf.is_empty() { output.push_str(&buf); }
 		*gui_api = Self {
 			output,
-			..std::mem::take(pub_api)
+			..pub_api.clone()
 		};
-		if !buf.is_empty() { gui_api.output.push_str(&buf); }
 	}
 
 	// Mutate "watchdog"'s [PubP2poolApi] with data the process output.
@@ -1433,14 +1433,13 @@ impl PubP2poolApi {
 
 		// 2. Parse the full STDOUT
 		let mut output_parse = output_parse.lock().unwrap();
-		let (payouts, xmr) = Self::calc_payouts_and_xmr(&output_parse, regex);
+		let (payouts_new, xmr_new) = Self::calc_payouts_and_xmr(&output_parse, regex);
 		// 3. Throw away [output_parse]
 		output_parse.clear();
 		drop(output_parse);
-		let lock = public.lock().unwrap();
 		// 4. Add to current values
-		let (payouts, xmr) = (lock.payouts + payouts, lock.xmr + xmr);
-		drop(lock);
+		let mut public = public.lock().unwrap();
+		let (payouts, xmr) = (public.payouts + payouts_new, public.xmr + xmr_new);
 
 		// 5. Calculate hour/day/month given elapsed time
 		let elapsed_as_secs_f64 = elapsed.as_secs_f64();
@@ -1455,8 +1454,18 @@ impl PubP2poolApi {
 		let xmr_day = xmr_hour * 24.0;
 		let xmr_month = xmr_day * 30.0;
 
+		if payouts != 0 {
+			debug!("P2Pool Watchdog | New [Payout] found in output ... {}", payouts_new);
+			debug!("P2Pool Watchdog | Total [Payout] should be ... {}", payouts);
+			debug!("P2Pool Watchdog | Correct [Payout per] should be ... [{}/hour, {}/day, {}/month]", payouts_hour, payouts_day, payouts_month);
+		}
+		if xmr != 0.0 {
+			debug!("P2Pool Watchdog | New [XMR mined] found in output ... {}", xmr_new);
+			debug!("P2Pool Watchdog | Total [XMR mined] should be ... {}", xmr);
+			debug!("P2Pool Watchdog | Correct [XMR mined per] should be ... [{}/hour, {}/day, {}/month]", xmr_hour, xmr_day, xmr_month);
+		}
+
 		// 6. Mutate the struct with the new info
-		let mut public = public.lock().unwrap();
 		*public = Self {
 			uptime: HumanTime::into_human(elapsed),
 			payouts,
@@ -1491,15 +1500,15 @@ impl PubP2poolApi {
 	// It sums each match and counts along the way, handling an error by not adding and printing to console.
 	fn calc_payouts_and_xmr(output: &str, regex: &P2poolRegex) -> (u128 /* payout count */, f64 /* total xmr */) {
 		let iter = regex.payout.find_iter(output);
-		let mut result: f64 = 0.0;
+		let mut sum: f64 = 0.0;
 		let mut count: u128 = 0;
 		for i in iter {
 			match regex.float.find(i.as_str()).unwrap().as_str().parse::<f64>() {
-				Ok(num) => { result += num; count += 1; },
+				Ok(num) => { sum += num; count += 1; },
 				Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
 			}
 		}
-		(count, result)
+		(count, sum)
 	}
 }
 
@@ -1735,6 +1744,31 @@ mod test {
 		// Some text gets added, so just check for less than 500 bytes.
 		assert!(string.len() < 500);
 	}
+
+	#[test]
+	fn combine_gui_pub_p2pool_api() {
+			use crate::helper::PubP2poolApi;
+			let mut gui_api = PubP2poolApi::new();
+			let mut pub_api = PubP2poolApi::new();
+			pub_api.payouts = 1;
+			pub_api.payouts_hour = 2.0;
+			pub_api.payouts_day = 3.0;
+			pub_api.payouts_month = 4.0;
+			pub_api.xmr = 1.0;
+			pub_api.xmr_hour = 2.0;
+			pub_api.xmr_day = 3.0;
+			pub_api.xmr_month = 4.0;
+			println!("BEFORE - GUI_API: {:#?}\nPUB_API: {:#?}", gui_api, pub_api);
+			assert_ne!(gui_api, pub_api);
+			PubP2poolApi::combine_gui_pub_api(&mut gui_api, &mut pub_api);
+			println!("AFTER - GUI_API: {:#?}\nPUB_API: {:#?}", gui_api, pub_api);
+			assert_eq!(gui_api, pub_api);
+			pub_api.xmr = 2.0;
+			PubP2poolApi::combine_gui_pub_api(&mut gui_api, &mut pub_api);
+			assert_eq!(gui_api, pub_api);
+			assert_eq!(gui_api.xmr, 2.0);
+			assert_eq!(pub_api.xmr, 2.0);
+		}
 
 	#[test]
 	fn human_number() {
