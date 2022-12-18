@@ -1,3 +1,6 @@
 [submodule "origin"]
 	path = external/egui
 	url = https://github.com/hinto-janaiyo/egui
+[submodule "external/rust-runas"]
+	path = external/rust-runas
+	url = https://github.com/mitsuhiko/rust-runas
