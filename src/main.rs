@@ -1222,7 +1222,7 @@ impl eframe::App for App {
 							let color = if hide { BLACK } else { BRIGHT_YELLOW };
 							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { sudo.hide = !sudo.hide; }
 						});
-						if (key.is_esc() && !sudo.testing) || ui.add_sized([width, height*4.0], Button::new("Leave")).clicked() { self.error_state.reset(); };
+						if (key.is_esc() && !sudo.testing) || ui.add_sized([width, height*4.0], Button::new("Leave")).on_hover_text(PASSWORD_LEAVE).clicked() { self.error_state.reset(); };
 						// If [test_sudo()] finished, reset error state.
 						if sudo.success {
 							self.error_state.reset();
@@ -1571,7 +1571,21 @@ mod test {
 
 	#[test]
 	fn build_regex() {
-		crate::Regexes::new();
+		use regex::Regex;
+		let r = crate::Regexes::new();
+		assert!(Regex::is_match(&r.name, "_this_ is... a n-a-m-e."));
+		assert!(Regex::is_match(&r.address, "44hintoFpuo3ugKfcqJvh5BmrsTRpnTasJmetKC4VXCt6QDtbHVuixdTtsm6Ptp7Y8haXnJ6j8Gj2dra8CKy5ewz7Vi9CYW"));
+		assert!(Regex::is_match(&r.ipv4, "192.168.1.2"));
+		assert!(Regex::is_match(&r.ipv4, "127.0.0.1"));
+		assert!(Regex::is_match(&r.domain, "my.node.com"));
+		assert!(Regex::is_match(&r.domain, "my.monero-node123.net"));
+		assert!(Regex::is_match(&r.domain, "www.my-node.org"));
+		assert!(Regex::is_match(&r.domain, "www.my-monero-node123.io"));
+		for i in 1..=65535 {
+			assert!(Regex::is_match(&r.port, &i.to_string()));
+		}
+		assert!(!Regex::is_match(&r.port, "0"));
+		assert!(!Regex::is_match(&r.port, "65536"));
 	}
 
 	#[test]

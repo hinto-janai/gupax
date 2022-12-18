@@ -310,7 +310,7 @@ mod test {
 	}
 
 	#[test]
-	fn git_commit_is_41_chars() {
-		assert_eq!(crate::COMMIT.len(), 41);
+	fn git_commit_eq_or_gt_40_chars() {
+		assert!(crate::COMMIT.len() >= 40);
 	}
 }

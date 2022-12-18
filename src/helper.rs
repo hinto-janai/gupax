@@ -1116,7 +1116,7 @@ impl Helper {
 // Code taken from [https://docs.rs/humantime/] and edited to remove sub-second time, change spacing and some words.
 use std::time::Duration;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct HumanTime(Duration);
 
 impl Default for HumanTime {
@@ -1186,7 +1186,7 @@ impl std::fmt::Display for HumanTime {
 // Percent  | [0.001]  -> [0%]                        | Rounds down, removes redundant zeros
 // Hashrate | [123.0, 311.2, null] -> [123, 311, ???] | Casts, replaces null with [???]
 // CPU Load | [12.0, 11.4, null] -> [12.0, 11.4, ???] | No change, just into [String] form
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct HumanNumber(String);
 
 impl std::fmt::Display for HumanNumber {
@@ -1214,11 +1214,6 @@ impl HumanNumber {
 	fn from_f64(f: f64) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&(f as u128), &LOCALE);
-		Self(buf.as_str().to_string())
-	}
-	fn from_u8(u: u8) -> Self {
-		let mut buf = num_format::Buffer::new();
-		buf.write_formatted(&u, &LOCALE);
 		Self(buf.as_str().to_string())
 	}
 	fn from_u16(u: u16) -> Self {
@@ -1272,7 +1267,7 @@ impl HumanNumber {
 		let mut n = 0;
 		for i in array {
 			match i {
-				Some(f) => string.push_str(format!("{}", f).as_str()),
+				Some(f) => string.push_str(format!("{:.2}", f).as_str()),
 				None => string.push_str("???"),
 			}
 			if n != 2 {
@@ -1334,6 +1329,12 @@ pub struct ImgP2pool {
 	pub out_peers: String, // How many out-peers?
 	pub in_peers: String,  // How many in-peers?
 	pub log_level: String, // What log level?
+}
+
+impl Default for ImgP2pool {
+	fn default() -> Self {
+		Self::new()
+	}
 }
 
 impl ImgP2pool {
@@ -1554,6 +1555,12 @@ pub struct ImgXmrig {
 	pub url: String,
 }
 
+impl Default for ImgXmrig {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl ImgXmrig {
 	pub fn new() -> Self {
 		Self {
@@ -1717,6 +1724,90 @@ impl Hashrate {
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]
 mod test {
+	#[test]
+	fn human_number() {
+		use crate::HumanNumber;
+		assert!(HumanNumber::to_percent(0.001).to_string() == "0%");
+		assert!(HumanNumber::to_percent(12.123123123123).to_string() == "12.12%");
+		assert!(HumanNumber::from_hashrate([Some(123.1), Some(11111.1), None]).to_string() == "[123 H/s, 11,111 H/s, ??? H/s]");
+		assert!(HumanNumber::from_hashrate([None, Some(1.123), Some(123123.312)]).to_string() == "[??? H/s, 1 H/s, 123,123 H/s]");
+		assert!(HumanNumber::from_load([Some(123.1234), Some(321.321), None]).to_string() == "[123.12, 321.32, ???]");
+		assert!(HumanNumber::from_load([None, Some(4321.43), Some(1234.1)]).to_string() == "[???, 4321.43, 1234.10]");
+		assert!(HumanNumber::from_f32(123_123.123123123).to_string() == "123,123");
+		assert!(HumanNumber::from_f64(123_123_123.123123123123123).to_string() == "123,123,123");
+		assert!(HumanNumber::from_u16(1_000).to_string() == "1,000");
+		assert!(HumanNumber::from_u16(65_535).to_string() == "65,535");
+		assert!(HumanNumber::from_u32(65_536).to_string() == "65,536");
+		assert!(HumanNumber::from_u32(100_000).to_string() == "100,000");
+		assert!(HumanNumber::from_u32(1_000_000).to_string() == "1,000,000");
+		assert!(HumanNumber::from_u32(10_000_000).to_string() == "10,000,000");
+		assert!(HumanNumber::from_u32(100_000_000).to_string() == "100,000,000");
+		assert!(HumanNumber::from_u32(1_000_000_000).to_string() == "1,000,000,000");
+		assert!(HumanNumber::from_u32(4_294_967_295).to_string() == "4,294,967,295");
+		assert!(HumanNumber::from_u64(4_294_967_296).to_string() == "4,294,967,296");
+		assert!(HumanNumber::from_u64(10_000_000_000).to_string() == "10,000,000,000");
+		assert!(HumanNumber::from_u64(100_000_000_000).to_string() == "100,000,000,000");
+		assert!(HumanNumber::from_u64(1_000_000_000_000).to_string() == "1,000,000,000,000");
+		assert!(HumanNumber::from_u64(10_000_000_000_000).to_string() == "10,000,000,000,000");
+		assert!(HumanNumber::from_u64(100_000_000_000_000).to_string() == "100,000,000,000,000");
+		assert!(HumanNumber::from_u64(1_000_000_000_000_000).to_string() == "1,000,000,000,000,000");
+		assert!(HumanNumber::from_u64(10_000_000_000_000_000).to_string() == "10,000,000,000,000,000");
+		assert!(HumanNumber::from_u64(18_446_744_073_709_551_615).to_string() == "18,446,744,073,709,551,615");
+		assert!(HumanNumber::from_u128(18_446_744_073_709_551_616).to_string() == "18,446,744,073,709,551,616");
+		assert!(HumanNumber::from_u128(100_000_000_000_000_000_000).to_string() == "100,000,000,000,000,000,000");
+		assert_eq!(
+			HumanNumber::from_u128(340_282_366_920_938_463_463_374_607_431_768_211_455).to_string(),
+			"340,282,366,920,938,463,463,374,607,431,768,211,455",
+		);
+	}
+
+	#[test]
+	fn human_time() {
+		use crate::HumanTime;
+		use std::time::Duration;
+		assert!(HumanTime::into_human(Duration::from_secs(0)).to_string()        == "0 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(1)).to_string()        == "1 second");
+		assert!(HumanTime::into_human(Duration::from_secs(2)).to_string()        == "2 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(59)).to_string()       == "59 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(60)).to_string()       == "1 minute");
+		assert!(HumanTime::into_human(Duration::from_secs(61)).to_string()       == "1 minute, 1 second");
+		assert!(HumanTime::into_human(Duration::from_secs(62)).to_string()       == "1 minute, 2 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(120)).to_string()      == "2 minutes");
+		assert!(HumanTime::into_human(Duration::from_secs(121)).to_string()      == "2 minutes, 1 second");
+		assert!(HumanTime::into_human(Duration::from_secs(122)).to_string()      == "2 minutes, 2 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(179)).to_string()      == "2 minutes, 59 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(3599)).to_string()     == "59 minutes, 59 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(3600)).to_string()     == "1 hour");
+		assert!(HumanTime::into_human(Duration::from_secs(3601)).to_string()     == "1 hour, 1 second");
+		assert!(HumanTime::into_human(Duration::from_secs(3602)).to_string()     == "1 hour, 2 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(3660)).to_string()     == "1 hour, 1 minute");
+		assert!(HumanTime::into_human(Duration::from_secs(3720)).to_string()     == "1 hour, 2 minutes");
+		assert!(HumanTime::into_human(Duration::from_secs(86399)).to_string()    == "23 hours, 59 minutes, 59 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(86400)).to_string()    == "1 day");
+		assert!(HumanTime::into_human(Duration::from_secs(86401)).to_string()    == "1 day, 1 second");
+		assert!(HumanTime::into_human(Duration::from_secs(86402)).to_string()    == "1 day, 2 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(86460)).to_string()    == "1 day, 1 minute");
+		assert!(HumanTime::into_human(Duration::from_secs(86520)).to_string()    == "1 day, 2 minutes");
+		assert!(HumanTime::into_human(Duration::from_secs(90000)).to_string()    == "1 day, 1 hour");
+		assert!(HumanTime::into_human(Duration::from_secs(93600)).to_string()    == "1 day, 2 hours");
+		assert!(HumanTime::into_human(Duration::from_secs(604799)).to_string()   == "6 days, 23 hours, 59 minutes, 59 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(604800)).to_string()   == "7 days");
+		assert!(HumanTime::into_human(Duration::from_secs(2630016)).to_string()  == "1 month");
+		assert!(HumanTime::into_human(Duration::from_secs(3234815)).to_string()  == "1 month, 6 days, 23 hours, 59 minutes, 59 seconds");
+		assert!(HumanTime::into_human(Duration::from_secs(5260032)).to_string()  == "2 months");
+		assert!(HumanTime::into_human(Duration::from_secs(31557600)).to_string() == "1 year");
+		assert!(HumanTime::into_human(Duration::from_secs(63115200)).to_string() == "2 years");
+		assert_eq!(
+			HumanTime::into_human(Duration::from_secs(18446744073709551615)).to_string(),
+			"584542046090 years, 7 months, 15 days, 17 hours, 5 minutes, 3 seconds",
+		);
+	}
+
+	#[test]
+	fn build_p2pool_regex() {
+		crate::helper::P2poolRegex::new();
+	}
+
 	#[test]
 	fn calc_payouts_and_xmr_from_output_p2pool() {
 		use crate::helper::{PubP2poolApi,P2poolRegex};

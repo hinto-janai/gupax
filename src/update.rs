@@ -412,7 +412,7 @@ impl Update {
 		*update.lock().unwrap().prog.lock().unwrap() = 5.0;
 
 		// Create Tor/HTTPS client
-		let mut lock = update.lock().unwrap();
+		let lock = update.lock().unwrap();
 		let tor = lock.tor;
 		if tor {
 			let msg = MSG_TOR.to_string();

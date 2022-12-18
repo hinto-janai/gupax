@@ -248,7 +248,7 @@ impl State {
 	// leaving behind old keys+values and updating [default] with old valid ones.
 	pub fn merge(old: &str) -> Result<Self, TomlError> {
 		let default = toml::ser::to_string(&Self::new()).unwrap();
-		let new: Self = match Figment::from(Toml::string(&default)).merge(Toml::string(&old)).extract() {
+		let new: Self = match Figment::from(Toml::string(&default)).merge(Toml::string(old)).extract() {
 			Ok(new) => { info!("State | TOML merge ... OK"); new },
 			Err(err) => { error!("State | Couldn't merge default + old TOML"); return Err(TomlError::Merge(err)) },
 		};
@@ -696,7 +696,7 @@ impl Default for P2pool {
 }
 impl Xmrig {
 	fn with_threads(max_threads: usize, current_threads: usize) -> Self {
-		let mut xmrig = Self::default();
+		let xmrig = Self::default();
 		Self {
 			max_threads,
 			current_threads,
