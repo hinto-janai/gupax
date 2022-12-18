@@ -12,6 +12,10 @@ strip = "symbols"
 codegen-units = 1
 lto = true
 
+[features]
+default = []
+distro = []
+
 [dependencies]
 anyhow = "1.0.65"
 arti-client = { version = "0.7.0", features = ["static"] }

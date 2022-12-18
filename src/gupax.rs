@@ -93,7 +93,15 @@ impl Gupax {
 				let width = width - SPACE;
 				let updating = *update.lock().unwrap().updating.lock().unwrap();
 				ui.vertical(|ui| {
+					// If [Gupax] is being built for a Linux distro,
+					// disable built-in updating completely.
+					#[cfg(feature = "distro")]
+					ui.set_enabled(false);
+					#[cfg(feature = "distro")]
+					ui.add_sized([width, height], Button::new("Updates are disabled")).on_disabled_hover_text(DISTRO_NO_UPDATE);
+					#[cfg(not(feature = "distro"))]
 					ui.set_enabled(!updating);
+					#[cfg(not(feature = "distro"))]
 					if ui.add_sized([width, height], Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
 						Update::spawn_thread(og, self, state_path, update, error_state, restart);
 					}

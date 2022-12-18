@@ -1725,6 +1725,18 @@ impl Hashrate {
 #[cfg(test)]
 mod test {
 	#[test]
+	fn reset_gui_output() {
+		let max = crate::helper::GUI_OUTPUT_LEEWAY;
+		let mut string = String::with_capacity(max);
+		for _ in 0..=max {
+			string.push('0');
+		}
+		crate::Helper::check_reset_gui_output(&mut string, crate::ProcessName::P2pool);
+		// Some text gets added, so just check for less than 500 bytes.
+		assert!(string.len() < 500);
+	}
+
+	#[test]
 	fn human_number() {
 		use crate::HumanNumber;
 		assert!(HumanNumber::to_percent(0.001).to_string() == "0%");

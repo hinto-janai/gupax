@@ -713,6 +713,7 @@ fn init_auto(app: &mut App) {
 	}
 
 	// [Auto-Update]
+	#[cfg(not(feature = "distro"))]
 	if app.state.gupax.auto_update {
 		Update::spawn_thread(&app.og, &app.state.gupax, &app.state_path, &app.update, &mut app.error_state, &app.restart);
 	} else {
@@ -1564,12 +1565,6 @@ impl eframe::App for App {
 #[cfg(test)]
 mod test {
 	#[test]
-	fn build_app() {
-		let mut app = crate::App::new(std::time::Instant::now());
-		crate::init_auto(&mut app);
-	}
-
-	#[test]
 	fn build_regex() {
 		use regex::Regex;
 		let r = crate::Regexes::new();
@@ -1586,10 +1581,5 @@ mod test {
 		}
 		assert!(!Regex::is_match(&r.port, "0"));
 		assert!(!Regex::is_match(&r.port, "65536"));
-	}
-
-	#[test]
-	fn build_images() {
-		crate::Images::new();
 	}
 }

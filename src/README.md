@@ -105,7 +105,7 @@ Exceptions (there are always exceptions...):
 - P2Pool hashes are in UPPERCASE
 
 ## Sudo
-Unlike Windows, Unix (macOS/Linux) have a userland program that handles all the dirty details of privilege escalation: `sudo`.
+Unlike Windows, Unix (macOS/Linux) has a userland program that handles all the dirty details of privilege escalation: `sudo`.
 
 `sudo` is used in Gupax to execute XMRig, to enable MSR mods and hugepages. After every use of `sudo`, the memory holding the `String` buffer containing the password is wiped with 0's using [`zeroize`](https://docs.rs/zeroize/) to make sure the compiler doesn't optimize away the wipe. Although memory *should* be safe, this prevents passive accidents (core-dumps revealing plain-text password) and active attacks (attackers accessing live process memory) from happening.
 

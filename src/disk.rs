@@ -53,20 +53,32 @@ use log::*;
 const ERROR: &str = "Disk error";
 const PATH_ERROR: &str = "PATH for state directory could not be not found";
 #[cfg(target_os = "windows")]
-const DIRECTORY: &'static str = r#"Gupax\"#;
+const DIRECTORY: &str = r#"Gupax\"#;
 #[cfg(target_os = "macos")]
-const DIRECTORY: &'static str = "Gupax/";
+const DIRECTORY: &str = "Gupax/";
 #[cfg(target_os = "linux")]
 const DIRECTORY: &str = "gupax/";
 
 #[cfg(target_os = "windows")]
-pub const DEFAULT_P2POOL_PATH: &'static str = r"P2Pool\p2pool.exe";
-#[cfg(target_family = "unix")]
+pub const DEFAULT_P2POOL_PATH: &str = r"P2Pool\p2pool.exe";
+#[cfg(target_os = "macos")]
 pub const DEFAULT_P2POOL_PATH: &str = "p2pool/p2pool";
 #[cfg(target_os = "windows")]
-pub const DEFAULT_XMRIG_PATH: &'static str = r"XMRig\xmrig.exe";
-#[cfg(target_family = "unix")]
+pub const DEFAULT_XMRIG_PATH: &str = r"XMRig\xmrig.exe";
+#[cfg(target_os = "macos")]
 pub const DEFAULT_XMRIG_PATH: &str = "xmrig/xmrig";
+
+// Default to [/usr/bin/] for Linux distro builds.
+#[cfg(target_os = "linux")]
+#[cfg(not(feature = "distro"))]
+pub const DEFAULT_P2POOL_PATH: &str = "p2pool/p2pool";
+#[cfg(target_os = "linux")]
+#[cfg(not(feature = "distro"))]
+pub const DEFAULT_XMRIG_PATH: &str = "xmrig/xmrig";
+#[cfg(feature = "distro")]
+pub const DEFAULT_P2POOL_PATH: &str = "/usr/bin/p2pool";
+#[cfg(feature = "distro")]
+pub const DEFAULT_XMRIG_PATH: &str = "/usr/bin/xmrig";
 
 //---------------------------------------------------------------------------------------------------- General functions for all [File]'s
 // get_file_path()      | Return absolute path to OS data path + filename

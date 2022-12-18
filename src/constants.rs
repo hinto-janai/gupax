@@ -15,11 +15,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pub const GUPAX_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"));
+pub const GUPAX_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION")); // e.g: Gupax v1.0.0
 pub const P2POOL_VERSION: &str = "v2.5";
 pub const XMRIG_VERSION: &str = "v6.18.0";
 pub const COMMIT: &str = include_str!("../.git/refs/heads/main");
-pub const GUPAX_VERSION_UNDERSCORE: &str = concat!("Gupax_v", env!("CARGO_PKG_VERSION"));
+// e.g: Gupax_v1_0_0
+// Would have been [Gupax_v1.0.0] but P2Pool truncates everything after [.]
+pub const GUPAX_VERSION_UNDERSCORE: &str = concat!(
+	"Gupax_v",
+	env!("CARGO_PKG_VERSION_MAJOR"),
+	"_",
+	env!("CARGO_PKG_VERSION_MINOR"),
+	"_",
+	env!("CARGO_PKG_VERSION_PATCH"),
+);
 
 // App frame resolution, [4:3] aspect ratio, [1.33:1]
 pub const APP_MIN_WIDTH: f32 = 640.0;
@@ -29,6 +38,11 @@ pub const APP_MAX_HEIGHT: f32 = 1920.0;
 // Default, 1280x960
 pub const APP_DEFAULT_WIDTH: f32 = 1280.0;
 pub const APP_DEFAULT_HEIGHT: f32 = 960.0;
+
+// Constants specific for Linux distro packaging of Gupax
+#[cfg(feature = "distro")]
+pub const DISTRO_NO_UPDATE: &str =
+r#"This [Gupax] was compiled for use as a Linux distro package. Built-in updates are disabled. The below settings [Update-via-Tor] & [Auto-Update] will not do anything. Please use your package manager to update [Gupax/P2Pool/XMRig]."#;
 
 // Use macOS shaped icon for macOS
 #[cfg(target_os = "macos")]

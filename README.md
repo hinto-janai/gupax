@@ -28,6 +28,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 * [Build](#Build)
 	- [General Info](#General-Info)
 	- [Linux](#Linux)
+		- [Building for a distribution](#building-for-a-distribution)
 	- [macOS](#macOS)
 	- [Windows](#Windows)
 * [License](#License)
@@ -126,7 +127,7 @@ P2Pool Simple allows you to ping & connect to a [Community Monero Node](#communi
 
 To start P2Pool, first input the Monero address you'd like to receive payouts from. You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!
 
-**Warning: [There are negative privacy and security implications when using Monero node not in your control.](https://www.getmonero.org/resources/moneropedia/remote-node.html)** Select a community node that you trust, or better yet, run your own node. If you'd like to manually specify a node to connect to, see [Advanced.](#advanced)
+**Warning: [There are negative privacy/security implications when using a Monero node not in your control.](https://www.getmonero.org/resources/moneropedia/remote-node.html)** Select a community node that you trust, or better yet, run your own node. If you'd like to manually specify a node to connect to, see [Advanced.](#advanced)
 
 ---
 
@@ -141,17 +142,17 @@ Gupax will automatically launch XMRig with administrator privileges to activate 
 **macOS/Linux:**  
 Gupax will prompt for your `sudo` password to start XMRig with and do all the things above.
 
-XMRig Simple will always mine to your own local P2Pool (`localhost:3333`), if you'd like to manually specify a pool to mine to, see [Advanced](#advanced).
+XMRig Simple will always mine to your own local P2Pool (`127.0.0.1:3333`), if you'd like to manually specify a pool to mine to, see [Advanced](#advanced).
 
 ## Advanced
 ### Verifying
 It is recommended to verify the hash and PGP signature of the download before using Gupax.
 
-Download the [`SHA256SUM`](https://github.com/hinto-janaiyo/gupax/releases/latest) file, download and import my [`PGP key`](https://github.com/hinto-janaiyo/gupax/blob/main/pgp/hinto-janaiyo.asc), and verify:
+Download the [`SHA256SUMS`](https://github.com/hinto-janaiyo/gupax/releases/latest) file, download and import my [`PGP key`](https://github.com/hinto-janaiyo/gupax/blob/main/pgp/hinto-janaiyo.asc), and verify:
 ```bash
-sha256sum -c SHA256SUM
+sha256sum -c SHA256SUMS
 gpg --import hinto-janaiyo.asc
-gpg --verify SHA256SUM
+gpg --verify SHA256SUMS
 ```
 
 Q: How can I be sure the P2Pool/XMRig bundled with Gupax hasn't been tampered with?  
@@ -277,11 +278,11 @@ RUST_LOG=debug ./gupax
 ```
 
 In general:
-- `ERROR` means something has gone wrong and that something will likely break
-- `WARN` means something has gone wrong, but things will likely be fine
+- `ERROR` means something has gone wrong and that something will probably break
+- `WARN` means something has gone wrong, but things will be fine
 - `INFO` logs are general info about what Gupax (the GUI thread) is currently doing
 - `DEBUG` logs are much more verbose and include what EVERY thread is doing (not just the main GUI thread)
-- `TRACE` logs are insanely verbose and shows the logs of the libraries Gupax uses (HTTP connections, GUI polling, etc)
+- `TRACE` logs are insanely verbose and shows very low-level logs of the libraries Gupax uses (HTTP connections, GUI polling, etc)
 
 ---
 
@@ -464,6 +465,12 @@ You need [`cargo`](https://www.rust-lang.org/learn/get-started), Rust's build to
 
 The `--release` profile in Gupax is set to prefer code performance & small binary sizes over compilation speed (see [`Cargo.toml`](https://github.com/hinto-janaiyo/gupax/blob/main/Cargo.toml)). Gupax itself (with all dependencies already built) takes around 1m30s to build (vs 10s on a normal `--release`) with a Ryzen 5950x.
 
+There are `20` unit tests throughout the codebase files, you should probably run:
+```
+cargo test
+```
+before attempting a full build.
+
 ---
 
 ### Linux
@@ -473,6 +480,17 @@ After that, run:
 ```
 cargo build --release
 ```
+
+### Building for a distribution
+Gupax has a build flag for use as a package in a Linux distribution:
+```
+cargo build --release --features distro
+```
+This is the same as the `--release` profile, but with some changes:
+| Change                                     | Reason |
+|--------------------------------------------|--------|
+| Built-in `Update` feature is disabled      | Updates should be handled by the native package manager
+| Default `P2Pool/XMRig` path is `/usr/bin/` | `P2Pool/XMRig` exist in _[some](https://aur.archlinux.org)_ repositories, which means they'll be installed in `/usr/bin/`
 
 ---
 
@@ -515,12 +533,12 @@ The latest versions are downloaded using the GitHub API.
 * P2Pool [`https://github.com/SChernykh/p2pool`](https://github.com/SChernykh/p2pool)
 * XMRig [`https://github.com/xmrig/xmrig`](https://github.com/xmrig/xmrig)
 
-GitHub's API blocks request that do not have an HTTP `User-Agent` header. [For privacy, Gupax randomly uses a recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/update.rs#L134)
+GitHub's API blocks request that do not have an HTTP `User-Agent` header. [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/update.rs#L134)
 
 ---
 
 ### Can I quit mid-update?
-If you started an update, you should let it finish. If the update has been stuck for a *long* time, it may be worth quitting Gupax. The worst that can happen is that your `Gupax/P2Pool/XMRig` binaries may be moved/deleted. Those can be easily redownloaded. Your actual `Gupax` user data (settings, custom nodes, pools, etc) is never touched.
+If you started an update, you should let it finish. If the update has been stuck for a *long* time, quitting Gupax is probably okay. The worst that can happen is that your `Gupax/P2Pool/XMRig` binaries may be moved/deleted. Those can be easily redownloaded. Your actual `Gupax` user data (settings, custom nodes, pools, etc) is never touched.
 
 Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store temporary downloaded files, there aren't measures in place to revert an upgrade once the file swapping has actually started. If you quit Gupax anytime before the `Upgrading packages` phase (after metadata, download, extraction), you will technically be safe but this is not recommended as it is risky, especially since these updates can be very fast.
 
@@ -536,7 +554,7 @@ Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store tem
 ### How much memory does Gupax use?
 Gupax itself uses around 100-300 megabytes of memory.
 
-Gupax also holds up to [500,000 bytes](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/helper.rs#L63) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-2 hours.
+Gupax also holds up to [500,000 bytes](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/helper.rs#L63) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-4 hours.
 
 Memory usage should *never* be above 500~ megabytes. If you see Gupax using more than this, please send a bug report.
 
