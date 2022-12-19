@@ -455,11 +455,13 @@ pub enum ErrorButtons {
 	Quit,
 	Sudo,
 	WindowsAdmin,
+	Debug,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorFerris {
 	Happy,
+	Cute,
 	Oops,
 	Error,
 	Panic,
@@ -537,6 +539,7 @@ impl ErrorState {
 struct Images {
 	banner: RetainedImage,
 	happy: RetainedImage,
+	cute: RetainedImage,
 	oops: RetainedImage,
 	error: RetainedImage,
 	panic: RetainedImage,
@@ -548,6 +551,7 @@ impl Images {
 		Self {
 			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
 			happy: RetainedImage::from_image_bytes("happy.png", FERRIS_HAPPY).unwrap(),
+			cute: RetainedImage::from_image_bytes("cute.png", FERRIS_CUTE).unwrap(),
 			oops: RetainedImage::from_image_bytes("oops.png", FERRIS_OOPS).unwrap(),
 			error: RetainedImage::from_image_bytes("error.png", FERRIS_ERROR).unwrap(),
 			panic: RetainedImage::from_image_bytes("panic.png", FERRIS_PANIC).unwrap(),
@@ -601,6 +605,7 @@ enum KeyPressed {
 	X,
 	S,
 	R,
+	D,
 	None,
 }
 
@@ -628,6 +633,9 @@ impl KeyPressed {
 	}
 	fn is_r(&self) -> bool {
 		*self == Self::R
+	}
+	fn is_d(&self) -> bool {
+		*self == Self::D
 	}
 	fn is_none(&self) -> bool {
 		*self == Self::None
@@ -962,6 +970,8 @@ impl eframe::App for App {
 				KeyPressed::S
 			} else if input.consume_key(Modifiers::NONE, Key::R) {
 				KeyPressed::R
+			} else if input.consume_key(Modifiers::NONE, Key::D) {
+				KeyPressed::D
 			} else {
 				KeyPressed::None
 			}
@@ -1086,12 +1096,16 @@ impl eframe::App for App {
 				use ErrorButtons::*;
 				let ferris = match self.error_state.ferris {
 					Happy => &self.img.happy,
+					Cute => &self.img.cute,
 					Oops  => &self.img.oops,
 					Error => &self.img.error,
 					Panic => &self.img.panic,
 					ErrorFerris::Sudo => &self.img.sudo,
 				};
-				ferris.show_max_size(ui, Vec2::new(width, height));
+				match self.error_state.buttons {
+					Debug => ui.add_sized([width, height/4.0], Label::new("--- Debug Info ---")),
+					    _ => ferris.show_max_size(ui, Vec2::new(width, height)),
+				};
 
 				// Error/Quit screen
 				match self.error_state.buttons {
@@ -1118,6 +1132,10 @@ impl eframe::App for App {
 						ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 						ui.add_sized([width/2.0, height], Label::new(text));
 						ui.add_sized([width, height], Hyperlink::from_label_and_url("Click here for more info.", "https://xmrig.com/docs/miner/randomx-optimization-guide"))
+					},
+					Debug => {
+						ui.style_mut().override_text_style = Some(Monospace);
+						ui.add_sized([width, height/4.0], TextEdit::multiline(&mut self.error_state.msg.as_str()))
 					},
 					_ => {
 						match self.error_state.ferris {
@@ -1229,7 +1247,7 @@ impl eframe::App for App {
 							self.error_state.reset();
 						}
 					},
-					Okay|WindowsAdmin => if key.is_esc() || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
+					Okay|WindowsAdmin|Debug => if key.is_esc() || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
 					Quit => if ui.add_sized([width, height], Button::new("Quit")).clicked() { exit(1); },
 				}
 			})});
@@ -1513,6 +1531,54 @@ impl eframe::App for App {
 			match self.tab {
 				Tab::About => {
 					debug!("App | Entering [About] Tab");
+					// If [D], show some debug info with [ErrorState]
+					if key.is_d() {
+						info!("App | Entering [Debug Info]");
+						#[cfg(feature = "distro")]
+						let distro = true;
+						#[cfg(not(feature = "distro"))]
+						let distro = false;
+						let debug_info = format!(
+"Gupax version: {}\n
+Bundled P2Pool version: {}\n
+Bundled XMRig version: {}\n
+Gupax uptime: {} seconds\n
+Internal resolution: {}x{}\n
+Operating system: {}\n
+Max detected threads: {}\n
+Gupax PID: {}\n
+State diff: {}\n
+Admin privilege: {}\n
+Release build: {}\n
+Debug build: {}\n
+Distro build: {}\n
+Build commit: {}\n
+OS Data PATH: {}\n
+Gupax PATH: {}\n
+P2Pool PATH: {}\n
+XMRig PATH: {}",
+							GUPAX_VERSION,
+							P2POOL_VERSION,
+							XMRIG_VERSION,
+							self.now.elapsed().as_secs_f32(),
+							self.width as u16,
+							self.height as u16,
+							OS_NAME,
+							self.max_threads,
+							self.pid,
+							self.diff,
+							self.admin,
+							!cfg!(debug_assertions),
+							cfg!(debug_assertions),
+							distro,
+							COMMIT,
+							self.os_data_path.display(),
+							self.exe,
+							self.state.gupax.absolute_p2pool_path.display(),
+							self.state.gupax.absolute_xmrig_path.display(),
+						);
+						self.error_state.set(debug_info, ErrorFerris::Cute, ErrorButtons::Debug);
+					}
 					let width = self.width;
 					let height = self.height/30.0;
 					let max_height = self.height;
