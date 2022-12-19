@@ -152,14 +152,12 @@ impl Gupax {
 		ui.horizontal(|ui| {
 			if self.p2pool_path.is_empty() {
 				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ➖").color(LIGHT_GRAY))).on_hover_text(P2POOL_PATH_EMPTY);
+			} else if !Self::path_is_file(&self.p2pool_path) {
+				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(RED))).on_hover_text(P2POOL_PATH_NOT_FILE);
+			} else if !crate::update::check_p2pool_path(&self.p2pool_path) {
+				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(RED))).on_hover_text(P2POOL_PATH_NOT_VALID);
 			} else {
-				if !Self::path_is_file(&self.p2pool_path) {
-					ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(RED))).on_hover_text(P2POOL_PATH_NOT_FILE);
-				} else if !crate::update::check_p2pool_path(&self.p2pool_path) {
-					ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ❌").color(RED))).on_hover_text(P2POOL_PATH_NOT_VALID);
-				} else {
-					ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ✔").color(GREEN))).on_hover_text(P2POOL_PATH_OK);
-				}
+				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ✔").color(GREEN))).on_hover_text(P2POOL_PATH_OK);
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);
@@ -171,14 +169,12 @@ impl Gupax {
 		ui.horizontal(|ui| {
 			if self.xmrig_path.is_empty() {
 				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ➖").color(LIGHT_GRAY))).on_hover_text(XMRIG_PATH_EMPTY);
+			} else if !Self::path_is_file(&self.xmrig_path) {
+				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))).on_hover_text(XMRIG_PATH_NOT_FILE);
+			} else if !crate::update::check_xmrig_path(&self.xmrig_path) {
+				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))).on_hover_text(XMRIG_PATH_NOT_VALID);
 			} else {
-				if !Self::path_is_file(&self.xmrig_path) {
-					ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))).on_hover_text(XMRIG_PATH_NOT_FILE);
-				} else if !crate::update::check_xmrig_path(&self.xmrig_path) {
-					ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ❌").color(RED))).on_hover_text(XMRIG_PATH_NOT_VALID);
-				} else {
-					ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ✔").color(GREEN))).on_hover_text(XMRIG_PATH_OK);
-				}
+				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ✔").color(GREEN))).on_hover_text(XMRIG_PATH_OK);
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
 			ui.set_enabled(!file_window.lock().unwrap().thread);

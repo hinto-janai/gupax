@@ -475,6 +475,10 @@ impl Helper {
 		let regex = P2poolRegex::new();
 		let start = process.lock().unwrap().start;
 
+		// Reset stats before loop
+		*pub_api.lock().unwrap() = PubP2poolApi::new();
+		*gui_api.lock().unwrap() = PubP2poolApi::new();
+
 		// 4. Loop as watchdog
 		info!("P2Pool | Entering watchdog mode... woof!");
 		loop {
@@ -841,6 +845,10 @@ impl Helper {
 
 		let client: hyper::Client<hyper::client::HttpConnector> = hyper::Client::builder().build(hyper::client::HttpConnector::new());
 		let start = process.lock().unwrap().start;
+
+		// Reset stats before loop
+		*pub_api.lock().unwrap() = PubXmrigApi::new();
+		*gui_api.lock().unwrap() = PubXmrigApi::new();
 
 		// 5. Loop as watchdog
 		info!("XMRig | Entering watchdog mode... woof!");
@@ -1454,12 +1462,12 @@ impl PubP2poolApi {
 		let xmr_day = xmr_hour * 24.0;
 		let xmr_month = xmr_day * 30.0;
 
-		if payouts != 0 {
+		if payouts_new != 0 {
 			debug!("P2Pool Watchdog | New [Payout] found in output ... {}", payouts_new);
 			debug!("P2Pool Watchdog | Total [Payout] should be ... {}", payouts);
 			debug!("P2Pool Watchdog | Correct [Payout per] should be ... [{}/hour, {}/day, {}/month]", payouts_hour, payouts_day, payouts_month);
 		}
-		if xmr != 0.0 {
+		if xmr_new != 0.0 {
 			debug!("P2Pool Watchdog | New [XMR mined] found in output ... {}", xmr_new);
 			debug!("P2Pool Watchdog | Total [XMR mined] should be ... {}", xmr);
 			debug!("P2Pool Watchdog | Correct [XMR mined per] should be ... [{}/hour, {}/day, {}/month]", xmr_hour, xmr_day, xmr_month);
