@@ -360,7 +360,6 @@ impl Helper {
 				out_peers: "10".to_string(),
 				in_peers: "10".to_string(),
 			};
-			api_path.push(P2POOL_API_PATH);
 
 		// [Advanced]
 		} else {
@@ -410,9 +409,9 @@ impl Helper {
 					out_peers: state.out_peers.to_string(),
 					in_peers: state.in_peers.to_string(),
 				};
-				api_path.push(P2POOL_API_PATH);
 			}
 		}
+		api_path.push(P2POOL_API_PATH);
 		(args, api_path)
 	}
 
@@ -738,11 +737,11 @@ impl Helper {
 					match last {
 						"--threads"   => xmrig_image.threads = arg.to_string(),
 						"--url"       => xmrig_image.url = arg.to_string(),
-						"--http-host" => api_ip = arg.to_string(),
+						"--http-host" => api_ip = if arg == "localhost" { "127.0.0.1".to_string() } else { arg.to_string() },
 						"--http-port" => api_port = arg.to_string(),
 						_ => (),
 					}
-					args.push(arg.to_string());
+					args.push(if arg == "localhost" { "127.0.0.1".to_string() } else { arg.to_string() });
 					last = arg;
 				}
 			// Else, build the argument
@@ -791,7 +790,7 @@ impl Helper {
 	// The XMRig watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	// This isn't actually async, a tokio runtime is unfortunately needed because [Hyper] is an async library (HTTP API calls)
 	#[tokio::main]
-	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, _priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, api_ip_port: String) {
+	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, _priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, mut api_ip_port: String) {
 		// 1a. Create PTY
 		debug!("XMRig | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -845,6 +844,11 @@ impl Helper {
 
 		let client: hyper::Client<hyper::client::HttpConnector> = hyper::Client::builder().build(hyper::client::HttpConnector::new());
 		let start = process.lock().unwrap().start;
+		let api_uri = {
+			if !api_ip_port.ends_with('/') { api_ip_port.push('/'); }
+			"http://".to_owned() + &api_ip_port + XMRIG_API_URI
+		};
+		info!("XMRig | Final API URI: {}", api_uri);
 
 		// Reset stats before loop
 		*pub_api.lock().unwrap() = PubXmrigApi::new();
@@ -959,11 +963,11 @@ impl Helper {
 
 			// Send an HTTP API request
 			debug!("XMRig Watchdog | Attempting HTTP API request...");
-			if let Ok(priv_api) = PrivXmrigApi::request_xmrig_api(client.clone(), &api_ip_port).await {
+			if let Ok(priv_api) = PrivXmrigApi::request_xmrig_api(client.clone(), &api_uri).await {
 				debug!("XMRig Watchdog | HTTP API request OK, attempting [update_from_priv()]");
 				PubXmrigApi::update_from_priv(&pub_api, priv_api);
 			} else {
-				warn!("XMRig Watchdog | Could not send HTTP API request to: {}", api_ip_port);
+				warn!("XMRig Watchdog | Could not send HTTP API request to: {}", api_uri);
 			}
 
 			// Sleep (only if 900ms hasn't passed)
@@ -1300,11 +1304,11 @@ impl HumanNumber {
 // The following STDLIB implementation takes [0.003~] seconds to find all matches given a [String] with 30k lines:
 //     let mut n = 0;
 //     for line in P2POOL_OUTPUT.lines() {
-//         if line.contains("You received a payout of [0-9].[0-9]+ XMR") { n += 1; }
+//         if line.contains("payout of [0-9].[0-9]+ XMR") { n += 1; }
 //     }
 //
 // This regex function takes [0.0003~] seconds (10x faster):
-//     let regex = Regex::new("You received a payout of [0-9].[0-9]+ XMR").unwrap();
+//     let regex = Regex::new("payout of [0-9].[0-9]+ XMR").unwrap();
 //     let n = regex.find_iter(P2POOL_OUTPUT).count();
 //
 // Both are nominally fast enough where it doesn't matter too much but meh, why not use regex.
@@ -1316,7 +1320,7 @@ struct P2poolRegex {
 impl P2poolRegex {
 	fn new() -> Self {
 		Self {
-			payout: regex::Regex::new("You received a payout of [0-9].[0-9]+ XMR").unwrap(),
+			payout: regex::Regex::new("payout of [0-9].[0-9]+ XMR").unwrap(),
 			float: regex::Regex::new("[0-9].[0-9]+").unwrap(),
 		}
 	}
@@ -1685,10 +1689,10 @@ impl PrivXmrigApi {
 		}
 	}
 	// Send an HTTP request to XMRig's API, serialize it into [Self] and return it
-	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_ip_port: &str) -> Result<Self, anyhow::Error> {
+	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_uri: &str) -> Result<Self, anyhow::Error> {
 		let request = hyper::Request::builder()
 			.method("GET")
-			.uri("http://".to_string() + api_ip_port + XMRIG_API_URI)
+			.uri(api_uri)
 			.body(hyper::Body::empty())?;
 		let response = tokio::time::timeout(std::time::Duration::from_millis(500), client.request(request)).await?;
 		let body = hyper::body::to_bytes(response?.body_mut()).await?;
@@ -1868,9 +1872,9 @@ mod test {
 		use std::sync::{Arc,Mutex};
 		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
 		let output_parse = Arc::new(Mutex::new(String::from(
-			r#"You received a payout of 5.000000000001 XMR in block 1111
-			You received a payout of 5.000000000001 XMR in block 1112
-			You received a payout of 5.000000000001 XMR in block 1113"#
+			r#"payout of 5.000000000001 XMR in block 1111
+			payout of 5.000000000001 XMR in block 1112
+			payout of 5.000000000001 XMR in block 1113"#
 		)));
 		let output_pub = Arc::new(Mutex::new(String::new()));
 		let elapsed = std::time::Duration::from_secs(60);

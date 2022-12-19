@@ -16,8 +16,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const GUPAX_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION")); // e.g: Gupax v1.0.0
-pub const P2POOL_VERSION: &str = "v2.5";
-pub const XMRIG_VERSION: &str = "v6.18.0";
+pub const P2POOL_VERSION: &str = "v2.6";
+pub const XMRIG_VERSION: &str = "v6.18.1";
 pub const COMMIT: &str = include_str!("../.git/refs/heads/main");
 // e.g: Gupax_v1_0_0
 // Would have been [Gupax_v1.0.0] but P2Pool truncates everything after [.]
@@ -73,7 +73,7 @@ r#"*---------------------------------------*
 pub const P2POOL_API_PATH: &str = r"local\stats"; // The default relative FS path of P2Pool's local API
 #[cfg(target_family = "unix")]
 pub const P2POOL_API_PATH: &str = "local/stats";
-pub const XMRIG_API_URI: &str = "/1/summary"; // The default relative URI of XMRig's API
+pub const XMRIG_API_URI: &str = "1/summary"; // The default relative URI of XMRig's API
 
 // Process state tooltips (online, offline, etc)
 pub const P2POOL_ALIVE:  &str = "P2Pool is online";

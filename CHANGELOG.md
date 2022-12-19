@@ -1,9 +1,19 @@
 # v1.0.0
-## Updates
-*
+[Download here](https://github.com/hinto-janaiyo/gupax/releases/latest) or at https://gupax.io.
 
-## Fixes
-*
+[Watch a 3-minute setup guide here.](https://github.com/hinto-janaiyo/gupax#How-To)
+
+## Changes
+* Optimized PTY output handling (less memory usage)
+* Added `Select random node`, `<- Last`, `Next ->` buttons in `P2Pool Simple`
+* Added `Debug Info` screen (`D` key on `About` tab)
+* Added Linux distro build profile
+* Added `21` unit tests
+* Misc fixes/optimizations
+
+## Bundled Versions
+* [`P2Pool v2.6`](https://github.com/SChernykh/p2pool/releases/tag/v2.6)
+* [`XMRig v6.18.1`](https://github.com/xmrig/xmrig/releases/tag/v6.18.1)
 
 
 ---

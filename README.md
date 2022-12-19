@@ -1,4 +1,3 @@
-# WORK IN PROGRESS - ETA: December 25th, 2022
 ![banner.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/banner.png)
 Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
 
@@ -480,6 +479,8 @@ After that, run:
 ```
 cargo build --release
 ```
+
+The Linux release tars come with another file next to the Gupax binary: `Gupax.AppImage`. ***This is not an actual [AppImage](https://en.wikipedia.org/wiki/AppImage)***, it is just a text file that contains: `./gupax`. This allows users to double-click and execute Gupax in file explorers like `Nautilus` in Ubuntu/Debian.
 
 ### Building for a distribution
 Gupax has a build flag for use as a package in a Linux distribution:
