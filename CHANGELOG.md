@@ -1,3 +1,18 @@
+# v1.0.1
+## Updates
+*
+
+## Fixes
+*
+
+## Bundled Versions
+* [`P2Pool v2.6`](https://github.com/SChernykh/p2pool/releases/tag/v2.6)
+* [`XMRig v6.18.1`](https://github.com/xmrig/xmrig/releases/tag/v6.18.1)
+
+
+---
+
+
 # v1.0.0
 [Download here](https://github.com/hinto-janaiyo/gupax/releases/latest) or at https://gupax.io.
 
