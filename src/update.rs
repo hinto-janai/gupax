@@ -120,6 +120,11 @@ const XMRIG_BINARY: &str = "xmrig.exe";
 const XMRIG_BINARY: &str = "xmrig";
 
 #[cfg(target_os = "windows")]
+const ACCEPTABLE_GUPAX: [&str; 3] = ["GUPAX.exe", "Gupax.exe", "gupax.exe"];
+#[cfg(target_family = "unix")]
+const ACCEPTABLE_GUPAX: [&str; 3] = ["GUPAX", "Gupax", "gupax"];
+
+#[cfg(target_os = "windows")]
 const ACCEPTABLE_XMRIG: [&str; 4] = ["XMRIG.exe", "XMRig.exe", "Xmrig.exe", "xmrig.exe"];
 #[cfg(target_family = "unix")]
 const ACCEPTABLE_XMRIG: [&str; 4] = ["XMRIG", "XMRig", "Xmrig", "xmrig"];

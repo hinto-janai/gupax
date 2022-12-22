@@ -1,5 +1,5 @@
 [package]
-name = "Gupax"
+name = "gupax"
 version = "1.0.0"
 authors = ["hinto-janaiyo <hinto.janaiyo@protonmail.com>"]
 description = "GUI for P2Pool+XMRig"
@@ -77,5 +77,7 @@ static_vcruntime = "2.0"
 
 # For macOS build (cargo-bundle)
 [package.metadata.bundle]
+name = "Gupax"
 identifier = "com.github.hinto-janaiyo.gupax"
 icon = ["images/icons/icon@2x.png"]
+category = "public.app-category.utilities"

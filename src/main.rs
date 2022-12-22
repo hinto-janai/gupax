@@ -416,6 +416,14 @@ impl App {
 			app.error_state.set(format!("Gupax was launched as: [{:?}]\nPlease launch Gupax with regular user permissions.", id), ErrorFerris::Panic, ErrorButtons::Quit);
 		}
 
+		// macOS re-locates "dangerous" applications into some read-only "/private" directory.
+		// It _seems_ to be fixed by moving [Gupax.app] into "/Applications".
+		// So, detect if we are in in "/private" and warn the user.
+		#[cfg(target_os = "macos")]
+		if app.exe.starts_with("/private") {
+			app.error_state.set(format!("macOS thinks Gupax is a virus!\n(macOS has relocated Gupax for security reasons)\n\nThe directory: [{}]\nSince this is a private read-only directory, it causes issues with updates and correctly locating P2Pool/XMRig. Please move Gupax into the [Applications] directory, this lets macOS relax a little.\n", app.exe), ErrorFerris::Panic, ErrorButtons::Quit);
+		}
+
 		app
 	}
 }
