@@ -121,9 +121,9 @@ pub struct App {
 	xmrig_api: Arc<Mutex<PubXmrigApi>>,   // Public ready-to-print XMRig API made by the "helper" thread
 	p2pool_img: Arc<Mutex<ImgP2pool>>,    // A one-time snapshot of what data P2Pool started with
 	xmrig_img: Arc<Mutex<ImgXmrig>>,      // A one-time snapshot of what data XMRig started with
-	// Buffer State
-	p2pool_console: String, // The buffer between the p2pool console and the [Helper]
-	xmrig_console: String, // The buffer between the xmrig console and the [Helper]
+	// STDIN Buffer
+	p2pool_stdin: String, // The buffer between the p2pool console and the [Helper]
+	xmrig_stdin: String, // The buffer between the xmrig console and the [Helper]
 	// Sudo State
 	sudo: Arc<Mutex<SudoState>>, // This is just a dummy struct on [Windows].
 	// State from [--flags]
@@ -212,8 +212,8 @@ impl App {
 			xmrig_api,
 			p2pool_img,
 			xmrig_img,
-			p2pool_console: String::with_capacity(10),
-			xmrig_console: String::with_capacity(10),
+			p2pool_stdin: String::with_capacity(10),
+			xmrig_stdin: String::with_capacity(10),
 			sudo: Arc::new(Mutex::new(SudoState::new())),
 			resizing: false,
 			alpha: 0,
@@ -1111,7 +1111,7 @@ impl eframe::App for App {
 					ErrorFerris::Sudo => &self.img.sudo,
 				};
 				match self.error_state.buttons {
-					Debug => ui.add_sized([width, height/4.0], Label::new("--- Debug Info ---")),
+					Debug => ui.add_sized([width, height/4.0], Label::new("--- Debug Info ---\n\nPress [ESC] to quit")),
 					    _ => ferris.show_max_size(ui, Vec2::new(width, height)),
 				};
 
@@ -1143,7 +1143,14 @@ impl eframe::App for App {
 					},
 					Debug => {
 						ui.style_mut().override_text_style = Some(Monospace);
-						ui.add_sized([width, height/4.0], TextEdit::multiline(&mut self.error_state.msg.as_str()))
+						egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
+							let width = ui.available_width();
+							let height = ui.available_height();
+							egui::ScrollArea::vertical().max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
+								ui.add_sized([width-20.0, height], TextEdit::multiline(&mut self.error_state.msg.as_str()));
+							});
+						});
+						ui.label("")
 					},
 					_ => {
 						match self.error_state.ferris {
@@ -1256,6 +1263,7 @@ impl eframe::App for App {
 						}
 					},
 					Okay|WindowsAdmin|Debug => if key.is_esc() || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
+					Debug => if key.is_esc() { self.error_state.reset(); },
 					Quit => if ui.add_sized([width, height], Button::new("Quit")).clicked() { exit(1); },
 				}
 			})});
@@ -1541,7 +1549,7 @@ impl eframe::App for App {
 					debug!("App | Entering [About] Tab");
 					// If [D], show some debug info with [ErrorState]
 					if key.is_d() {
-						info!("App | Entering [Debug Info]");
+						debug!("App | Entering [Debug Info]");
 						#[cfg(feature = "distro")]
 						let distro = true;
 						#[cfg(not(feature = "distro"))]
@@ -1551,11 +1559,14 @@ impl eframe::App for App {
 Bundled P2Pool version: {}\n
 Bundled XMRig version: {}\n
 Gupax uptime: {} seconds\n
+Selected resolution: {}x{}\n
 Internal resolution: {}x{}\n
 Operating system: {}\n
 Max detected threads: {}\n
 Gupax PID: {}\n
 State diff: {}\n
+Node list length: {}\n
+Pool list length: {}\n
 Admin privilege: {}\n
 Release build: {}\n
 Debug build: {}\n
@@ -1564,17 +1575,27 @@ Build commit: {}\n
 OS Data PATH: {}\n
 Gupax PATH: {}\n
 P2Pool PATH: {}\n
-XMRig PATH: {}",
+XMRig PATH: {}\n
+P2Pool console byte length: {}\n
+XMRig console byte length: {}\n\n\n
+--------------------- WORKING STATE ---------------------
+{:#?}\n\n\n
+--------------------- ORIGINAL STATE ---------------------
+{:#?}",
 							GUPAX_VERSION,
 							P2POOL_VERSION,
 							XMRIG_VERSION,
 							self.now.elapsed().as_secs_f32(),
+							self.state.gupax.selected_width as u16,
+							self.state.gupax.selected_height as u16,
 							self.width as u16,
 							self.height as u16,
 							OS_NAME,
 							self.max_threads,
 							self.pid,
 							self.diff,
+							self.node_vec.len(),
+							self.pool_vec.len(),
 							self.admin,
 							!cfg!(debug_assertions),
 							cfg!(debug_assertions),
@@ -1584,6 +1605,10 @@ XMRig PATH: {}",
 							self.exe,
 							self.state.gupax.absolute_p2pool_path.display(),
 							self.state.gupax.absolute_xmrig_path.display(),
+							self.p2pool_api.lock().unwrap().output.len(),
+							self.xmrig_api.lock().unwrap().output.len(),
+							self.state,
+							self.og.lock().unwrap(),
 						);
 						self.error_state.set(debug_info, ErrorFerris::Cute, ErrorButtons::Debug);
 					}
@@ -1624,11 +1649,11 @@ XMRig PATH: {}",
 				}
 				Tab::P2pool => {
 					debug!("App | Entering [P2Pool] Tab");
-					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_console, self.width, self.height, ctx, ui);
+					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_stdin, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
 					debug!("App | Entering [XMRig] Tab");
-					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_console, self.width, self.height, ctx, ui);
+					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_stdin, self.width, self.height, ctx, ui);
 				}
 			}
 		});
