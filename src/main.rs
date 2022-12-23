@@ -1426,9 +1426,9 @@ impl eframe::App for App {
 							let width = (ui.available_width()/3.0)-5.0;
 							if p2pool_is_waiting {
 								ui.add_enabled_ui(false, |ui| {
-									ui.add_sized([width, height], Button::new("⟲")).on_disabled_hover_text("Restart P2Pool");
-									ui.add_sized([width, height], Button::new("⏹")).on_disabled_hover_text("Stop P2Pool");
-									ui.add_sized([width, height], Button::new("▶")).on_disabled_hover_text("Start P2Pool");
+									ui.add_sized([width, height], Button::new("⟲")).on_disabled_hover_text(P2POOL_MIDDLE);
+									ui.add_sized([width, height], Button::new("⏹")).on_disabled_hover_text(P2POOL_MIDDLE);
+									ui.add_sized([width, height], Button::new("▶")).on_disabled_hover_text(P2POOL_MIDDLE);
 								});
 							} else if p2pool_is_alive {
 								if key.is_up() && !wants_input || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() {
@@ -1450,16 +1450,17 @@ impl eframe::App for App {
 								let mut ui_enabled = true;
 								if !Regexes::addr_ok(&self.regex, &self.state.p2pool.address) {
 									ui_enabled = false;
-									text = P2POOL_ADDRESS.to_string();
+									text = format!("Error: {}", P2POOL_ADDRESS);
 								} else if !Gupax::path_is_file(&self.state.gupax.p2pool_path) {
 									ui_enabled = false;
-									text = P2POOL_PATH_NOT_FILE.to_string();
+									text = format!("Error: {}", P2POOL_PATH_NOT_FILE);
 								} else if !crate::update::check_p2pool_path(&self.state.gupax.p2pool_path) {
 									ui_enabled = false;
-									text = P2POOL_PATH_NOT_VALID.to_string();
+									text = format!("Error: {}", P2POOL_PATH_NOT_VALID);
 								}
 								ui.set_enabled(ui_enabled);
-								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start P2Pool").on_disabled_hover_text(text).clicked() {
+								let color = if ui_enabled { GREEN } else { RED };
+								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start P2Pool").on_disabled_hover_text(text).clicked() {
 									Helper::start_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 							}
@@ -1480,9 +1481,9 @@ impl eframe::App for App {
 							let width = (ui.available_width()/3.0)-5.0;
 							if xmrig_is_waiting {
 								ui.add_enabled_ui(false, |ui| {
-									ui.add_sized([width, height], Button::new("⟲")).on_disabled_hover_text("Restart XMRig");
-									ui.add_sized([width, height], Button::new("⏹")).on_disabled_hover_text("Stop XMRig");
-									ui.add_sized([width, height], Button::new("▶")).on_disabled_hover_text("Start XMRig");
+									ui.add_sized([width, height], Button::new("⟲")).on_disabled_hover_text(XMRIG_MIDDLE);
+									ui.add_sized([width, height], Button::new("⏹")).on_disabled_hover_text(XMRIG_MIDDLE);
+									ui.add_sized([width, height], Button::new("▶")).on_disabled_hover_text(XMRIG_MIDDLE);
 								});
 							} else if xmrig_is_alive {
 								if key.is_up() && !wants_input || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
@@ -1513,18 +1514,19 @@ impl eframe::App for App {
 								let mut ui_enabled = true;
 								if !Gupax::path_is_file(&self.state.gupax.xmrig_path) {
 									ui_enabled = false;
-									text = XMRIG_PATH_NOT_FILE.to_string();
+									text = format!("Error: {}", XMRIG_PATH_NOT_FILE);
 								} else if !crate::update::check_xmrig_path(&self.state.gupax.xmrig_path) {
 									ui_enabled = false;
-									text = XMRIG_PATH_NOT_VALID.to_string();
+									text = format!("Error: {}", XMRIG_PATH_NOT_VALID);
 								}
 								ui.set_enabled(ui_enabled);
+								let color = if ui_enabled { GREEN } else { RED };
 								#[cfg(target_os = "windows")]
-								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
+								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
 									Helper::start_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
 								}
 								#[cfg(target_family = "unix")]
-								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new("▶")).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
+								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
 									self.sudo.lock().unwrap().signal = ProcessSignal::Start;
 									self.error_state.ask_sudo(&self.sudo);
 								}

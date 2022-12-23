@@ -239,10 +239,10 @@ pub const P2POOL_NAME: &str = "Add a unique name to identify this node; Only [A-
 pub const P2POOL_NODE_IP: &str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const P2POOL_RPC_PORT: &str = "Specify the RPC port of the Monero node; [1-65535]";
 pub const P2POOL_ZMQ_PORT: &str = "Specify the ZMQ port of the Monero node; [1-65535]";
-pub const P2POOL_PATH_NOT_FILE: &str = "P2Pool binary not found at the given PATH in the Gupax tab!";
-pub const P2POOL_PATH_NOT_VALID: &str = "P2Pool binary at the given PATH in the Gupax tab doesn't look like P2Pool!";
+pub const P2POOL_PATH_NOT_FILE: &str = "P2Pool binary not found at the given PATH in the Gupax tab! To fix: goto the [Gupax Advanced] tab, select [Open] and specify where P2Pool is located.";
+pub const P2POOL_PATH_NOT_VALID: &str = "P2Pool binary at the given PATH in the Gupax tab doesn't look like P2Pool! To fix: goto the [Gupax Advanced] tab, select [Open] and specify where P2Pool is located.";
 pub const P2POOL_PATH_OK: &str = "P2Pool was found at the given PATH";
-pub const P2POOL_PATH_EMPTY: &str = "P2Pool PATH is empty";
+pub const P2POOL_PATH_EMPTY: &str = "P2Pool PATH is empty! To fix: goto the [Gupax Advanced] tab, select [Open] and specify where P2Pool is located.";
 
 // Node/Pool list
 pub const LIST_ADD: &str = "Add the current values to the list";
@@ -282,10 +282,10 @@ pub const XMRIG_API_PORT: &str = "Specify which port to bind to for XMRig's HTTP
 pub const XMRIG_TLS: &str = "Enable SSL/TLS connections (needs pool support)";
 pub const XMRIG_KEEPALIVE: &str = "Send keepalive packets to prevent timeout (needs pool support)";
 pub const XMRIG_THREADS: &str = "Number of CPU threads to use for mining";
-pub const XMRIG_PATH_NOT_FILE: &str = "XMRig binary not found at the given PATH in the Gupax tab!";
-pub const XMRIG_PATH_NOT_VALID: &str = "XMRig binary at the given PATH in the Gupax tab doesn't look like XMRig!";
+pub const XMRIG_PATH_NOT_FILE: &str = "XMRig binary not found at the given PATH in the Gupax tab! To fix: goto the [Gupax Advanced] tab, select [Open] and specify where XMRig is located.";
+pub const XMRIG_PATH_NOT_VALID: &str = "XMRig binary at the given PATH in the Gupax tab doesn't look like XMRig! To fix: goto the [Gupax Advanced] tab, select [Open] and specify where XMRig is located.";
 pub const XMRIG_PATH_OK: &str = "XMRig was found at the given PATH";
-pub const XMRIG_PATH_EMPTY: &str = "XMRig PATH is empty";
+pub const XMRIG_PATH_EMPTY: &str = "XMRig PATH is empty! To fix: goto the [Gupax Advanced] tab, select [Open] and specify where XMRig is located.";
 
 // CLI argument messages
 pub const ARG_HELP: &str =
