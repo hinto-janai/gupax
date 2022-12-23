@@ -1,9 +1,8 @@
 # v1.0.1
-## Updates
-*
-
 ## Fixes
-*
+* macOS: Added warning (and solution) if `Gupax/P2Pool/XMRig` were quarantined by [`Gatekeeper`](https://support.apple.com/en-us/HT202491)
+* P2Pool: Fixed custom node selection sometimes using old values after save
+* Miscellaneous UI changes
 
 ## Bundled Versions
 * [`P2Pool v2.6`](https://github.com/SChernykh/p2pool/releases/tag/v2.6)

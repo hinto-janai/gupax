@@ -378,6 +378,10 @@ impl P2pool {
 							zmq: self.zmq.clone(),
 						};
 						node_vec[existing_index].1 = node;
+						self.selected_index = existing_index;
+						self.selected_ip = self.ip.clone();
+						self.selected_rpc = self.rpc.clone();
+						self.selected_zmq = self.zmq.clone();
 						info!("Node | S | [index: {}, name: \"{}\", ip: \"{}\", rpc: {}, zmq: {}]", existing_index+1, self.name, self.ip, self.rpc, self.zmq);
 					}
 				// Else, add to the list
@@ -459,7 +463,7 @@ impl P2pool {
 			let text = (ui.available_width()/10.0)-SPACE;
 			let width = (text*8.0)-SPACE;
 			let height = height/3.0;
-			ui.style_mut().spacing.slider_width = width/1.2;
+			ui.style_mut().spacing.slider_width = width/1.1;
 			ui.style_mut().spacing.interact_size.y = height;
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			ui.horizontal(|ui| {
