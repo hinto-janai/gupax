@@ -33,8 +33,8 @@ pub const GUPAX_VERSION_UNDERSCORE: &str = concat!(
 // App frame resolution, [4:3] aspect ratio, [1.33:1]
 pub const APP_MIN_WIDTH: f32 = 640.0;
 pub const APP_MIN_HEIGHT: f32 = 480.0;
-pub const APP_MAX_WIDTH: f32 = 2900.0;
-pub const APP_MAX_HEIGHT: f32 = 2180.0;
+pub const APP_MAX_WIDTH: f32 = 3840.0;
+pub const APP_MAX_HEIGHT: f32 = 2160.0;
 // Default, 1280x960
 pub const APP_DEFAULT_WIDTH: f32 = 1280.0;
 pub const APP_DEFAULT_HEIGHT: f32 = 960.0;
@@ -319,9 +319,8 @@ mod test {
 	}
 
 	#[test]
-	fn app_ratio_is_4_by_3() {
+	fn default_app_ratio_is_4_by_3() {
 		assert_eq!(format!("{:.3}", crate::APP_MIN_WIDTH/crate::APP_MIN_HEIGHT), "1.333");
-		assert_eq!(format!("{:.3}", crate::APP_MAX_WIDTH/crate::APP_MAX_HEIGHT), "1.333");
 		assert_eq!(format!("{:.3}", crate::APP_DEFAULT_WIDTH/crate::APP_DEFAULT_HEIGHT), "1.333");
 	}
 
