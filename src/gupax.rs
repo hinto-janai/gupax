@@ -18,6 +18,7 @@
 use crate::State;
 use egui::{
 	TextEdit,
+	TextStyle,
 	TextStyle::Monospace,
 	Checkbox,ProgressBar,Spinner,Button,Label,Slider,
 	SelectableLabel,
@@ -85,10 +86,7 @@ impl Gupax {
 		// Update button + Progress bar
 		debug!("Gupax Tab | Rendering [Update] button + progress bar");
 		ui.group(|ui| {
-				// These are in unnecessary [ui.vertical()]'s
-				// because I need to use [ui.set_enabled]s, but I can't
-				// find a way to use a [ui.xxx()] with [ui.add_sized()].
-				// I have to pick one. This one seperates them though.
+				let button = if self.simple { height/5.0 } else { height/15.0 };
 				let height = if self.simple { height/5.0 } else { height/10.0 };
 				let width = width - SPACE;
 				let updating = *update.lock().unwrap().updating.lock().unwrap();
@@ -98,11 +96,11 @@ impl Gupax {
 					#[cfg(feature = "distro")]
 					ui.set_enabled(false);
 					#[cfg(feature = "distro")]
-					ui.add_sized([width, height], Button::new("Updates are disabled")).on_disabled_hover_text(DISTRO_NO_UPDATE);
+					ui.add_sized([width, button], Button::new("Updates are disabled")).on_disabled_hover_text(DISTRO_NO_UPDATE);
 					#[cfg(not(feature = "distro"))]
 					ui.set_enabled(!updating);
 					#[cfg(not(feature = "distro"))]
-					if ui.add_sized([width, height], Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
+					if ui.add_sized([width, button], Button::new("Check for updates")).on_hover_text(GUPAX_UPDATE).clicked() {
 						Update::spawn_thread(og, self, state_path, update, error_state, restart);
 					}
 				});
@@ -125,7 +123,7 @@ impl Gupax {
 		ui.horizontal(|ui| {
 			ui.group(|ui| {
 					let width = (width - SPACE*12.0)/6.0;
-					let height = height/10.0;
+					let height = if self.simple { height/10.0 } else { height/15.0 };
 					ui.style_mut().override_text_style = Some(egui::TextStyle::Small);
 					ui.add_sized([width, height], Checkbox::new(&mut self.update_via_tor, "Update via Tor")).on_hover_text(GUPAX_UPDATE_VIA_TOR);
 					ui.separator();
@@ -145,10 +143,12 @@ impl Gupax {
 
 		debug!("Gupax Tab | Rendering P2Pool/XMRig path selection");
 		// P2Pool/XMRig binary path selection
-		ui.add_space(SPACE);
 		ui.style_mut().override_text_style = Some(Monospace);
 		let height = height/28.0;
 		let text_edit = (ui.available_width()/10.0)-SPACE;
+		ui.group(|ui| {
+		ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("P2Pool/XMRig PATHs").underline().color(LIGHT_GRAY).text_style(TextStyle::Monospace))).on_hover_text("Gupax is online");
+		ui.separator();
 		ui.horizontal(|ui| {
 			if self.p2pool_path.is_empty() {
 				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ➖").color(LIGHT_GRAY))).on_hover_text(P2POOL_PATH_EMPTY);
@@ -164,7 +164,7 @@ impl Gupax {
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				Self::spawn_file_window_thread(file_window, FileType::P2pool);
 			}
-			ui.add_sized([ui.available_width()-SPACE, height], TextEdit::singleline(&mut self.p2pool_path)).on_hover_text(GUPAX_PATH_P2POOL);
+			ui.add_sized([ui.available_width(), height], TextEdit::singleline(&mut self.p2pool_path)).on_hover_text(GUPAX_PATH_P2POOL);
 		});
 		ui.horizontal(|ui| {
 			if self.xmrig_path.is_empty() {
@@ -181,15 +181,39 @@ impl Gupax {
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				Self::spawn_file_window_thread(file_window, FileType::Xmrig);
 			}
-			ui.add_sized([ui.available_width()-SPACE, height], TextEdit::singleline(&mut self.xmrig_path)).on_hover_text(GUPAX_PATH_XMRIG);
+			ui.add_sized([ui.available_width(), height], TextEdit::singleline(&mut self.xmrig_path)).on_hover_text(GUPAX_PATH_XMRIG);
+		});
 		});
 		let mut guard = file_window.lock().unwrap();
 		if guard.picked_p2pool { self.p2pool_path = guard.p2pool_path.clone(); guard.picked_p2pool = false; }
 		if guard.picked_xmrig { self.xmrig_path = guard.xmrig_path.clone(); guard.picked_xmrig = false; }
 		drop(guard);
 
+		let height = ui.available_height()/6.0;
+
+		// Saved [Tab]
+		debug!("Gupax Tab | Rendering [Tab] selector");
+		ui.group(|ui| {
+			let width = (width/5.0)-(SPACE*1.93);
+			ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("Default Tab").underline().color(LIGHT_GRAY).text_style(TextStyle::Monospace))).on_hover_text(GUPAX_TAB);
+			ui.separator();
+			ui.horizontal(|ui| {
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).on_hover_text(GUPAX_TAB_ABOUT).clicked() { self.tab = Tab::About; }
+			ui.separator();
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Status, "Status")).on_hover_text(GUPAX_TAB_STATUS).clicked() { self.tab = Tab::Status; }
+			ui.separator();
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Gupax, "Gupax")).on_hover_text(GUPAX_TAB_GUPAX).clicked() { self.tab = Tab::Gupax; }
+			ui.separator();
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::P2pool, "P2Pool")).on_hover_text(GUPAX_TAB_P2POOL).clicked() { self.tab = Tab::P2pool; }
+			ui.separator();
+			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Xmrig, "XMRig")).on_hover_text(GUPAX_TAB_XMRIG).clicked() { self.tab = Tab::Xmrig; }
+		})});
+
 		// Gupax App resolution sliders
 		debug!("Gupax Tab | Rendering resolution sliders");
+		ui.group(|ui| {
+		ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("Width/Height Adjust").underline().color(LIGHT_GRAY).text_style(TextStyle::Monospace))).on_hover_text(GUPAX_ADJUST);
+		ui.separator();
 		ui.vertical(|ui| {
 			let width = width/10.0;
 			ui.spacing_mut().icon_width = width / 25.0;
@@ -198,17 +222,16 @@ impl Gupax {
 				Ratio::None => (),
 				Ratio::Width => {
 					let width = self.selected_width as f64;
-					let _height = self.selected_height as f64;
 					let height = (width / 1.333).round();
 					self.selected_height = height as u16;
 				},
 				Ratio::Height => {
-					let _width = self.selected_width as f64;
 					let height = self.selected_height as f64;
 					let width = (height * 1.333).round();
 					self.selected_width = width as u16;
 				},
 			}
+			let height = height/2.5;
 			ui.horizontal(|ui| {
 				ui.set_enabled(self.ratio != Ratio::Height);
 				ui.add_sized([width, height], Label::new(format!(" Width [{}-{}]:", APP_MIN_WIDTH as u16, APP_MAX_WIDTH as u16)));
@@ -221,9 +244,8 @@ impl Gupax {
 			});
 		});
 		ui.style_mut().override_text_style = Some(egui::TextStyle::Button);
+		ui.separator();
 		// Width/Height locks
-		ui.group(|ui| {
-			let height = ui.available_height()/4.0;
 		ui.horizontal(|ui| {
 			use Ratio::*;
 			let width = (width/4.0)-(SPACE*1.5);
@@ -235,22 +257,6 @@ impl Gupax {
 			if ui.add_sized([width, height], Button::new("Set")).on_hover_text(GUPAX_SET).clicked() {
 				frame.set_window_size(Vec2::new(self.selected_width as f32, self.selected_height as f32));
 			}
-		})});
-		// Saved [Tab]
-		debug!("Gupax Tab | Rendering [Tab] selector");
-		ui.group(|ui| {
-			let height = ui.available_height()/1.85;
-			let width = (width/5.0)-(SPACE*1.93);
-			ui.horizontal(|ui| {
-			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).on_hover_text(GUPAX_TAB_ABOUT).clicked() { self.tab = Tab::About; }
-			ui.separator();
-			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Status, "Status")).on_hover_text(GUPAX_TAB_STATUS).clicked() { self.tab = Tab::Status; }
-			ui.separator();
-			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Gupax, "Gupax")).on_hover_text(GUPAX_TAB_GUPAX).clicked() { self.tab = Tab::Gupax; }
-			ui.separator();
-			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::P2pool, "P2Pool")).on_hover_text(GUPAX_TAB_P2POOL).clicked() { self.tab = Tab::P2pool; }
-			ui.separator();
-			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Xmrig, "XMRig")).on_hover_text(GUPAX_TAB_XMRIG).clicked() { self.tab = Tab::Xmrig; }
 		})});
 	}
 

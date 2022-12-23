@@ -33,8 +33,8 @@ pub const GUPAX_VERSION_UNDERSCORE: &str = concat!(
 // App frame resolution, [4:3] aspect ratio, [1.33:1]
 pub const APP_MIN_WIDTH: f32 = 640.0;
 pub const APP_MIN_HEIGHT: f32 = 480.0;
-pub const APP_MAX_WIDTH: f32 = 2560.0;
-pub const APP_MAX_HEIGHT: f32 = 1920.0;
+pub const APP_MAX_WIDTH: f32 = 2900.0;
+pub const APP_MAX_HEIGHT: f32 = 2180.0;
 // Default, 1280x960
 pub const APP_DEFAULT_WIDTH: f32 = 1280.0;
 pub const APP_DEFAULT_HEIGHT: f32 = 960.0;
@@ -175,12 +175,14 @@ pub const GUPAX_ASK_BEFORE_QUIT: &str = "Ask before quitting Gupax";
 pub const GUPAX_SAVE_BEFORE_QUIT: &str = "Automatically save any changed settings before quitting";
 pub const GUPAX_AUTO_P2POOL: &str = "Automatically start P2Pool on Gupax startup. If you are using [P2Pool Simple], this will NOT wait for your [Auto-Ping] to finish, it will start P2Pool on the pool you already have selected. This option will fail if your P2Pool settings aren't valid!";
 pub const GUPAX_AUTO_XMRIG: &str = "Automatically start XMRig on Gupax startup. This option will fail if your XMRig settings aren't valid!";
+pub const GUPAX_ADJUST: &str = "Adjust and set the width/height of the Gupax window";
 pub const GUPAX_WIDTH: &str = "Set the width of the Gupax window";
 pub const GUPAX_HEIGHT: &str = "Set the height of the Gupax window";
 pub const GUPAX_LOCK_WIDTH: &str = "Automatically match the HEIGHT against the WIDTH in a 4:3 ratio";
 pub const GUPAX_LOCK_HEIGHT: &str = "Automatically match the WIDTH against the HEIGHT in a 4:3 ratio";
 pub const GUPAX_NO_LOCK: &str = "Allow individual selection of width and height";
 pub const GUPAX_SET: &str = "Set the width/height of the Gupax window to the current values";
+pub const GUPAX_TAB: &str = "Set the default tab Gupax starts on";
 pub const GUPAX_TAB_ABOUT: &str = "Set the tab Gupax starts on to: About";
 pub const GUPAX_TAB_STATUS: &str = "Set the tab Gupax starts on to: Status";
 pub const GUPAX_TAB_GUPAX: &str = "Set the tab Gupax starts on to: Gupax";
