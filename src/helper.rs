@@ -329,6 +329,15 @@ impl Helper {
 		});
 	}
 
+	// Takes in a 95-char Monero address, returns the first and last
+	// 6 characters separated with dots like so: [4abcde...abcdef]
+	fn head_tail_of_monero_address(address: &str) -> String {
+		if address.len() < 95 { return "???".to_string() }
+		let head = &address[0..5];
+		let tail = &address[89..95];
+		head.to_owned() + "..." + tail
+	}
+
 	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
 	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
@@ -351,12 +360,11 @@ impl Helper {
 			args.push("--no-color".to_string());  // Remove color escape sequences, Gupax terminal can't parse it :(
 			args.push("--mini".to_string());      // P2Pool Mini
 			*helper.lock().unwrap().img_p2pool.lock().unwrap() = ImgP2pool {
-				mini: true,
-				address: state.address.clone(),
+				mini: "P2Pool Mini".to_string(),
+				address: Self::head_tail_of_monero_address(&state.address),
 				host: ip.to_string(),
 				rpc: rpc.to_string(),
 				zmq: zmq.to_string(),
-				log_level: "3".to_string(),
 				out_peers: "10".to_string(),
 				in_peers: "10".to_string(),
 			};
@@ -370,19 +378,20 @@ impl Helper {
 				let mut last = "";
 				let lock = helper.lock().unwrap();
 				let mut p2pool_image = lock.img_p2pool.lock().unwrap();
+				let mut mini = false;
 				for arg in state.arguments.split_whitespace() {
 					match last {
-						"--mini"      => p2pool_image.mini = true,
-						"--wallet"    => p2pool_image.address = arg.to_string(),
+						"--mini"      => { mini = true; p2pool_image.mini = "P2Pool Mini".to_string(); },
+						"--wallet"    => p2pool_image.address = Self::head_tail_of_monero_address(arg),
 						"--host"      => p2pool_image.host = arg.to_string(),
 						"--rpc-port"  => p2pool_image.rpc = arg.to_string(),
 						"--zmq-port"  => p2pool_image.zmq = arg.to_string(),
-						"--loglevel"  => p2pool_image.log_level = arg.to_string(),
 						"--out-peers" => p2pool_image.out_peers = arg.to_string(),
 						"--in-peers"  => p2pool_image.in_peers = arg.to_string(),
 						"--data-api"  => api_path = PathBuf::from(arg),
 						_ => (),
 					}
+					if !mini { p2pool_image.mini = "P2Pool Main".to_string(); }
 					args.push(arg.to_string());
 					last = arg;
 				}
@@ -400,12 +409,11 @@ impl Helper {
 				args.push("--no-color".to_string());                // Remove color escape sequences
 				if state.mini { args.push("--mini".to_string()); }; // Mini
 				*helper.lock().unwrap().img_p2pool.lock().unwrap() = ImgP2pool {
-					mini: state.mini,
-					address: state.address.clone(),
+					mini: if state.mini { "P2Pool Mini".to_string() } else { "P2Pool Main".to_string() },
+					address: Self::head_tail_of_monero_address(&state.address),
 					host: state.selected_ip.to_string(),
 					rpc: state.selected_rpc.to_string(),
 					zmq: state.selected_zmq.to_string(),
-					log_level: state.log_level.to_string(),
 					out_peers: state.out_peers.to_string(),
 					in_peers: state.in_peers.to_string(),
 				};
@@ -1333,14 +1341,13 @@ impl P2poolRegex {
 // No need for an [Arc<Mutex>] since the Helper thread doesn't need this information.
 #[derive(Debug, Clone)]
 pub struct ImgP2pool {
-	pub mini: bool,        // Did the user start on the mini-chain?
+	pub mini: String,      // Did the user start on the mini-chain?
 	pub address: String,   // What address is the current p2pool paying out to? (This gets shortened to [4xxxxx...xxxxxx])
 	pub host: String,      // What monerod are we using?
 	pub rpc: String,       // What is the RPC port?
 	pub zmq: String,       // What is the ZMQ port?
 	pub out_peers: String, // How many out-peers?
 	pub in_peers: String,  // How many in-peers?
-	pub log_level: String, // What log level?
 }
 
 impl Default for ImgP2pool {
@@ -1352,14 +1359,13 @@ impl Default for ImgP2pool {
 impl ImgP2pool {
 	pub fn new() -> Self {
 		Self {
-			mini: true,
-			address: String::new(),
-			host: String::new(),
-			rpc: String::new(),
-			zmq: String::new(),
-			out_peers: String::new(),
-			in_peers: String::new(),
-			log_level: String::new(),
+			mini: String::from("???"),
+			address: String::from("???"),
+			host: String::from("???"),
+			rpc: String::from("???"),
+			zmq: String::from("???"),
+			out_peers: String::from("???"),
+			in_peers: String::from("???"),
 		}
 	}
 }
@@ -1585,8 +1591,8 @@ impl Default for ImgXmrig {
 impl ImgXmrig {
 	pub fn new() -> Self {
 		Self {
-			threads: "1".to_string(),
-			url: "127.0.0.1:3333 (Local P2Pool)".to_string(),
+			threads: "???".to_string(),
+			url: "???".to_string(),
 		}
 	}
 }
@@ -1599,7 +1605,6 @@ pub struct PubXmrigApi {
 	pub worker_id: String,
 	pub resources: HumanNumber,
 	pub hashrate: HumanNumber,
-	pub pool: String,
 	pub diff: HumanNumber,
 	pub accepted: HumanNumber,
 	pub rejected: HumanNumber,
@@ -1619,7 +1624,6 @@ impl PubXmrigApi {
 			worker_id: "???".to_string(),
 			resources: HumanNumber::unknown(),
 			hashrate: HumanNumber::unknown(),
-			pool: "???".to_string(),
 			diff: HumanNumber::unknown(),
 			accepted: HumanNumber::unknown(),
 			rejected: HumanNumber::unknown(),
@@ -1657,7 +1661,6 @@ impl PubXmrigApi {
 			worker_id: private.worker_id,
 			resources: HumanNumber::from_load(private.resources.load_average),
 			hashrate: HumanNumber::from_hashrate(private.hashrate.total),
-			pool: private.connection.pool,
 			diff: HumanNumber::from_u128(private.connection.diff),
 			accepted: HumanNumber::from_u128(private.connection.accepted),
 			rejected: HumanNumber::from_u128(private.connection.rejected),
@@ -1714,7 +1717,6 @@ impl Resources {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Connection {
-	pool: String,
 	diff: u128,
 	accepted: u128,
 	rejected: u128,
@@ -1722,7 +1724,6 @@ struct Connection {
 impl Connection {
 	fn new() -> Self {
 		Self {
-			pool: String::new(),
 			diff: 0,
 			accepted: 0,
 			rejected: 0,
@@ -2022,7 +2023,6 @@ r#"{
     ]
   },
   "connection": {
-    "pool": "localhost:3333",
     "diff": 123,
     "accepted": 123,
     "rejected": 123

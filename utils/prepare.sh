@@ -13,6 +13,7 @@ sudo -v
 
 # get old GUPAX_VER
 OLD_VER="v$(grep -m1 "version" Cargo.toml | grep -o "[0-9].[0-9].[0-9]")"
+OLD_VER_NUM="$(grep -m1 "version" Cargo.toml | grep -o "[0-9].[0-9].[0-9]")"
 
 # get p2pool/xmrig version
 P2POOL_VERSION="$(grep "P2POOL_VERSION" src/constants.rs | grep -o "\"v[0-9].*\"")"
@@ -20,7 +21,7 @@ XMRIG_VERSION="$(grep "XMRIG_VERSION" src/constants.rs | grep -o "\"v[0-9].*\"")
 
 # sed change
 sed -i "s/$OLD_VER/$1/g" README.md
-sed -i "s/$OLD_VER/$1/" Cargo.toml
+sed -i 's/^version = "$OLD_VER_NUM"/$1/' Cargo.toml
 
 # changelog
 cat << EOM > CHANGELOG.md.new

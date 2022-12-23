@@ -1262,7 +1262,7 @@ impl eframe::App for App {
 							self.error_state.reset();
 						}
 					},
-					Okay|WindowsAdmin|Debug => if key.is_esc() || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
+					Okay|WindowsAdmin => if key.is_esc() || ui.add_sized([width, height], Button::new("Okay")).clicked() { self.error_state.reset(); },
 					Debug => if key.is_esc() { self.error_state.reset(); },
 					Quit => if ui.add_sized([width, height], Button::new("Quit")).clicked() { exit(1); },
 				}
@@ -1579,10 +1579,14 @@ Gupax PATH: {}\n
 P2Pool PATH: {}\n
 XMRig PATH: {}\n
 P2Pool console byte length: {}\n
-XMRig console byte length: {}\n\n\n
---------------------- WORKING STATE ---------------------
-{:#?}\n\n\n
---------------------- ORIGINAL STATE ---------------------
+XMRig console byte length: {}\n
+------------------------------------------ P2POOL IMAGE ------------------------------------------
+{:#?}\n
+------------------------------------------ XMRIG IMAGE ------------------------------------------
+{:#?}\n
+------------------------------------------ WORKING STATE ------------------------------------------
+{:#?}\n
+------------------------------------------ ORIGINAL STATE ------------------------------------------
 {:#?}",
 							GUPAX_VERSION,
 							P2POOL_VERSION,
@@ -1609,6 +1613,8 @@ XMRig console byte length: {}\n\n\n
 							self.state.gupax.absolute_xmrig_path.display(),
 							self.p2pool_api.lock().unwrap().output.len(),
 							self.xmrig_api.lock().unwrap().output.len(),
+							self.p2pool_img.lock().unwrap(),
+							self.xmrig_img.lock().unwrap(),
 							self.state,
 							self.og.lock().unwrap(),
 						);
@@ -1643,7 +1649,7 @@ XMRig console byte length: {}\n\n\n
 				}
 				Tab::Status => {
 					debug!("App | Entering [Status] Tab");
-					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.width, self.height, ctx, ui);
+					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
 					debug!("App | Entering [Gupax] Tab");
