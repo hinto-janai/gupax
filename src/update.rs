@@ -119,20 +119,60 @@ const XMRIG_BINARY: &str = "xmrig.exe";
 #[cfg(target_family = "unix")]
 const XMRIG_BINARY: &str = "xmrig";
 
+// --- Valid Windows Gupax
 #[cfg(target_os = "windows")]
-const ACCEPTABLE_GUPAX: [&str; 3] = ["GUPAX.exe", "Gupax.exe", "gupax.exe"];
+pub mod valid_gupax {
+	pub const VALID_GUPAX_1: &str = "GUPAX.exe";
+	pub const VALID_GUPAX_2: &str = "Gupax.exe";
+	pub const VALID_GUPAX_3: &str = "gupax.exe";
+}
+// --- Valid Unix Gupax
 #[cfg(target_family = "unix")]
-const ACCEPTABLE_GUPAX: [&str; 3] = ["GUPAX", "Gupax", "gupax"];
+pub mod valid_gupax {
+	pub const VALID_GUPAX_1: &str = "GUPAX";
+	pub const VALID_GUPAX_2: &str = "Gupax";
+	pub const VALID_GUPAX_3: &str = "gupax";
+}
+use crate::valid_gupax::*;
+const VALID_GUPAX: [&str; 3] = [VALID_GUPAX_1, VALID_GUPAX_2, VALID_GUPAX_3];
 
+// --- Valid Windows XMRig
 #[cfg(target_os = "windows")]
-const ACCEPTABLE_XMRIG: [&str; 4] = ["XMRIG.exe", "XMRig.exe", "Xmrig.exe", "xmrig.exe"];
+pub mod valid_xmrig {
+	pub const VALID_XMRIG_1: &str = "XMRIG.exe";
+	pub const VALID_XMRIG_2: &str = "XMRig.exe";
+	pub const VALID_XMRIG_3: &str = "Xmrig.exe";
+	pub const VALID_XMRIG_4: &str = "xmrig.exe";
+}
+// --- Valid Unix XMRig
 #[cfg(target_family = "unix")]
-const ACCEPTABLE_XMRIG: [&str; 4] = ["XMRIG", "XMRig", "Xmrig", "xmrig"];
+pub mod valid_xmrig {
+	pub const VALID_XMRIG_1: &str = "XMRIG";
+	pub const VALID_XMRIG_2: &str = "XMRig";
+	pub const VALID_XMRIG_3: &str = "Xmrig";
+	pub const VALID_XMRIG_4: &str = "xmrig";
+}
+use crate::valid_xmrig::*;
+const VALID_XMRIG: [&str; 4] = [VALID_XMRIG_1, VALID_XMRIG_2, VALID_XMRIG_3, VALID_XMRIG_4];
 
+// --- Valid Windows P2Pool
 #[cfg(target_os = "windows")]
-const ACCEPTABLE_P2POOL: [&str; 4] = ["P2POOL.exe", "P2Pool.exe", "P2pool.exe", "p2pool.exe"];
+pub mod valid_p2pool {
+	pub const VALID_P2POOL_1: &str = "P2POOL.exe";
+	pub const VALID_P2POOL_2: &str = "P2Pool.exe";
+	pub const VALID_P2POOL_3: &str = "P2pool.exe";
+	pub const VALID_P2POOL_4: &str = "p2pool.exe";
+}
+// --- Valid Unix P2Pool
 #[cfg(target_family = "unix")]
-const ACCEPTABLE_P2POOL: [&str; 4] = ["P2POOL", "P2Pool", "P2pool", "p2pool"];
+pub mod valid_p2pool {
+	pub const VALID_P2POOL_1: &str = "P2POOL";
+	pub const VALID_P2POOL_2: &str = "P2Pool";
+	pub const VALID_P2POOL_3: &str = "P2pool";
+	pub const VALID_P2POOL_4: &str = "p2pool";
+}
+use crate::valid_p2pool::*;
+const VALID_P2POOL: [&str; 4] = [VALID_P2POOL_1, VALID_P2POOL_2, VALID_P2POOL_3, VALID_P2POOL_4];
 
 // Some fake Curl/Wget user-agents because GitHub API requires one and a Tor browser
 // user-agent might be fingerprintable without all the associated headers.
@@ -178,7 +218,7 @@ pub fn check_p2pool_path(path: &str) -> bool {
 		Some(p) => p,
 		None => { error!("Couldn't get P2Pool file name"); return false; },
 	};
-	path == ACCEPTABLE_P2POOL[0] || path == ACCEPTABLE_P2POOL[1] || path == ACCEPTABLE_P2POOL[2] || path == ACCEPTABLE_P2POOL[3]
+	path == VALID_P2POOL[0] || path == VALID_P2POOL[1] || path == VALID_P2POOL[2] || path == VALID_P2POOL[3]
 }
 
 pub fn check_xmrig_path(path: &str) -> bool {
@@ -190,7 +230,7 @@ pub fn check_xmrig_path(path: &str) -> bool {
 		Some(p) => p,
 		None => { error!("Couldn't get XMRig file name"); return false; },
 	};
-	path == ACCEPTABLE_XMRIG[0] || path == ACCEPTABLE_XMRIG[1] || path == ACCEPTABLE_XMRIG[2] || path == ACCEPTABLE_XMRIG[3]
+	path == VALID_XMRIG[0] || path == VALID_XMRIG[1] || path == VALID_XMRIG[2] || path == VALID_XMRIG[3]
 }
 
 //---------------------------------------------------------------------------------------------------- Update struct/impl
@@ -323,7 +363,7 @@ impl Update {
 			info!("Update | Using P2Pool path: [{}]", p2pool_path.display());
 		} else {
 			warn!("Update | Aborting update, incorrect P2Pool path: [{}]", file);
-			let text = format!("Provided P2Pool path seems incorrect. Not starting update for safety.\nTry one of these: {:?}", ACCEPTABLE_P2POOL);
+			let text = format!("Provided P2Pool path seems incorrect. Not starting update for safety.\nTry one of these: {:?}", VALID_P2POOL);
 			error_state.set(text, ErrorFerris::Error, ErrorButtons::Okay);
 			return;
 		}
@@ -347,7 +387,7 @@ impl Update {
 			info!("Update | Using XMRig path: [{}]", xmrig_path.display());
 		} else {
 			warn!("Update | Aborting update, incorrect XMRig path: [{}]", file);
-			let text = format!("Provided XMRig path seems incorrect. Not starting update for safety.\nTry one of these: {:?}", ACCEPTABLE_XMRIG);
+			let text = format!("Provided XMRig path seems incorrect. Not starting update for safety.\nTry one of these: {:?}", VALID_XMRIG);
 			error_state.set(text, ErrorFerris::Error, ErrorButtons::Okay);
 			return;
 		}
@@ -665,12 +705,14 @@ impl Update {
 			if ! entry.file_type().is_file() { continue }
 			let basename = entry.file_name().to_str().ok_or_else(|| anyhow!("WalkDir basename failed"))?;
 			match basename {
-				GUPAX_BINARY|P2POOL_BINARY|XMRIG_BINARY => {
+				VALID_GUPAX_1|VALID_GUPAX_2|VALID_GUPAX_3|
+				VALID_P2POOL_1|VALID_P2POOL_2|VALID_P2POOL_3|VALID_P2POOL_4|
+				VALID_XMRIG_1|VALID_XMRIG_2|VALID_XMRIG_3|VALID_XMRIG_4 => {
 					found = true;
 					let name = match basename {
-						GUPAX_BINARY  => Gupax,
-						P2POOL_BINARY => P2pool,
-						_  => Xmrig,
+						VALID_GUPAX_1|VALID_GUPAX_2|VALID_GUPAX_3 => Gupax,
+						VALID_P2POOL_1|VALID_P2POOL_2|VALID_P2POOL_3|VALID_P2POOL_4 => P2pool,
+						_ => Xmrig,
 					};
 					let path = match name {
 						Gupax  => update.lock().unwrap().path_gupax.clone(),

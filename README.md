@@ -552,7 +552,7 @@ The latest versions are downloaded using the GitHub API.
 * P2Pool [`https://github.com/SChernykh/p2pool`](https://github.com/SChernykh/p2pool)
 * XMRig [`https://github.com/xmrig/xmrig`](https://github.com/xmrig/xmrig)
 
-GitHub's API blocks request that do not have an HTTP `User-Agent` header. [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/update.rs#L134)
+GitHub's API blocks request that do not have an HTTP `User-Agent` header. [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janaiyo/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/update.rs#L134)
 
 ---
 
@@ -573,7 +573,7 @@ Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store tem
 ### How much memory does Gupax use?
 Gupax itself uses around 100-300 megabytes of memory.
 
-Gupax also holds up to [500,000 bytes](https://github.com/hinto-janaiyo/gupax/blob/2b80aa027728ddd193bac2e77caa5ddb4323f8fd/src/helper.rs#L63) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-4 hours.
+Gupax also holds up to [500,000 bytes](https://github.com/hinto-janaiyo/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/helper.rs#L59) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-4 hours.
 
 Memory usage should *never* be above 500~ megabytes. If you see Gupax using more than this, please send a bug report.
 

@@ -78,26 +78,46 @@ Main [App] outer frame (default: [1280.0, 960.0], 4:3 aspect ratio)
 This is the internal naming scheme used by Gupax when updating/creating default folders/etc:
 
 Windows:
-- Gupax: `Gupax.exe`
-- P2Pool: `P2Pool\p2pool.exe`
-- XMRig: `XMRig\xmrig.exe`
+```
+Gupax\
+├─ Gupax.exe
+├─ P2Pool\
+│  ├─ p2pool.exe
+├─ XMRig\
+   ├─ xmrig.exe
+```
 
-macOS:
-- Gupax: `Gupax.app/Contents/MacOS/gupax` (Gupax is packaged as an `.app` on macOS)
-- P2Pool: `p2pool/p2pool`
-- XMRig: `xmrig/xmrig`
+macOS (Gupax is packaged as an `.app` on macOS):
+```
+Gupax.app/Contents/MacOS/
+├─ gupax
+├─ p2pool/
+│  ├─ p2pool
+├─ xmrig/
+   ├─ xmrig
+```
 
 Linux:
-- Gupax: `gupax`
-- P2Pool: `p2pool/p2pool`
-- XMRig: `xmrig/xmrig`
+```
+gupax/
+├─ gupax
+├─ p2pool/
+│  ├─ p2pool
+├─ xmrig/
+   ├─ xmrig
+```
 
-These have to be packaged exactly with these names because the update code is case-sensitive. If an exact match is not found, it will error.
+When Gupax updates, it walks the directories of the extracted `zip/tar` searching for a valid file. These are the valid filenames Gupax will match against and assume is the new binary we're looking for:
+- `[GUPAX, Gupax, gupax]`
+- `[P2POOL, P2Pool, P2pool, p2pool]`
+- `[XMRIG, XMRig, Xmrig, xmrig]`
 
-Package naming schemes:
-- `gupax` - gupax-vX.X.X-(windows|macos|linux)-x64(standalone|bundle).(zip|tar.gz)
-- `p2pool` - p2pool-vX.X.X-(windows|macos|linux)-x64.(zip|tar.gz)
-- `xmrig` - xmrig-X.X.X-(msvc-win64|macos-x64|linux-static-x64).(zip|tar.gz)
+Windows versions of Gupax also need the file to end with `.exe`.
+
+The actual `zip/tar` matching is static, however. They have to be packaged exactly with the following naming scheme. If an exact match is not found, it will error:
+- `gupax-vX.X.X-(windows|macos|linux)-x64-(bundle|standalone).(zip|tar.gz)`
+- `p2pool-vX.X.X-(windows|macos|linux)-x64.(zip|tar.gz)`
+- `xmrig-X.X.X-(msvc-win64|macos-x64|linux-static-x64).(zip|tar.gz)`
 
 Exceptions (there are always exceptions...):
 - XMRig doesn't have a [v], so it is [xmrig-6.18.0-...]
