@@ -12,6 +12,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 	- [XMRig](#XMRig)
 * [Advanced](#Advanced)
 	- [Verifying](#Verifying)
+	- [Running a Local Monero Node](#running-a-local-monero-node)
 	- [Command Line](#Command-Line)
 	- [Key Shortcuts](#Key-Shortcuts)
 	- [Resolution](#Resolution)
@@ -107,11 +108,11 @@ The `Gupax/P2Pool/XMRig` tabs have two versions, `Simple` & `Advanced`.
 ### Gupax
 In this tab, there is the updater and general Gupax settings.
 
-If `Check for updates` is pressed, Gupax will compare your current `Gupax/P2Pool/XMRig` versions against the latest releases using the [GitHub API](#where-are-updates-downloaded-from) and update them automatically if needed.
+If `Check for updates` is pressed, Gupax will update your `Gupax/P2Pool/XMRig` (if needed) using the [GitHub API](#where-are-updates-downloaded-from).
 
 Below that, there are some general Gupax settings:
-| Setting            | Function  |
-|--------------------|-----------| 
+| Setting            | What does it do?  |
+|--------------------|-------------------| 
 | `Update via Tor`   | Causes updates to be fetched via the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required
 | `Auto-Update`      | Gupax will automatically check for updates at startup
 | `Auto-P2Pool`      | Gupax will automatically start P2Pool at startup
@@ -157,14 +158,31 @@ gpg --verify SHA256SUMS
 Q: How can I be sure the P2Pool/XMRig bundled with Gupax hasn't been tampered with?  
 A: Verify the hash.
 
-You can always compare the hash of the `P2Pool/XMRig` bundled with Gupax with the official hashes found here:
+You can always compare the hash of the `P2Pool/XMRig` binaries bundled with Gupax with the hashes of the binaries found here:
 - https://github.com/SChernykh/p2pool/releases
 - https://github.com/xmrig/xmrig/releases
 
-Make sure the _version_ you are comparing against is correct. If they match, you can be sure they are the exact same. Verifying the PGP signature is also recommended:
+Make sure the _version_ you are comparing against is correct, and make sure you are comparing the _binary_ to the _binary_, not the `tar/zip`. If they match, you can be sure they are the exact same. Verifying the PGP signature is also recommended:
 - P2Pool - [`SChernykh.asc`](https://github.com/monero-project/gitian.sigs/blob/master/gitian-pubkeys/SChernykh.asc)
 - XMRig - [`xmrig.asc`](https://github.com/xmrig/xmrig/blob/master/doc/gpg_keys/xmrig.asc)
  
+---
+
+### Running a Local Monero Node
+Running and using your own local Monero node improves privacy and security. It also means you won't be depending on one of the [Community Monero Nodes](#community-monero-nodes) provided by Gupax. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently `155GB`).
+
+If you'd like to run and use your own local Monero node for P2Pool, follow these steps:
+
+![local_node.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/local_node.png)
+1. In the Monero GUI, go to `Settings`
+2. Go to the `Node` tab
+3. Enable `Local node`
+4. Enter `--zmq-pub=tcp://127.0.0.1:18083` into `Daemon startup flags`
+
+After syncing the blockchain, you will now have your own Monero node. The 4th step enables `ZMQ`, which is extra Monero node functionality that is needed for P2Pool to work correctly.
+
+[For much more detailed information on configuring a Monero node, click here.](https://monerodocs.org)
+
 ---
 
 ### Command Line
