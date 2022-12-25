@@ -1743,6 +1743,39 @@ impl Hashrate {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- PubMoneroApi
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct PubMoneroApi {
+	size: HumanNumber, // Blockchain size in GB
+	diff: HumanNumber, // Current difficulty
+	height: HumanNumber, // Current height
+	incoming: HumanNumber, // In-peers
+	outgoing: HumanNumber, // Out-peers
+	restricted: bool, // Is RPC in restricted mode?
+	synchronized: bool, // Are we synced?
+	tx_pool_size: HumanNumber, // Current amout of TX in TX pool
+}
+
+//---------------------------------------------------------------------------------------------------- PrivMoneroApi
+// This matches some stats from monerod's JSON-RPC HTTP call [get_info]
+// It _seems_ monerod initializes stats with [0], so no [Option], hopefully nothing panics :D
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct PrivMoneroApi {
+	result: Result,
+}
+struct Result {
+	database_size: u128, // bytes
+	difficulty: u128,
+	height: u64,
+	incoming_connections_count: u32,
+	nettype: String, // mainnet, stagenet, testnet
+	outgoing_connections_count: u32,
+	restricted: bool,
+	status: String, // OK
+	synchronized: bool,
+	tx_pool_size: u32, // tx pool
+}
+
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]
 mod test {
