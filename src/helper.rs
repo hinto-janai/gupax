@@ -1559,7 +1559,7 @@ impl PrivP2poolApi {
 	}
 
 	// Read P2Pool's API file to a [String].
-	fn read_p2pool_api(path: &std::path::PathBuf) -> Result<String, std::io::Error> {
+	fn read_p2pool_api(path: &std::path::PathBuf) -> std::result::Result<String, std::io::Error> {
 		match std::fs::read_to_string(path) {
 			Ok(s) => Ok(s),
 			Err(e) => { warn!("P2Pool API | [{}] read error: {}", path.display(), e); Err(e) },
@@ -1567,7 +1567,7 @@ impl PrivP2poolApi {
 	}
 
 	// Deserialize the above [String] into a [PrivP2poolApi]
-	fn str_to_priv_p2pool_api(string: &str) -> Result<Self, serde_json::Error> {
+	fn str_to_priv_p2pool_api(string: &str) -> std::result::Result<Self, serde_json::Error> {
 		match serde_json::from_str::<Self>(string) {
 			Ok(a) => Ok(a),
 			Err(e) => { warn!("P2Pool API | Could not deserialize API data: {}", e); Err(e) },
@@ -1692,7 +1692,7 @@ impl PrivXmrigApi {
 		}
 	}
 	// Send an HTTP request to XMRig's API, serialize it into [Self] and return it
-	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_uri: &str) -> Result<Self, anyhow::Error> {
+	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_uri: &str) -> std::result::Result<Self, anyhow::Error> {
 		let request = hyper::Request::builder()
 			.method("GET")
 			.uri(api_uri)
@@ -1744,7 +1744,7 @@ impl Hashrate {
 }
 
 //---------------------------------------------------------------------------------------------------- PubMoneroApi
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug,Clone)]
 struct PubMoneroApi {
 	size: HumanNumber, // Blockchain size in GB
 	diff: HumanNumber, // Current difficulty
@@ -1763,6 +1763,7 @@ struct PubMoneroApi {
 struct PrivMoneroApi {
 	result: Result,
 }
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct Result {
 	database_size: u128, // bytes
 	difficulty: u128,
