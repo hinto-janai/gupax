@@ -61,7 +61,6 @@ const MAX_GUI_OUTPUT_BYTES: usize = 500_000;
 // Just a little leeway so a reset will go off before the [String] allocates more memory.
 const GUI_OUTPUT_LEEWAY: usize = MAX_GUI_OUTPUT_BYTES - 1000;
 
-
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread
 pub struct Helper {
@@ -1489,11 +1488,11 @@ impl PrivP2poolPoolApi {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct PoolStatistics {
-	hashrate: u128,
+	hashRate: u128,
 	miners: u32,
 }
 impl Default for PoolStatistics { fn default() -> Self { Self::new() } }
-impl PoolStatistics { fn new() -> Self { Self { hashrate: 0, miners: 0 } } }
+impl PoolStatistics { fn new() -> Self { Self { hashRate: 0, miners: 0 } } }
 
 //---------------------------------------------------------------------------------------------------- [ImgXmrig]
 #[derive(Debug, Clone)]
@@ -1782,8 +1781,7 @@ mod test {
 				"connections": 123,
 				"incoming_connections": 96
 			}"#;
-		use crate::helper::PrivP2poolLocalApi;
-		let priv_api = PrivP2poolLocalApi::from_str(data).unwrap();
+		let priv_api = crate::helper::PrivP2poolLocalApi::from_str(data).unwrap();
 		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
 		println!("{}", json);
 		let data_after_ser =
@@ -1795,6 +1793,57 @@ r#"{
   "average_effort": 915.563,
   "current_effort": 129.297,
   "connections": 123
+}"#;
+		assert_eq!(data_after_ser, json)
+	}
+
+	#[test]
+	fn serde_priv_p2pool_network_api() {
+		let data =
+			r#"{
+				"difficulty": 319028180924,
+				"hash": "22ae1b83d727bb2ff4efc17b485bc47bc8bf5e29a7b3af65baf42213ac70a39b",
+				"height": 2776576,
+				"reward": 600499860000,
+				"timestamp": 1670953659
+			}"#;
+		let priv_api = crate::helper::PrivP2poolNetworkApi::from_str(data).unwrap();
+		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
+		println!("{}", json);
+		let data_after_ser =
+r#"{
+  "difficulty": 319028180924,
+  "hash": "22ae1b83d727bb2ff4efc17b485bc47bc8bf5e29a7b3af65baf42213ac70a39b",
+  "height": 2776576,
+  "reward": 600499860000,
+  "timestamp": 1670953659
+}"#;
+		assert_eq!(data_after_ser, json)
+	}
+
+	#[test]
+	fn serde_priv_p2pool_pool_api() {
+		let data =
+			r#"{
+				"pool_list": ["pplns"],
+				"pool_statistics": {
+					"hashRate": 10225772,
+					"miners": 713,
+					"totalHashes": 487463929193948,
+					"lastBlockFoundTime": 1670453228,
+					"lastBlockFound": 2756570,
+					"totalBlocksFound": 4
+				}
+			}"#;
+		let priv_api = crate::helper::PrivP2poolPoolApi::from_str(data).unwrap();
+		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
+		println!("{}", json);
+		let data_after_ser =
+r#"{
+  "pool_statistics": {
+    "hashRate": 10225772,
+    "miners": 713
+  }
 }"#;
 		assert_eq!(data_after_ser, json)
 	}
