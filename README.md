@@ -304,7 +304,7 @@ In general:
 ---
 
 ### Swapping P2Pool/XMRig
-If you want to use your own `P2Pool/XMRig` binaries and/or want to swap them, you can:
+If you want to use your own `P2Pool/XMRig` binaries you can:
 - Edit the PATH in `Gupax Advanced` to point at the new binaries
 - Change the binary itself
 
@@ -345,8 +345,8 @@ gupax/
 ### Gupax
 Along with the updater and settings mentioned in [Simple](#simple), `Gupax Advanced` allows you to change:
 - The PATH of where Gupax looks for P2Pool/XMRig
-- Gupax's resolution
 - The selected tab on startup
+- Gupax's resolution
 
 **Warning:** Gupax will use your custom PATH/binary and will replace them if you use `Check for updates` in the `[Gupax]` tab. There are sanity checks in place, however. Your PATH MUST end in a value that _appears_ correct or else the updater will refuse to start:
 | Binary   | Accepted values                  | Good PATH       | Bad PATH |
@@ -367,8 +367,7 @@ P2Pool Advanced has:
 - Out/In peer setting
 - Log level setting
 
-The overriding command arguments will completely override your Gupax settings and start P2Pool with those arguments.  
-**Warning:** If using this setting, use `--no-color` and make sure to set `--data-api <PATH>` & `--local-api` so that the `[Status]` tab can work!
+The overriding command arguments will completely override your Gupax settings and start P2Pool with those arguments. **Warning:** If using this setting, use `--no-color` and make sure to set `--data-api <PATH>` & `--local-api` so that the `[Status]` tab can work!
 
 The manual node list allows you save and connect up-to 1000 custom Monero nodes:
 | Data Field | Purpose                                                       | Limits                                                 | Max Length     |
@@ -414,8 +413,7 @@ XMRig Advanced has:
 - TLS setting
 - Keepalive setting
 
-The overriding command arguments will completely override your Gupax settings and start XMRig with those arguments.  
-**Warned:** If using this setting, use `[--no-color]` and make sure to set `[--http-host <IP>]` & `[--http-port <PORT>]` so that the `[Status]` tab can work!
+The overriding command arguments will completely override your Gupax settings and start XMRig with those arguments. **Warned:** If using this setting, use `[--no-color]` and make sure to set `[--http-host <IP>]` & `[--http-port <PORT>]` so that the `[Status]` tab can work!
 
 The manual pool list allows you save and connect up-to 1000 custom Pools (regardless if P2Pool or not):
 | Data Field | Purpose                                                       | Limits                                                 | Max Length     |
@@ -428,7 +426,7 @@ The manual pool list allows you save and connect up-to 1000 custom Pools (regard
 The HTTP API textboxes allow you to change to IP/Port XMRig's HTTP API opens up on:
 | Data Field      | Purpose                                       | Default               | Limits                                                 | Max Length
 |-----------------|-----------------------------------------------|-----------------------|--------------------------------------------------------|----------------|
-| `HTTPS API IP`  | The IP XMRig's HTTP API server will bind to   | `localhost/127.0.0.1` | It must be a valid IPv4 address or a valid domain name | 255 characters |
+| `HTTP API IP`   | The IP XMRig's HTTP API server will bind to   | `localhost/127.0.0.1` | It must be a valid IPv4 address or a valid domain name | 255 characters |
 | `HTTP API Port` | The port XMRig's HTTP API server will bind to | `18088`               | `[1-65535]`                                            | 5 characters   |
 
 The remaining buttons control miscellaneous settings (both are disabled by default, as P2Pool does not require them):
@@ -547,7 +545,7 @@ The GUI library Gupax uses is [egui](https://github.com/emilk/egui). It is licen
 
 ## FAQ
 ### Where are updates downloaded from?
-The latest versions are downloaded using the GitHub API.
+The latest versions are downloaded using GitHub's API.
 * Gupax [`https://github.com/hinto-janaiyo/gupax`](https://github.com/hinto-janaiyo/gupax)
 * P2Pool [`https://github.com/SChernykh/p2pool`](https://github.com/SChernykh/p2pool)
 * XMRig [`https://github.com/xmrig/xmrig`](https://github.com/xmrig/xmrig)

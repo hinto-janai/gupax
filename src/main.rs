@@ -504,14 +504,8 @@ impl ErrorState {
 	// Convenience function to enable the [App] error state
 	pub fn set(&mut self, msg: impl Into<String>, ferris: ErrorFerris, buttons: ErrorButtons) {
 		if self.error {
-			// If a panic error is already set, return
-			if self.ferris == ErrorFerris::Panic { return }
-			// If we shouldn't be overriding the current error, return
-			match self.buttons {
-				ErrorButtons::YesNo => (), // Not important
-				ErrorButtons::Okay => (), // Not important
-				_ => return, // Overwrite, Quits, etc
-			}
+			// If a panic error is already set and there isn't an [Okay] confirm or another [Panic], return
+			if self.ferris == ErrorFerris::Panic && (buttons != ErrorButtons::Okay || ferris != ErrorFerris::Panic) { return }
 		}
 		*self = Self {
 			error: true,
