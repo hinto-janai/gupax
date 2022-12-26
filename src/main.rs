@@ -62,6 +62,7 @@ mod p2pool;
 mod xmrig;
 mod update;
 mod helper;
+mod human;
 use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*,helper::*};
 
 // Sudo (dummy values for Windows)
