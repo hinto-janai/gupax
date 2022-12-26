@@ -70,9 +70,17 @@ r#"*---------------------------------------*
 *---------------------------------------*"#;
 // P2Pool & XMRig default API stuff
 #[cfg(target_os = "windows")]
-pub const P2POOL_API_PATH: &str = r"local\stats"; // The default relative FS path of P2Pool's local API
+pub const P2POOL_API_PATH_LOCAL: &str = r"local\stats";
+#[cfg(target_os = "windows")]
+pub const P2POOL_API_PATH_NETWORK: &str = r"network\stats";
+#[cfg(target_os = "windows")]
+pub const P2POOL_API_PATH_POOL: &str = r"pool\stats";
 #[cfg(target_family = "unix")]
-pub const P2POOL_API_PATH: &str = "local/stats";
+pub const P2POOL_API_PATH_LOCAL: &str = "local/stats";
+#[cfg(target_family = "unix")]
+pub const P2POOL_API_PATH_NETWORK: &str = "network/stats";
+#[cfg(target_family = "unix")]
+pub const P2POOL_API_PATH_POOL: &str = "pool/stats";
 pub const XMRIG_API_URI: &str = "1/summary"; // The default relative URI of XMRig's API
 
 // Process state tooltips (online, offline, etc)
@@ -148,8 +156,8 @@ pub const STATUS_GUPAX_SYSTEM_MEMORY: &str = "How much memory your entire system
 pub const STATUS_GUPAX_SYSTEM_CPU_MODEL: &str = "The detected model of your system's CPU and its current frequency";
 //--
 pub const STATUS_P2POOL_UPTIME: &str = "How long P2Pool has been online";
-pub const STATUS_P2POOL_PAYOUTS: &str = "The total amount of payouts received and an extrapolated estimate of how many you will receive. Warning: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
-pub const STATUS_P2POOL_XMR: &str = "The total amount of XMR mined via P2Pool and an extrapolated estimate of how many you will mine in the future. Warning: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
+pub const STATUS_P2POOL_PAYOUTS: &str = "The total amount of payouts received in this instance of P2Pool and an extrapolated estimate of how many you will receive. Warning: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
+pub const STATUS_P2POOL_XMR: &str = "The total amount of XMR mined in this instance of P2Pool and an extrapolated estimate of how many you will mine in the future. Warning: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
 pub const STATUS_P2POOL_HASHRATE: &str = "The total amount of hashrate your P2Pool has pointed at it in 15 minute, 1 hour, and 24 hour averages";
 pub const STATUS_P2POOL_SHARES: &str = "The total amount of shares found on P2Pool";
 pub const STATUS_P2POOL_EFFORT: &str = "The average amount of effort needed to find a share, and the current effort";

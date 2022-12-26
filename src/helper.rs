@@ -75,8 +75,10 @@ pub struct Helper {
 	pub img_xmrig: Arc<Mutex<ImgXmrig>>,          // A static "image" of the data XMRig started with
 	pub_api_p2pool: Arc<Mutex<PubP2poolApi>>,     // P2Pool API state (for Helper/P2Pool thread)
 	pub_api_xmrig: Arc<Mutex<PubXmrigApi>>,       // XMRig API state (for Helper/XMRig thread)
-	priv_api_p2pool: Arc<Mutex<PrivP2poolApi>>,   // For "watchdog" thread
-	priv_api_xmrig: Arc<Mutex<PrivXmrigApi>>,     // For "watchdog" thread
+	priv_api_p2pool_local: Arc<Mutex<PrivP2poolLocalApi>>,      // Serde struct(s) for P2Pool's API files
+	priv_api_p2pool_network: Arc<Mutex<PrivP2poolNetworkApi>>,
+	priv_api_p2pool_pool: Arc<Mutex<PrivP2poolPoolApi>>,
+	priv_api_xmrig: Arc<Mutex<PrivXmrigApi>>, // Serde struct for XMRig's HTTP API
 }
 
 // The communication between the data here and the GUI thread goes as follows:
@@ -110,12 +112,7 @@ impl Sys {
 		}
 	}
 }
-
-impl Default for Sys {
-	fn default() -> Self {
-		Self::new()
-	}
-}
+impl Default for Sys { fn default() -> Self { Self::new() } }
 
 //---------------------------------------------------------------------------------------------------- [Process] Struct
 // This holds all the state of a (child) process.
@@ -229,7 +226,9 @@ impl Helper {
 			instant,
 			pub_sys,
 			uptime: HumanTime::into_human(instant.elapsed()),
-			priv_api_p2pool: Arc::new(Mutex::new(PrivP2poolApi::new())),
+			priv_api_p2pool_local: Arc::new(Mutex::new(PrivP2poolLocalApi::new())),
+			priv_api_p2pool_network: Arc::new(Mutex::new(PrivP2poolNetworkApi::new())),
+			priv_api_p2pool_pool: Arc::new(Mutex::new(PrivP2poolPoolApi::new())),
 			priv_api_xmrig: Arc::new(Mutex::new(PrivXmrigApi::new())),
 			pub_api_p2pool: Arc::new(Mutex::new(PubP2poolApi::new())),
 			pub_api_xmrig: Arc::new(Mutex::new(PubXmrigApi::new())),
@@ -278,6 +277,14 @@ impl Helper {
 		}
 	}
 
+	// Read P2Pool/XMRig's API file to a [String].
+	fn path_to_string(path: &std::path::PathBuf, name: ProcessName) -> std::result::Result<String, std::io::Error> {
+		match std::fs::read_to_string(path) {
+			Ok(s) => Ok(s),
+			Err(e) => { warn!("{} API | [{}] read error: {}", name, path.display(), e); Err(e) },
+		}
+	}
+
 	//---------------------------------------------------------------------------------------------------- P2Pool specific
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_p2pool(helper: &Arc<Mutex<Self>>) {
@@ -313,19 +320,24 @@ impl Helper {
 	pub fn start_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
 		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
 
-		let (args, api_path) = Self::build_p2pool_args_and_mutate_img(helper, state, path);
+		let (args, api_path_local, api_path_network, api_path_pool) = Self::build_p2pool_args_and_mutate_img(helper, state, path);
 
 		// Print arguments & user settings to console
-		crate::disk::print_dash(&format!("P2Pool | Launch arguments: {:#?} | API Path: {:#?}", args, api_path));
+		crate::disk::print_dash(&format!(
+			"P2Pool | Launch arguments: {:#?} | Local API Path: {:#?} | Network API Path: {:#?} | Pool API Path: {:#?}",
+			 args,
+			 api_path_local,
+			 api_path_network,
+			 api_path_pool,
+		));
 
 		// Spawn watchdog thread
 		let process = Arc::clone(&helper.lock().unwrap().p2pool);
 		let gui_api = Arc::clone(&helper.lock().unwrap().gui_api_p2pool);
 		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
-		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_p2pool);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, priv_api, args, path, api_path);
+			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, args, path, api_path_local, api_path_network, api_path_pool);
 		});
 	}
 
@@ -341,7 +353,7 @@ impl Helper {
 	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
 	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
-	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> (Vec<String>, PathBuf) {
+	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> (Vec<String>, PathBuf, PathBuf, PathBuf) {
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
 		let mut api_path = path;
@@ -419,12 +431,17 @@ impl Helper {
 				};
 			}
 		}
-		api_path.push(P2POOL_API_PATH);
-		(args, api_path)
+		let mut api_path_local = api_path.clone();
+		let mut api_path_network = api_path.clone();
+		let mut api_path_pool = api_path.clone();
+		api_path_local.push(P2POOL_API_PATH_LOCAL);
+		api_path_network.push(P2POOL_API_PATH_NETWORK);
+		api_path_pool.push(P2POOL_API_PATH_POOL);
+		(args, api_path_local, api_path_network, api_path_pool)
 	}
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, _priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path: std::path::PathBuf) {
+	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path_local: std::path::PathBuf, api_path_network: std::path::PathBuf, api_path_pool: std::path::PathBuf) {
 		// 1a. Create PTY
 		debug!("P2Pool | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -464,17 +481,17 @@ impl Helper {
 		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
 		let output_pub = Arc::clone(&process.lock().unwrap().output_pub);
 
-		debug!("P2Pool | Cleaning old API files...");
+		debug!("P2Pool | Cleaning old [local] API files...");
 		// Attempt to remove stale API file
-		match std::fs::remove_file(&api_path) {
+		match std::fs::remove_file(&api_path_local) {
 			Ok(_) => info!("P2Pool | Attempting to remove stale API file ... OK"),
 			Err(e) => warn!("P2Pool | Attempting to remove stale API file ... FAIL ... {}", e),
 		}
 		// Attempt to create a default empty one.
 		use std::io::Write;
-		if std::fs::File::create(&api_path).is_ok() {
+		if std::fs::File::create(&api_path_local).is_ok() {
 			let text = r#"{"hashrate_15m":0,"hashrate_1h":0,"hashrate_24h":0,"shares_found":0,"average_effort":0.0,"current_effort":0.0,"connections":0}"#;
-			match std::fs::write(&api_path, text) {
+			match std::fs::write(&api_path_local, text) {
 				Ok(_) => info!("P2Pool | Creating default empty API file ... OK"),
 				Err(e) => warn!("P2Pool | Creating default empty API file ... FAIL ... {}", e),
 			}
@@ -600,13 +617,28 @@ impl Helper {
 			debug!("P2Pool Watchdog | Starting [update_from_output()]");
 			PubP2poolApi::update_from_output(&pub_api, &output_parse, &output_pub, start.elapsed(), &regex);
 
-			// Read API file into string
-			debug!("P2Pool Watchdog | Attempting API file read");
-			if let Ok(string) = PrivP2poolApi::read_p2pool_api(&api_path) {
+			// Read [local] API
+			debug!("P2Pool Watchdog | Attempting [local] API file read");
+			if let Ok(string) = Self::path_to_string(&api_path_local, ProcessName::P2pool) {
 				// Deserialize
-				if let Ok(s) = PrivP2poolApi::str_to_priv_p2pool_api(&string) {
+				if let Ok(s) = PrivP2poolLocalApi::from_str(&string) {
 					// Update the structs.
-					PubP2poolApi::update_from_priv(&pub_api, s);
+					PubP2poolApi::update_from_local(&pub_api, s);
+				}
+			}
+			// If more than 1 minute has passed, read the other API files.
+			if now.elapsed().as_secs() >= 60 {
+				debug!("P2Pool Watchdog | Attempting [network] API file read");
+				if let Ok(string) = Self::path_to_string(&api_path_network, ProcessName::P2pool) {
+					if let Ok(s) = PrivP2poolNetworkApi::from_str(&string) {
+	//					PubP2poolApi::update_from_network(&pub_api, s);
+					}
+				}
+				debug!("P2Pool Watchdog | Attempting [pool] API file read");
+				if let Ok(string) = Self::path_to_string(&api_path_pool, ProcessName::P2pool) {
+					if let Ok(s) = PrivP2poolPoolApi::from_str(&string) {
+	//					PubP2poolApi::update_from_network(&pub_api, s);
+					}
 				}
 			}
 
@@ -1388,7 +1420,7 @@ pub struct PubP2poolApi {
 	pub xmr_hour: f64,
 	pub xmr_day: f64,
 	pub xmr_month: f64,
-	// The rest are serialized from the API, then turned into [HumanNumber]s
+	// Local API
 	pub hashrate_15m: HumanNumber,
 	pub hashrate_1h: HumanNumber,
 	pub hashrate_24h: HumanNumber,
@@ -1396,6 +1428,8 @@ pub struct PubP2poolApi {
 	pub average_effort: HumanNumber,
 	pub current_effort: HumanNumber,
 	pub connections: HumanNumber,
+	// Network API
+	// Pool API
 }
 
 impl Default for PubP2poolApi {
@@ -1498,8 +1532,8 @@ impl PubP2poolApi {
 		};
 	}
 
-	// Mutate [PubP2poolApi] with data from a [PrivP2poolApi] and the process output.
-	fn update_from_priv(public: &Arc<Mutex<Self>>, private: PrivP2poolApi) {
+	// Mutate [PubP2poolApi] with data from a [PrivP2poolLocalApi] and the process output.
+	fn update_from_local(public: &Arc<Mutex<Self>>, private: PrivP2poolLocalApi) {
 		// priv -> pub conversion
 		let mut public = public.lock().unwrap();
 		*public = Self {
@@ -1530,12 +1564,11 @@ impl PubP2poolApi {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- Private P2Pool API
-// This is the data the "watchdog" threads mutate.
-// It matches directly to P2Pool's [local/stats] JSON API file (excluding a few stats).
+//---------------------------------------------------------------------------------------------------- Private P2Pool "Local" Api
+// This matches directly to P2Pool's [local/stats] JSON API file (excluding a few stats).
 // P2Pool seems to initialize all stats at 0 (or 0.0), so no [Option] wrapper seems needed.
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-struct PrivP2poolApi {
+struct PrivP2poolLocalApi {
 	hashrate_15m: u128,
 	hashrate_1h: u128,
 	hashrate_24h: u128,
@@ -1545,7 +1578,9 @@ struct PrivP2poolApi {
 	connections: u16, // No one will have more than 65535 connections... right?
 }
 
-impl PrivP2poolApi {
+impl Default for PrivP2poolLocalApi { fn default() -> Self { Self::new() } }
+
+impl PrivP2poolLocalApi {
 	fn new() -> Self {
 		Self {
 			hashrate_15m: 0,
@@ -1558,22 +1593,78 @@ impl PrivP2poolApi {
 		}
 	}
 
-	// Read P2Pool's API file to a [String].
-	fn read_p2pool_api(path: &std::path::PathBuf) -> std::result::Result<String, std::io::Error> {
-		match std::fs::read_to_string(path) {
-			Ok(s) => Ok(s),
-			Err(e) => { warn!("P2Pool API | [{}] read error: {}", path.display(), e); Err(e) },
-		}
-	}
-
 	// Deserialize the above [String] into a [PrivP2poolApi]
-	fn str_to_priv_p2pool_api(string: &str) -> std::result::Result<Self, serde_json::Error> {
+	fn from_str(string: &str) -> std::result::Result<Self, serde_json::Error> {
 		match serde_json::from_str::<Self>(string) {
 			Ok(a) => Ok(a),
-			Err(e) => { warn!("P2Pool API | Could not deserialize API data: {}", e); Err(e) },
+			Err(e) => { warn!("P2Pool Local API | Could not deserialize API data: {}", e); Err(e) },
 		}
 	}
 }
+
+//---------------------------------------------------------------------------------------------------- Private P2Pool "Network" API
+// This matches P2Pool's [network/stats] JSON API file.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct PrivP2poolNetworkApi {
+	difficulty: u128,
+	hash: String,
+	height: u32,
+	reward: u128,
+	timestamp: u32,
+}
+
+impl Default for PrivP2poolNetworkApi { fn default() -> Self { Self::new() } }
+
+impl PrivP2poolNetworkApi {
+	fn new() -> Self {
+		Self {
+			difficulty: 0,
+			hash: String::from("???"),
+			height: 0,
+			reward: 0,
+			timestamp: 0,
+		}
+	}
+
+	fn from_str(string: &str) -> std::result::Result<Self, serde_json::Error> {
+		match serde_json::from_str::<Self>(string) {
+			Ok(a) => Ok(a),
+			Err(e) => { warn!("P2Pool Network API | Could not deserialize API data: {}", e); Err(e) },
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- Private P2Pool "Pool" API
+// This matches P2Pool's [pool/stats] JSON API file.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+struct PrivP2poolPoolApi {
+	pool_statistics: PoolStatistics,
+}
+
+impl Default for PrivP2poolPoolApi { fn default() -> Self { Self::new() } }
+
+impl PrivP2poolPoolApi {
+	fn new() -> Self {
+		Self {
+			pool_statistics: PoolStatistics::new(),
+		}
+	}
+
+	fn from_str(string: &str) -> std::result::Result<Self, serde_json::Error> {
+		match serde_json::from_str::<Self>(string) {
+			Ok(a) => Ok(a),
+			Err(e) => { warn!("P2Pool Pool API | Could not deserialize API data: {}", e); Err(e) },
+		}
+	}
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+struct PoolStatistics {
+	hashrate: u128,
+	miners: u32,
+}
+impl Default for PoolStatistics { fn default() -> Self { Self::new() } }
+impl PoolStatistics { fn new() -> Self { Self { hashrate: 0, miners: 0 } } }
 
 //---------------------------------------------------------------------------------------------------- [ImgXmrig]
 #[derive(Debug, Clone)]
@@ -1928,7 +2019,7 @@ mod test {
 	}
 
 	#[test]
-	fn serde_priv_p2pool_api() {
+	fn serde_priv_p2pool_local_api() {
 		let data =
 			r#"{
 				"hashrate_15m": 12,
@@ -1941,8 +2032,8 @@ mod test {
 				"connections": 123,
 				"incoming_connections": 96
 			}"#;
-		use crate::helper::PrivP2poolApi;
-		let priv_api = PrivP2poolApi::str_to_priv_p2pool_api(data).unwrap();
+		use crate::helper::PrivP2poolLocalApi;
+		let priv_api = PrivP2poolLocalApi::from_str(data).unwrap();
 		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
 		println!("{}", json);
 		let data_after_ser =
