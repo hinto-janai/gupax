@@ -129,6 +129,12 @@ pub struct App {
 	sudo: Arc<Mutex<SudoState>>, // This is just a dummy struct on [Windows].
 	// State from [--flags]
 	no_startup: bool,
+	// Gupax-P2Pool API
+	// Gupax's P2Pool API (e.g: ~/.local/share/gupax/p2pool/)
+	// This is a file-based API that contains data for permanent stats.
+	// The below struct holds everything needed for it, the paths, the
+	// actual stats, and all the functions needed to mutate them.
+	gupax_p2pool_api: GupaxP2poolApi,
 	// Static stuff
 	pid: sysinfo::Pid, // Gupax's PID
 	max_threads: usize, // Max amount of detected system threads
@@ -138,7 +144,8 @@ pub struct App {
 	resolution: Vec2, // Frame resolution
 	os: &'static str, // OS
 	admin: bool, // Are we admin? (for Windows)
-	os_data_path: PathBuf, // OS data path (e.g: ~/.local/share/gupax)
+	os_data_path: PathBuf, // OS data path (e.g: ~/.local/share/gupax/)
+	gupax_p2pool_api_path: PathBuf, // Gupax-P2Pool API path (e.g: ~/.local/share/gupax/p2pool/)
 	state_path: PathBuf, // State file path
 	node_path: PathBuf, // Node file path
 	pool_path: PathBuf, // Pool file path
@@ -219,6 +226,7 @@ impl App {
 			resizing: false,
 			alpha: 0,
 			no_startup: false,
+			gupax_p2pool_api: GupaxP2poolApi::new(),
 			pub_sys,
 			pid,
 			max_threads: num_cpus::get(),
@@ -229,6 +237,7 @@ impl App {
 			resolution: Vec2::new(APP_DEFAULT_HEIGHT, APP_DEFAULT_WIDTH),
 			os: OS,
 			os_data_path: PathBuf::new(),
+			gupax_p2pool_api_path: PathBuf::new(),
 			state_path: PathBuf::new(),
 			node_path: PathBuf::new(),
 			pool_path: PathBuf::new(),
@@ -259,11 +268,11 @@ impl App {
 		debug!("App Init | Setting TOML path...");
 		// Set [*.toml] path
 		app.state_path = app.os_data_path.clone();
-		app.state_path.push("state.toml");
+		app.state_path.push(STATE_TOML);
 		app.node_path = app.os_data_path.clone();
-		app.node_path.push("node.toml");
+		app.node_path.push(NODE_TOML);
 		app.pool_path = app.os_data_path.clone();
-		app.pool_path.push("pool.toml");
+		app.pool_path.push(POOL_TOML);
 
 		// Apply arg state
 		// It's not safe to [--reset] if any of the previous variables
@@ -334,6 +343,34 @@ impl App {
 		debug!("Pool Vec:");
 		debug!("{:#?}", app.pool_vec);
 
+		//----------------------------------------------------------------------------------------------------
+		// Read [GupaxP2poolApi] disk files
+		app.gupax_p2pool_api_path = crate::disk::get_gupax_p2pool_path(&app.os_data_path);
+		app.gupax_p2pool_api.fill_paths(&app.gupax_p2pool_api_path);
+		GupaxP2poolApi::create_all_files(&app.gupax_p2pool_api_path);
+		debug!("App Init | Reading Gupax-P2Pool API files...");
+		match app.gupax_p2pool_api.read_all_files_and_update() {
+			Ok(_) => {
+				info!(
+					"GupaxP2poolApi ... Payouts: {} | XMR (atomic-units): {} | Blocks: {}",
+					app.gupax_p2pool_api.payout,
+					app.gupax_p2pool_api.xmr,
+					app.gupax_p2pool_api.block,
+				);
+			},
+			Err(err) => {
+				error!("GupaxP2poolApi ... {}", err);
+				match err {
+					Io(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+				};
+			},
+		};
 
 		//----------------------------------------------------------------------------------------------------
 		let mut og = app.og.lock().unwrap(); // Lock [og]
@@ -930,7 +967,7 @@ fn main() {
 		Ok(_) => info!("Temporary folder cleanup ... OK"),
 		Err(e) => warn!("Could not cleanup [gupax_tmp] folders: {}", e),
 	}
-	info!("Init ... DONE");
+	info!("/*************************************/ Init ... OK /*************************************/");
 	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 

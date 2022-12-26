@@ -53,8 +53,6 @@ use sysinfo::{CpuExt,ProcessExt};
 use log::*;
 
 //---------------------------------------------------------------------------------------------------- Constants
-// The locale numbers are formatting in is English, which looks like: [1,000]
-const LOCALE: num_format::Locale = num_format::Locale::en;
 // The max amount of bytes of process output we are willing to
 // hold in memory before it's too much and we need to reset.
 const MAX_GUI_OUTPUT_BYTES: usize = 500_000;
@@ -1486,6 +1484,7 @@ impl PrivP2poolPoolApi {
 	}
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct PoolStatistics {
 	hashRate: u128,
