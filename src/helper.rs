@@ -1194,6 +1194,7 @@ impl P2poolRegex {
 }
 
 //---------------------------------------------------------------------------------------------------- XMR AtomicUnit
+#[derive(Debug, Clone)]
 struct AtomicUnit(u128);
 
 impl AtomicUnit {
@@ -1213,9 +1214,9 @@ impl AtomicUnit {
 		self.0 as f64 / 1_000_000_000_000.0
 	}
 
-	fn to_human_number_13_float(&self) -> HumanNumber {
+	fn to_human_number_12_point(&self) -> HumanNumber {
 		let f = self.0 as f64 / 1_000_000_000_000.0;
-		HumanNumber::from_f64_13_floating_point(f)
+		HumanNumber::from_f64_12_point(f)
 	}
 
 	fn to_human_number_no_fmt(&self) -> HumanNumber {
@@ -1227,8 +1228,59 @@ impl AtomicUnit {
 // Displays AtomicUnit as a real XMR floating point.
 impl std::fmt::Display for AtomicUnit {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		let float = (self.0 as f64) / 1_000_000_000_000.0;
-		write!(f, "{} XMR", float)
+		write!(f, "{}", Self::to_human_number_12_point(self))
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- [PayoutOrd]
+// This is the struct for ordering P2Pool payout lines into a structured and ordered vector of elements.
+// The structure goes as follows:
+//
+// Vec<(String, AtomicUnit, u64)>
+// "2022-08-17 12:16:11.8662" | 0.002382256231 XMR | Block 2573821
+// [0] = DATE
+// [1] = XMR IN ATOMIC-UNITS
+// [2] = MONERO BLOCK
+#[derive(Debug, Clone)]
+pub struct PayoutOrd(Vec<(String, AtomicUnit, HumanNumber)>);
+
+impl PayoutOrd {
+	fn new() -> Self {
+		Self(vec![(String::from("????-??-?? ??:??:??.????"), AtomicUnit::new(), HumanNumber::unknown())])
+	}
+
+	// Takes the raw components (no wrapper types), convert them and pushes to existing [Self]
+	fn push(&mut self, date: String, atomic_unit: u128, block: u64) {
+		let atomic_unit = AtomicUnit(atomic_unit);
+		let block = HumanNumber::from_u64(block);
+		self.0.push((date, atomic_unit, block));
+	}
+
+	// Sort [Self] from highest payout to lowest
+	fn sort_payout_high_to_low(&mut self) {
+		// This is a little confusing because wrapper types are basically 1 element tuples so:
+		// self.0 = The [Vec] within [PayoutOrd]
+		// b.1.0  = [b] is [(String, AtomicUnit, HumanNumber)], [.1] is the [AtomicUnit] inside it, [.0] is the [u128] inside that
+		// a.1.0  = Same deal, but we compare it with the previous value (b)
+		self.0.sort_by(|a, b| b.1.0.cmp(&a.1.0));
+	}
+
+	fn sort_payout_low_to_high(&mut self) {
+		self.0.sort_by(|a, b| a.1.0.cmp(&b.1.0));
+	}
+
+	// Recent <-> Oldest relies on the line order.
+	// The raw log lines will be shown instead of this struct.
+}
+
+impl Default for PayoutOrd { fn default() -> Self { Self::new() } }
+
+impl std::fmt::Display for PayoutOrd {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		for i in &self.0 {
+			writeln!(f, "{} | {} XMR | Block {}", i.0, i.1, i.2)?;
+		}
+		Ok(())
 	}
 }
 
@@ -1832,6 +1884,43 @@ struct Result {
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]
 mod test {
+	#[test]
+	fn sort_payout_ord() {
+		use crate::helper::PayoutOrd;
+		use crate::helper::AtomicUnit;
+		use crate::helper::HumanNumber;
+		let mut payout_ord = PayoutOrd(vec![
+			("2022-09-08 18:42:55.4636".to_string(), AtomicUnit(1000000000), HumanNumber::from_u64(2654321)),
+			("2022-09-09 16:18:26.7582".to_string(), AtomicUnit(2000000000), HumanNumber::from_u64(2654322)),
+			("2022-09-10 11:15:21.1272".to_string(), AtomicUnit(3000000000), HumanNumber::from_u64(2654323)),
+		]);
+		println!("OG: {:#?}", payout_ord);
+
+		// High to Low
+		PayoutOrd::sort_payout_high_to_low(&mut payout_ord);
+		println!("AFTER PAYOUT HIGH TO LOW: {:#?}", payout_ord);
+		let should_be =
+r#"2022-09-10 11:15:21.1272 | 0.003000000000 XMR | Block 2,654,323
+2022-09-09 16:18:26.7582 | 0.002000000000 XMR | Block 2,654,322
+2022-09-08 18:42:55.4636 | 0.001000000000 XMR | Block 2,654,321
+"#;
+		println!("SHOULD_BE:\n{}", should_be);
+		println!("IS:\n{}", payout_ord);
+		assert_eq!(payout_ord.to_string(), should_be);
+
+		// Low to High
+		PayoutOrd::sort_payout_low_to_high(&mut payout_ord);
+		println!("AFTER PAYOUT LOW TO HIGH: {:#?}", payout_ord);
+		let should_be =
+r#"2022-09-08 18:42:55.4636 | 0.001000000000 XMR | Block 2,654,321
+2022-09-09 16:18:26.7582 | 0.002000000000 XMR | Block 2,654,322
+2022-09-10 11:15:21.1272 | 0.003000000000 XMR | Block 2,654,323
+"#;
+		println!("SHOULD_BE:\n{}", should_be);
+		println!("IS:\n{}", payout_ord);
+		assert_eq!(payout_ord.to_string(), should_be);
+	}
+
 	#[test]
 	fn reset_gui_output() {
 		let max = crate::helper::GUI_OUTPUT_LEEWAY;

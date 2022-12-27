@@ -772,6 +772,7 @@ impl Display for Submenu {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- [Hash] enum for [Status/P2Pool]
 #[derive(Clone,Copy,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum Hash {
 	Hash,
