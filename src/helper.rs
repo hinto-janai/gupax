@@ -1193,6 +1193,45 @@ impl P2poolRegex {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- XMR AtomicUnit
+struct AtomicUnit(u128);
+
+impl AtomicUnit {
+	fn new() -> Self {
+		Self(0)
+	}
+
+	fn sum_vec(vec: &Vec<Self>) -> Self {
+		let mut sum = 0;
+		for int in vec {
+			sum += int.0;
+		}
+		Self(sum)
+	}
+
+	fn to_f64(&self) -> f64 {
+		self.0 as f64 / 1_000_000_000_000.0
+	}
+
+	fn to_human_number_13_float(&self) -> HumanNumber {
+		let f = self.0 as f64 / 1_000_000_000_000.0;
+		HumanNumber::from_f64_13_floating_point(f)
+	}
+
+	fn to_human_number_no_fmt(&self) -> HumanNumber {
+		let f = self.0 as f64 / 1_000_000_000_000.0;
+		HumanNumber::from_f64_no_fmt(f)
+	}
+}
+
+// Displays AtomicUnit as a real XMR floating point.
+impl std::fmt::Display for AtomicUnit {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		let float = (self.0 as f64) / 1_000_000_000_000.0;
+		write!(f, "{} XMR", float)
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- [ImgP2pool]
 // A static "image" of data that P2Pool started with.
 // This is just a snapshot of the user data when they initially started P2Pool.
