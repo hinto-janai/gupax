@@ -59,6 +59,10 @@ const MAX_GUI_OUTPUT_BYTES: usize = 500_000;
 // Just a little leeway so a reset will go off before the [String] allocates more memory.
 const GUI_OUTPUT_LEEWAY: usize = MAX_GUI_OUTPUT_BYTES - 1000;
 
+// Some constants for generating hashrate/difficulty.
+const MONERO_BLOCK_TIME_IN_SECONDS: u64 = 120;
+const P2POOL_BLOCK_TIME_IN_SECONDS: u64 = 10;
+
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread
 pub struct Helper {
@@ -503,10 +507,12 @@ impl Helper {
 
 		// 4. Loop as watchdog
 		info!("P2Pool | Entering watchdog mode... woof!");
+		let mut tick = 0;
 		loop {
 			// Set timer
 			let now = Instant::now();
 			debug!("P2Pool Watchdog | ----------- Start of loop -----------");
+			tick += 1;
 
 			// Check if the process is secretly died without us knowing :)
 			if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
@@ -619,23 +625,18 @@ impl Helper {
 			debug!("P2Pool Watchdog | Attempting [local] API file read");
 			if let Ok(string) = Self::path_to_string(&api_path_local, ProcessName::P2pool) {
 				// Deserialize
-				if let Ok(s) = PrivP2poolLocalApi::from_str(&string) {
+				if let Ok(local_api) = PrivP2poolLocalApi::from_str(&string) {
 					// Update the structs.
-					PubP2poolApi::update_from_local(&pub_api, s);
+					PubP2poolApi::update_from_local(&pub_api, local_api);
 				}
 			}
 			// If more than 1 minute has passed, read the other API files.
-			if now.elapsed().as_secs() >= 60 {
-				debug!("P2Pool Watchdog | Attempting [network] API file read");
-				if let Ok(string) = Self::path_to_string(&api_path_network, ProcessName::P2pool) {
-					if let Ok(s) = PrivP2poolNetworkApi::from_str(&string) {
-	//					PubP2poolApi::update_from_network(&pub_api, s);
-					}
-				}
-				debug!("P2Pool Watchdog | Attempting [pool] API file read");
-				if let Ok(string) = Self::path_to_string(&api_path_pool, ProcessName::P2pool) {
-					if let Ok(s) = PrivP2poolPoolApi::from_str(&string) {
-	//					PubP2poolApi::update_from_network(&pub_api, s);
+			if tick >= 60 {
+				debug!("P2Pool Watchdog | Attempting [network] & [pool] API file read");
+				if let (Ok(network_api), Ok(pool_api)) = (Self::path_to_string(&api_path_network, ProcessName::P2pool), Self::path_to_string(&api_path_pool, ProcessName::P2pool)) {
+					if let (Ok(network_api), Ok(pool_api)) = (PrivP2poolNetworkApi::from_str(&network_api), PrivP2poolPoolApi::from_str(&pool_api)) {
+						PubP2poolApi::update_from_network_pool(&pub_api, network_api, pool_api);
+						tick = 0;
 					}
 				}
 			}
@@ -645,10 +646,10 @@ impl Helper {
 			// Since logic goes off if less than 1000, casting should be safe
 			if elapsed < 900 {
 				let sleep = (900-elapsed) as u64;
-				debug!("P2Pool Watchdog | END OF LOOP - Sleeping for [{}]ms...", sleep);
+				debug!("P2Pool Watchdog | END OF LOOP -  Tick: [{}/60] - Sleeping for [{}]ms...", tick, sleep);
 				std::thread::sleep(std::time::Duration::from_millis(sleep));
 			} else {
-				debug!("P2Pool Watchdog | END OF LOOP - Not sleeping!");
+				debug!("P2Pool Watchdog | END OF LOOP - Tick: [{}/60] Not sleeping!", tick);
 			}
 		}
 
@@ -1254,8 +1255,27 @@ pub struct PubP2poolApi {
 	pub average_effort: HumanNumber,
 	pub current_effort: HumanNumber,
 	pub connections: HumanNumber,
+	// The API below needs a raw int [hashrate] to go off of and
+	// there's not a good way to access it without doing weird
+	// [Arc<Mutex>] shenanigans, so the raw [hashrate_1h] is
+	// copied here instead.
+	pub hashrate: u64,
 	// Network API
+	pub monero_difficulty: HumanNumber, // e.g: [15,000,000]
+	pub monero_hashrate: HumanNumber,   // e.g: [1.000 GH/s]
+	pub hash: String,
+	pub height: HumanNumber,
+	pub reward: u64, // Atomic units
 	// Pool API
+	pub p2pool_difficulty: HumanNumber,
+	pub p2pool_hashrate: HumanNumber,
+	pub miners: HumanNumber, // Current amount of miners on P2Pool sidechain
+	// Mean (calcualted in functions, not serialized)
+	pub solo_block_mean: HumanTime,   // Time it would take the user to find a solo block
+	pub p2pool_block_mean: HumanTime, // Time it takes the P2Pool sidechain to find a block
+	pub p2pool_share_mean: HumanTime, // Time it would take the user to find a P2Pool share
+	// Percentage of P2Pool hashrate capture of overall Monero hashrate.
+	pub p2pool_percent: HumanNumber,
 }
 
 impl Default for PubP2poolApi {
@@ -1284,6 +1304,19 @@ impl PubP2poolApi {
 			average_effort: HumanNumber::unknown(),
 			current_effort: HumanNumber::unknown(),
 			connections: HumanNumber::unknown(),
+			hashrate: 0,
+			monero_difficulty: HumanNumber::unknown(),
+			monero_hashrate: HumanNumber::unknown(),
+			hash: String::from("???"),
+			height: HumanNumber::unknown(),
+			reward: 0,
+			p2pool_difficulty: HumanNumber::unknown(),
+			p2pool_hashrate: HumanNumber::unknown(),
+			miners: HumanNumber::unknown(),
+			solo_block_mean: HumanTime::new(),
+			p2pool_block_mean: HumanTime::new(),
+			p2pool_share_mean: HumanTime::new(),
+			p2pool_percent: HumanNumber::unknown(),
 		}
 	}
 
@@ -1299,6 +1332,21 @@ impl PubP2poolApi {
 			output,
 			..pub_api.clone()
 		};
+	}
+
+	// Essentially greps the output for [x.xxxxxxxxxxxx XMR] where x = a number.
+	// It sums each match and counts along the way, handling an error by not adding and printing to console.
+	fn calc_payouts_and_xmr(output: &str, regex: &P2poolRegex) -> (u128 /* payout count */, f64 /* total xmr */) {
+		let iter = regex.payout.find_iter(output);
+		let mut sum: f64 = 0.0;
+		let mut count: u128 = 0;
+		for i in iter {
+			match regex.float.find(i.as_str()).unwrap().as_str().parse::<f64>() {
+				Ok(num) => { sum += num; count += 1; },
+				Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
+			}
+		}
+		(count, sum)
 	}
 
 	// Mutate "watchdog"'s [PubP2poolApi] with data the process output.
@@ -1359,34 +1407,65 @@ impl PubP2poolApi {
 	}
 
 	// Mutate [PubP2poolApi] with data from a [PrivP2poolLocalApi] and the process output.
-	fn update_from_local(public: &Arc<Mutex<Self>>, private: PrivP2poolLocalApi) {
-		// priv -> pub conversion
+	fn update_from_local(public: &Arc<Mutex<Self>>, local: PrivP2poolLocalApi) {
 		let mut public = public.lock().unwrap();
 		*public = Self {
-			hashrate_15m: HumanNumber::from_u128(private.hashrate_15m),
-			hashrate_1h: HumanNumber::from_u128(private.hashrate_1h),
-			hashrate_24h: HumanNumber::from_u128(private.hashrate_24h),
-			shares_found: HumanNumber::from_u128(private.shares_found),
-			average_effort: HumanNumber::to_percent(private.average_effort),
-			current_effort: HumanNumber::to_percent(private.current_effort),
-			connections: HumanNumber::from_u16(private.connections),
+			hashrate_15m: HumanNumber::from_u64(local.hashrate_15m),
+			hashrate_1h: HumanNumber::from_u64(local.hashrate_1h),
+			hashrate_24h: HumanNumber::from_u64(local.hashrate_24h),
+			shares_found: HumanNumber::from_u64(local.shares_found),
+			average_effort: HumanNumber::to_percent(local.average_effort),
+			current_effort: HumanNumber::to_percent(local.current_effort),
+			connections: HumanNumber::from_u16(local.connections),
+			hashrate: local.hashrate_1h,
 			..std::mem::take(&mut *public)
 		};
 	}
 
-	// Essentially greps the output for [x.xxxxxxxxxxxx XMR] where x = a number.
-	// It sums each match and counts along the way, handling an error by not adding and printing to console.
-	fn calc_payouts_and_xmr(output: &str, regex: &P2poolRegex) -> (u128 /* payout count */, f64 /* total xmr */) {
-		let iter = regex.payout.find_iter(output);
-		let mut sum: f64 = 0.0;
-		let mut count: u128 = 0;
-		for i in iter {
-			match regex.float.find(i.as_str()).unwrap().as_str().parse::<f64>() {
-				Ok(num) => { sum += num; count += 1; },
-				Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
-			}
+	// Mutate [PubP2poolApi] with data from a [PrivP2pool(Network|Pool)Api].
+	fn update_from_network_pool(public: &Arc<Mutex<Self>>, net: PrivP2poolNetworkApi, pool: PrivP2poolPoolApi) {
+		let hashrate = public.lock().unwrap().hashrate; // The user's total P2Pool hashrate
+		let monero_difficulty = net.difficulty;
+		let monero_hashrate = monero_difficulty / MONERO_BLOCK_TIME_IN_SECONDS;
+		let p2pool_hashrate = pool.pool_statistics.hashRate;
+		let p2pool_difficulty = p2pool_hashrate * P2POOL_BLOCK_TIME_IN_SECONDS;
+		// These [0] checks prevent dividing by 0 (it [panic!()]s)
+		let p2pool_block_mean = if p2pool_hashrate == 0 {
+			HumanTime::new()
+		} else {
+			HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / p2pool_hashrate))
+		};
+		let p2pool_percent = if monero_hashrate == 0 {
+			HumanNumber::unknown()
+		} else {
+			let f = (p2pool_hashrate as f32) / (monero_hashrate as f32) * 100.0;
+			HumanNumber::to_percent_3_point(f)
+		};
+		let solo_block_mean;
+		let p2pool_share_mean;
+		if hashrate == 0 {
+			solo_block_mean = HumanTime::new();
+			p2pool_share_mean = HumanTime::new();
+		} else {
+			solo_block_mean = HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / hashrate));
+			p2pool_share_mean = HumanTime::into_human(std::time::Duration::from_secs(p2pool_difficulty / hashrate));
 		}
-		(count, sum)
+		let mut public = public.lock().unwrap();
+		*public = Self {
+			monero_difficulty: HumanNumber::from_u64(monero_difficulty),
+			monero_hashrate: HumanNumber::from_u64_to_gigahash_3_point(monero_hashrate),
+			hash: net.hash,
+			height: HumanNumber::from_u32(net.height),
+			reward: net.reward,
+			p2pool_difficulty: HumanNumber::from_u64(p2pool_difficulty),
+			p2pool_hashrate: HumanNumber::from_u64_to_megahash_3_point(p2pool_hashrate),
+			miners: HumanNumber::from_u32(pool.pool_statistics.miners),
+			solo_block_mean,
+			p2pool_block_mean,
+			p2pool_share_mean,
+			p2pool_percent,
+			..std::mem::take(&mut *public)
+		};
 	}
 }
 
@@ -1395,10 +1474,10 @@ impl PubP2poolApi {
 // P2Pool seems to initialize all stats at 0 (or 0.0), so no [Option] wrapper seems needed.
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct PrivP2poolLocalApi {
-	hashrate_15m: u128,
-	hashrate_1h: u128,
-	hashrate_24h: u128,
-	shares_found: u128,
+	hashrate_15m: u64,
+	hashrate_1h: u64,
+	hashrate_24h: u64,
+	shares_found: u64,
 	average_effort: f32,
 	current_effort: f32,
 	connections: u16, // No one will have more than 65535 connections... right?
@@ -1432,10 +1511,10 @@ impl PrivP2poolLocalApi {
 // This matches P2Pool's [network/stats] JSON API file.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct PrivP2poolNetworkApi {
-	difficulty: u128,
+	difficulty: u64,
 	hash: String,
 	height: u32,
-	reward: u128,
+	reward: u64,
 	timestamp: u32,
 }
 
@@ -1487,7 +1566,7 @@ impl PrivP2poolPoolApi {
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct PoolStatistics {
-	hashRate: u128,
+	hashRate: u64,
 	miners: u32,
 }
 impl Default for PoolStatistics { fn default() -> Self { Self::new() } }
@@ -1764,6 +1843,69 @@ mod test {
 		assert_eq!(public.xmr_hour,      900.00000000018);
 		assert_eq!(public.xmr_day,       21600.00000000432);
 		assert_eq!(public.xmr_month,     648000.0000001296);
+	}
+
+	#[test]
+	fn update_pub_p2pool_from_local_network_pool() {
+		use std::sync::{Arc,Mutex};
+		use crate::helper::PubP2poolApi;
+		use crate::helper::PrivP2poolLocalApi;
+		use crate::helper::PrivP2poolNetworkApi;
+		use crate::helper::PrivP2poolPoolApi;
+		use crate::helper::PoolStatistics;
+		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
+		let local = PrivP2poolLocalApi {
+			hashrate_15m: 10_000,
+			hashrate_1h: 20_000,
+			hashrate_24h: 30_000,
+			shares_found: 1000,
+			average_effort: 100.000,
+			current_effort: 200.000,
+			connections: 1234,
+		};
+		let network = PrivP2poolNetworkApi {
+			difficulty: 300_000_000_000,
+			hash: "asdf".to_string(),
+			height: 1234,
+			reward: 2345,
+			timestamp: 3456,
+		};
+		let pool = PrivP2poolPoolApi {
+			pool_statistics: PoolStatistics {
+				hashRate: 1_000_000, // 1 MH/s
+				miners: 1_000,
+			}
+		};
+		// Update Local
+		PubP2poolApi::update_from_local(&public, local);
+		let p = public.lock().unwrap();
+		println!("AFTER LOCAL: {:#?}", p);
+		assert_eq!(p.hashrate_15m.to_string(),   "10,000");
+		assert_eq!(p.hashrate_1h.to_string(),    "20,000");
+		assert_eq!(p.hashrate_24h.to_string(),   "30,000");
+		assert_eq!(p.shares_found.to_string(),   "1,000");
+		assert_eq!(p.average_effort.to_string(), "100.00%");
+		assert_eq!(p.current_effort.to_string(), "200.00%");
+		assert_eq!(p.connections.to_string(),    "1,234");
+		assert_eq!(p.hashrate,                   20000);
+		drop(p);
+		// Update Network + Pool
+		PubP2poolApi::update_from_network_pool(&public, network, pool);
+		let p = public.lock().unwrap();
+		println!("AFTER NETWORK+POOL: {:#?}", p);
+		assert_eq!(p.monero_difficulty.to_string(), "300,000,000,000");
+		assert_eq!(p.monero_hashrate.to_string(),   "2.500 GH/s");
+		assert_eq!(p.hash.to_string(),              "asdf");
+		assert_eq!(p.height.to_string(),            "1,234");
+		assert_eq!(p.reward,                        2345);
+		assert_eq!(p.p2pool_difficulty.to_string(), "10,000,000");
+		assert_eq!(p.p2pool_hashrate.to_string(),   "1.000 MH/s");
+		assert_eq!(p.miners.to_string(),            "1,000");
+		assert_eq!(p.solo_block_mean.to_string(),   "5 months, 21 days, 9 hours, 52 minutes");
+		assert_eq!(p.p2pool_block_mean.to_string(), "3 days, 11 hours, 20 minutes");
+		assert_eq!(p.p2pool_share_mean.to_string(), "8 minutes, 20 seconds");
+		assert_eq!(p.p2pool_percent.to_string(),    "0.040%");
+		drop(p);
 	}
 
 	#[test]

@@ -1594,6 +1594,8 @@ impl eframe::App for App {
 						let distro = true;
 						#[cfg(not(feature = "distro"))]
 						let distro = false;
+						let p2pool_gui_len = self.p2pool_api.lock().unwrap().output.len();
+						let xmrig_gui_len = self.xmrig_api.lock().unwrap().output.len();
 						let debug_info = format!(
 "Gupax version: {}\n
 Bundled P2Pool version: {}\n
@@ -1622,6 +1624,10 @@ XMRig console byte length: {}\n
 {:#?}\n
 ------------------------------------------ XMRIG IMAGE ------------------------------------------
 {:#?}\n
+------------------------------------------ P2POOL GUI API ------------------------------------------
+{:#?}\n
+------------------------------------------ XMRIG GUI API ------------------------------------------
+{:#?}\n
 ------------------------------------------ WORKING STATE ------------------------------------------
 {:#?}\n
 ------------------------------------------ ORIGINAL STATE ------------------------------------------
@@ -1649,10 +1655,12 @@ XMRig console byte length: {}\n
 							self.exe,
 							self.state.gupax.absolute_p2pool_path.display(),
 							self.state.gupax.absolute_xmrig_path.display(),
-							self.p2pool_api.lock().unwrap().output.len(),
-							self.xmrig_api.lock().unwrap().output.len(),
+							p2pool_gui_len,
+							xmrig_gui_len,
 							self.p2pool_img.lock().unwrap(),
 							self.xmrig_img.lock().unwrap(),
+							self.p2pool_api.lock().unwrap(),
+							self.xmrig_api.lock().unwrap(),
 							self.state,
 							self.og.lock().unwrap(),
 						);

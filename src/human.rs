@@ -117,6 +117,9 @@ impl HumanNumber {
 			Self(format!("{:.2}%", f))
 		}
 	}
+	pub fn to_percent_3_point(f: f32) -> Self {
+		Self(format!("{:.3}%", f))
+	}
 	pub fn from_f32(f: f32) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&(f as u64), &LOCALE);
@@ -191,6 +194,18 @@ impl HumanNumber {
 		}
 		Self(string)
 	}
+	// [1_000_000] -> [1.000 MH/s]
+	pub fn from_u64_to_megahash_3_point(hash: u64) -> Self {
+		let hash = (hash as f64)/1_000_000.0;
+		let hash = format!("{:.3} MH/s", hash);
+		Self(hash)
+	}
+	// [1_000_000_000] -> [1.000 GH/s]
+	pub fn from_u64_to_gigahash_3_point(hash: u64) -> Self {
+		let hash = (hash as f64)/1_000_000_000.0;
+		let hash = format!("{:.3} GH/s", hash);
+		Self(hash)
+	}
 }
 
 //---------------------------------------------------------------------------------------------------- TESTS
@@ -201,6 +216,7 @@ mod test {
 		use crate::human::HumanNumber;
 		assert!(HumanNumber::to_percent(0.001).to_string() == "0%");
 		assert!(HumanNumber::to_percent(12.123123123123).to_string() == "12.12%");
+		assert!(HumanNumber::to_percent_3_point(0.001).to_string() == "0.001%");
 		assert!(HumanNumber::from_hashrate([Some(123.1), Some(11111.1), None]).to_string() == "[123 H/s, 11,111 H/s, ??? H/s]");
 		assert!(HumanNumber::from_hashrate([None, Some(1.123), Some(123123.312)]).to_string() == "[??? H/s, 1 H/s, 123,123 H/s]");
 		assert!(HumanNumber::from_load([Some(123.1234), Some(321.321), None]).to_string() == "[123.12, 321.32, ???]");
@@ -231,6 +247,7 @@ mod test {
 			HumanNumber::from_u128(340_282_366_920_938_463_463_374_607_431_768_211_455).to_string(),
 			"340,282,366,920,938,463,463,374,607,431,768,211,455",
 		);
+		assert!(HumanNumber::from_u64_to_gigahash_3_point(1_000_000_000).to_string() == "1.000 GH/s");
 	}
 
 	#[test]
