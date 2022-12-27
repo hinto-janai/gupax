@@ -1274,8 +1274,10 @@ pub struct PubP2poolApi {
 	pub solo_block_mean: HumanTime,   // Time it would take the user to find a solo block
 	pub p2pool_block_mean: HumanTime, // Time it takes the P2Pool sidechain to find a block
 	pub p2pool_share_mean: HumanTime, // Time it would take the user to find a P2Pool share
-	// Percentage of P2Pool hashrate capture of overall Monero hashrate.
-	pub p2pool_percent: HumanNumber,
+	// Percent
+	pub p2pool_percent: HumanNumber,      // Percentage of P2Pool hashrate capture of overall Monero hashrate.
+	pub user_p2pool_percent: HumanNumber, // How much percent the user's hashrate accounts for in P2Pool.
+	pub user_monero_percent: HumanNumber, // How much percent the user's hashrate accounts for in all of Monero hashrate.
 }
 
 impl Default for PubP2poolApi {
@@ -1317,6 +1319,8 @@ impl PubP2poolApi {
 			p2pool_block_mean: HumanTime::new(),
 			p2pool_share_mean: HumanTime::new(),
 			p2pool_percent: HumanNumber::unknown(),
+			user_p2pool_percent: HumanNumber::unknown(),
+			user_monero_percent: HumanNumber::unknown(),
 		}
 	}
 
@@ -1424,31 +1428,41 @@ impl PubP2poolApi {
 
 	// Mutate [PubP2poolApi] with data from a [PrivP2pool(Network|Pool)Api].
 	fn update_from_network_pool(public: &Arc<Mutex<Self>>, net: PrivP2poolNetworkApi, pool: PrivP2poolPoolApi) {
-		let hashrate = public.lock().unwrap().hashrate; // The user's total P2Pool hashrate
+		let user_hashrate = public.lock().unwrap().hashrate; // The user's total P2Pool hashrate
 		let monero_difficulty = net.difficulty;
 		let monero_hashrate = monero_difficulty / MONERO_BLOCK_TIME_IN_SECONDS;
 		let p2pool_hashrate = pool.pool_statistics.hashRate;
 		let p2pool_difficulty = p2pool_hashrate * P2POOL_BLOCK_TIME_IN_SECONDS;
 		// These [0] checks prevent dividing by 0 (it [panic!()]s)
-		let p2pool_block_mean = if p2pool_hashrate == 0 {
-			HumanTime::new()
+		let p2pool_block_mean;
+		let user_p2pool_percent;
+		if p2pool_hashrate == 0 {
+			p2pool_block_mean = HumanTime::new();
+			user_p2pool_percent = HumanNumber::unknown();
 		} else {
-			HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / p2pool_hashrate))
+			p2pool_block_mean = HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / p2pool_hashrate));
+			let f = (user_hashrate as f32 / p2pool_hashrate as f32) * 100.0;
+			user_p2pool_percent = HumanNumber::to_percent_no_fmt(f);
 		};
-		let p2pool_percent = if monero_hashrate == 0 {
-			HumanNumber::unknown()
+		let p2pool_percent;
+		let user_monero_percent;
+		if monero_hashrate == 0 {
+			p2pool_percent = HumanNumber::unknown();
+			user_monero_percent = HumanNumber::unknown();
 		} else {
-			let f = (p2pool_hashrate as f32) / (monero_hashrate as f32) * 100.0;
-			HumanNumber::to_percent_3_point(f)
+			let f = (p2pool_hashrate as f32 / monero_hashrate as f32) * 100.0;
+			p2pool_percent = HumanNumber::to_percent_no_fmt(f);
+			let f = (user_hashrate as f32 / monero_hashrate as f32) * 100.0;
+			user_monero_percent = HumanNumber::to_percent_no_fmt(f);
 		};
 		let solo_block_mean;
 		let p2pool_share_mean;
-		if hashrate == 0 {
+		if user_hashrate == 0 {
 			solo_block_mean = HumanTime::new();
 			p2pool_share_mean = HumanTime::new();
 		} else {
-			solo_block_mean = HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / hashrate));
-			p2pool_share_mean = HumanTime::into_human(std::time::Duration::from_secs(p2pool_difficulty / hashrate));
+			solo_block_mean = HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / user_hashrate));
+			p2pool_share_mean = HumanTime::into_human(std::time::Duration::from_secs(p2pool_difficulty / user_hashrate));
 		}
 		let mut public = public.lock().unwrap();
 		*public = Self {
@@ -1464,6 +1478,8 @@ impl PubP2poolApi {
 			p2pool_block_mean,
 			p2pool_share_mean,
 			p2pool_percent,
+			user_p2pool_percent,
+			user_monero_percent,
 			..std::mem::take(&mut *public)
 		};
 	}
@@ -1893,18 +1909,20 @@ mod test {
 		PubP2poolApi::update_from_network_pool(&public, network, pool);
 		let p = public.lock().unwrap();
 		println!("AFTER NETWORK+POOL: {:#?}", p);
-		assert_eq!(p.monero_difficulty.to_string(), "300,000,000,000");
-		assert_eq!(p.monero_hashrate.to_string(),   "2.500 GH/s");
-		assert_eq!(p.hash.to_string(),              "asdf");
-		assert_eq!(p.height.to_string(),            "1,234");
-		assert_eq!(p.reward,                        2345);
-		assert_eq!(p.p2pool_difficulty.to_string(), "10,000,000");
-		assert_eq!(p.p2pool_hashrate.to_string(),   "1.000 MH/s");
-		assert_eq!(p.miners.to_string(),            "1,000");
-		assert_eq!(p.solo_block_mean.to_string(),   "5 months, 21 days, 9 hours, 52 minutes");
-		assert_eq!(p.p2pool_block_mean.to_string(), "3 days, 11 hours, 20 minutes");
-		assert_eq!(p.p2pool_share_mean.to_string(), "8 minutes, 20 seconds");
-		assert_eq!(p.p2pool_percent.to_string(),    "0.040%");
+		assert_eq!(p.monero_difficulty.to_string(),   "300,000,000,000");
+		assert_eq!(p.monero_hashrate.to_string(),     "2.500 GH/s");
+		assert_eq!(p.hash.to_string(),                "asdf");
+		assert_eq!(p.height.to_string(),              "1,234");
+		assert_eq!(p.reward,                          2345);
+		assert_eq!(p.p2pool_difficulty.to_string(),   "10,000,000");
+		assert_eq!(p.p2pool_hashrate.to_string(),     "1.000 MH/s");
+		assert_eq!(p.miners.to_string(),              "1,000");
+		assert_eq!(p.solo_block_mean.to_string(),     "5 months, 21 days, 9 hours, 52 minutes");
+		assert_eq!(p.p2pool_block_mean.to_string(),   "3 days, 11 hours, 20 minutes");
+		assert_eq!(p.p2pool_share_mean.to_string(),   "8 minutes, 20 seconds");
+		assert_eq!(p.p2pool_percent.to_string(),      "0.04%");
+		assert_eq!(p.user_p2pool_percent.to_string(), "2%");
+		assert_eq!(p.user_monero_percent.to_string(), "0.0008%");
 		drop(p);
 	}
 
