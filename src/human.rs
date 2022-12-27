@@ -209,6 +209,14 @@ impl HumanNumber {
 		let hash = format!("{:.3} GH/s", hash);
 		Self(hash)
 	}
+	pub fn from_f64_13_floating_point(f: f64) -> Self {
+		let f = format!("{:.13}", f);
+		Self(f)
+	}
+	pub fn from_f64_no_fmt(f: f64) -> Self {
+		let f = format!("{}", f);
+		Self(f)
+	}
 }
 
 //---------------------------------------------------------------------------------------------------- TESTS

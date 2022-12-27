@@ -649,6 +649,8 @@ enum KeyPressed {
 	Esc,
 	Z,
 	X,
+	C,
+	V,
 	S,
 	R,
 	D,
@@ -682,6 +684,12 @@ impl KeyPressed {
 	}
 	fn is_d(&self) -> bool {
 		*self == Self::D
+	}
+	fn is_c(&self) -> bool {
+		*self == Self::C
+	}
+	fn is_v(&self) -> bool {
+		*self == Self::V
 	}
 	fn is_none(&self) -> bool {
 		*self == Self::None
@@ -1006,6 +1014,10 @@ impl eframe::App for App {
 				KeyPressed::Z
 			} else if input.consume_key(Modifiers::NONE, Key::X) {
 				KeyPressed::X
+			} else if input.consume_key(Modifiers::NONE, Key::C) {
+				KeyPressed::C
+			} else if input.consume_key(Modifiers::NONE, Key::V) {
+				KeyPressed::V
 			} else if input.consume_key(Modifiers::NONE, Key::ArrowUp) {
 				KeyPressed::Up
 			} else if input.consume_key(Modifiers::NONE, Key::ArrowDown) {
@@ -1048,6 +1060,36 @@ impl eframe::App for App {
 				Tab::Gupax  => self.tab = Tab::P2pool,
 				Tab::P2pool => self.tab = Tab::Xmrig,
 				Tab::Xmrig  => self.tab = Tab::About,
+			};
+ 		// Change Submenu LEFT
+        } else if key.is_c() && !wants_input {
+			match self.tab {
+				Tab::Status => {
+					match self.state.status.submenu {
+						Submenu::Processes => self.state.status.submenu = Submenu::Monero,
+						Submenu::P2pool    => self.state.status.submenu = Submenu::Processes,
+						Submenu::Monero    => self.state.status.submenu = Submenu::P2pool,
+					}
+				},
+				Tab::Gupax  => self.state.gupax.simple  = !self.state.gupax.simple,
+				Tab::P2pool => self.state.p2pool.simple = !self.state.p2pool.simple,
+				Tab::Xmrig  => self.state.xmrig.simple  = !self.state.xmrig.simple,
+				_ => (),
+			};
+		// Change Submenu RIGHT
+        } else if key.is_v() && !wants_input {
+			match self.tab {
+				Tab::Status => {
+					match self.state.status.submenu {
+						Submenu::Processes => self.state.status.submenu = Submenu::P2pool,
+						Submenu::P2pool    => self.state.status.submenu = Submenu::Monero,
+						Submenu::Monero    => self.state.status.submenu = Submenu::Processes,
+					}
+				},
+				Tab::Gupax  => self.state.gupax.simple  = !self.state.gupax.simple,
+				Tab::P2pool => self.state.p2pool.simple = !self.state.p2pool.simple,
+				Tab::Xmrig  => self.state.xmrig.simple  = !self.state.xmrig.simple,
+				_ => (),
 			};
         }
 
@@ -1398,10 +1440,7 @@ impl eframe::App for App {
 
 				// [Save/Reset]
 				ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
-				let width = match self.tab {
-					Tab::Gupax => (ui.available_width()/2.0)-(SPACE*3.0),
-					_ => (ui.available_width()/3.0)-(SPACE*3.0),
-				};
+				let width = (ui.available_width()/3.0)-(SPACE*3.0);
 				ui.group(|ui| {
 					ui.set_enabled(self.diff);
 					let width = width / 2.0;
@@ -1440,9 +1479,25 @@ impl eframe::App for App {
 
 				// [Simple/Advanced] + [Start/Stop/Restart]
 				match self.tab {
+					Tab::Status => {
+						ui.group(|ui| {
+							let width = (ui.available_width() / 3.0)-14.25;
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::Monero, "Monero")).on_hover_text(STATUS_SUBMENU_MONERO).clicked() {
+								self.state.status.submenu = Submenu::Monero;
+							}
+							ui.separator();
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::P2pool, "P2Pool")).on_hover_text(STATUS_SUBMENU_P2POOL).clicked() {
+								self.state.status.submenu = Submenu::P2pool;
+							}
+							ui.separator();
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::Processes, "Processes")).on_hover_text(STATUS_SUBMENU_PROCESSES).clicked() {
+								self.state.status.submenu = Submenu::Processes;
+							}
+						});
+					},
 					Tab::Gupax => {
 						ui.group(|ui| {
-							let width = width / 2.0;
+							let width = (ui.available_width() / 2.0)-10.5;
 							if ui.add_sized([width, height], SelectableLabel::new(!self.state.gupax.simple, "Advanced")).on_hover_text(GUPAX_ADVANCED).clicked() {
 								self.state.gupax.simple = false;
 							}
@@ -1698,7 +1753,7 @@ XMRig console byte length: {}\n
 				}
 				Tab::Status => {
 					debug!("App | Entering [Status] Tab");
-					crate::disk::Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, self.width, self.height, ctx, ui);
+					crate::disk::Status::show(&mut self.state.status, &self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
 					debug!("App | Entering [Gupax] Tab");

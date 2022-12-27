@@ -63,8 +63,10 @@ r#"*---------------------------------------*
 |          Escape | Quit screen         |
 |              Up | Start/Restart       |
 |            Down | Stop                |
-|               Z | Switch to Left Tab  |
-|               X | Switch to Right Tab |
+|               Z | Left Tab            |
+|               X | Right Tab           |
+|               C | Left Submenu        |
+|               V | Right Submenu       |
 |               S | Save                |
 |               R | Reset               |
 *---------------------------------------*"#;
@@ -173,6 +175,10 @@ pub const STATUS_XMRIG_DIFFICULTY: &str = "The current difficulty of the job XMR
 pub const STATUS_XMRIG_SHARES: &str = "The amount of accepted and rejected shares";
 pub const STATUS_XMRIG_POOL: &str = "The pool XMRig is currently mining to";
 pub const STATUS_XMRIG_THREADS: &str = "The amount of threads XMRig is currently using";
+// Status Submenus
+pub const STATUS_SUBMENU_PROCESSES: &str = "View the status of process related data for [Gupax|P2Pool|XMRig]";
+pub const STATUS_SUBMENU_P2POOL: &str = "View P2Pool specific data";
+pub const STATUS_SUBMENU_MONERO: &str = "View general Monero blockchain data";
 
 // Gupax
 pub const GUPAX_UPDATE: &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";

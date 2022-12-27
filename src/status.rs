@@ -22,6 +22,8 @@ use crate::{
 	ImgXmrig,
 	constants::*,
 	Sys,
+	Hash,
+	Submenu,
 };
 use std::sync::{Arc,Mutex};
 use log::*;
@@ -32,7 +34,9 @@ use egui::{
 };
 
 impl crate::disk::Status {
-pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, max_threads: usize, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, max_threads: usize, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+	//---------------------------------------------------------------------------------------------------- [Processes]
+	if self.submenu == Submenu::Processes {
 	let width = (width/3.0)-(SPACE*1.666);
 	let min_height = height/1.1;
 	let height = height/25.0;
@@ -118,5 +122,8 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		drop(api);
 	})});
 	});
+	} else if self.submenu == Submenu::P2pool {
+	} else if self.submenu == Submenu::Monero {
+	}
 }
 }
