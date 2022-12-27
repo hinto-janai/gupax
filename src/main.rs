@@ -63,7 +63,7 @@ mod xmrig;
 mod update;
 mod helper;
 mod human;
-use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*,helper::*};
+use {ferris::*,constants::*,node::*,disk::*,update::*,gupax::*,helper::*};
 
 // Sudo (dummy values for Windows)
 mod sudo;
@@ -1314,7 +1314,8 @@ impl eframe::App for App {
 		// They don't need to be compared anyway.
 		debug!("App | Checking diff between [og] & [state]");
 		let og = self.og.lock().unwrap();
-		if og.gupax != self.state.gupax       ||
+		if og.status != self.state.status     ||
+			og.gupax != self.state.gupax      ||
 			og.p2pool != self.state.p2pool    ||
 			og.xmrig != self.state.xmrig      ||
 			self.og_node_vec != self.node_vec ||
@@ -1406,6 +1407,7 @@ impl eframe::App for App {
 					let width = width / 2.0;
 					if key.is_r() && !wants_input && self.diff || ui.add_sized([width, height], Button::new("Reset")).on_hover_text("Reset changes").clicked() {
 						let og = self.og.lock().unwrap().clone();
+						self.state.status = og.status;
 						self.state.gupax = og.gupax;
 						self.state.p2pool = og.p2pool;
 						self.state.xmrig = og.xmrig;
@@ -1416,6 +1418,7 @@ impl eframe::App for App {
 						match State::save(&mut self.state, &self.state_path) {
 							Ok(_) => {
 								let mut og = self.og.lock().unwrap();
+								og.status = self.state.status.clone();
 								og.gupax = self.state.gupax.clone();
 								og.p2pool = self.state.p2pool.clone();
 								og.xmrig = self.state.xmrig.clone();
@@ -1695,19 +1698,19 @@ XMRig console byte length: {}\n
 				}
 				Tab::Status => {
 					debug!("App | Entering [Status] Tab");
-					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, self.width, self.height, ctx, ui);
+					crate::disk::Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
 					debug!("App | Entering [Gupax] Tab");
-					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
+					crate::disk::Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
 				}
 				Tab::P2pool => {
 					debug!("App | Entering [P2Pool] Tab");
-					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_stdin, self.width, self.height, ctx, ui);
+					crate::disk::P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_stdin, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
 					debug!("App | Entering [XMRig] Tab");
-					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_stdin, self.width, self.height, ctx, ui);
+					crate::disk::Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_stdin, self.width, self.height, ctx, ui);
 				}
 			}
 		});

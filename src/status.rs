@@ -31,11 +31,7 @@ use egui::{
 	TextStyle::Name,
 };
 
-// Main data structure for the Status tab
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Status {}
-
-impl Status {
+impl crate::disk::Status {
 pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, max_threads: usize, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	let width = (width/3.0)-(SPACE*1.666);
 	let min_height = height/1.1;

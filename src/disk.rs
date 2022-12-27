@@ -212,6 +212,7 @@ impl State {
 		let max_threads = num_cpus::get();
 		let current_threads = if max_threads == 1 { 1 } else { max_threads / 2 };
 		Self {
+			status: Status::default(),
 			gupax: Gupax::default(),
 			p2pool: P2pool::default(),
 			xmrig: Xmrig::with_threads(max_threads, current_threads),
@@ -747,6 +748,92 @@ pub enum File {
 	IntBlock,  // total_block  | Single [u128] representing total blocks found
 }
 
+//---------------------------------------------------------------------------------------------------- [Submenu] enum for [Status] tab
+#[derive(Clone,Copy,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub enum Submenu {
+	Processes,
+	P2pool,
+	Monero,
+}
+
+impl Default for Submenu {
+	fn default() -> Self {
+		Self::Processes
+	}
+}
+
+impl Display for Submenu {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		use Submenu::*;
+		match self {
+			P2pool => write!(f, "P2Pool"),
+			_ => write!(f, "{}", self),
+		}
+	}
+}
+
+#[derive(Clone,Copy,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub enum Hash {
+	Hash,
+	Kilo,
+	Mega,
+	Giga,
+}
+
+impl Default for Hash {
+	fn default() -> Self {
+		Self::Hash
+	}
+}
+
+impl Hash {
+	pub fn convert(f: f64, og: Self, new: Self) -> f64 {
+		match og {
+			Self::Hash => {
+				match new {
+					Self::Hash => f,
+					Self::Kilo => f / 1_000.0,
+					Self::Mega => f / 1_000_000.0,
+					Self::Giga => f / 1_000_000_000.0,
+				}
+			},
+			Self::Kilo => {
+				match new {
+					Self::Hash => f * 1_000.0,
+					Self::Kilo => f,
+					Self::Mega => f / 1_000.0,
+					Self::Giga => f / 1_000_000.0,
+				}
+			},
+			Self::Mega => {
+				match new {
+					Self::Hash => f * 1_000_000.0,
+					Self::Kilo => f * 1_000.0,
+					Self::Mega => f,
+					Self::Giga => f / 1_000.0,
+				}
+			},
+			Self::Giga => {
+				match new {
+					Self::Hash => f * 1_000_000_000.0,
+					Self::Kilo => f * 1_000_000.0,
+					Self::Mega => f * 1_000.0,
+					Self::Giga => f,
+				}
+			},
+		}
+	}
+}
+
+impl Display for Hash {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		match self {
+			Hash::Hash => write!(f, "{}", self),
+			_ => write!(f, "{}hash", self),
+		}
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- [Node] Struct
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub struct Node {
@@ -766,10 +853,20 @@ pub struct Pool {
 //---------------------------------------------------------------------------------------------------- [State] Struct
 #[derive(Clone,Debug,Deserialize,Serialize)]
 pub struct State {
+	pub status: Status,
 	pub gupax: Gupax,
 	pub p2pool: P2pool,
 	pub xmrig: Xmrig,
 	pub version: Arc<Mutex<Version>>,
+}
+
+#[derive(Clone,PartialEq,Debug,Deserialize,Serialize)]
+pub struct Status {
+	pub submenu: Submenu,
+	pub monero_enabled: bool,
+	pub manual_hash: bool,
+	pub hashrate: f64,
+	pub hash_metric: Hash,
 }
 
 #[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
@@ -778,6 +875,7 @@ pub struct Gupax {
 	pub auto_update: bool,
 	pub auto_p2pool: bool,
 	pub auto_xmrig: bool,
+//	pub auto_monero: bool,
 	pub ask_before_quit: bool,
 	pub save_before_quit: bool,
 	pub update_via_tor: bool,
@@ -846,6 +944,18 @@ pub struct Version {
 }
 
 //---------------------------------------------------------------------------------------------------- [State] Defaults
+impl Default for Status {
+	fn default() -> Self {
+		Self {
+			submenu: Submenu::default(),
+			monero_enabled: false,
+			manual_hash: false,
+			hashrate: 0.0,
+			hash_metric: Hash::default(),
+		}
+	}
+}
+
 impl Default for Gupax {
 	fn default() -> Self {
 		Self {
@@ -982,6 +1092,13 @@ mod test {
 			selected_height = 960
 			tab = "About"
 			ratio = "Width"
+
+			[status]
+			submenu = "P2pool"
+			monero_enabled = true
+			manual_hash = false
+			hashrate = 1241.23
+			hash_metric = "Hash"
 
 			[p2pool]
 			simple = true
@@ -1200,5 +1317,30 @@ mod test {
 		assert_eq!(api.int_block,  3);
 		assert_eq!(api.log_payout, "P2Pool You received a payout of 0.000000000001 XMR in block 2642816");
 		assert_eq!(api.log_block,  "client 127.0.0.1:51111 user asdf found a mainchain block at height 2642816, submitting it");
+	}
+
+	#[test]
+	fn convert_hash() {
+		use crate::disk::Hash;
+		let hash = 1.0;
+		assert_eq!(Hash::convert(hash, Hash::Hash, Hash::Hash), 1.0);
+		assert_eq!(Hash::convert(hash, Hash::Hash, Hash::Kilo), 0.001);
+		assert_eq!(Hash::convert(hash, Hash::Hash, Hash::Mega), 0.000_001);
+		assert_eq!(Hash::convert(hash, Hash::Hash, Hash::Giga), 0.000_000_001);
+		let hash = 1.0;
+		assert_eq!(Hash::convert(hash, Hash::Kilo, Hash::Hash), 1_000.0);
+		assert_eq!(Hash::convert(hash, Hash::Kilo, Hash::Kilo), 1.0);
+		assert_eq!(Hash::convert(hash, Hash::Kilo, Hash::Mega), 0.001);
+		assert_eq!(Hash::convert(hash, Hash::Kilo, Hash::Giga), 0.000_001);
+		let hash = 1.0;
+		assert_eq!(Hash::convert(hash, Hash::Mega, Hash::Hash), 1_000_000.0);
+		assert_eq!(Hash::convert(hash, Hash::Mega, Hash::Kilo), 1_000.0);
+		assert_eq!(Hash::convert(hash, Hash::Mega, Hash::Mega), 1.0);
+		assert_eq!(Hash::convert(hash, Hash::Mega, Hash::Giga), 0.001);
+		let hash = 1.0;
+		assert_eq!(Hash::convert(hash, Hash::Giga, Hash::Hash), 1_000_000_000.0);
+		assert_eq!(Hash::convert(hash, Hash::Giga, Hash::Kilo), 1_000_000.0);
+		assert_eq!(Hash::convert(hash, Hash::Giga, Hash::Mega), 1_000.0);
+		assert_eq!(Hash::convert(hash, Hash::Giga, Hash::Giga), 1.0);
 	}
 }
