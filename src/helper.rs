@@ -46,6 +46,9 @@ use crate::{
 	constants::*,
 	SudoState,
 	human::*,
+	GupaxP2poolApi,
+	P2poolRegex,
+	xmr::*,
 };
 use sysinfo::SystemExt;
 use serde::{Serialize,Deserialize};
@@ -77,6 +80,7 @@ pub struct Helper {
 	pub img_xmrig: Arc<Mutex<ImgXmrig>>,          // A static "image" of the data XMRig started with
 	pub_api_p2pool: Arc<Mutex<PubP2poolApi>>,     // P2Pool API state (for Helper/P2Pool thread)
 	pub_api_xmrig: Arc<Mutex<PubXmrigApi>>,       // XMRig API state (for Helper/XMRig thread)
+	pub gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>,           //
 	priv_api_p2pool_local: Arc<Mutex<PrivP2poolLocalApi>>,      // Serde struct(s) for P2Pool's API files
 	priv_api_p2pool_network: Arc<Mutex<PrivP2poolNetworkApi>>,
 	priv_api_p2pool_pool: Arc<Mutex<PrivP2poolPoolApi>>,
@@ -223,7 +227,7 @@ impl std::fmt::Display for ProcessName   {
 //---------------------------------------------------------------------------------------------------- [Helper]
 impl Helper {
 	//---------------------------------------------------------------------------------------------------- General Functions
-	pub fn new(instant: std::time::Instant, pub_sys: Arc<Mutex<Sys>>, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, gui_api_xmrig: Arc<Mutex<PubXmrigApi>>, img_p2pool: Arc<Mutex<ImgP2pool>>, img_xmrig: Arc<Mutex<ImgXmrig>>) -> Self {
+	pub fn new(instant: std::time::Instant, pub_sys: Arc<Mutex<Sys>>, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, gui_api_xmrig: Arc<Mutex<PubXmrigApi>>, img_p2pool: Arc<Mutex<ImgP2pool>>, img_xmrig: Arc<Mutex<ImgXmrig>>, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) -> Self {
 		Self {
 			instant,
 			pub_sys,
@@ -241,26 +245,33 @@ impl Helper {
 			gui_api_xmrig,
 			img_p2pool,
 			img_xmrig,
+			gupax_p2pool_api,
 		}
 	}
 
-	// Reads a PTY which combines STDOUT/STDERR for me, yay
-	fn read_pty(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>, name: ProcessName) {
+	fn read_pty_xmrig(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
 		// We don't need to write twice for XMRig, since we dont parse it... yet.
-		if name == ProcessName::Xmrig {
-			while let Some(Ok(line)) = stdout.next() {
-//				println!("{}", line); // For debugging.
-//				if let Err(e) = writeln!(output_parse.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
-				if let Err(e) = writeln!(output_pub.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
+		while let Some(Ok(line)) = stdout.next() {
+//			println!("{}", line); // For debugging.
+			if let Err(e) = writeln!(output_pub.lock().unwrap(), "{}", line) { error!("XMRig PTY | Output error: {}", e); }
+		}
+	}
+
+	fn read_pty_p2pool(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>, regex: P2poolRegex, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
+		use std::io::BufRead;
+		let mut stdout = std::io::BufReader::new(reader).lines();
+		while let Some(Ok(line)) = stdout.next() {
+//			println!("{}", line); // For debugging.
+			if regex.payout.is_match(&line) {
+				debug!("P2Pool PTY | Found payout, attempting write: {}", line);
+				let (date, atomic_unit, block) = PayoutOrd::parse_line(&line, &regex);
+				GupaxP2poolApi::add_payout(&mut gupax_p2pool_api.lock().unwrap(), atomic_unit.to_u128(), &line);
+				if let Err(e) = GupaxP2poolApi::write_to_all_files(&gupax_p2pool_api.lock().unwrap()) { error!("P2Pool PTY GupaxP2poolApi | Write error: {}", e); }
 			}
-		} else {
-			while let Some(Ok(line)) = stdout.next() {
-//				println!("{}", line); // For debugging.
-				if let Err(e) = writeln!(output_parse.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
-				if let Err(e) = writeln!(output_pub.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
-			}
+			if let Err(e) = writeln!(output_parse.lock().unwrap(), "{}", line) { error!("P2Pool PTY Parse | Output error: {}", e); }
+			if let Err(e) = writeln!(output_pub.lock().unwrap(), "{}", line) { error!("P2Pool PTY Pub | Output error: {}", e); }
 		}
 	}
 
@@ -337,9 +348,10 @@ impl Helper {
 		let process = Arc::clone(&helper.lock().unwrap().p2pool);
 		let gui_api = Arc::clone(&helper.lock().unwrap().gui_api_p2pool);
 		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
+		let gupax_p2pool_api = Arc::clone(&helper.lock().unwrap().gupax_p2pool_api);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, args, path, api_path_local, api_path_network, api_path_pool);
+			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, args, path, api_path_local, api_path_network, api_path_pool, gupax_p2pool_api);
 		});
 	}
 
@@ -347,7 +359,7 @@ impl Helper {
 	// 6 characters separated with dots like so: [4abcde...abcdef]
 	fn head_tail_of_monero_address(address: &str) -> String {
 		if address.len() < 95 { return "???".to_string() }
-		let head = &address[0..5];
+		let head = &address[0..6];
 		let tail = &address[89..95];
 		head.to_owned() + "..." + tail
 	}
@@ -443,7 +455,7 @@ impl Helper {
 	}
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path_local: std::path::PathBuf, api_path_network: std::path::PathBuf, api_path_pool: std::path::PathBuf) {
+	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path_local: std::path::PathBuf, api_path_network: std::path::PathBuf, api_path_pool: std::path::PathBuf, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
 		// 1a. Create PTY
 		debug!("P2Pool | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -473,12 +485,16 @@ impl Helper {
 		lock.stdin = Some(pair.master);
 		drop(lock);
 
+		let regex = P2poolRegex::new();
+
 		// 3. Spawn PTY read thread
 		debug!("P2Pool | Spawning PTY read thread...");
 		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
 		let output_pub = Arc::clone(&process.lock().unwrap().output_pub);
+		let gupax_p2pool_api = Arc::clone(&gupax_p2pool_api);
+		let regex_clone = regex.clone();
 		thread::spawn(move || {
-			Self::read_pty(output_parse, output_pub, reader, ProcessName::P2pool);
+			Self::read_pty_p2pool(output_parse, output_pub, reader, regex_clone, gupax_p2pool_api);
 		});
 		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
 		let output_pub = Arc::clone(&process.lock().unwrap().output_pub);
@@ -498,7 +514,6 @@ impl Helper {
 				Err(e) => warn!("P2Pool | Creating default empty API file ... FAIL ... {}", e),
 			}
 		}
-		let regex = P2poolRegex::new();
 		let start = process.lock().unwrap().start;
 
 		// Reset stats before loop
@@ -875,7 +890,7 @@ impl Helper {
 		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
 		let output_pub = Arc::clone(&process.lock().unwrap().output_pub);
 		thread::spawn(move || {
-			Self::read_pty(output_parse, output_pub, reader, ProcessName::Xmrig);
+			Self::read_pty_xmrig(output_parse, output_pub, reader);
 		});
 		// We don't parse anything in XMRigs output... yet.
 //		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
@@ -1158,189 +1173,6 @@ impl Helper {
 		// 5. End loop
 		}
 		});
-	}
-}
-
-//---------------------------------------------------------------------------------------------------- Regexes
-// Not to be confused with the [Regexes] struct in [main.rs], this one is meant
-// for parsing the output of P2Pool and finding payouts and total XMR found.
-// Why Regex instead of the standard library?
-//    1. I'm already using Regex
-//    2. It's insanely faster
-//
-// The following STDLIB implementation takes [0.003~] seconds to find all matches given a [String] with 30k lines:
-//     let mut n = 0;
-//     for line in P2POOL_OUTPUT.lines() {
-//         if line.contains("payout of [0-9].[0-9]+ XMR") { n += 1; }
-//     }
-//
-// This regex function takes [0.0003~] seconds (10x faster):
-//     let regex = Regex::new("payout of [0-9].[0-9]+ XMR").unwrap();
-//     let n = regex.find_iter(P2POOL_OUTPUT).count();
-//
-// Both are nominally fast enough where it doesn't matter too much but meh, why not use regex.
-struct P2poolRegex {
-	payout: regex::Regex,
-	float: regex::Regex,
-	date: regex::Regex,
-	block: regex::Regex,
-	int: regex::Regex,
-}
-
-impl P2poolRegex {
-	fn new() -> Self {
-		Self {
-			payout: regex::Regex::new("payout of [0-9].[0-9]+ XMR").unwrap(),
-			float: regex::Regex::new("[0-9].[0-9]+").unwrap(),
-			date: regex::Regex::new("[0-9]+-[0-9]+-[0-9]+ [0-9]+:[0-9]+:[0-9]+.[0-9]+").unwrap(),
-			block: regex::Regex::new("block [0-9]+").unwrap(),
-			int: regex::Regex::new("[0-9]+").unwrap(),
-		}
-	}
-}
-
-//---------------------------------------------------------------------------------------------------- XMR AtomicUnit
-#[derive(Debug, Clone)]
-struct AtomicUnit(u128);
-
-impl AtomicUnit {
-	fn new() -> Self {
-		Self(0)
-	}
-
-	fn sum_vec(vec: &Vec<Self>) -> Self {
-		let mut sum = 0;
-		for int in vec {
-			sum += int.0;
-		}
-		Self(sum)
-	}
-
-	fn from_f64(f: f64) -> Self {
-		Self((f * 1_000_000_000_000.0) as u128)
-	}
-
-	fn to_f64(&self) -> f64 {
-		self.0 as f64 / 1_000_000_000_000.0
-	}
-
-	fn to_human_number_12_point(&self) -> HumanNumber {
-		let f = self.0 as f64 / 1_000_000_000_000.0;
-		HumanNumber::from_f64_12_point(f)
-	}
-
-	fn to_human_number_no_fmt(&self) -> HumanNumber {
-		let f = self.0 as f64 / 1_000_000_000_000.0;
-		HumanNumber::from_f64_no_fmt(f)
-	}
-}
-
-// Displays AtomicUnit as a real XMR floating point.
-impl std::fmt::Display for AtomicUnit {
-	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		write!(f, "{}", Self::to_human_number_12_point(self))
-	}
-}
-
-//---------------------------------------------------------------------------------------------------- [PayoutOrd]
-// This is the struct for ordering P2Pool payout lines into a structured and ordered vector of elements.
-// The structure goes as follows:
-//
-// Vec<(String, AtomicUnit, u64)>
-// "2022-08-17 12:16:11.8662" | 0.002382256231 XMR | Block 2573821
-// [0] = DATE
-// [1] = XMR IN ATOMIC-UNITS
-// [2] = MONERO BLOCK
-#[derive(Debug, Clone)]
-pub struct PayoutOrd(Vec<(String, AtomicUnit, HumanNumber)>);
-
-impl PayoutOrd {
-	fn new() -> Self {
-		Self(vec![(String::from("????-??-?? ??:??:??.????"), AtomicUnit::new(), HumanNumber::unknown())])
-	}
-
-	// Takes in input of ONLY P2Pool payout logs and
-	// converts it into a usable [PayoutOrd]
-	// It expects log lines like this:
-	// "NOTICE  2022-04-11 00:20:17.2571 P2Pool You received a payout of 0.001371623621 XMR in block 2562511"
-	// For efficiency reasons, I'd like to know the byte size
-	// we should allocate for the vector so we aren't adding every loop.
-	// Given a log [str], the equation for how many bytes the final vec will be is:
-	// (BYTES_OF_DATE + BYTES OF XMR + BYTES OF BLOCK) * amount_of_lines
-	// The first three are more or less constants (monero block 10m is in 10,379 years...): [23, 14, 7] (sum: 44)
-	// Add 16 more bytes for wrapper type overhead and it's an even [60] bytes per line.
-	fn update_from_payout_log(&mut self, log: &str, regex: &P2poolRegex) {
-		let amount_of_lines = log.lines().count();
-		let mut vec: Vec<(String, AtomicUnit, HumanNumber)> = Vec::with_capacity(60 * amount_of_lines);
-		for line in log.lines() {
-			// Date
-			let date = match regex.date.find(line) {
-				Some(date) => date.as_str().to_string(),
-				None => { error!("P2Pool | Date parse error: [{}]", line); "????-??-?? ??:??:??.????".to_string() },
-			};
-			// AtomicUnit
-			let atomic_unit = if let Some(word) = regex.payout.find(line) {
-				if let Some(word) = regex.float.find(word.as_str()) {
-					match word.as_str().parse::<f64>() {
-						Ok(au) => AtomicUnit::from_f64(au),
-						Err(e) => { error!("P2Pool | AtomicUnit parse error: [{}] on [{}]", e, line); AtomicUnit::new() },
-					}
-				} else {
-					AtomicUnit::new()
-				}
-			} else {
-				AtomicUnit::new()
-			};
-			// Block
-			let block = if let Some(word) = regex.block.find(line) {
-				if let Some(word) = regex.int.find(word.as_str()) {
-					match word.as_str().parse::<u64>() {
-						Ok(b) => HumanNumber::from_u64(b),
-						Err(e) => { error!("P2Pool | Block parse error: [{}] on [{}]", e, line); HumanNumber::unknown() },
-					}
-				} else {
-					HumanNumber::unknown()
-				}
-			} else {
-				HumanNumber::unknown()
-			};
-			vec.push((date, atomic_unit, block));
-		}
-		*self = Self(vec);
-	}
-
-	// Takes the raw components (no wrapper types), convert them and pushes to existing [Self]
-	fn push(&mut self, date: String, atomic_unit: u128, block: u64) {
-		let atomic_unit = AtomicUnit(atomic_unit);
-		let block = HumanNumber::from_u64(block);
-		self.0.push((date, atomic_unit, block));
-	}
-
-	// Sort [Self] from highest payout to lowest
-	fn sort_payout_high_to_low(&mut self) {
-		// This is a little confusing because wrapper types are basically 1 element tuples so:
-		// self.0 = The [Vec] within [PayoutOrd]
-		// b.1.0  = [b] is [(String, AtomicUnit, HumanNumber)], [.1] is the [AtomicUnit] inside it, [.0] is the [u128] inside that
-		// a.1.0  = Same deal, but we compare it with the previous value (b)
-		self.0.sort_by(|a, b| b.1.0.cmp(&a.1.0));
-	}
-
-	fn sort_payout_low_to_high(&mut self) {
-		self.0.sort_by(|a, b| a.1.0.cmp(&b.1.0));
-	}
-
-	// Recent <-> Oldest relies on the line order.
-	// The raw log lines will be shown instead of this struct.
-}
-
-impl Default for PayoutOrd { fn default() -> Self { Self::new() } }
-
-impl std::fmt::Display for PayoutOrd {
-	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		for i in &self.0 {
-			writeln!(f, "{} | {} XMR | Block {}", i.0, i.1, i.2)?;
-		}
-		Ok(())
 	}
 }
 
@@ -1946,64 +1778,6 @@ struct Result {
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]
 mod test {
-	#[test]
-	fn update_p2pool_payout_log() {
-		use crate::helper::PayoutOrd;
-		use crate::helper::P2poolRegex;
-		let log =
-r#"NOTICE  2021-12-21 01:01:01.1111 P2Pool You received a payout of 0.001000000000 XMR in block 1
-NOTICE  2021-12-21 02:01:01.1111 P2Pool You received a payout of 0.002000000000 XMR in block 2
-NOTICE  2021-12-21 03:01:01.1111 P2Pool You received a payout of 0.003000000000 XMR in block 3
-"#;
-		let mut payout_ord = PayoutOrd::new();
-		println!("BEFORE: {}", payout_ord);
-		PayoutOrd::update_from_payout_log(&mut payout_ord, log, &P2poolRegex::new());
-		println!("AFTER: {}", payout_ord);
-		let should_be =
-r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1
-2021-12-21 02:01:01.1111 | 0.002000000000 XMR | Block 2
-2021-12-21 03:01:01.1111 | 0.003000000000 XMR | Block 3
-"#;
-		assert_eq!(payout_ord.to_string(), should_be)
-	}
-
-	#[test]
-	fn sort_p2pool_payout_ord() {
-		use crate::helper::PayoutOrd;
-		use crate::helper::AtomicUnit;
-		use crate::helper::HumanNumber;
-		let mut payout_ord = PayoutOrd(vec![
-			("2022-09-08 18:42:55.4636".to_string(), AtomicUnit(1000000000), HumanNumber::from_u64(2654321)),
-			("2022-09-09 16:18:26.7582".to_string(), AtomicUnit(2000000000), HumanNumber::from_u64(2654322)),
-			("2022-09-10 11:15:21.1272".to_string(), AtomicUnit(3000000000), HumanNumber::from_u64(2654323)),
-		]);
-		println!("OG: {:#?}", payout_ord);
-
-		// High to Low
-		PayoutOrd::sort_payout_high_to_low(&mut payout_ord);
-		println!("AFTER PAYOUT HIGH TO LOW: {:#?}", payout_ord);
-		let should_be =
-r#"2022-09-10 11:15:21.1272 | 0.003000000000 XMR | Block 2,654,323
-2022-09-09 16:18:26.7582 | 0.002000000000 XMR | Block 2,654,322
-2022-09-08 18:42:55.4636 | 0.001000000000 XMR | Block 2,654,321
-"#;
-		println!("SHOULD_BE:\n{}", should_be);
-		println!("IS:\n{}", payout_ord);
-		assert_eq!(payout_ord.to_string(), should_be);
-
-		// Low to High
-		PayoutOrd::sort_payout_low_to_high(&mut payout_ord);
-		println!("AFTER PAYOUT LOW TO HIGH: {:#?}", payout_ord);
-		let should_be =
-r#"2022-09-08 18:42:55.4636 | 0.001000000000 XMR | Block 2,654,321
-2022-09-09 16:18:26.7582 | 0.002000000000 XMR | Block 2,654,322
-2022-09-10 11:15:21.1272 | 0.003000000000 XMR | Block 2,654,323
-"#;
-		println!("SHOULD_BE:\n{}", should_be);
-		println!("IS:\n{}", payout_ord);
-		assert_eq!(payout_ord.to_string(), should_be);
-	}
-
 	#[test]
 	fn reset_gui_output() {
 		let max = crate::helper::GUI_OUTPUT_LEEWAY;

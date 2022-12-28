@@ -18,7 +18,7 @@
 ## Structure
 | File/Folder  | Purpose |
 |--------------|---------|
-| constants.rs | General constants needed in Gupax
+| constants.rs | General constants used in Gupax
 | disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State] struct
 | ferris.rs    | Cute crab bytes
 | gupax.rs     | `Gupax` tab
@@ -26,9 +26,11 @@
 | main.rs      | The main `App` struct that holds all data + misc data/functions
 | node.rs      | Community node ping code for the `P2Pool` simple tab
 | p2pool.rs    | `P2Pool` tab
+| regex.rs     | General regexes used in Gupax
 | status.rs    | `Status` tab
 | sudo.rs      | Code for handling `sudo` escalation for XMRig on Unix
 | update.rs    | Update code for the `Gupax` tab
+| xmr.rs       | Code for handling actual XMR, `AtomicUnit` & `PayoutOrd`
 | xmrig.rs     | `XMRig` tab
 
 ## Thread Model

@@ -37,7 +37,7 @@ use eframe::{egui,NativeOptions};
 use log::*;
 use env_logger::{Builder,WriteStyle};
 // Regex
-use regex::Regex;
+use ::regex::Regex;
 // Serde
 use serde::{Serialize,Deserialize};
 // std
@@ -63,7 +63,9 @@ mod xmrig;
 mod update;
 mod helper;
 mod human;
-use {ferris::*,constants::*,node::*,disk::*,update::*,gupax::*,helper::*};
+mod regex;
+mod xmr;
+use {crate::regex::*,ferris::*,constants::*,node::*,disk::*,update::*,gupax::*,helper::*};
 
 // Sudo (dummy values for Windows)
 mod sudo;
@@ -134,7 +136,7 @@ pub struct App {
 	// This is a file-based API that contains data for permanent stats.
 	// The below struct holds everything needed for it, the paths, the
 	// actual stats, and all the functions needed to mutate them.
-	gupax_p2pool_api: GupaxP2poolApi,
+	gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>,
 	// Static stuff
 	pid: sysinfo::Pid, // Gupax's PID
 	max_threads: usize, // Max amount of detected system threads
@@ -213,7 +215,7 @@ impl App {
 			restart: Arc::new(Mutex::new(Restart::No)),
 			diff: false,
 			error_state: ErrorState::new(),
-			helper: Arc::new(Mutex::new(Helper::new(now, pub_sys.clone(), p2pool.clone(), xmrig.clone(), p2pool_api.clone(), xmrig_api.clone(), p2pool_img.clone(), xmrig_img.clone()))),
+			helper: Arc::new(Mutex::new(Helper::new(now, pub_sys.clone(), p2pool.clone(), xmrig.clone(), p2pool_api.clone(), xmrig_api.clone(), p2pool_img.clone(), xmrig_img.clone(), Arc::new(Mutex::new(GupaxP2poolApi::new()))))),
 			p2pool,
 			xmrig,
 			p2pool_api,
@@ -226,7 +228,7 @@ impl App {
 			resizing: false,
 			alpha: 0,
 			no_startup: false,
-			gupax_p2pool_api: GupaxP2poolApi::new(),
+			gupax_p2pool_api: Arc::new(Mutex::new(GupaxP2poolApi::new())),
 			pub_sys,
 			pid,
 			max_threads: num_cpus::get(),
@@ -346,16 +348,30 @@ impl App {
 		//----------------------------------------------------------------------------------------------------
 		// Read [GupaxP2poolApi] disk files
 		app.gupax_p2pool_api_path = crate::disk::get_gupax_p2pool_path(&app.os_data_path);
-		app.gupax_p2pool_api.fill_paths(&app.gupax_p2pool_api_path);
-		GupaxP2poolApi::create_all_files(&app.gupax_p2pool_api_path);
+		let mut gupax_p2pool_api = app.gupax_p2pool_api.lock().unwrap();
+		gupax_p2pool_api.fill_paths(&app.gupax_p2pool_api_path);
+		match GupaxP2poolApi::create_all_files(&app.gupax_p2pool_api_path) {
+			Ok(_) => debug!("App Init | Creating Gupax-P2Pool API files ... OK"),
+			Err(err) => {
+				error!("GupaxP2poolApi ... {}", err);
+				match err {
+					Io(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+				};
+			},
+		}
 		debug!("App Init | Reading Gupax-P2Pool API files...");
-		match app.gupax_p2pool_api.read_all_files_and_update() {
+		match gupax_p2pool_api.read_all_files_and_update() {
 			Ok(_) => {
 				info!(
-					"GupaxP2poolApi ... Payouts: {} | XMR (atomic-units): {} | Blocks: {}",
-					app.gupax_p2pool_api.payout,
-					app.gupax_p2pool_api.xmr,
-					app.gupax_p2pool_api.block,
+					"GupaxP2poolApi ... Payouts: {} | XMR (atomic-units): {}",
+					gupax_p2pool_api.payout,
+					gupax_p2pool_api.xmr,
 				);
 			},
 			Err(err) => {
@@ -371,6 +387,8 @@ impl App {
 				};
 			},
 		};
+		drop(gupax_p2pool_api);
+		app.helper.lock().unwrap().gupax_p2pool_api = Arc::clone(&app.gupax_p2pool_api);
 
 		//----------------------------------------------------------------------------------------------------
 		let mut og = app.og.lock().unwrap(); // Lock [og]
@@ -603,33 +621,6 @@ impl Images {
 			panic: RetainedImage::from_image_bytes("panic.png", FERRIS_PANIC).unwrap(),
 			sudo: RetainedImage::from_image_bytes("panic.png", FERRIS_SUDO).unwrap(),
 		}
-	}
-}
-
-//---------------------------------------------------------------------------------------------------- [Regexes] struct
-#[derive(Clone, Debug)]
-pub struct Regexes {
-	pub name: Regex,
-	pub address: Regex,
-	pub ipv4: Regex,
-	pub domain: Regex,
-	pub port: Regex,
-}
-
-impl Regexes {
-	fn new() -> Self {
-		Regexes {
-			name: Regex::new("^[A-Za-z0-9-_.]+( [A-Za-z0-9-_.]+)*$").unwrap(),
-			address: Regex::new("^4[A-Za-z1-9]+$").unwrap(), // This still needs to check for (l, I, o, 0)
-			ipv4: Regex::new(r#"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$"#).unwrap(),
-			domain: Regex::new(r#"^(([a-zA-Z]{1})|([a-zA-Z]{1}[a-zA-Z]{1})|([a-zA-Z]{1}[0-9]{1})|([0-9]{1}[a-zA-Z]{1})|([a-zA-Z0-9][a-zA-Z0-9-_]{1,61}[a-zA-Z0-9]))\.([a-zA-Z]{2,6}|[a-zA-Z0-9-]{2,30}\.[a-zA-Z]{2,3})$"#).unwrap(),
-			port: Regex::new(r#"^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"#).unwrap(),
-		}
-	}
-
-	// Check if a Monero address is correct.
-	pub fn addr_ok(&self, address: &str) -> bool {
-		address.len() == 95 && Regex::is_match(&self.address, address) && !address.contains('0') && !address.contains('O') && !address.contains('l')
 	}
 }
 
@@ -1682,9 +1673,7 @@ XMRig console byte length: {}\n
 {:#?}\n
 ------------------------------------------ XMRIG IMAGE ------------------------------------------
 {:#?}\n
------------------------------------------- P2POOL GUI API ------------------------------------------
-{:#?}\n
------------------------------------------- XMRIG GUI API ------------------------------------------
+------------------------------------------ GUPAX-P2POOL API ------------------------------------------
 {:#?}\n
 ------------------------------------------ WORKING STATE ------------------------------------------
 {:#?}\n
@@ -1717,8 +1706,7 @@ XMRig console byte length: {}\n
 							xmrig_gui_len,
 							self.p2pool_img.lock().unwrap(),
 							self.xmrig_img.lock().unwrap(),
-							self.p2pool_api.lock().unwrap(),
-							self.xmrig_api.lock().unwrap(),
+							self.gupax_p2pool_api.lock().unwrap(),
 							self.state,
 							self.og.lock().unwrap(),
 						);
