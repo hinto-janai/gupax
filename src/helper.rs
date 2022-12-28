@@ -1182,6 +1182,9 @@ impl Helper {
 struct P2poolRegex {
 	payout: regex::Regex,
 	float: regex::Regex,
+	date: regex::Regex,
+	block: regex::Regex,
+	int: regex::Regex,
 }
 
 impl P2poolRegex {
@@ -1189,6 +1192,9 @@ impl P2poolRegex {
 		Self {
 			payout: regex::Regex::new("payout of [0-9].[0-9]+ XMR").unwrap(),
 			float: regex::Regex::new("[0-9].[0-9]+").unwrap(),
+			date: regex::Regex::new("[0-9]+-[0-9]+-[0-9]+ [0-9]+:[0-9]+:[0-9]+.[0-9]+").unwrap(),
+			block: regex::Regex::new("block [0-9]+").unwrap(),
+			int: regex::Regex::new("[0-9]+").unwrap(),
 		}
 	}
 }
@@ -1208,6 +1214,10 @@ impl AtomicUnit {
 			sum += int.0;
 		}
 		Self(sum)
+	}
+
+	fn from_f64(f: f64) -> Self {
+		Self((f * 1_000_000_000_000.0) as u128)
 	}
 
 	fn to_f64(&self) -> f64 {
@@ -1247,6 +1257,56 @@ pub struct PayoutOrd(Vec<(String, AtomicUnit, HumanNumber)>);
 impl PayoutOrd {
 	fn new() -> Self {
 		Self(vec![(String::from("????-??-?? ??:??:??.????"), AtomicUnit::new(), HumanNumber::unknown())])
+	}
+
+	// Takes in input of ONLY P2Pool payout logs and
+	// converts it into a usable [PayoutOrd]
+	// It expects log lines like this:
+	// "NOTICE  2022-04-11 00:20:17.2571 P2Pool You received a payout of 0.001371623621 XMR in block 2562511"
+	// For efficiency reasons, I'd like to know the byte size
+	// we should allocate for the vector so we aren't adding every loop.
+	// Given a log [str], the equation for how many bytes the final vec will be is:
+	// (BYTES_OF_DATE + BYTES OF XMR + BYTES OF BLOCK) * amount_of_lines
+	// The first three are more or less constants (monero block 10m is in 10,379 years...): [23, 14, 7] (sum: 44)
+	// Add 16 more bytes for wrapper type overhead and it's an even [60] bytes per line.
+	fn update_from_payout_log(&mut self, log: &str, regex: &P2poolRegex) {
+		let amount_of_lines = log.lines().count();
+		let mut vec: Vec<(String, AtomicUnit, HumanNumber)> = Vec::with_capacity(60 * amount_of_lines);
+		for line in log.lines() {
+			// Date
+			let date = match regex.date.find(line) {
+				Some(date) => date.as_str().to_string(),
+				None => { error!("P2Pool | Date parse error: [{}]", line); "????-??-?? ??:??:??.????".to_string() },
+			};
+			// AtomicUnit
+			let atomic_unit = if let Some(word) = regex.payout.find(line) {
+				if let Some(word) = regex.float.find(word.as_str()) {
+					match word.as_str().parse::<f64>() {
+						Ok(au) => AtomicUnit::from_f64(au),
+						Err(e) => { error!("P2Pool | AtomicUnit parse error: [{}] on [{}]", e, line); AtomicUnit::new() },
+					}
+				} else {
+					AtomicUnit::new()
+				}
+			} else {
+				AtomicUnit::new()
+			};
+			// Block
+			let block = if let Some(word) = regex.block.find(line) {
+				if let Some(word) = regex.int.find(word.as_str()) {
+					match word.as_str().parse::<u64>() {
+						Ok(b) => HumanNumber::from_u64(b),
+						Err(e) => { error!("P2Pool | Block parse error: [{}] on [{}]", e, line); HumanNumber::unknown() },
+					}
+				} else {
+					HumanNumber::unknown()
+				}
+			} else {
+				HumanNumber::unknown()
+			};
+			vec.push((date, atomic_unit, block));
+		}
+		*self = Self(vec);
 	}
 
 	// Takes the raw components (no wrapper types), convert them and pushes to existing [Self]
@@ -1436,9 +1496,11 @@ impl PubP2poolApi {
 		let mut sum: f64 = 0.0;
 		let mut count: u128 = 0;
 		for i in iter {
-			match regex.float.find(i.as_str()).unwrap().as_str().parse::<f64>() {
-				Ok(num) => { sum += num; count += 1; },
-				Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
+			if let Some(word) = regex.float.find(i.as_str()) {
+				match word.as_str().parse::<f64>() {
+					Ok(num) => { sum += num; count += 1; },
+					Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
+				}
 			}
 		}
 		(count, sum)
@@ -1885,7 +1947,28 @@ struct Result {
 #[cfg(test)]
 mod test {
 	#[test]
-	fn sort_payout_ord() {
+	fn update_p2pool_payout_log() {
+		use crate::helper::PayoutOrd;
+		use crate::helper::P2poolRegex;
+		let log =
+r#"NOTICE  2021-12-21 01:01:01.1111 P2Pool You received a payout of 0.001000000000 XMR in block 1
+NOTICE  2021-12-21 02:01:01.1111 P2Pool You received a payout of 0.002000000000 XMR in block 2
+NOTICE  2021-12-21 03:01:01.1111 P2Pool You received a payout of 0.003000000000 XMR in block 3
+"#;
+		let mut payout_ord = PayoutOrd::new();
+		println!("BEFORE: {}", payout_ord);
+		PayoutOrd::update_from_payout_log(&mut payout_ord, log, &P2poolRegex::new());
+		println!("AFTER: {}", payout_ord);
+		let should_be =
+r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1
+2021-12-21 02:01:01.1111 | 0.002000000000 XMR | Block 2
+2021-12-21 03:01:01.1111 | 0.003000000000 XMR | Block 3
+"#;
+		assert_eq!(payout_ord.to_string(), should_be)
+	}
+
+	#[test]
+	fn sort_p2pool_payout_ord() {
 		use crate::helper::PayoutOrd;
 		use crate::helper::AtomicUnit;
 		use crate::helper::HumanNumber;
