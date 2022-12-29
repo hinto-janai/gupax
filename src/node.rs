@@ -17,6 +17,7 @@
 
 use crate::{
 	constants::*,
+	macros::*,
 };
 use serde::{Serialize,Deserialize};
 use rand::{thread_rng, Rng};
@@ -310,19 +311,19 @@ impl Ping {
 			match Self::ping(&ping) {
 				Ok(msg) => {
 					info!("Ping ... OK");
-					ping.lock().unwrap().msg = msg;
-					ping.lock().unwrap().pinged = true;
-					ping.lock().unwrap().auto_selected = false;
-					ping.lock().unwrap().prog = 100.0;
+					lock!(ping).msg = msg;
+					lock!(ping).pinged = true;
+					lock!(ping).auto_selected = false;
+					lock!(ping).prog = 100.0;
 				},
 				Err(err) => {
 					error!("Ping ... FAIL ... {}", err);
-					ping.lock().unwrap().pinged = false;
-					ping.lock().unwrap().msg = err.to_string();
+					lock!(ping).pinged = false;
+					lock!(ping).msg = err.to_string();
 				},
 			}
 			info!("Ping ... Took [{}] seconds...", now.elapsed().as_secs_f32());
-			ping.lock().unwrap().pinging = false;
+			lock!(ping).pinging = false;
 		});
 	}
 
@@ -347,13 +348,13 @@ impl Ping {
 	pub async fn ping(ping: &Arc<Mutex<Self>>) -> Result<String, anyhow::Error> {
 		// Start ping
 		let ping = Arc::clone(ping);
-		ping.lock().unwrap().pinging = true;
-		ping.lock().unwrap().prog = 0.0;
+		lock!(ping).pinging = true;
+		lock!(ping).prog = 0.0;
 		let percent = (100.0 / (COMMUNITY_NODE_LENGTH as f32)).floor();
 
 		// Create HTTP client
 		let info = "Creating HTTP Client".to_string();
-		ping.lock().unwrap().msg = info;
+		lock!(ping).msg = info;
 		let client: Client<HttpConnector> = Client::builder()
 			.build(HttpConnector::new());
 
@@ -361,7 +362,7 @@ impl Ping {
 		let rand_user_agent = crate::Pkg::get_user_agent();
 		// Handle vector
 		let mut handles = Vec::with_capacity(COMMUNITY_NODE_LENGTH);
-		let node_vec = Arc::new(Mutex::new(Vec::with_capacity(COMMUNITY_NODE_LENGTH)));
+		let node_vec = arc_mut!(Vec::with_capacity(COMMUNITY_NODE_LENGTH));
 
 		for ip in NODE_IPS {
 			let client = client.clone();
@@ -381,12 +382,12 @@ impl Ping {
 			handle.await?;
 		}
 
-		let node_vec = std::mem::take(&mut *node_vec.lock().unwrap());
+		let node_vec = std::mem::take(&mut *lock!(node_vec));
 		let fastest_info = format!("Fastest node: {}ms ... {} @ {}", node_vec[0].ms, node_vec[0].id, node_vec[0].ip);
 
 		let info = "Cleaning up connections".to_string();
 		info!("Ping | {}...", info);
-		let mut ping = ping.lock().unwrap();
+		let mut ping = lock!(ping);
 			ping.fastest = node_vec[0].id;
 			ping.nodes = node_vec;
 			ping.msg = info;
@@ -421,11 +422,11 @@ impl Ping {
 		} else {
 			color = BLACK;
 		}
-		let mut ping = ping.lock().unwrap();
+		let mut ping = lock!(ping);
 		ping.msg = info;
 		ping.prog += percent;
 		drop(ping);
-		node_vec.lock().unwrap().push(NodeData { id: ip_to_enum(ip), ip, ms, color, });
+		lock!(node_vec).push(NodeData { id: ip_to_enum(ip), ip, ms, color, });
 	}
 }
 

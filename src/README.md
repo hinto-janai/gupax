@@ -23,6 +23,7 @@
 | ferris.rs    | Cute crab bytes
 | gupax.rs     | `Gupax` tab
 | helper.rs   | The "helper" thread that runs for the entire duration Gupax is alive. All the processing that needs to be done without blocking the main GUI thread runs here, including everything related to handling P2Pool/XMRig
+| macros.rs    | General `macros!()` used in Gupax
 | main.rs      | The main `App` struct that holds all data + misc data/functions
 | node.rs      | Community node ping code for the `P2Pool` simple tab
 | p2pool.rs    | `P2Pool` tab

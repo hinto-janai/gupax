@@ -47,6 +47,7 @@ use crate::{
 	gupax::Ratio,
 	Tab,
 	xmr::*,
+	macros::*,
 };
 use log::*;
 
@@ -213,7 +214,7 @@ impl State {
 			gupax: Gupax::default(),
 			p2pool: P2pool::default(),
 			xmrig: Xmrig::with_threads(max_threads, current_threads),
-			version: Arc::new(Mutex::new(Version::default())),
+			version: arc_mut!(Version::default()),
 		}
 	}
 

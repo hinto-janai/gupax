@@ -33,6 +33,7 @@ use crate::{
 	update::Name::*,
 	ErrorState,ErrorFerris,ErrorButtons,
 	Restart,
+	macros::*,
 };
 use hyper::{
 	Client,Body,Request,
@@ -265,9 +266,9 @@ impl Update {
 			path_p2pool: path_p2pool.display().to_string(),
 			path_xmrig: path_xmrig.display().to_string(),
 			tmp_dir: "".to_string(),
-			updating: Arc::new(Mutex::new(false)),
-			prog: Arc::new(Mutex::new(0.0)),
-			msg: Arc::new(Mutex::new(MSG_NONE.to_string())),
+			updating: arc_mut!(false),
+			prog: arc_mut!(0.0),
+			msg: arc_mut!(MSG_NONE.to_string()),
 			tor,
 		}
 	}
@@ -392,13 +393,13 @@ impl Update {
 			return;
 		}
 
-		update.lock().unwrap().path_p2pool = p2pool_path.display().to_string();
-		update.lock().unwrap().path_xmrig = xmrig_path.display().to_string();
-		update.lock().unwrap().tor = gupax.update_via_tor;
+		lock!(update).path_p2pool = p2pool_path.display().to_string();
+		lock!(update).path_xmrig = xmrig_path.display().to_string();
+		lock!(update).tor = gupax.update_via_tor;
 
 		// Clone before thread spawn
 		let og = Arc::clone(og);
-		let state_ver = Arc::clone(&og.lock().unwrap().version);
+		let state_ver = Arc::clone(&lock!(og).version);
 		let state_path = state_path.to_path_buf();
 		let update = Arc::clone(update);
 		let restart = Arc::clone(restart);
@@ -407,23 +408,23 @@ impl Update {
 			match Update::start(update.clone(), og.clone(), state_ver.clone(), restart) {
 				Ok(_) => {
 					info!("Update | Saving state...");
-					let original_version = og.lock().unwrap().version.clone();
-					og.lock().unwrap().version = state_ver;
-					match State::save(&mut og.lock().unwrap(), &state_path) {
+					let original_version = lock!(og).version.clone();
+					lock!(og).version = state_ver;
+					match State::save(&mut lock!(og), &state_path) {
 						Ok(_) => info!("Update ... OK"),
 						Err(e) => {
 							warn!("Update | Saving state ... FAIL: {}", e);
-							og.lock().unwrap().version = original_version;
-							*update.lock().unwrap().msg.lock().unwrap() = "Saving new versions into state failed".to_string();
+							lock!(og).version = original_version;
+							*lock2!(update,msg) = "Saving new versions into state failed".to_string();
 						},
 					};
 				}
 				Err(e) => {
 					info!("Update ... FAIL: {}", e);
-					*update.lock().unwrap().msg.lock().unwrap() = format!("{} | {}", MSG_FAILED, e);
+					*lock2!(update,msg) = format!("{} | {}", MSG_FAILED, e);
 				},
 			};
-			*update.lock().unwrap().updating.lock().unwrap() = false;
+			*lock2!(update,updating) = false;
 		});
 	}
 
@@ -442,19 +443,19 @@ impl Update {
 		return Err(anyhow!("This is the [Linux distro] version of Gupax, updates are disabled"));
 
 		//---------------------------------------------------------------------------------------------------- Init
-		*update.lock().unwrap().updating.lock().unwrap() = true;
+		*lock2!(update,updating) = true;
 		// Set timer
 		let now = std::time::Instant::now();
 
 		// Set progress bar
-		*update.lock().unwrap().msg.lock().unwrap() = MSG_START.to_string();
-		*update.lock().unwrap().prog.lock().unwrap() = 0.0;
+		*lock2!(update,msg) = MSG_START.to_string();
+		*lock2!(update,prog) = 0.0;
 		info!("Update | {}", INIT);
 
 		// Get temporary directory
 		let msg = MSG_TMP.to_string();
 		info!("Update | {}", msg);
-		*update.lock().unwrap().msg.lock().unwrap() = msg;
+		*lock2!(update,msg) = msg;
 		let tmp_dir = Self::get_tmp_dir()?;
 		std::fs::create_dir(&tmp_dir)?;
 
@@ -467,27 +468,27 @@ impl Update {
 
 		// Generate fake user-agent
 		let user_agent = Pkg::get_user_agent();
-		*update.lock().unwrap().prog.lock().unwrap() = 5.0;
+		*lock2!(update,prog) = 5.0;
 
 		// Create Tor/HTTPS client
-		let lock = update.lock().unwrap();
+		let lock = lock!(update);
 		let tor = lock.tor;
 		if tor {
 			let msg = MSG_TOR.to_string();
 			info!("Update | {}", msg);
-			*lock.msg.lock().unwrap() = msg;
+			*lock!(lock.msg) = msg;
 		} else {
 			let msg = MSG_HTTPS.to_string();
 			info!("Update | {}", msg);
-			*lock.msg.lock().unwrap() = msg;
+			*lock!(lock.msg) = msg;
 		}
 		drop(lock);
 		let mut client = Self::get_client(tor)?;
-		*update.lock().unwrap().prog.lock().unwrap() += 5.0;
-		info!("Update | Init ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
+		*lock2!(update,prog) += 5.0;
+		info!("Update | Init ... OK ... {}%", lock2!(update,prog));
 
 		//---------------------------------------------------------------------------------------------------- Metadata
-		*update.lock().unwrap().msg.lock().unwrap() = MSG_METADATA.to_string();
+		*lock2!(update,msg) = MSG_METADATA.to_string();
 		info!("Update | {}", METADATA);
 		let mut vec2 = vec![];
 		// Loop process:
@@ -502,7 +503,7 @@ impl Update {
 		// function itself but for some reason, it was getting skipped over,
 		// so the [new_ver] check is now here, in the outer scope.
 		for i in 1..=3 {
-			if i > 1 { *update.lock().unwrap().msg.lock().unwrap() = format!("{} [{}/3]", MSG_METADATA_RETRY, i); }
+			if i > 1 { *lock2!(update,msg) = format!("{} [{}/3]", MSG_METADATA_RETRY, i); }
 			let mut handles: Vec<JoinHandle<Result<(), anyhow::Error>>> = vec![];
 			for pkg in vec.iter() {
 				// Clone data before sending to async
@@ -528,13 +529,13 @@ impl Update {
 			// Check for empty version
 			let mut indexes = vec![];
 			for (index, pkg) in vec.iter().enumerate() {
-				if pkg.new_ver.lock().unwrap().is_empty() {
+				if lock!(pkg.new_ver).is_empty() {
 					warn!("Update | {} failed, attempt [{}/3]...", pkg.name, i+1);
 				} else {
 					indexes.push(index);
 					vec2.push(pkg.clone());
-					*update.lock().unwrap().prog.lock().unwrap() += 10.0;
-					info!("Update | {} {} ... OK", pkg.name, pkg.new_ver.lock().unwrap());
+					*lock2!(update,prog) += 10.0;
+					info!("Update | {} {} ... OK", pkg.name, lock!(pkg.new_ver));
 				}
 			}
 			// Order indexes from biggest to smallest
@@ -553,19 +554,19 @@ impl Update {
 			}
 		}
 		if vec.is_empty() {
-			info!("Update | Metadata ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
+			info!("Update | Metadata ... OK ... {}%", lock2!(update,prog));
 		} else {
 			error!("Update | Metadata ... FAIL");
 			return Err(anyhow!("Metadata fetch failed"))
 		}
 
 		//---------------------------------------------------------------------------------------------------- Compare
-		*update.lock().unwrap().msg.lock().unwrap() = MSG_COMPARE.to_string();
+		*lock2!(update,msg) = MSG_COMPARE.to_string();
 		info!("Update | {}", COMPARE);
 		let mut vec3 = vec![];
 		let mut new_pkgs = vec![];
 		for pkg in vec2.iter() {
-			let new_ver = pkg.new_ver.lock().unwrap().clone();
+			let new_ver = lock!(pkg.new_ver).clone();
 			let diff;
 			let old_ver;
 			let name;
@@ -575,17 +576,17 @@ impl Update {
 					// that gets updated during an update. This prevents the updater always thinking
 					// there's a new Gupax update since the user didnt restart and is still technically
 					// using the old version (even though the underlying binary was updated).
-					old_ver = state_ver.lock().unwrap().gupax.clone();
+					old_ver = lock!(state_ver).gupax.clone();
 					diff = old_ver != new_ver && GUPAX_VERSION != new_ver;
 					name = "Gupax";
 				}
 				P2pool => {
-					old_ver = state_ver.lock().unwrap().p2pool.clone();
+					old_ver = lock!(state_ver).p2pool.clone();
 					diff = old_ver != new_ver;
 					name = "P2Pool";
 				}
 				Xmrig  => {
-					old_ver = state_ver.lock().unwrap().xmrig.clone();
+					old_ver = lock!(state_ver).xmrig.clone();
 					diff = old_ver != new_ver;
 					name = "XMRig";
 				}
@@ -598,32 +599,32 @@ impl Update {
 				info!("Update | {} {} == {} ... SKIPPING", pkg.name, old_ver, new_ver);
 			}
 		}
-		*update.lock().unwrap().prog.lock().unwrap() += 5.0;
-		info!("Update | Compare ... OK ... {}%", update.lock().unwrap().prog.lock().unwrap());
+		*lock2!(update,prog) += 5.0;
+		info!("Update | Compare ... OK ... {}%", lock2!(update,prog));
 
 		// Return if 0 (all packages up-to-date)
 		// Get amount of packages to divide up the percentage increases
 		let pkg_amount = vec3.len() as f32;
 		if pkg_amount == 0.0 {
 			info!("Update | All packages up-to-date ... RETURNING");
-			*update.lock().unwrap().prog.lock().unwrap() = 100.0;
-			*update.lock().unwrap().msg.lock().unwrap() = MSG_UP_TO_DATE.to_string();
+			*lock2!(update,prog) = 100.0;
+			*lock2!(update,msg) = MSG_UP_TO_DATE.to_string();
 			return Ok(())
 		}
 		let new_pkgs: String = new_pkgs.concat();
 
 		//---------------------------------------------------------------------------------------------------- Download
-		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_DOWNLOAD, new_pkgs);
+		*lock2!(update,msg) = format!("{}{}", MSG_DOWNLOAD, new_pkgs);
 		info!("Update | {}", DOWNLOAD);
 		let mut vec4 = vec![];
 		for i in 1..=3 {
-			if i > 1 { *update.lock().unwrap().msg.lock().unwrap() = format!("{} [{}/3]{}", MSG_DOWNLOAD_RETRY, i, new_pkgs); }
+			if i > 1 { *lock2!(update,msg) = format!("{} [{}/3]{}", MSG_DOWNLOAD_RETRY, i, new_pkgs); }
 			let mut handles: Vec<JoinHandle<Result<(), anyhow::Error>>> = vec![];
 			for pkg in vec3.iter() {
 				// Clone data before async
 				let bytes = Arc::clone(&pkg.bytes);
 				let client = client.clone();
-				let version = pkg.new_ver.lock().unwrap();
+				let version = lock!(pkg.new_ver);
 				// Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
 				// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64-standalone
 				// XMRig doesn't have a [v], so slice it out
@@ -647,12 +648,12 @@ impl Update {
 			// Check for empty bytes
 			let mut indexes = vec![];
 			for (index, pkg) in vec3.iter().enumerate() {
-				if pkg.bytes.lock().unwrap().is_empty() {
+				if lock!(pkg.bytes).is_empty() {
 					warn!("Update | {} failed, attempt [{}/3]...", pkg.name, i);
 				} else {
 					indexes.push(index);
 					vec4.push(pkg.clone());
-					*update.lock().unwrap().prog.lock().unwrap() += (30.0 / pkg_amount).round();
+					*lock2!(update,prog) += (30.0 / pkg_amount).round();
 					info!("Update | {} ... OK", pkg.name);
 				}
 			}
@@ -666,14 +667,14 @@ impl Update {
 			if vec3.is_empty() { break }
 		}
 		if vec3.is_empty() {
-			info!("Update | Download ... OK ... {}%", *update.lock().unwrap().prog.lock().unwrap());
+			info!("Update | Download ... OK ... {}%", *lock2!(update,prog));
 		} else {
 			error!("Update | Download ... FAIL");
 			return Err(anyhow!("Download failed"))
 		}
 
 		//---------------------------------------------------------------------------------------------------- Extract
-		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_EXTRACT, new_pkgs);
+		*lock2!(update,msg) = format!("{}{}", MSG_EXTRACT, new_pkgs);
 		info!("Update | {}", EXTRACT);
 		for pkg in vec4.iter() {
 			let tmp = match pkg.name {
@@ -681,20 +682,20 @@ impl Update {
 				_ => tmp_dir.to_owned() + &pkg.name.to_string(),
 			};
 			#[cfg(target_os = "windows")]
-			ZipArchive::extract(&mut ZipArchive::new(std::io::Cursor::new(pkg.bytes.lock().unwrap().as_ref()))?, tmp)?;
+			ZipArchive::extract(&mut ZipArchive::new(std::io::Cursor::new(lock!(pkg.bytes).as_ref()))?, tmp)?;
 			#[cfg(target_family = "unix")]
-			tar::Archive::new(flate2::read::GzDecoder::new(pkg.bytes.lock().unwrap().as_ref())).unpack(tmp)?;
-			*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
+			tar::Archive::new(flate2::read::GzDecoder::new(lock!(pkg.bytes).as_ref())).unpack(tmp)?;
+			*lock2!(update,prog) += (5.0 / pkg_amount).round();
 			info!("Update | {} ... OK", pkg.name);
 		}
-		info!("Update | Extract ... OK ... {}%", *update.lock().unwrap().prog.lock().unwrap());
+		info!("Update | Extract ... OK ... {}%", *lock2!(update,prog));
 
 		//---------------------------------------------------------------------------------------------------- Upgrade
 		// 1. Walk directories
 		// 2. If basename matches known binary name, start
 		// 3. Rename tmp path into current path
 		// 4. Update [State/Version]
-		*update.lock().unwrap().msg.lock().unwrap() = format!("{}{}", MSG_UPGRADE, new_pkgs);
+		*lock2!(update,msg) = format!("{}{}", MSG_UPGRADE, new_pkgs);
 		info!("Update | {}", UPGRADE);
 		// If this bool doesn't get set, something has gone wrong because
 		// we _didn't_ find a binary even though we downloaded it.
@@ -715,9 +716,9 @@ impl Update {
 						_ => Xmrig,
 					};
 					let path = match name {
-						Gupax  => update.lock().unwrap().path_gupax.clone(),
-						P2pool => update.lock().unwrap().path_p2pool.clone(),
-						Xmrig  => update.lock().unwrap().path_xmrig.clone(),
+						Gupax  => lock!(update).path_gupax.clone(),
+						P2pool => lock!(update).path_p2pool.clone(),
+						Xmrig  => lock!(update).path_xmrig.clone(),
 					};
 					let path = Path::new(&path);
 					// Unix can replace running binaries no problem (they're loaded into memory)
@@ -745,14 +746,14 @@ impl Update {
 					// Update [State] version
 					match name {
 						Gupax  => {
-							state_ver.lock().unwrap().gupax = Pkg::get_new_pkg_version(Gupax, &vec4)?;
+							lock!(state_ver).gupax = Pkg::get_new_pkg_version(Gupax, &vec4)?;
 							// If we're updating Gupax, set the [Restart] state so that the user knows to restart
-							*restart.lock().unwrap() = Restart::Yes;
+							*lock!(restart) = Restart::Yes;
 						},
-						P2pool => state_ver.lock().unwrap().p2pool = Pkg::get_new_pkg_version(P2pool, &vec4)?,
-						Xmrig  => state_ver.lock().unwrap().xmrig = Pkg::get_new_pkg_version(Xmrig, &vec4)?,
+						P2pool => lock!(state_ver).p2pool = Pkg::get_new_pkg_version(P2pool, &vec4)?,
+						Xmrig  => lock!(state_ver).xmrig = Pkg::get_new_pkg_version(Xmrig, &vec4)?,
 					};
-					*update.lock().unwrap().prog.lock().unwrap() += (5.0 / pkg_amount).round();
+					*lock2!(update,prog) += (5.0 / pkg_amount).round();
 				},
 				_ => (),
 			}
@@ -768,11 +769,11 @@ impl Update {
 		let seconds = now.elapsed().as_secs();
 		info!("Update | Seconds elapsed ... [{}s]", seconds);
 		match seconds {
-			0 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 0 seconds... What...?!{}", MSG_SUCCESS, new_pkgs),
-			1 => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took 1 second... Wow!{}", MSG_SUCCESS, new_pkgs),
-			_ => *update.lock().unwrap().msg.lock().unwrap() = format!("{}! Took {} seconds.{}", MSG_SUCCESS, seconds, new_pkgs),
+			0 => *lock2!(update,msg) = format!("{}! Took 0 seconds... What...?!{}", MSG_SUCCESS, new_pkgs),
+			1 => *lock2!(update,msg) = format!("{}! Took 1 second... Wow!{}", MSG_SUCCESS, new_pkgs),
+			_ => *lock2!(update,msg) = format!("{}! Took {} seconds.{}", MSG_SUCCESS, seconds, new_pkgs),
 		}
-		*update.lock().unwrap().prog.lock().unwrap() = 100.0;
+		*lock2!(update,prog) = 100.0;
 		Ok(())
 	}
 }
@@ -823,8 +824,8 @@ impl Pkg {
 			link_prefix,
 			link_suffix,
 			link_extension,
-			bytes: Arc::new(Mutex::new(bytes::Bytes::new())),
-			new_ver: Arc::new(Mutex::new(String::new())),
+			bytes: arc_mut!(bytes::Bytes::new()),
+			new_ver: arc_mut!(String::new()),
 		}
 	}
 
@@ -855,7 +856,7 @@ impl Pkg {
 		let mut response = client.request(request).await?;
 		let body = hyper::body::to_bytes(response.body_mut()).await?;
 		let body: TagName = serde_json::from_slice(&body)?;
-		*new_ver.lock().unwrap() = body.tag_name;
+		*lock!(new_ver) = body.tag_name;
 		Ok(())
 	}
 
@@ -873,7 +874,7 @@ impl Pkg {
 			response = client.request(request).await?;
 		}
 		let body = hyper::body::to_bytes(response.into_body()).await?;
-		*bytes.lock().unwrap() = body;
+		*lock!(bytes) = body;
 		Ok(())
 	}
 
@@ -882,7 +883,7 @@ impl Pkg {
 	fn get_new_pkg_version(name: Name, vec: &[&Pkg]) -> Result<String, Error> {
 		for pkg in vec.iter() {
 			if pkg.name == name {
-				return Ok(pkg.new_ver.lock().unwrap().to_string())
+				return Ok(lock!(pkg.new_ver).to_string())
 			}
 		}
 		Err(anyhow!("Couldn't find new_pkg_version"))

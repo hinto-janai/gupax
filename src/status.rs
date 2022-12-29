@@ -24,6 +24,7 @@ use crate::{
 	Sys,
 	Hash,
 	Submenu,
+	macros::*,
 };
 use std::sync::{Arc,Mutex};
 use log::*;
@@ -47,7 +48,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height], Label::new(RichText::new("[Gupax]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("Gupax is online");
 		ui.style_mut().override_text_style = Some(Monospace);
-		let sys = sys.lock().unwrap();
+		let sys = lock!(sys);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_GUPAX_UPTIME);
 		ui.add_sized([width, height], Label::new(sys.gupax_uptime.to_string()));
 		ui.add_sized([width, height], Label::new(RichText::new("Gupax CPU").underline().color(BONE))).on_hover_text(STATUS_GUPAX_CPU_USAGE);
@@ -70,7 +71,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.add_sized([width, height], Label::new(RichText::new("[P2Pool]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("P2Pool is online").on_disabled_hover_text("P2Pool is offline");
 		let height = height/1.4;
 		ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
-		let api = p2pool_api.lock().unwrap();
+		let api = lock!(p2pool_api);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_P2POOL_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
 		ui.add_sized([width, height], Label::new(RichText::new("Shares Found").underline().color(BONE))).on_hover_text(STATUS_P2POOL_SHARES);
@@ -87,7 +88,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.add_sized([width, height], Label::new(format!("{}", api.connections)));
 		ui.add_sized([width, height], Label::new(RichText::new("Effort").underline().color(BONE))).on_hover_text(STATUS_P2POOL_EFFORT);
 		ui.add_sized([width, height], Label::new(format!("[Average: {}] [Current: {}]", api.average_effort, api.current_effort)));
-		let img = p2pool_img.lock().unwrap();
+		let img = lock!(p2pool_img);
 		ui.add_sized([width, height], Label::new(RichText::new("Monero Node").underline().color(BONE))).on_hover_text(STATUS_P2POOL_MONERO_NODE);
 		ui.add_sized([width, height], Label::new(format!("[IP: {}]\n[RPC: {}] [ZMQ: {}]", &img.host, &img.rpc, &img.zmq)));
 		ui.add_sized([width, height], Label::new(RichText::new("Sidechain").underline().color(BONE))).on_hover_text(STATUS_P2POOL_POOL);
@@ -104,7 +105,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height], Label::new(RichText::new("[XMRig]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("XMRig is online").on_disabled_hover_text("XMRig is offline");
 		ui.style_mut().override_text_style = Some(Monospace);
-		let api = xmrig_api.lock().unwrap();
+		let api = lock!(xmrig_api);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_XMRIG_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
 		ui.add_sized([width, height], Label::new(RichText::new("CPU Load Averages").underline().color(BONE))).on_hover_text(STATUS_XMRIG_CPU);
@@ -116,9 +117,9 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.add_sized([width, height], Label::new(RichText::new("Shares").underline().color(BONE))).on_hover_text(STATUS_XMRIG_SHARES);
 		ui.add_sized([width, height], Label::new(format!("[Accepted: {}] [Rejected: {}]", api.accepted, api.rejected)));
 		ui.add_sized([width, height], Label::new(RichText::new("Pool").underline().color(BONE))).on_hover_text(STATUS_XMRIG_POOL);
-		ui.add_sized([width, height], Label::new(&xmrig_img.lock().unwrap().url));
+		ui.add_sized([width, height], Label::new(&lock!(xmrig_img).url));
 		ui.add_sized([width, height], Label::new(RichText::new("Threads").underline().color(BONE))).on_hover_text(STATUS_XMRIG_THREADS);
-		ui.add_sized([width, height], Label::new(format!("{}/{}", &xmrig_img.lock().unwrap().threads, max_threads)));
+		ui.add_sized([width, height], Label::new(format!("{}/{}", &lock!(xmrig_img).threads, max_threads)));
 		drop(api);
 	})});
 	});

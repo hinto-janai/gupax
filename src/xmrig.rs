@@ -21,6 +21,7 @@ use crate::{
 	disk::*,
 	Process,
 	PubXmrigApi,
+	macros::*,
 };
 use egui::{
 	TextEdit,SelectableLabel,ComboBox,Label,Button,RichText,Slider,Checkbox,
@@ -45,7 +46,7 @@ impl crate::disk::Xmrig {
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
-				ui.add_sized([width, height], TextEdit::multiline(&mut api.lock().unwrap().output.as_str()));
+				ui.add_sized([width, height], TextEdit::multiline(&mut lock!(api).output.as_str()));
 			});
 		});
 	//---------------------------------------------------------------------------------------------------- [Advanced] Console
@@ -56,7 +57,7 @@ impl crate::disk::Xmrig {
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
-				ui.add_sized([width, height], TextEdit::multiline(&mut api.lock().unwrap().output.as_str()));
+				ui.add_sized([width, height], TextEdit::multiline(&mut lock!(api).output.as_str()));
 			});
 		});
 		ui.separator();
@@ -65,7 +66,7 @@ impl crate::disk::Xmrig {
 		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
 			response.request_focus();                  // Get focus back
 			let buffer = std::mem::take(buffer);       // Take buffer
-			let mut process = process.lock().unwrap(); // Lock
+			let mut process = lock!(process); // Lock
 			if process.is_alive() { process.input.push(buffer); } // Push only if alive
 		}
 	}
