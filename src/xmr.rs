@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 // This file is for handling actual XMR integers/floats using [AtomicUnit] & [PayoutOrd]
-// AtomicUnit is just a wrapper around a [u128] implementing common XMR Atomic Unit functions.
+// AtomicUnit is just a wrapper around a [u64] implementing common XMR Atomic Unit functions.
 // PayoutOrd is a wrapper around a [Vec] for sorting P2Pool payouts with this type signature:
 //     "Vec<(String, AtomicUnit, HumanNumber)>"
 // These represent:
@@ -35,28 +35,36 @@ use log::*;
 // too bad if I wrote it to disk as a float, but then I realized [.cmp()] doesn't
 // work on [f64] and also that Rust makes sorting floats a pain so instead of deleting
 // this code and making some float sorter, I might as well use it.
-#[derive(Debug, Clone)]
-pub struct AtomicUnit(u128);
+
+// [u64] can hold max: 18_446_744_073_709_551_615 which equals to 18,446,744,073 XMR (18 billion).
+// Given the constant XMR tail emission of (0.3 per minute|18 per hour|432 per day|157,680 per year)
+// this would take: 116,976~ years to overflow.
+#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+pub struct AtomicUnit(u64);
 
 impl AtomicUnit {
-	pub fn new() -> Self {
+	pub const fn new() -> Self {
 		Self(0)
 	}
 
-	pub fn from_u128(u: u128) -> Self {
+	pub const fn from_u64(u: u64) -> Self {
 		Self(u)
 	}
 
-	pub fn add_u128(&mut self, u: u128) -> Self {
+	pub const fn add_u64(self, u: u64) -> Self {
 		Self(self.0 + u)
 	}
 
-	pub fn add_self(&mut self, atomic_unit: &Self) -> Self {
+	pub const fn add_self(self, atomic_unit: Self) -> Self {
 		Self(self.0 + atomic_unit.0)
 	}
 
-	pub fn to_u128(&self) -> u128 {
+	pub const fn to_u64(self) -> u64 {
 		self.0
+	}
+
+	pub fn to_string(self) -> String {
+		self.0.to_string()
 	}
 
 	pub fn sum_vec(vec: &Vec<Self>) -> Self {
@@ -68,7 +76,7 @@ impl AtomicUnit {
 	}
 
 	pub fn from_f64(f: f64) -> Self {
-		Self((f * 1_000_000_000_000.0) as u128)
+		Self((f * 1_000_000_000_000.0) as u64)
 	}
 
 	pub fn to_f64(&self) -> f64 {
@@ -111,8 +119,21 @@ impl PayoutOrd {
 		Self(vec![(String::from("????-??-?? ??:??:??.????"), AtomicUnit::new(), HumanNumber::unknown())])
 	}
 
-	pub fn from_vec(vec: Vec<(String, AtomicUnit, HumanNumber)>) -> Self {
+	pub const fn from_vec(vec: Vec<(String, AtomicUnit, HumanNumber)>) -> Self {
 		Self(vec)
+	}
+
+	pub fn is_same(a: &Self, b: &Self) -> bool {
+		if a.0.is_empty() && b.0.is_empty() { return true }
+		if a.0.len() != b.0.len() { return false }
+		let mut n = 0;
+		for (date, atomic_unit, block) in &a.0 {
+			if *date        != b.0[n].0 { return false }
+			if *atomic_unit != b.0[n].1 { return false }
+			if *block       != b.0[n].2 { return false }
+			n += 1;
+		}
+		true
 	}
 
 	pub fn is_empty(&self) -> bool {
@@ -175,26 +196,31 @@ impl PayoutOrd {
 		*self = Self(vec);
 	}
 
+	// Takes the wrapper types, and pushes to existing [Self]
+	pub fn push(&mut self, date: String, atomic_unit: AtomicUnit, block: HumanNumber) {
+		self.0.push((date, atomic_unit, block));
+	}
+
 	// Takes the raw components (no wrapper types), convert them and pushes to existing [Self]
-	pub fn push(&mut self, date: &str, atomic_unit: u128, block: u64) {
+	pub fn push_raw(&mut self, date: &str, atomic_unit: u64, block: u64) {
 		let atomic_unit = AtomicUnit(atomic_unit);
 		let block = HumanNumber::from_u64(block);
 		self.0.push((date.to_string(), atomic_unit, block));
 	}
 
 	pub fn atomic_unit_sum(&self) -> AtomicUnit {
-		let mut sum: u128 = 0;
+		let mut sum: u64 = 0;
 		for (_, atomic_unit, _) in &self.0 {
-			sum += atomic_unit.to_u128();
+			sum += atomic_unit.to_u64();
 		}
-		AtomicUnit::from_u128(sum)
+		AtomicUnit::from_u64(sum)
 	}
 
 	// Sort [Self] from highest payout to lowest
 	pub fn sort_payout_high_to_low(&mut self) {
 		// This is a little confusing because wrapper types are basically 1 element tuples so:
 		// self.0 = The [Vec] within [PayoutOrd]
-		// b.1.0  = [b] is [(String, AtomicUnit, HumanNumber)], [.1] is the [AtomicUnit] inside it, [.0] is the [u128] inside that
+		// b.1.0  = [b] is [(String, AtomicUnit, HumanNumber)], [.1] is the [AtomicUnit] inside it, [.0] is the [u64] inside that
 		// a.1.0  = Same deal, but we compare it with the previous value (b)
 		self.0.sort_by(|a, b| b.1.0.cmp(&a.1.0));
 	}
@@ -249,7 +275,7 @@ r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1,234,567
 		let mut payout_ord = PayoutOrd::from_vec(vec![]);
 		let should_be = "2022-09-08 18:42:55.4636 | 0.000000000001 XMR | Block 2,654,321\n";
 		println!("BEFORE: {:#?}", payout_ord);
-		payout_ord.push("2022-09-08 18:42:55.4636", 1, 2654321);
+		payout_ord.push_raw("2022-09-08 18:42:55.4636", 1, 2654321);
 		println!("AFTER: {}", payout_ord);
 		println!("SHOULD_BE: {}", should_be);
 		assert_eq!(payout_ord.to_string(), should_be);
@@ -261,14 +287,14 @@ r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1,234,567
 		use crate::xmr::AtomicUnit;
 		use crate::human::HumanNumber;
 		let mut payout_ord = PayoutOrd::from_vec(vec![
-			("2022-09-08 18:42:55.4636".to_string(), AtomicUnit::from_u128(1), HumanNumber::from_u64(2654321)),
-			("2022-09-09 16:18:26.7582".to_string(), AtomicUnit::from_u128(1), HumanNumber::from_u64(2654322)),
-			("2022-09-10 11:15:21.1272".to_string(), AtomicUnit::from_u128(1), HumanNumber::from_u64(2654323)),
+			("2022-09-08 18:42:55.4636".to_string(), AtomicUnit::from_u64(1), HumanNumber::from_u64(2654321)),
+			("2022-09-09 16:18:26.7582".to_string(), AtomicUnit::from_u64(1), HumanNumber::from_u64(2654322)),
+			("2022-09-10 11:15:21.1272".to_string(), AtomicUnit::from_u64(1), HumanNumber::from_u64(2654323)),
 		]);
 		println!("OG: {:#?}", payout_ord);
 		let sum = PayoutOrd::atomic_unit_sum(&payout_ord);
-		println!("SUM: {}", sum.to_u128());
-		assert_eq!(sum.to_u128(), 3);
+		println!("SUM: {}", sum.to_u64());
+		assert_eq!(sum.to_u64(), 3);
 	}
 
 	#[test]
@@ -277,9 +303,9 @@ r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1,234,567
 		use crate::xmr::AtomicUnit;
 		use crate::human::HumanNumber;
 		let mut payout_ord = PayoutOrd::from_vec(vec![
-			("2022-09-08 18:42:55.4636".to_string(), AtomicUnit::from_u128(1000000000), HumanNumber::from_u64(2654321)),
-			("2022-09-09 16:18:26.7582".to_string(), AtomicUnit::from_u128(2000000000), HumanNumber::from_u64(2654322)),
-			("2022-09-10 11:15:21.1272".to_string(), AtomicUnit::from_u128(3000000000), HumanNumber::from_u64(2654323)),
+			("2022-09-08 18:42:55.4636".to_string(), AtomicUnit::from_u64(1000000000), HumanNumber::from_u64(2654321)),
+			("2022-09-09 16:18:26.7582".to_string(), AtomicUnit::from_u64(2000000000), HumanNumber::from_u64(2654322)),
+			("2022-09-10 11:15:21.1272".to_string(), AtomicUnit::from_u64(3000000000), HumanNumber::from_u64(2654323)),
 		]);
 		println!("OG: {:#?}", payout_ord);
 
@@ -306,5 +332,26 @@ r#"2022-09-08 18:42:55.4636 | 0.001000000000 XMR | Block 2,654,321
 		println!("SHOULD_BE:\n{}", should_be);
 		println!("IS:\n{}", payout_ord);
 		assert_eq!(payout_ord.to_string(), should_be);
+	}
+
+	#[test]
+	fn payout_ord_is_same() {
+		use crate::xmr::PayoutOrd;
+		use crate::xmr::AtomicUnit;
+		use crate::human::HumanNumber;
+		let mut payout_ord = PayoutOrd::from_vec(vec![
+			("2022-09-08 18:42:55.4636".to_string(), AtomicUnit::from_u64(1000000000), HumanNumber::from_u64(2654321)),
+			("2022-09-09 16:18:26.7582".to_string(), AtomicUnit::from_u64(2000000000), HumanNumber::from_u64(2654322)),
+			("2022-09-10 11:15:21.1272".to_string(), AtomicUnit::from_u64(3000000000), HumanNumber::from_u64(2654323)),
+		]);
+		let payout_ord_2 = payout_ord.clone();
+		println!("1: {:#?}", payout_ord);
+		println!("2: {:#?}", payout_ord);
+
+		assert!(PayoutOrd::is_same(&payout_ord, &payout_ord_2) == true);
+		payout_ord.push_raw("2022-09-08 18:42:55.4636", 1000000000, 2654321);
+		println!("1: {:#?}", payout_ord);
+		println!("2: {:#?}", payout_ord);
+		assert!(PayoutOrd::is_same(&payout_ord, &payout_ord_2) == false);
 	}
 }

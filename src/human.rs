@@ -15,11 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::constants::*;
-
 //---------------------------------------------------------------------------------------------------- Constants
 // The locale numbers are formatting in is English, which looks like: [1,000]
 pub const LOCALE: num_format::Locale = num_format::Locale::en;
+pub const ZERO_SECONDS: std::time::Duration = std::time::Duration::from_secs(0);
 
 //---------------------------------------------------------------------------------------------------- [HumanTime]
 // This converts a [std::time::Duration] into something more readable.
@@ -37,11 +36,11 @@ impl Default for HumanTime {
 }
 
 impl HumanTime {
-	pub fn new() -> HumanTime {
+	pub const fn new() -> HumanTime {
 		HumanTime(ZERO_SECONDS)
 	}
 
-	pub fn into_human(d: Duration) -> HumanTime {
+	pub const fn into_human(d: Duration) -> HumanTime {
 		HumanTime(d)
 	}
 

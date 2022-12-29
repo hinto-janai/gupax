@@ -268,7 +268,7 @@ impl Helper {
 			if regex.payout.is_match(&line) {
 				debug!("P2Pool PTY | Found payout, attempting write: {}", line);
 				let (date, atomic_unit, block) = PayoutOrd::parse_line(&line, &regex);
-				GupaxP2poolApi::add_payout(&mut lock!(gupax_p2pool_api), atomic_unit.to_u128(), &line);
+				GupaxP2poolApi::add_payout(&mut lock!(gupax_p2pool_api), &line, date, atomic_unit, block);
 				if let Err(e) = GupaxP2poolApi::write_to_all_files(&lock!(gupax_p2pool_api)) { error!("P2Pool PTY GupaxP2poolApi | Write error: {}", e); }
 			}
 			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("P2Pool PTY Parse | Output error: {}", e); }

@@ -48,6 +48,7 @@ use crate::{
 	Tab,
 	xmr::*,
 	macros::*,
+	P2poolRegex,
 };
 use log::*;
 
@@ -70,23 +71,20 @@ pub const POOL_TOML: &str = "pool.toml";
 // P2Pool API
 // Lives within the Gupax OS data directory.
 // ~/.local/share/gupax/p2pool/
-// ├─ payout        // Raw log lines of payouts received
-// ├─ xmr           // Raw log lines of XMR mined
-// ├─ block         // Raw log lines of actual blocks found
-// ├─ total_payout  // Single [u128] representing total payouts
-// ├─ total_xmr     // Single [u128] representing total XMR mined in atomic units
-// ├─ total_block   // Single [u128] representing total blocks foundpub const GUPAX_P2POOL_API_: &str = "state.toml";
+// ├─ payout_log  // Raw log lines of payouts received
+// ├─ payout      // Single [u64] representing total payouts
+// ├─ xmr         // Single [u64] representing total XMR mined in atomic units
 #[cfg(target_os = "windows")]
 pub const GUPAX_P2POOL_API_DIRECTORY:    &str = r"p2pool\";
 #[cfg(target_family = "unix")]
 pub const GUPAX_P2POOL_API_DIRECTORY:    &str = "p2pool/";
-pub const GUPAX_P2POOL_API_PAYOUT:       &str = "payout_log";
-pub const GUPAX_P2POOL_API_TOTAL_PAYOUT: &str = "payout";
-pub const GUPAX_P2POOL_API_TOTAL_XMR:    &str = "xmr";
+pub const GUPAX_P2POOL_API_LOG:       &str = "log";
+pub const GUPAX_P2POOL_API_PAYOUT: &str = "payout";
+pub const GUPAX_P2POOL_API_XMR:    &str = "xmr";
 pub const GUPAX_P2POOL_API_FILE_ARRAY: [&str; 3] = [
+	GUPAX_P2POOL_API_LOG,
 	GUPAX_P2POOL_API_PAYOUT,
-	GUPAX_P2POOL_API_TOTAL_PAYOUT,
-	GUPAX_P2POOL_API_TOTAL_XMR,
+	GUPAX_P2POOL_API_XMR,
 ];
 
 #[cfg(target_os = "windows")]
@@ -562,14 +560,14 @@ impl Pool {
 //---------------------------------------------------------------------------------------------------- Gupax-P2Pool API
 #[derive(Clone,Debug)]
 pub struct GupaxP2poolApi {
-	pub payout: HumanNumber,
-	pub xmr: AtomicUnit,
-	pub int_payout: u64,
-	pub payout_ord: PayoutOrd, // Ordered Vec of payouts
-	pub log_payout: String,
-	pub path_xmr: PathBuf,
-	pub path_int_payout: PathBuf,
-	pub path_log_payout: PathBuf,
+	pub log: String,           // Log file only containing full payout lines
+	pub payout: HumanNumber,   // Human-friendly display of payout count
+	pub payout_u64: u64,       // [u64] version of above
+	pub payout_ord: PayoutOrd, // Ordered Vec of payouts, see [PayoutOrd]
+	pub xmr: AtomicUnit,       // XMR stored as atomic units
+	pub path_log: PathBuf,     // Path to [log]
+	pub path_payout: PathBuf,  // Path to [payout]
+	pub path_xmr: PathBuf,     // Path to [xmr]
 }
 
 impl Default for GupaxP2poolApi { fn default() -> Self { Self::new() } }
@@ -577,28 +575,28 @@ impl Default for GupaxP2poolApi { fn default() -> Self { Self::new() } }
 impl GupaxP2poolApi {
 	pub fn new() -> Self {
 		Self {
+			log: String::new(),
 			payout: HumanNumber::unknown(),
-			xmr: AtomicUnit::new(),
-			int_payout: 0,
-			log_payout: String::new(),
+			payout_u64: 0,
 			payout_ord: PayoutOrd::new(),
+			xmr: AtomicUnit::new(),
 			path_xmr: PathBuf::new(),
-			path_int_payout: PathBuf::new(),
-			path_log_payout: PathBuf::new(),
+			path_payout: PathBuf::new(),
+			path_log: PathBuf::new(),
 		}
 	}
 
 	pub fn fill_paths(&mut self, gupax_p2pool_dir: &PathBuf) {
-		let mut path_xmr        = gupax_p2pool_dir.clone();
-		let mut path_int_payout = gupax_p2pool_dir.clone();
-		let mut path_log_payout = gupax_p2pool_dir.clone();
-		path_int_payout.push(GUPAX_P2POOL_API_TOTAL_PAYOUT);
-		path_xmr.push(GUPAX_P2POOL_API_TOTAL_XMR);
-		path_log_payout.push(GUPAX_P2POOL_API_PAYOUT);
+		let mut path_log    = gupax_p2pool_dir.clone();
+		let mut path_payout = gupax_p2pool_dir.clone();
+		let mut path_xmr    = gupax_p2pool_dir.clone();
+		path_log.push(GUPAX_P2POOL_API_LOG);
+		path_payout.push(GUPAX_P2POOL_API_PAYOUT);
+		path_xmr.push(GUPAX_P2POOL_API_XMR);
 		*self = Self {
-			path_int_payout,
+			path_log,
+			path_payout,
 			path_xmr,
-			path_log_payout,
 			..std::mem::take(self)
 		};
 	}
@@ -615,7 +613,7 @@ impl GupaxP2poolApi {
 			match std::fs::File::create(&path) {
 				Ok(mut f)  => {
 					match file {
-						GUPAX_P2POOL_API_TOTAL_PAYOUT|GUPAX_P2POOL_API_TOTAL_XMR => writeln!(f, "0")?,
+						GUPAX_P2POOL_API_PAYOUT|GUPAX_P2POOL_API_XMR => writeln!(f, "0")?,
 						_ => (),
 					}
 					info!("GupaxP2poolApi | [{}] create ... OK", path.display());
@@ -627,45 +625,46 @@ impl GupaxP2poolApi {
 	}
 
 	pub fn read_all_files_and_update(&mut self) -> Result<(), TomlError> {
-		let int_payout = match read_to_string(File::IntPayout, &self.path_int_payout)?.trim().parse::<u64>() {
+		let payout_u64 = match read_to_string(File::Payout, &self.path_payout)?.trim().parse::<u64>() {
 			Ok(o)  => o,
-			Err(e) => { warn!("GupaxP2poolApi | [int_payout] parse error: {}", e); return Err(TomlError::Parse("int_payout")) }
+			Err(e) => { warn!("GupaxP2poolApi | [payout] parse error: {}", e); return Err(TomlError::Parse("payout")) }
 		};
- 		let xmr = match read_to_string(File::IntXmr, &self.path_xmr)?.trim().parse::<u128>() {
-			Ok(o)  => AtomicUnit::from_u128(o),
+ 		let xmr = match read_to_string(File::Xmr, &self.path_xmr)?.trim().parse::<u64>() {
+			Ok(o)  => AtomicUnit::from_u64(o),
 			Err(e) => { warn!("GupaxP2poolApi | [xmr] parse error: {}", e); return Err(TomlError::Parse("xmr")) }
 		};
-		let payout     = HumanNumber::from_u64(int_payout);
-		let log_payout = read_to_string(File::LogPayout, &self.path_log_payout)?;
-		self.payout_ord.update_from_payout_log(&log_payout);
+		let payout = HumanNumber::from_u64(payout_u64);
+		let log    = read_to_string(File::Log, &self.path_log)?;
+		self.payout_ord.update_from_payout_log(&log);
 		*self = Self {
+			log,
 			payout,
+			payout_u64,
 			xmr,
-			int_payout,
-			log_payout,
 			..std::mem::take(self)
 		};
 		Ok(())
 	}
 
-	// Takes raw int and raw log line and appends it.
-	pub fn add_payout(&mut self, xmr: u128, log_payout_line: &str) {
-		self.log_payout.push_str(log_payout_line);
-		self.int_payout += 1;
-		self.payout = HumanNumber::from_u64(self.int_payout);
-		self.xmr = self.xmr.add_u128(xmr);
+	// Takes the log line and (date, atomic_unit, block) and updates [self] and the [PayoutOrd]
+	pub fn add_payout(&mut self, log_payout_line: &str, date: String, atomic_unit: AtomicUnit, block: HumanNumber) {
+		self.log.push_str(log_payout_line);
+		self.payout_u64 += 1;
+		self.payout = HumanNumber::from_u64(self.payout_u64);
+		self.xmr = self.xmr.add_self(atomic_unit);
+		self.payout_ord.push(date, atomic_unit, block);
 	}
 
 	pub fn write_to_all_files(&self) -> Result<(), TomlError> {
-		Self::disk_overwrite(&self.int_payout.to_string(), &self.path_int_payout)?;
-		Self::disk_overwrite(&self.xmr.to_u128().to_string(), &self.path_xmr)?;
-		Self::disk_append(&self.log_payout, &self.path_log_payout)?;
+		Self::disk_overwrite(&self.payout_u64.to_string(), &self.path_payout)?;
+		Self::disk_overwrite(&self.xmr.to_string(), &self.path_xmr)?;
+		Self::disk_append(&self.log, &self.path_log)?;
 		Ok(())
 	}
 
 	pub fn disk_append(string: &str, path: &PathBuf) -> Result<(), TomlError> {
 		use std::io::Write;
-		let mut file = match fs::OpenOptions::new().append(true).open(path) {
+		let mut file = match fs::OpenOptions::new().append(true).create(true).open(path) {
 			Ok(f) => f,
 			Err(e) => { error!("GupaxP2poolApi | Append [{}] ... FAIL: {}", path.display(), e); return Err(TomlError::Io(e)) },
 		};
@@ -677,7 +676,7 @@ impl GupaxP2poolApi {
 
 	pub fn disk_overwrite(string: &str, path: &PathBuf) -> Result<(), TomlError> {
 		use std::io::Write;
-		let mut file = match fs::OpenOptions::new().write(true).open(path) {
+		let mut file = match fs::OpenOptions::new().write(true).truncate(true).create(true).open(path) {
 			Ok(f) => f,
 			Err(e) => { error!("GupaxP2poolApi | Overwrite [{}] ... FAIL: {}", path.display(), e); return Err(TomlError::Io(e)) },
 		};
@@ -736,9 +735,9 @@ pub enum File {
 	Pool,        // pool.toml    | XMRig manual pool selector
 
 	// Gupax-P2Pool API
-	LogPayout, // payout       | Raw log lines of P2Pool payouts received
-	IntPayout, // total_payout | Single [u128] representing total payouts
-	IntXmr,    // total_xmr    | Single [u128] representing total XMR mined in atomic units
+	Log,    // log    | Raw log lines of P2Pool payouts received
+	Payout, // payout | Single [u64] representing total payouts
+	Xmr,    // xmr    | Single [u64] representing total XMR mined in atomic units
 }
 
 //---------------------------------------------------------------------------------------------------- [Submenu] enum for [Status] tab
@@ -1288,9 +1287,9 @@ mod test {
 
 		// Create, write some fake data.
 		GupaxP2poolApi::create_all_files(&path).unwrap();
-		api.log_payout = "NOTICE  2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816".to_string();
-		api.int_payout = 1;
-		api.xmr        = AtomicUnit::from_u128(2);
+		api.log        = "NOTICE  2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816".to_string();
+		api.payout_u64 = 1;
+		api.xmr        = AtomicUnit::from_u64(2);
 		GupaxP2poolApi::write_to_all_files(&api).unwrap();
 		println!("AFTER WRITE: {:#?}", api);
 
@@ -1299,10 +1298,10 @@ mod test {
 		println!("AFTER READ: {:#?}", api);
 
 		// Assert that the file read mutated the internal struct correctly.
-		assert_eq!(api.int_payout, 1);
-		assert_eq!(api.xmr.to_u128(), 2);
+		assert_eq!(api.payout_u64, 1);
+		assert_eq!(api.xmr.to_u64(), 2);
 		assert!(!api.payout_ord.is_empty());
-		assert!(api.log_payout.contains("2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816\n"));
+		assert!(api.log.contains("2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816\n"));
 	}
 
 	#[test]
