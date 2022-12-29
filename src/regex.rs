@@ -69,21 +69,56 @@ impl Regexes {
 // Both are nominally fast enough where it doesn't matter too much but meh, why not use regex.
 #[derive(Clone,Debug)]
 pub struct P2poolRegex {
-	pub payout: regex::Regex,
-	pub float: regex::Regex,
 	pub date: regex::Regex,
+	pub payout: regex::Regex,
+	pub payout_float: regex::Regex,
 	pub block: regex::Regex,
-	pub int: regex::Regex,
+	pub block_int: regex::Regex,
 }
 
 impl P2poolRegex {
 	pub fn new() -> Self {
 		Self {
-			payout: regex::Regex::new("payout of [0-9].[0-9]+ XMR").unwrap(),
-			float: regex::Regex::new("[0-9].[0-9]+").unwrap(),
 			date: regex::Regex::new("[0-9]+-[0-9]+-[0-9]+ [0-9]+:[0-9]+:[0-9]+.[0-9]+").unwrap(),
-			block: regex::Regex::new("block [0-9]+").unwrap(),
-			int: regex::Regex::new("[0-9]+").unwrap(),
+			payout: regex::Regex::new("payout of [0-9].[0-9]+ XMR").unwrap(), // Assumes 12 digits after the dot.
+			payout_float: regex::Regex::new("[0-9].[0-9]{12}").unwrap(), // Assumes 12 digits after the dot.
+			block: regex::Regex::new("block [0-9]{7}").unwrap(), // Monero blocks will be 7 digits for... the next 10,379 years
+			block_int: regex::Regex::new("[0-9]{7}").unwrap(),
 		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- TESTS
+#[cfg(test)]
+mod test {
+	#[test]
+	fn build_regexes() {
+		use regex::Regex;
+		let r = crate::Regexes::new();
+		assert!(Regex::is_match(&r.name, "_this_ is... a n-a-m-e."));
+		assert!(Regex::is_match(&r.address, "44hintoFpuo3ugKfcqJvh5BmrsTRpnTasJmetKC4VXCt6QDtbHVuixdTtsm6Ptp7Y8haXnJ6j8Gj2dra8CKy5ewz7Vi9CYW"));
+		assert!(Regex::is_match(&r.ipv4, "192.168.1.2"));
+		assert!(Regex::is_match(&r.ipv4, "127.0.0.1"));
+		assert!(Regex::is_match(&r.domain, "my.node.com"));
+		assert!(Regex::is_match(&r.domain, "my.monero-node123.net"));
+		assert!(Regex::is_match(&r.domain, "www.my-node.org"));
+		assert!(Regex::is_match(&r.domain, "www.my-monero-node123.io"));
+		for i in 1..=65535 {
+			assert!(Regex::is_match(&r.port, &i.to_string()));
+		}
+		assert!(!Regex::is_match(&r.port, "0"));
+		assert!(!Regex::is_match(&r.port, "65536"));
+	}
+
+	#[test]
+	fn build_p2pool_regex() {
+		use regex::Regex;
+		let r = crate::P2poolRegex::new();
+		let text = "NOTICE  2022-11-11 11:11:11.1111 P2Pool You received a payout of 0.111111111111 XMR in block 1111111";
+		assert_eq!(r.payout.find(text).unwrap().as_str(),       "payout of 0.111111111111 XMR");
+		assert_eq!(r.payout_float.find(text).unwrap().as_str(), "0.111111111111");
+		assert_eq!(r.date.find(text).unwrap().as_str(),         "2022-11-11 11:11:11.1111");
+		assert_eq!(r.block.find(text).unwrap().as_str(),        "block 1111111");
+		assert_eq!(r.block_int.find(text).unwrap().as_str(),    "1111111");
 	}
 }

@@ -17,22 +17,22 @@
 
 // These are general QoL macros, nothing too scary, I promise.
 //
-// | MACRO   | PURPOSE                                      | EQUIVALENT CODE                                            |
-// |---------|----------------------------------------------|------------------------------------------------------------|
-// | lock    | Lock an [Arc<Mutex>]                         | a.lock().unwrap()                                          |
-// | lock2   | Lock a field inside a struct, both Arc<Mutex | a.lock().unwrap().b.lock().unwrap()                        |
-// | arc_mut | Create a new [Arc<Mutex>]                    | std::sync::Arc::new(std::sync::Mutex::new(my_value))       |
-// | sleep   | Sleep the current thread for x milliseconds  | std::thread::sleep(std::time::Duration::from_millis(1000)) |
-// | flip    | Flip a bool in place                         | my_bool = !my_bool                                         |
+// | MACRO   | PURPOSE                                       | EQUIVALENT CODE                                            |
+// |---------|-----------------------------------------------|------------------------------------------------------------|
+// | lock    | Lock an [Arc<Mutex>]                          | a.lock().unwrap()                                          |
+// | lock2   | Lock a field inside a struct, both Arc<Mutex> | a.lock().unwrap().b.lock().unwrap()                        |
+// | arc_mut | Create a new [Arc<Mutex>]                     | std::sync::Arc::new(std::sync::Mutex::new(my_value))       |
+// | sleep   | Sleep the current thread for x milliseconds   | std::thread::sleep(std::time::Duration::from_millis(1000)) |
+// | flip    | Flip a bool in place                          | my_bool = !my_bool                                         |
 //
 // Hopefully the long ass code on the right justifies usage of macros :D
 //
 // [lock2!()] works like this: "lock2!(my_first, my_second)"
 // and expects it be a [Struct]-[field] relationship, e.g:
 //
-//     let my_first = Struct {
+//     let my_first = Arc::new(Mutex::new(Struct {
 //         my_second: Arc::new(Mutex::new(true)),
-//     };
+//     }));
 //     lock2!(my_first, my_second);
 //
 // The equivalent code is: "my_first.lock().unwrap().my_second.lock().unwrap()" (see? this is long as hell)
@@ -45,14 +45,6 @@ macro_rules! lock {
 }
 pub(crate) use lock;
 
-// Creates a new [Arc<Mutex<T>]
-macro_rules! arc_mut {
-	($arc_mutex:expr) => {
-		std::sync::Arc::new(std::sync::Mutex::new($arc_mutex))
-	};
-}
-pub(crate) use arc_mut;
-
 // Locks and unwraps a field of a struct, both of them being [Arc<Mutex>]
 // Yes, I know this is bad code.
 macro_rules! lock2 {
@@ -61,6 +53,14 @@ macro_rules! lock2 {
 	};
 }
 pub(crate) use lock2;
+
+// Creates a new [Arc<Mutex<T>]
+macro_rules! arc_mut {
+	($arc_mutex:expr) => {
+		std::sync::Arc::new(std::sync::Mutex::new($arc_mutex))
+	};
+}
+pub(crate) use arc_mut;
 
 // Sleeps a [std::thread] using milliseconds
 macro_rules! sleep {
@@ -72,11 +72,11 @@ pub(crate) use sleep;
 
 // Flips a [bool] in place
 macro_rules! flip {
-    ($b:expr) => {
-        match $b {
-            true|false => $b = !$b,
-        };
-    };
+	($b:expr) => {
+		match $b {
+			true|false => $b = !$b,
+		}
+	};
 }
 pub(crate) use flip;
 

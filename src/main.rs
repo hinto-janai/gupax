@@ -1326,7 +1326,7 @@ impl eframe::App for App {
 								}
 							}
 							let color = if hide { BLACK } else { BRIGHT_YELLOW };
-							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { flip!(sudo.hide) }
+							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { flip!(sudo.hide); }
 						});
 						if (key.is_esc() && !sudo.testing) || ui.add_sized([width, height*4.0], Button::new("Leave")).on_hover_text(PASSWORD_LEAVE).clicked() { self.error_state.reset(); };
 						// If [test_sudo()] finished, reset error state.

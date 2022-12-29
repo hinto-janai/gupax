@@ -1329,7 +1329,7 @@ impl PubP2poolApi {
 		let mut sum: f64 = 0.0;
 		let mut count: u128 = 0;
 		for i in iter {
-			if let Some(word) = regex.float.find(i.as_str()) {
+			if let Some(word) = regex.payout_float.find(i.as_str()) {
 				match word.as_str().parse::<f64>() {
 					Ok(num) => { sum += num; count += 1; },
 					Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),

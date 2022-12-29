@@ -127,7 +127,7 @@ impl PayoutOrd {
 		};
 		// AtomicUnit
 		let atomic_unit = if let Some(word) = regex.payout.find(line) {
-			if let Some(word) = regex.float.find(word.as_str()) {
+			if let Some(word) = regex.payout_float.find(word.as_str()) {
 				match word.as_str().parse::<f64>() {
 					Ok(au) => AtomicUnit::from_f64(au),
 					Err(e) => { error!("P2Pool | AtomicUnit parse error: [{}] on [{}]", e, line); AtomicUnit::new() },
@@ -140,7 +140,7 @@ impl PayoutOrd {
 		};
 		// Block
 		let block = if let Some(word) = regex.block.find(line) {
-			if let Some(word) = regex.int.find(word.as_str()) {
+			if let Some(word) = regex.block_int.find(word.as_str()) {
 				match word.as_str().parse::<u64>() {
 					Ok(b) => HumanNumber::from_u64(b),
 					Err(e) => { error!("P2Pool | Block parse error: [{}] on [{}]", e, line); HumanNumber::unknown() },
@@ -225,18 +225,18 @@ mod test {
 	fn update_p2pool_payout_log() {
 		use crate::xmr::PayoutOrd;
 		let log =
-r#"NOTICE  2021-12-21 01:01:01.1111 P2Pool You received a payout of 0.001000000000 XMR in block 1
-NOTICE  2021-12-21 02:01:01.1111 P2Pool You received a payout of 0.002000000000 XMR in block 2
-NOTICE  2021-12-21 03:01:01.1111 P2Pool You received a payout of 0.003000000000 XMR in block 3
+r#"NOTICE  2021-12-21 01:01:01.1111 P2Pool You received a payout of 0.001000000000 XMR in block 1234567
+NOTICE  2021-12-21 02:01:01.1111 P2Pool You received a payout of 0.002000000000 XMR in block 2345678
+NOTICE  2021-12-21 03:01:01.1111 P2Pool You received a payout of 0.003000000000 XMR in block 3456789
 "#;
 		let mut payout_ord = PayoutOrd::new();
 		println!("BEFORE: {}", payout_ord);
 		PayoutOrd::update_from_payout_log(&mut payout_ord, log);
 		println!("AFTER: {}", payout_ord);
 		let should_be =
-r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1
-2021-12-21 02:01:01.1111 | 0.002000000000 XMR | Block 2
-2021-12-21 03:01:01.1111 | 0.003000000000 XMR | Block 3
+r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1,234,567
+2021-12-21 02:01:01.1111 | 0.002000000000 XMR | Block 2,345,678
+2021-12-21 03:01:01.1111 | 0.003000000000 XMR | Block 3,456,789
 "#;
 		assert_eq!(payout_ord.to_string(), should_be)
 	}
