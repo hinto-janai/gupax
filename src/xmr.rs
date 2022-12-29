@@ -225,8 +225,16 @@ impl PayoutOrd {
 		self.0.sort_by(|a, b| b.1.0.cmp(&a.1.0));
 	}
 
+	// These sorting functions take around [0.0035~] seconds on a Ryzen 5950x
+	// given a Vec filled with 1_000_000 elements, not bad.
 	pub fn sort_payout_low_to_high(&mut self) {
 		self.0.sort_by(|a, b| a.1.0.cmp(&b.1.0));
+	}
+
+	// Returns a reversed [Iter] of the [PayoutOrd]
+	// This is obviously faster than actually reordering the Vec.
+	pub fn rev_iter(&self) -> std::iter::Rev<std::slice::Iter<'_, (String, AtomicUnit, HumanNumber)>> {
+		self.0.iter().rev()
 	}
 
 	// Recent <-> Oldest relies on the line order.
@@ -353,5 +361,27 @@ r#"2022-09-08 18:42:55.4636 | 0.001000000000 XMR | Block 2,654,321
 		println!("1: {:#?}", payout_ord);
 		println!("2: {:#?}", payout_ord);
 		assert!(PayoutOrd::is_same(&payout_ord, &payout_ord_2) == false);
+	}
+
+	#[test]
+	fn view_reverse_payout_ord() {
+		use crate::xmr::PayoutOrd;
+		use crate::xmr::AtomicUnit;
+		use crate::human::HumanNumber;
+		let mut payout_ord = PayoutOrd::from_vec(vec![
+			("2022-09-08 18:42:55.4636".to_string(), AtomicUnit::from_u64(1000000000), HumanNumber::from_u64(2654321)),
+			("2022-09-09 16:18:26.7582".to_string(), AtomicUnit::from_u64(2000000000), HumanNumber::from_u64(2654322)),
+			("2022-09-10 11:15:21.1272".to_string(), AtomicUnit::from_u64(3000000000), HumanNumber::from_u64(2654323)),
+		]);
+		println!("OG: {:#?}", payout_ord);
+
+		for (_, atomic_unit, _) in payout_ord.rev_iter() {
+			if atomic_unit.to_u64() == 3000000000 {
+				break
+			} else {
+				println!("expected: 3000000000, found: {}", atomic_unit);
+				panic!("not reversed");
+			}
+		}
 	}
 }

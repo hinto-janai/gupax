@@ -25,6 +25,8 @@ use crate::{
 	Hash,
 	Submenu,
 	macros::*,
+	GupaxP2poolApi,
+	PayoutView,
 };
 use std::sync::{Arc,Mutex};
 use log::*;
@@ -32,10 +34,12 @@ use egui::{
 	Label,RichText,TextStyle,
 	TextStyle::Monospace,
 	TextStyle::Name,
+	TextEdit,
+	SelectableLabel,
 };
 
 impl crate::disk::Status {
-pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, max_threads: usize, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, max_threads: usize, gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	//---------------------------------------------------------------------------------------------------- [Processes]
 	if self.submenu == Submenu::Processes {
 	let width = (width/3.0)-(SPACE*1.666);
@@ -123,7 +127,50 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		drop(api);
 	})});
 	});
+	//---------------------------------------------------------------------------------------------------- [P2Pool]
 	} else if self.submenu == Submenu::P2pool {
+	let mut api = lock!(gupax_p2pool_api);
+	let text = height / 25.0;
+	let log = height / 2.4;
+	ui.style_mut().override_text_style = Some(Monospace);
+	// Payout Text + PayoutView buttons
+	ui.group(|ui| {
+		ui.horizontal(|ui| {
+			let width = (width/3.0)-(SPACE*4.0);
+			ui.add_sized([width, text], Label::new(RichText::new(format!("Total Payouts: {}", api.payout)).underline().color(LIGHT_GRAY))).on_hover_text(STATUS_SUBMENU_PAYOUT);
+			ui.separator();
+			ui.add_sized([width, text], Label::new(RichText::new(format!("Total XMR: {}", api.xmr)).underline().color(LIGHT_GRAY))).on_hover_text(STATUS_SUBMENU_XMR);
+			let width = width / 4.0;
+			ui.separator();
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Latest, "Latest")).on_hover_text(STATUS_SUBMENU_LATEST).clicked() { self.payout_view = PayoutView::Latest; }
+			ui.separator();
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Oldest, "Oldest")).on_hover_text(STATUS_SUBMENU_OLDEST).clicked() { self.payout_view = PayoutView::Oldest; }
+			ui.separator();
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Biggest, "Biggest")).on_hover_text(STATUS_SUBMENU_BIGGEST).clicked() {
+				api.update_payout_high();
+				self.payout_view = PayoutView::Biggest;
+			}
+			ui.separator();
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Smallest, "Smallest")).on_hover_text(STATUS_SUBMENU_SMALLEST).clicked() {
+				api.update_payout_low();
+				self.payout_view = PayoutView::Smallest;
+			}
+		});
+		ui.separator();
+		// Actual logs
+		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
+			egui::ScrollArea::vertical().stick_to_bottom(self.payout_view == PayoutView::Oldest).max_width(width).max_height(log).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
+				match self.payout_view {
+					PayoutView::Latest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log.as_str())),
+					PayoutView::Oldest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log_rev.as_str())),
+					PayoutView::Biggest  => ui.add_sized([width, log], TextEdit::multiline(&mut api.payout_high.as_str())),
+					PayoutView::Smallest => ui.add_sized([width, log], TextEdit::multiline(&mut api.payout_low.as_str())),
+				};
+			});
+		});
+	});
+	drop(api);
+	//---------------------------------------------------------------------------------------------------- [Monero]
 	} else if self.submenu == Submenu::Monero {
 	}
 }

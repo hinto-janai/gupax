@@ -175,6 +175,12 @@ pub const STATUS_XMRIG_THREADS:     &str = "The amount of threads XMRig is curre
 pub const STATUS_SUBMENU_PROCESSES: &str = "View the status of process related data for [Gupax|P2Pool|XMRig]";
 pub const STATUS_SUBMENU_P2POOL:    &str = "View P2Pool specific data";
 pub const STATUS_SUBMENU_MONERO:    &str = "View general Monero blockchain data";
+pub const STATUS_SUBMENU_PAYOUT:    &str = "The total amount of payouts received via P2Pool across all time";
+pub const STATUS_SUBMENU_XMR:       &str = "The total of XMR mined via P2Pool across all time";
+pub const STATUS_SUBMENU_LATEST:    &str = "Sort the logs latest to oldest";
+pub const STATUS_SUBMENU_OLDEST:    &str = "Sort the logs oldest to latest";
+pub const STATUS_SUBMENU_BIGGEST:   &str = "Sort the logs by biggest payouts first";
+pub const STATUS_SUBMENU_SMALLEST:  &str = "Sort the logs by smallest payouts first";
 
 // Gupax
 pub const GUPAX_UPDATE:           &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";

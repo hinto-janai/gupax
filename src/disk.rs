@@ -561,9 +561,12 @@ impl Pool {
 #[derive(Clone,Debug)]
 pub struct GupaxP2poolApi {
 	pub log: String,           // Log file only containing full payout lines
+	pub log_rev: String,       // Same as above but reversed based off lines
 	pub payout: HumanNumber,   // Human-friendly display of payout count
 	pub payout_u64: u64,       // [u64] version of above
 	pub payout_ord: PayoutOrd, // Ordered Vec of payouts, see [PayoutOrd]
+	pub payout_low: String,    // A pre-allocated/computed [String] of the above Vec from low payout to high
+	pub payout_high: String,   // Same as above but high -> low
 	pub xmr: AtomicUnit,       // XMR stored as atomic units
 	pub path_log: PathBuf,     // Path to [log]
 	pub path_payout: PathBuf,  // Path to [payout]
@@ -576,9 +579,12 @@ impl GupaxP2poolApi {
 	pub fn new() -> Self {
 		Self {
 			log: String::new(),
+			log_rev: String::new(),
 			payout: HumanNumber::unknown(),
 			payout_u64: 0,
 			payout_ord: PayoutOrd::new(),
+			payout_low: String::new(),
+			payout_high: String::new(),
 			xmr: AtomicUnit::new(),
 			path_xmr: PathBuf::new(),
 			path_payout: PathBuf::new(),
@@ -624,6 +630,34 @@ impl GupaxP2poolApi {
 		Ok(())
 	}
 
+	pub fn update_log_rev(&mut self) {
+		let mut log_rev = String::with_capacity(self.log.len());
+		for line in self.log.lines().rev() {
+			log_rev.push_str(line);
+			log_rev.push_str("\n");
+		}
+		self.log_rev = log_rev;
+	}
+
+	pub fn append_head_log_rev(&mut self, line: &str) {
+		self.log_rev = format!("{}\n{}", line, self.log_rev);
+	}
+
+	pub fn update_payout_low(&mut self) {
+		self.payout_ord.sort_payout_low_to_high();
+		self.payout_low = self.payout_ord.to_string();
+	}
+
+	pub fn update_payout_high(&mut self) {
+		self.payout_ord.sort_payout_high_to_low();
+		self.payout_high = self.payout_ord.to_string();
+	}
+
+	pub fn update_payout_strings(&mut self) {
+		self.update_payout_low();
+		self.update_payout_high();
+	}
+
 	pub fn read_all_files_and_update(&mut self) -> Result<(), TomlError> {
 		let payout_u64 = match read_to_string(File::Payout, &self.path_payout)?.trim().parse::<u64>() {
 			Ok(o)  => o,
@@ -636,6 +670,7 @@ impl GupaxP2poolApi {
 		let payout = HumanNumber::from_u64(payout_u64);
 		let log    = read_to_string(File::Log, &self.path_log)?;
 		self.payout_ord.update_from_payout_log(&log);
+		self.update_payout_strings();
 		*self = Self {
 			log,
 			payout,
@@ -643,16 +678,19 @@ impl GupaxP2poolApi {
 			xmr,
 			..std::mem::take(self)
 		};
+		self.update_log_rev();
 		Ok(())
 	}
 
 	// Takes the log line and (date, atomic_unit, block) and updates [self] and the [PayoutOrd]
 	pub fn add_payout(&mut self, log_payout_line: &str, date: String, atomic_unit: AtomicUnit, block: HumanNumber) {
 		self.log.push_str(log_payout_line);
+		self.append_head_log_rev(log_payout_line);
 		self.payout_u64 += 1;
 		self.payout = HumanNumber::from_u64(self.payout_u64);
 		self.xmr = self.xmr.add_self(atomic_unit);
 		self.payout_ord.push(date, atomic_unit, block);
+		self.update_payout_strings();
 	}
 
 	pub fn write_to_all_files(&self) -> Result<(), TomlError> {
@@ -764,6 +802,34 @@ impl Display for Submenu {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- [PayoutView] enum for [Status/P2Pool] tab
+// The enum buttons for selecting which "view" to sort the payout log in.
+#[derive(Clone,Copy,Eq,PartialEq,Debug,Deserialize,Serialize)]
+pub enum PayoutView {
+	Latest,   // Shows the most recent logs first
+	Oldest,   // Shows the oldest logs first
+	Biggest,  // Shows highest to lowest payouts
+	Smallest, // Shows lowest to highest payouts
+}
+
+impl PayoutView {
+	fn new() -> Self {
+		Self::Latest
+	}
+}
+
+impl Default for PayoutView {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
+impl Display for PayoutView {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f, "{}", self)
+	}
+}
+
 //---------------------------------------------------------------------------------------------------- [Hash] enum for [Status/P2Pool]
 #[derive(Clone,Copy,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum Hash {
@@ -856,6 +922,7 @@ pub struct State {
 #[derive(Clone,PartialEq,Debug,Deserialize,Serialize)]
 pub struct Status {
 	pub submenu: Submenu,
+	pub payout_view: PayoutView,
 	pub monero_enabled: bool,
 	pub manual_hash: bool,
 	pub hashrate: f64,
@@ -941,6 +1008,7 @@ impl Default for Status {
 	fn default() -> Self {
 		Self {
 			submenu: Submenu::default(),
+			payout_view: PayoutView::default(),
 			monero_enabled: false,
 			manual_hash: false,
 			hashrate: 0.0,
