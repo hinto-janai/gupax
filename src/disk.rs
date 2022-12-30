@@ -51,6 +51,8 @@ use crate::{
 	P2poolRegex,
 };
 use log::*;
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::PermissionsExt;
 
 //---------------------------------------------------------------------------------------------------- Const
 // State file
@@ -133,6 +135,26 @@ pub fn get_gupax_data_path() -> Result<PathBuf, TomlError> {
 	}
 }
 
+pub fn set_unix_750_perms(path: &PathBuf) -> Result<(), TomlError> {
+	#[cfg(target_os = "windows")]
+	return Ok(());
+	#[cfg(target_family = "unix")]
+	match fs::set_permissions(path, fs::Permissions::from_mode(0o750)) {
+		Ok(_) => { info!("OS | Unix 750 permissions on path [{}] ... OK", path.display()); Ok(()) },
+		Err(e) => { error!("OS | Unix 750 permissions on path [{}] ... FAIL ... {}", path.display(), e); Err(TomlError::Io(e)) },
+	}
+}
+
+pub fn set_unix_660_perms(path: &PathBuf) -> Result<(), TomlError> {
+	#[cfg(target_os = "windows")]
+	return Ok(());
+	#[cfg(target_family = "unix")]
+	match fs::set_permissions(path, fs::Permissions::from_mode(0o660)) {
+		Ok(_) => { info!("OS | Unix 660 permissions on path [{}] ... OK", path.display()); Ok(()) },
+		Err(e) => { error!("OS | Unix 660 permissions on path [{}] ... FAIL ... {}", path.display(), e); Err(TomlError::Io(e)) },
+	}
+}
+
 pub fn get_gupax_p2pool_path(os_data_path: &PathBuf) -> PathBuf {
 	let mut gupax_p2pool_dir = os_data_path.clone();
 	gupax_p2pool_dir.push(GUPAX_P2POOL_API_DIRECTORY);
@@ -142,9 +164,10 @@ pub fn get_gupax_p2pool_path(os_data_path: &PathBuf) -> PathBuf {
 pub fn create_gupax_dir(path: &PathBuf) -> Result<(), TomlError> {
 	// Create Gupax directory
 	match fs::create_dir_all(path) {
-		Ok(_) => { info!("OS | Create data path ... OK"); Ok(()) },
-		Err(e) => { error!("OS | Create data path ... FAIL ... {}", e); Err(TomlError::Io(e)) },
+		Ok(_) => info!("OS | Create data path ... OK"),
+		Err(e) => { error!("OS | Create data path ... FAIL ... {}", e); return Err(TomlError::Io(e)) },
 	}
+	set_unix_750_perms(&path)
 }
 
 pub fn create_gupax_p2pool_dir(path: &PathBuf) -> Result<(), TomlError> {
@@ -1156,6 +1179,7 @@ mod test {
 
 			[status]
 			submenu = "P2pool"
+			payout_view = "Oldest"
 			monero_enabled = true
 			manual_hash = false
 			hashrate = 1241.23

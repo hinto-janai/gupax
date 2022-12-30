@@ -179,8 +179,8 @@ pub const STATUS_SUBMENU_PAYOUT:    &str = "The total amount of payouts received
 pub const STATUS_SUBMENU_XMR:       &str = "The total of XMR mined via P2Pool across all time";
 pub const STATUS_SUBMENU_LATEST:    &str = "Sort the logs latest to oldest";
 pub const STATUS_SUBMENU_OLDEST:    &str = "Sort the logs oldest to latest";
-pub const STATUS_SUBMENU_BIGGEST:   &str = "Sort the logs by biggest payouts first";
-pub const STATUS_SUBMENU_SMALLEST:  &str = "Sort the logs by smallest payouts first";
+pub const STATUS_SUBMENU_BIGGEST:   &str = "Sort the logs by the biggest payouts first";
+pub const STATUS_SUBMENU_SMALLEST:  &str = "Sort the logs by the smallest payouts first";
 
 // Gupax
 pub const GUPAX_UPDATE:           &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";

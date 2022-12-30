@@ -142,17 +142,19 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 			ui.add_sized([width, text], Label::new(RichText::new(format!("Total XMR: {}", api.xmr)).underline().color(LIGHT_GRAY))).on_hover_text(STATUS_SUBMENU_XMR);
 			let width = width / 4.0;
 			ui.separator();
-			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Latest, "Latest")).on_hover_text(STATUS_SUBMENU_LATEST).clicked() { self.payout_view = PayoutView::Latest; }
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Latest, "Latest")).on_hover_text(STATUS_SUBMENU_LATEST).clicked() {
+				self.payout_view = PayoutView::Latest;
+			}
 			ui.separator();
-			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Oldest, "Oldest")).on_hover_text(STATUS_SUBMENU_OLDEST).clicked() { self.payout_view = PayoutView::Oldest; }
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Oldest, "Oldest")).on_hover_text(STATUS_SUBMENU_OLDEST).clicked() {
+				self.payout_view = PayoutView::Oldest;
+			}
 			ui.separator();
 			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Biggest, "Biggest")).on_hover_text(STATUS_SUBMENU_BIGGEST).clicked() {
-				api.update_payout_high();
 				self.payout_view = PayoutView::Biggest;
 			}
 			ui.separator();
 			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Smallest, "Smallest")).on_hover_text(STATUS_SUBMENU_SMALLEST).clicked() {
-				api.update_payout_low();
 				self.payout_view = PayoutView::Smallest;
 			}
 		});
