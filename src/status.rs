@@ -82,7 +82,7 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.add_sized([width, height], Label::new(format!("Total: {:.13} XMR", api.xmr)));
 		ui.add_sized([width, height], Label::new(format!("[{:.7}/hour]\n[{:.7}/day]\n[{:.7}/month]", api.xmr_hour, api.xmr_day, api.xmr_month)));
 		ui.add_sized([width, height], Label::new(RichText::new("Hashrate (15m/1h/24h)").underline().color(BONE))).on_hover_text(STATUS_P2POOL_HASHRATE);
-		ui.add_sized([width, height], Label::new(format!("[{} H/s]\n[{} H/s]\n[{} H/s]", api.hashrate_15m, api.hashrate_1h, api.hashrate_24h)));
+		ui.add_sized([width, height], Label::new(format!("[{} H/s] [{} H/s] [{} H/s]", api.hashrate_15m, api.hashrate_1h, api.hashrate_24h)));
 		ui.add_sized([width, height], Label::new(RichText::new("Miners Connected").underline().color(BONE))).on_hover_text(STATUS_P2POOL_CONNECTIONS);
 		ui.add_sized([width, height], Label::new(format!("{}", api.connections)));
 		ui.add_sized([width, height], Label::new(RichText::new("Effort").underline().color(BONE))).on_hover_text(STATUS_P2POOL_EFFORT);
