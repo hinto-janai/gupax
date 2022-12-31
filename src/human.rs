@@ -113,6 +113,9 @@ impl HumanNumber {
 	pub fn unknown() -> Self {
 		Self("???".to_string())
 	}
+	pub fn from_str(s: &str) -> Self {
+		Self(s.to_string())
+	}
 	pub fn to_percent(f: f32) -> Self {
 		if f < 0.01 {
 			Self("0%".to_string())

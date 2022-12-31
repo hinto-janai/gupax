@@ -605,6 +605,7 @@ pub struct GupaxP2poolApi {
 impl Default for GupaxP2poolApi { fn default() -> Self { Self::new() } }
 
 impl GupaxP2poolApi {
+	//---------------------------------------------------------------------------------------------------- Init, these pretty much only get called once
 	pub fn new() -> Self {
 		Self {
 			log: String::new(),
@@ -659,34 +660,6 @@ impl GupaxP2poolApi {
 		Ok(())
 	}
 
-	pub fn update_log_rev(&mut self) {
-		let mut log_rev = String::with_capacity(self.log.len());
-		for line in self.log.lines().rev() {
-			log_rev.push_str(line);
-			log_rev.push_str("\n");
-		}
-		self.log_rev = log_rev;
-	}
-
-	pub fn append_head_log_rev(&mut self, line: &str) {
-		self.log_rev = format!("{}\n{}", line, self.log_rev);
-	}
-
-	pub fn update_payout_low(&mut self) {
-		self.payout_ord.sort_payout_low_to_high();
-		self.payout_low = self.payout_ord.to_string();
-	}
-
-	pub fn update_payout_high(&mut self) {
-		self.payout_ord.sort_payout_high_to_low();
-		self.payout_high = self.payout_ord.to_string();
-	}
-
-	pub fn update_payout_strings(&mut self) {
-		self.update_payout_low();
-		self.update_payout_high();
-	}
-
 	pub fn read_all_files_and_update(&mut self) -> Result<(), TomlError> {
 		let payout_u64 = match read_to_string(File::Payout, &self.path_payout)?.trim().parse::<u64>() {
 			Ok(o)  => o,
@@ -711,10 +684,48 @@ impl GupaxP2poolApi {
 		Ok(())
 	}
 
-	// Takes the log line and (date, atomic_unit, block) and updates [self] and the [PayoutOrd]
-	pub fn add_payout(&mut self, log_payout_line: &str, date: String, atomic_unit: AtomicUnit, block: HumanNumber) {
-		self.log.push_str(log_payout_line);
-		self.append_head_log_rev(log_payout_line);
+	//---------------------------------------------------------------------------------------------------- Live, functions that actually update/write live stats
+	pub fn update_log_rev(&mut self) {
+		let mut log_rev = String::with_capacity(self.log.len());
+		for line in self.log.lines().rev() {
+			log_rev.push_str(line);
+			log_rev.push_str("\n");
+		}
+		self.log_rev = log_rev;
+	}
+
+	pub fn format_payout(date: &str, atomic_unit: &AtomicUnit, block: &HumanNumber) -> String {
+		format!("{} | {} XMR | Block {}", date, atomic_unit, block)
+	}
+
+	pub fn append_log(&mut self, formatted_log_line: &str) {
+		self.log.push_str(formatted_log_line);
+		self.log.push_str("\n");
+	}
+
+	pub fn append_head_log_rev(&mut self, formatted_log_line: &str) {
+		self.log_rev = format!("{}\n{}", formatted_log_line, self.log_rev);
+	}
+
+	pub fn update_payout_low(&mut self) {
+		self.payout_ord.sort_payout_low_to_high();
+		self.payout_low = self.payout_ord.to_string();
+	}
+
+	pub fn update_payout_high(&mut self) {
+		self.payout_ord.sort_payout_high_to_low();
+		self.payout_high = self.payout_ord.to_string();
+	}
+
+	pub fn update_payout_strings(&mut self) {
+		self.update_payout_low();
+		self.update_payout_high();
+	}
+
+	// Takes the (date, atomic_unit, block) and updates [self] and the [PayoutOrd]
+	pub fn add_payout(&mut self, formatted_log_line: &str, date: String, atomic_unit: AtomicUnit, block: HumanNumber) {
+		self.append_log(formatted_log_line);
+		self.append_head_log_rev(formatted_log_line);
 		self.payout_u64 += 1;
 		self.payout = HumanNumber::from_u64(self.payout_u64);
 		self.xmr = self.xmr.add_self(atomic_unit);
@@ -722,20 +733,20 @@ impl GupaxP2poolApi {
 		self.update_payout_strings();
 	}
 
-	pub fn write_to_all_files(&self) -> Result<(), TomlError> {
+	pub fn write_to_all_files(&self, formatted_log_line: &str) -> Result<(), TomlError> {
 		Self::disk_overwrite(&self.payout_u64.to_string(), &self.path_payout)?;
 		Self::disk_overwrite(&self.xmr.to_string(), &self.path_xmr)?;
-		Self::disk_append(&self.log, &self.path_log)?;
+		Self::disk_append(formatted_log_line, &self.path_log)?;
 		Ok(())
 	}
 
-	pub fn disk_append(string: &str, path: &PathBuf) -> Result<(), TomlError> {
+	pub fn disk_append(formatted_log_line: &str, path: &PathBuf) -> Result<(), TomlError> {
 		use std::io::Write;
 		let mut file = match fs::OpenOptions::new().append(true).create(true).open(path) {
 			Ok(f) => f,
 			Err(e) => { error!("GupaxP2poolApi | Append [{}] ... FAIL: {}", path.display(), e); return Err(TomlError::Io(e)) },
 		};
-		match writeln!(file, "{}", string) {
+		match writeln!(file, "{}", formatted_log_line) {
 			Ok(_) => { debug!("GupaxP2poolApi | Append [{}] ... OK", path.display()); Ok(()) },
 			Err(e) => { error!("GupaxP2poolApi | Append [{}] ... FAIL: {}", path.display(), e); Err(TomlError::Io(e)) },
 		}
@@ -1384,6 +1395,8 @@ mod test {
 	#[test]
 	fn create_and_serde_gupax_p2pool_api() {
 		use crate::disk::GupaxP2poolApi;
+		use crate::regex::P2poolRegex;
+		use crate::xmr::PayoutOrd;
 		use crate::xmr::AtomicUnit;
 
 		// Get API dir, fill paths.
@@ -1398,7 +1411,9 @@ mod test {
 		api.log        = "NOTICE  2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816".to_string();
 		api.payout_u64 = 1;
 		api.xmr        = AtomicUnit::from_u64(2);
-		GupaxP2poolApi::write_to_all_files(&api).unwrap();
+		let (date, atomic_unit, block) = PayoutOrd::parse_raw_payout_line(&api.log, &P2poolRegex::new());
+		let formatted_log_line = GupaxP2poolApi::format_payout(&date, &atomic_unit, &block);
+		GupaxP2poolApi::write_to_all_files(&api, &formatted_log_line).unwrap();
 		println!("AFTER WRITE: {:#?}", api);
 
 		// Read
@@ -1409,7 +1424,7 @@ mod test {
 		assert_eq!(api.payout_u64, 1);
 		assert_eq!(api.xmr.to_u64(), 2);
 		assert!(!api.payout_ord.is_empty());
-		assert!(api.log.contains("2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816\n"));
+		assert!(api.log.contains("2022-01-27 01:30:23.1377 | 0.000000000001 XMR | Block 2,642,816"));
 	}
 
 	#[test]

@@ -267,9 +267,10 @@ impl Helper {
 //			println!("{}", line); // For debugging.
 			if regex.payout.is_match(&line) {
 				debug!("P2Pool PTY | Found payout, attempting write: {}", line);
-				let (date, atomic_unit, block) = PayoutOrd::parse_line(&line, &regex);
-				GupaxP2poolApi::add_payout(&mut lock!(gupax_p2pool_api), &line, date, atomic_unit, block);
-				if let Err(e) = GupaxP2poolApi::write_to_all_files(&lock!(gupax_p2pool_api)) { error!("P2Pool PTY GupaxP2poolApi | Write error: {}", e); }
+				let (date, atomic_unit, block) = PayoutOrd::parse_raw_payout_line(&line, &regex);
+				let formatted_log_line = GupaxP2poolApi::format_payout(&date, &atomic_unit, &block);
+				GupaxP2poolApi::add_payout(&mut lock!(gupax_p2pool_api), &formatted_log_line, date, atomic_unit, block);
+				if let Err(e) = GupaxP2poolApi::write_to_all_files(&lock!(gupax_p2pool_api), &formatted_log_line) { error!("P2Pool PTY GupaxP2poolApi | Write error: {}", e); }
 			}
 			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("P2Pool PTY Parse | Output error: {}", e); }
 			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("P2Pool PTY Pub | Output error: {}", e); }

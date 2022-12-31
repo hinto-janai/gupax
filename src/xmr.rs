@@ -140,7 +140,8 @@ impl PayoutOrd {
 		self.0.is_empty()
 	}
 
-	pub fn parse_line(line: &str, regex: &P2poolRegex) -> (String, AtomicUnit, HumanNumber) {
+	// Expected input: "NOTICE  2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816"
+	pub fn parse_raw_payout_line(line: &str, regex: &P2poolRegex) -> (String, AtomicUnit, HumanNumber) {
 		// Date
 		let date = match regex.date.find(line) {
 			Some(date) => date.as_str().to_string(),
@@ -154,9 +155,11 @@ impl PayoutOrd {
 					Err(e) => { error!("P2Pool | AtomicUnit parse error: [{}] on [{}]", e, line); AtomicUnit::new() },
 				}
 			} else {
+				error!("P2Pool | AtomicUnit parse error: [{}]", line);
 				AtomicUnit::new()
 			}
 		} else {
+			error!("P2Pool | AtomicUnit parse error: [{}]", line);
 			AtomicUnit::new()
 		};
 		// Block
@@ -167,31 +170,57 @@ impl PayoutOrd {
 					Err(e) => { error!("P2Pool | Block parse error: [{}] on [{}]", e, line); HumanNumber::unknown() },
 				}
 			} else {
+				error!("P2Pool | Block parse error: [{}]", line);
 				HumanNumber::unknown()
 			}
 		} else {
+			error!("P2Pool | Block parse error: [{}]", line);
 			HumanNumber::unknown()
 		};
 		(date, atomic_unit, block)
 	}
 
-	// Takes in input of ONLY P2Pool payout logs and
-	// converts it into a usable [PayoutOrd]
-	// It expects log lines like this:
-	// "NOTICE  2022-04-11 00:20:17.2571 P2Pool You received a payout of 0.001371623621 XMR in block 2562511"
+	// Expected input: "2022-01-27 01:30:23.1377 | 0.000000000001 XMR | Block 2,642,816"
+	pub fn parse_formatted_payout_line(line: &str, regex: &P2poolRegex) -> (String, AtomicUnit, HumanNumber) {
+		// Date
+		let date = match regex.date.find(line) {
+			Some(date) => date.as_str().to_string(),
+			None => { error!("P2Pool | Date parse error: [{}]", line); "????-??-?? ??:??:??.????".to_string() },
+		};
+		// AtomicUnit
+		let atomic_unit = if let Some(word) = regex.payout_float.find(line) {
+			match word.as_str().parse::<f64>() {
+				Ok(au) => AtomicUnit::from_f64(au),
+				Err(e) => { error!("P2Pool | AtomicUnit parse error: [{}] on [{}]", e, line); AtomicUnit::new() },
+			}
+		} else {
+			error!("P2Pool | AtomicUnit parse error: [{}]", line);
+			AtomicUnit::new()
+		};
+		// Block
+		let block = match regex.block_comma.find(line) {
+			Some(b) => HumanNumber::from_str(b.as_str()),
+			None    => { error!("P2Pool | Block parse error: [{}]", line); HumanNumber::unknown() },
+		};
+		(date, atomic_unit, block)
+	}
+
+	// Takes in input of ONLY P2Pool payout logs and converts it into a usable [PayoutOrd]
+	// It expects formatted log lines like this: "2022-04-11 00:20:17.2571 | 0.001371623621 XMR | Block 2,562,511"
 	// For efficiency reasons, I'd like to know the byte size
 	// we should allocate for the vector so we aren't adding every loop.
 	// Given a log [str], the equation for how many bytes the final vec will be is:
-	// (BYTES_OF_DATE + BYTES OF XMR + BYTES OF BLOCK) * amount_of_lines
+	// (BYTES_OF_DATE + BYTES OF XMR + BYTES OF BLOCK) + (SPACES, PIPES, MISC WORDS) * amount_of_lines
 	// The first three are more or less constants (monero block 10m is in 10,379 years...): [23, 14, 7] (sum: 44)
-	// Add 16 more bytes for wrapper type overhead and it's an even [60] bytes per line.
+	// Spaces, pipes, commas and words (XMR, Block): [19]
+	// Add 7 more bytes for wrapper type overhead and it's an even [70] bytes per line.
 	pub fn update_from_payout_log(&mut self, log: &str) {
 		let regex = P2poolRegex::new();
 		let amount_of_lines = log.lines().count();
-		let mut vec: Vec<(String, AtomicUnit, HumanNumber)> = Vec::with_capacity(60 * amount_of_lines);
+		let mut vec: Vec<(String, AtomicUnit, HumanNumber)> = Vec::with_capacity(70 * amount_of_lines);
 		for line in log.lines() {
 			debug!("PayoutOrg | Parsing line: [{}]", line);
-			vec.push(Self::parse_line(line, &regex));
+			vec.push(Self::parse_formatted_payout_line(line, &regex));
 		}
 		*self = Self(vec);
 	}
@@ -259,20 +288,15 @@ mod test {
 	fn update_p2pool_payout_log() {
 		use crate::xmr::PayoutOrd;
 		let log =
-r#"NOTICE  2021-12-21 01:01:01.1111 P2Pool You received a payout of 0.001000000000 XMR in block 1234567
-NOTICE  2021-12-21 02:01:01.1111 P2Pool You received a payout of 0.002000000000 XMR in block 2345678
-NOTICE  2021-12-21 03:01:01.1111 P2Pool You received a payout of 0.003000000000 XMR in block 3456789
+r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1,234,567
+2021-12-21 02:01:01.1111 | 0.002000000000 XMR | Block 2,345,678
+2021-12-21 03:01:01.1111 | 0.003000000000 XMR | Block 3,456,789
 "#;
 		let mut payout_ord = PayoutOrd::new();
 		println!("BEFORE: {}", payout_ord);
 		PayoutOrd::update_from_payout_log(&mut payout_ord, log);
 		println!("AFTER: {}", payout_ord);
-		let should_be =
-r#"2021-12-21 01:01:01.1111 | 0.001000000000 XMR | Block 1,234,567
-2021-12-21 02:01:01.1111 | 0.002000000000 XMR | Block 2,345,678
-2021-12-21 03:01:01.1111 | 0.003000000000 XMR | Block 3,456,789
-"#;
-		assert_eq!(payout_ord.to_string(), should_be)
+		assert_eq!(payout_ord.to_string(), log);
 	}
 
 	#[test]

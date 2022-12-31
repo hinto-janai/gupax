@@ -165,8 +165,8 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			egui::ScrollArea::vertical().stick_to_bottom(self.payout_view == PayoutView::Oldest).max_width(width).max_height(log).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
 				match self.payout_view {
-					PayoutView::Latest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log.as_str())),
-					PayoutView::Oldest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log_rev.as_str())),
+					PayoutView::Latest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log_rev.as_str())),
+					PayoutView::Oldest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log.as_str())),
 					PayoutView::Biggest  => ui.add_sized([width, log], TextEdit::multiline(&mut api.payout_high.as_str())),
 					PayoutView::Smallest => ui.add_sized([width, log], TextEdit::multiline(&mut api.payout_low.as_str())),
 				};
@@ -191,14 +191,15 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.separator();
 		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Giga, "Giga")).on_hover_text(STATUS_SUBMENU_GIGA).clicked() { self.hash_metric = Hash::Giga; }
 		ui.separator();
-		ui.spacing_mut().slider_width = button*12.5;
+		ui.spacing_mut().slider_width = button*11.5;
 		ui.add_sized([button*14.0, text], Slider::new(&mut self.hashrate, 1.0..=1_000.0));
 	})});
-	let api = lock!(p2pool_api);
+	// Actual stats
 	ui.set_enabled(p2pool_alive);
 	let text = height / 25.0;
 	let width = (width/3.0)-(SPACE*1.666);
 	let min_height = ui.available_height()/1.25;
+	let api = lock!(p2pool_api);
 	ui.horizontal(|ui| {
 	ui.group(|ui| { ui.vertical(|ui| {
 		ui.set_min_height(min_height);
@@ -206,19 +207,19 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 			let hashrate          = Hash::convert_to_hash(self.hashrate, self.hash_metric) as u64;
 			let p2pool_share_mean = PubP2poolApi::calculate_share_or_block_time(hashrate, api.p2pool_difficulty_u64);
 			let solo_block_mean   = PubP2poolApi::calculate_share_or_block_time(hashrate, api.monero_difficulty_u64);
-			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_BLOCK_MEAN);
-			ui.add_sized([width, text], Label::new(api.p2pool_block_mean.to_string()));
 			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_P2POOL_HASHRATE);
 			ui.add_sized([width, text], Label::new(format!("{} H/s", HumanNumber::from_u64(hashrate))));
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(api.p2pool_block_mean.to_string()));
 			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Share Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_SHARE_MEAN);
 			ui.add_sized([width, text], Label::new(p2pool_share_mean.to_string()));
 			ui.add_sized([width, text], Label::new(RichText::new("Your Solo Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_SOLO_BLOCK_MEAN);
 			ui.add_sized([width, text], Label::new(solo_block_mean.to_string()));
 		} else {
-			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_BLOCK_MEAN);
-			ui.add_sized([width, text], Label::new(api.p2pool_block_mean.to_string()));
 			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_P2POOL_HASHRATE);
 			ui.add_sized([width, text], Label::new(format!("{} H/s", api.hashrate_1h)));
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(api.p2pool_block_mean.to_string()));
 			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Share Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_SHARE_MEAN);
 			ui.add_sized([width, text], Label::new(api.p2pool_share_mean.to_string()));
 			ui.add_sized([width, text], Label::new(RichText::new("Your Solo Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_SOLO_BLOCK_MEAN);
