@@ -170,6 +170,12 @@ impl State {
 		}
 	}
 
+    pub fn update_absolute_path(&mut self) -> Result<(), TomlError> {
+        self.gupax.absolute_p2pool_path = into_absolute_path(self.gupax.p2pool_path.clone())?;
+        self.gupax.absolute_xmrig_path = into_absolute_path(self.gupax.xmrig_path.clone())?;
+        Ok(())
+    }
+
 	// Convert [&str] to [State]
 	pub fn from_str(string: &str) -> Result<Self, TomlError> {
 		match toml::de::from_str(string) {

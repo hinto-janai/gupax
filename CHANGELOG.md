@@ -2,6 +2,7 @@
 ## Fixes
 * macOS: Added warning (and solution) if `Gupax/P2Pool/XMRig` were quarantined by [`Gatekeeper`](https://support.apple.com/en-us/HT202491)
 * P2Pool/XMRig: Added a red `Start` button on errors (bad PATH, invalid file, etc) and a solution in the tooltip
+* P2Pool/XMRig: Fixed processes sometimes not starting after entering a custom PATH
 * P2Pool: Fixed custom node selection sometimes using old values after save
 * Miscellaneous UI changes and fixes
 
