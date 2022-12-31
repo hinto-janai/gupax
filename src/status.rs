@@ -27,6 +27,7 @@ use crate::{
 	macros::*,
 	GupaxP2poolApi,
 	PayoutView,
+	human::HumanNumber,
 };
 use std::sync::{Arc,Mutex};
 use log::*;
@@ -36,6 +37,7 @@ use egui::{
 	TextStyle::Name,
 	TextEdit,
 	SelectableLabel,
+	Slider,
 };
 
 impl crate::disk::Status {
@@ -170,6 +172,81 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 				};
 			});
 		});
+	});
+	drop(api);
+	// Payout/Share Calculator
+	let button = (width/20.0)-(SPACE*1.666);
+	ui.group(|ui| { ui.horizontal(|ui| {
+		ui.set_min_width(width-SPACE);
+		if ui.add_sized([button*2.0, text], SelectableLabel::new(self.manual_hash == false, "Automatic")).on_hover_text(STATUS_SUBMENU_AUTOMATIC).clicked() {self.manual_hash = false; }
+		ui.separator();
+		if ui.add_sized([button*2.0, text], SelectableLabel::new(self.manual_hash == true, "Manual")).on_hover_text(STATUS_SUBMENU_MANUAL).clicked() { self.manual_hash = true; }
+		ui.separator();
+		ui.set_enabled(self.manual_hash);
+		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Hash, "Hash")).on_hover_text(STATUS_SUBMENU_HASH).clicked() { self.hash_metric = Hash::Hash; }
+		ui.separator();
+		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Kilo, "Kilo")).on_hover_text(STATUS_SUBMENU_KILO).clicked() { self.hash_metric = Hash::Kilo; }
+		ui.separator();
+		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Mega, "Mega")).on_hover_text(STATUS_SUBMENU_MEGA).clicked() { self.hash_metric = Hash::Mega; }
+		ui.separator();
+		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Giga, "Giga")).on_hover_text(STATUS_SUBMENU_GIGA).clicked() { self.hash_metric = Hash::Giga; }
+		ui.separator();
+		ui.spacing_mut().slider_width = button*12.5;
+		ui.add_sized([button*14.0, text], Slider::new(&mut self.hashrate, 1.0..=1_000.0));
+	})});
+	let api = lock!(p2pool_api);
+	ui.set_enabled(p2pool_alive);
+	let text = height / 25.0;
+	let width = (width/3.0)-(SPACE*1.666);
+	let min_height = ui.available_height()/1.25;
+	ui.horizontal(|ui| {
+	ui.group(|ui| { ui.vertical(|ui| {
+		ui.set_min_height(min_height);
+		if self.manual_hash {
+			let hashrate          = Hash::convert_to_hash(self.hashrate, self.hash_metric) as u64;
+			let p2pool_share_mean = PubP2poolApi::calculate_share_or_block_time(hashrate, api.p2pool_difficulty_u64);
+			let solo_block_mean   = PubP2poolApi::calculate_share_or_block_time(hashrate, api.monero_difficulty_u64);
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(api.p2pool_block_mean.to_string()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_P2POOL_HASHRATE);
+			ui.add_sized([width, text], Label::new(format!("{} H/s", HumanNumber::from_u64(hashrate))));
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Share Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_SHARE_MEAN);
+			ui.add_sized([width, text], Label::new(p2pool_share_mean.to_string()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your Solo Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_SOLO_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(solo_block_mean.to_string()));
+		} else {
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(api.p2pool_block_mean.to_string()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_P2POOL_HASHRATE);
+			ui.add_sized([width, text], Label::new(format!("{} H/s", api.hashrate_1h)));
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Share Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_SHARE_MEAN);
+			ui.add_sized([width, text], Label::new(api.p2pool_share_mean.to_string()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your Solo Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_SOLO_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(api.solo_block_mean.to_string()));
+		}
+	})});
+	ui.group(|ui| { ui.vertical(|ui| {
+		ui.set_min_height(min_height);
+		ui.add_sized([width, text], Label::new(RichText::new("Monero Difficulty").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_MONERO_DIFFICULTY);
+		ui.add_sized([width, text], Label::new(api.monero_difficulty.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("Monero Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_MONERO_HASHRATE);
+		ui.add_sized([width, text], Label::new(api.monero_hashrate.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("P2Pool Difficulty").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_DIFFICULTY);
+		ui.add_sized([width, text], Label::new(api.p2pool_difficulty.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("P2Pool Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_HASHRATE);
+		ui.add_sized([width, text], Label::new(api.p2pool_hashrate.as_str()));
+	})});
+	ui.group(|ui| { ui.vertical(|ui| {
+		ui.set_min_height(min_height);
+		ui.add_sized([width, text], Label::new(RichText::new("P2Pool Miners").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_MINERS);
+		ui.add_sized([width, text], Label::new(api.miners.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("P2Pool Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_DOMINANCE);
+		ui.add_sized([width, text], Label::new(api.p2pool_percent.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_P2POOL_DOMINANCE);
+		ui.add_sized([width, text], Label::new(api.user_p2pool_percent.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("Your Monero Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_MONERO_DOMINANCE);
+		ui.add_sized([width, text], Label::new(api.user_monero_percent.as_str()));
+	})});
 	});
 	drop(api);
 	//---------------------------------------------------------------------------------------------------- [Monero]

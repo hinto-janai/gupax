@@ -1239,17 +1239,18 @@ pub struct PubP2poolApi {
 	pub average_effort: HumanNumber,
 	pub current_effort: HumanNumber,
 	pub connections: HumanNumber,
-	// The API below needs a raw int [hashrate] to go off of and
+	// The API needs a raw ints to go off of and
 	// there's not a good way to access it without doing weird
-	// [Arc<Mutex>] shenanigans, so the raw [hashrate_1h] is
-	// copied here instead.
-	pub hashrate: u64,
+	// [Arc<Mutex>] shenanigans, so some raw ints are stored here.
+	pub user_p2pool_hashrate_u64: u64,
+	pub p2pool_difficulty_u64: u64,
+	pub monero_difficulty_u64: u64,
 	// Network API
 	pub monero_difficulty: HumanNumber, // e.g: [15,000,000]
 	pub monero_hashrate: HumanNumber,   // e.g: [1.000 GH/s]
-	pub hash: String,
+	pub hash: String, // Current block hash
 	pub height: HumanNumber,
-	pub reward: u64, // Atomic units
+	pub reward: AtomicUnit,
 	// Pool API
 	pub p2pool_difficulty: HumanNumber,
 	pub p2pool_hashrate: HumanNumber,
@@ -1290,12 +1291,14 @@ impl PubP2poolApi {
 			average_effort: HumanNumber::unknown(),
 			current_effort: HumanNumber::unknown(),
 			connections: HumanNumber::unknown(),
-			hashrate: 0,
+			user_p2pool_hashrate_u64: 0,
+			p2pool_difficulty_u64: 0,
+			monero_difficulty_u64: 0,
 			monero_difficulty: HumanNumber::unknown(),
 			monero_hashrate: HumanNumber::unknown(),
 			hash: String::from("???"),
 			height: HumanNumber::unknown(),
-			reward: 0,
+			reward: AtomicUnit::new(),
 			p2pool_difficulty: HumanNumber::unknown(),
 			p2pool_hashrate: HumanNumber::unknown(),
 			miners: HumanNumber::unknown(),
@@ -1407,14 +1410,14 @@ impl PubP2poolApi {
 			average_effort: HumanNumber::to_percent(local.average_effort),
 			current_effort: HumanNumber::to_percent(local.current_effort),
 			connections: HumanNumber::from_u16(local.connections),
-			hashrate: local.hashrate_1h,
+			user_p2pool_hashrate_u64: local.hashrate_1h,
 			..std::mem::take(&mut *public)
 		};
 	}
 
 	// Mutate [PubP2poolApi] with data from a [PrivP2pool(Network|Pool)Api].
 	fn update_from_network_pool(public: &Arc<Mutex<Self>>, net: PrivP2poolNetworkApi, pool: PrivP2poolPoolApi) {
-		let user_hashrate = lock!(public).hashrate; // The user's total P2Pool hashrate
+		let user_hashrate = lock!(public).user_p2pool_hashrate_u64; // The user's total P2Pool hashrate
 		let monero_difficulty = net.difficulty;
 		let monero_hashrate = monero_difficulty / MONERO_BLOCK_TIME_IN_SECONDS;
 		let p2pool_hashrate = pool.pool_statistics.hashRate;
@@ -1452,11 +1455,13 @@ impl PubP2poolApi {
 		}
 		let mut public = lock!(public);
 		*public = Self {
+			p2pool_difficulty_u64: p2pool_difficulty,
+			monero_difficulty_u64: monero_difficulty,
 			monero_difficulty: HumanNumber::from_u64(monero_difficulty),
 			monero_hashrate: HumanNumber::from_u64_to_gigahash_3_point(monero_hashrate),
 			hash: net.hash,
 			height: HumanNumber::from_u32(net.height),
-			reward: net.reward,
+			reward: AtomicUnit::from_u64(net.reward),
 			p2pool_difficulty: HumanNumber::from_u64(p2pool_difficulty),
 			p2pool_hashrate: HumanNumber::from_u64_to_megahash_3_point(p2pool_hashrate),
 			miners: HumanNumber::from_u32(pool.pool_statistics.miners),
@@ -1468,6 +1473,14 @@ impl PubP2poolApi {
 			user_monero_percent,
 			..std::mem::take(&mut *public)
 		};
+	}
+
+	pub fn calculate_share_or_block_time(hashrate: u64, difficulty: u64) -> HumanTime {
+		if hashrate == 0 {
+			HumanTime::new()
+		} else {
+			HumanTime::from_u64(difficulty / hashrate)
+		}
 	}
 }
 
@@ -1889,7 +1902,7 @@ mod test {
 		assert_eq!(p.average_effort.to_string(), "100.00%");
 		assert_eq!(p.current_effort.to_string(), "200.00%");
 		assert_eq!(p.connections.to_string(),    "1,234");
-		assert_eq!(p.hashrate,                   20000);
+		assert_eq!(p.user_p2pool_hashrate_u64,   20000);
 		drop(p);
 		// Update Network + Pool
 		PubP2poolApi::update_from_network_pool(&public, network, pool);
@@ -1899,7 +1912,7 @@ mod test {
 		assert_eq!(p.monero_hashrate.to_string(),     "2.500 GH/s");
 		assert_eq!(p.hash.to_string(),                "asdf");
 		assert_eq!(p.height.to_string(),              "1,234");
-		assert_eq!(p.reward,                          2345);
+		assert_eq!(p.reward.to_u64(),                 2345);
 		assert_eq!(p.p2pool_difficulty.to_string(),   "10,000,000");
 		assert_eq!(p.p2pool_hashrate.to_string(),     "1.000 MH/s");
 		assert_eq!(p.miners.to_string(),              "1,000");

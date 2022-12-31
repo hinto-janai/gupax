@@ -1520,6 +1520,8 @@ impl eframe::App for App {
 								});
 							} else if p2pool_is_alive {
 								if key.is_up() && !wants_input || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() {
+									lock!(self.og).update_absolute_path();
+									self.state.update_absolute_path();
 									Helper::restart_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 								if key.is_down() && !wants_input || ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() {
@@ -1549,6 +1551,8 @@ impl eframe::App for App {
 								ui.set_enabled(ui_enabled);
 								let color = if ui_enabled { GREEN } else { RED };
 								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start P2Pool").on_disabled_hover_text(text).clicked() {
+									lock!(self.og).update_absolute_path();
+									self.state.update_absolute_path();
 									Helper::start_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 							}
@@ -1575,6 +1579,8 @@ impl eframe::App for App {
 								});
 							} else if xmrig_is_alive {
 								if key.is_up() && !wants_input || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
+									lock!(self.og).update_absolute_path();
+									self.state.update_absolute_path();
 									if cfg!(windows) {
 										Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
 									} else {
@@ -1609,14 +1615,15 @@ impl eframe::App for App {
 								}
 								ui.set_enabled(ui_enabled);
 								let color = if ui_enabled { GREEN } else { RED };
-								#[cfg(target_os = "windows")]
 								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
-									Helper::start_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
-								}
-								#[cfg(target_family = "unix")]
-								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
-									lock!(self.sudo).signal = ProcessSignal::Start;
-									self.error_state.ask_sudo(&self.sudo);
+									lock!(self.og).update_absolute_path();
+									self.state.update_absolute_path();
+									if cfg!(windows) {
+										Helper::start_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
+									} else if cfg!(unix) {
+										lock!(self.sudo).signal = ProcessSignal::Start;
+										self.error_state.ask_sudo(&self.sudo);
+									}
 								}
 							}
 						});

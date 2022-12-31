@@ -44,6 +44,10 @@ impl HumanTime {
 		HumanTime(d)
 	}
 
+	pub const fn from_u64(u: u64) -> HumanTime {
+		HumanTime(Duration::from_secs(u))
+	}
+
 	fn plural(f: &mut std::fmt::Formatter, started: &mut bool, name: &str, value: u64) -> std::fmt::Result {
 		if value > 0 {
 			if *started {
@@ -215,6 +219,9 @@ impl HumanNumber {
 	pub fn from_f64_no_fmt(f: f64) -> Self {
 		let f = format!("{}", f);
 		Self(f)
+	}
+	pub fn as_str(&self) -> &str {
+		self.0.as_str()
 	}
 }
 

@@ -239,6 +239,12 @@ impl State {
 		}
 	}
 
+	pub fn update_absolute_path(&mut self) -> Result<(), TomlError> {
+		self.gupax.absolute_p2pool_path = into_absolute_path(self.gupax.p2pool_path.clone())?;
+		self.gupax.absolute_xmrig_path = into_absolute_path(self.gupax.xmrig_path.clone())?;
+		Ok(())
+	}
+
 	// Convert [&str] to [State]
 	pub fn from_str(string: &str) -> Result<Self, TomlError> {
 		match toml::de::from_str(string) {
@@ -869,6 +875,15 @@ impl Default for Hash {
 }
 
 impl Hash {
+	pub fn convert_to_hash(f: f64, from: Self) -> f64 {
+		match from {
+			Self::Hash => f,
+			Self::Kilo => f * 1_000.0,
+			Self::Mega => f * 1_000_000.0,
+			Self::Giga => f * 1_000_000_000.0,
+		}
+	}
+
 	pub fn convert(f: f64, og: Self, new: Self) -> f64 {
 		match og {
 			Self::Hash => {
@@ -1034,7 +1049,7 @@ impl Default for Status {
 			payout_view: PayoutView::default(),
 			monero_enabled: false,
 			manual_hash: false,
-			hashrate: 0.0,
+			hashrate: 1.0,
 			hash_metric: Hash::default(),
 		}
 	}
@@ -1064,6 +1079,7 @@ impl Default for Gupax {
 		}
 	}
 }
+
 impl Default for P2pool {
 	fn default() -> Self {
 		Self {

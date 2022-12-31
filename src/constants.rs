@@ -176,11 +176,30 @@ pub const STATUS_SUBMENU_PROCESSES: &str = "View the status of process related d
 pub const STATUS_SUBMENU_P2POOL:    &str = "View P2Pool specific data";
 pub const STATUS_SUBMENU_MONERO:    &str = "View general Monero blockchain data";
 pub const STATUS_SUBMENU_PAYOUT:    &str = "The total amount of payouts received via P2Pool across all time";
+//-- P2Pool
 pub const STATUS_SUBMENU_XMR:       &str = "The total of XMR mined via P2Pool across all time";
 pub const STATUS_SUBMENU_LATEST:    &str = "Sort the logs latest to oldest";
 pub const STATUS_SUBMENU_OLDEST:    &str = "Sort the logs oldest to latest";
 pub const STATUS_SUBMENU_BIGGEST:   &str = "Sort the logs by the biggest payouts first";
 pub const STATUS_SUBMENU_SMALLEST:  &str = "Sort the logs by the smallest payouts first";
+pub const STATUS_SUBMENU_AUTOMATIC: &str = "Automatically calculate share/block time with your current P2Pool 1 hour average hashrate";
+pub const STATUS_SUBMENU_MANUAL:    &str = "Manually input a hashrate to calculate share/block time with current P2Pool/Monero network stats";
+pub const STATUS_SUBMENU_HASH:      &str = "Use [Hash] as the hashrate metric";
+pub const STATUS_SUBMENU_KILO:      &str = "Use [Kilo] as the hashrate metric (1,000x hash)";
+pub const STATUS_SUBMENU_MEGA:      &str = "Use [Mega] as the hashrate metric (1,000,000x hash)";
+pub const STATUS_SUBMENU_GIGA:      &str = "Use [Giga] as the hashrate metric (1,000,000,000x hash)";
+pub const STATUS_SUBMENU_P2POOL_BLOCK_MEAN:     &str = "The average time it takes for P2Pool to find a block";
+pub const STATUS_SUBMENU_YOUR_P2POOL_HASHRATE:  &str = "Your 1 hour average hashrate on P2Pool";
+pub const STATUS_SUBMENU_P2POOL_SHARE_MEAN:     &str = "The average time it takes for your hashrate to find a share on P2Pool";
+pub const STATUS_SUBMENU_SOLO_BLOCK_MEAN:       &str = "The average time it would take for your hashrate to find a block solo mining Monero";
+pub const STATUS_SUBMENU_MONERO_DIFFICULTY:     &str = "The current Monero network's difficulty (how many hashes it will take on average to find a block)";
+pub const STATUS_SUBMENU_MONERO_HASHRATE:       &str = "The current Monero network's hashrate";
+pub const STATUS_SUBMENU_P2POOL_DIFFICULTY:     &str = "The current P2Pool network's difficulty (how many hashes it will take on average to find a share)";
+pub const STATUS_SUBMENU_P2POOL_HASHRATE:       &str = "The current P2Pool network's hashrate";
+pub const STATUS_SUBMENU_P2POOL_MINERS:         &str = "The current amount of miners on P2Pool";
+pub const STATUS_SUBMENU_P2POOL_DOMINANCE:      &str = "The percent of hashrate P2Pool accounts for in the entire Monero network";
+pub const STATUS_SUBMENU_YOUR_P2POOL_DOMINANCE: &str = "The percent of hashrate you account for in P2Pool";
+pub const STATUS_SUBMENU_YOUR_MONERO_DOMINANCE: &str = "The percent of hashrate you account for in the entire Monero network";
 
 // Gupax
 pub const GUPAX_UPDATE:           &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
