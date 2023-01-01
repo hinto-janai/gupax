@@ -129,6 +129,18 @@ impl HumanNumber {
 	pub fn to_percent_no_fmt(f: f32) -> Self {
 		Self(format!("{}%", f))
 	}
+	pub fn from_f64_to_percent_3_point(f: f64) -> Self {
+		Self(format!("{:.3}%", f))
+	}
+	pub fn from_f64_to_percent_6_point(f: f64) -> Self {
+		Self(format!("{:.6}%", f))
+	}
+	pub fn from_f64_to_percent_9_point(f: f64) -> Self {
+		Self(format!("{:.9}%", f))
+	}
+	pub fn from_f64_to_percent_no_fmt(f: f64) -> Self {
+		Self(format!("{}%", f))
+	}
 	pub fn from_f32(f: f32) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&(f as u64), &LOCALE);

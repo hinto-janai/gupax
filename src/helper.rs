@@ -1249,6 +1249,8 @@ pub struct PubP2poolApi {
 	pub user_p2pool_hashrate_u64: u64,
 	pub p2pool_difficulty_u64: u64,
 	pub monero_difficulty_u64: u64,
+	pub p2pool_hashrate_u64: u64,
+	pub monero_hashrate_u64: u64,
 	// Tick. Every loop this gets incremented.
 	// At 60, it indicated we should read the below API files.
 	pub tick: u8,
@@ -1302,6 +1304,8 @@ impl PubP2poolApi {
 			user_p2pool_hashrate_u64: 0,
 			p2pool_difficulty_u64: 0,
 			monero_difficulty_u64: 0,
+			p2pool_hashrate_u64: 0,
+			monero_hashrate_u64: 0,
 			monero_difficulty: HumanNumber::unknown(),
 			monero_hashrate: HumanNumber::unknown(),
 			hash: String::from("???"),
@@ -1439,8 +1443,8 @@ impl PubP2poolApi {
 			user_p2pool_percent = HumanNumber::unknown();
 		} else {
 			p2pool_block_mean = HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / p2pool_hashrate));
-			let f = (user_hashrate as f32 / p2pool_hashrate as f32) * 100.0;
-			user_p2pool_percent = HumanNumber::to_percent_no_fmt(f);
+			let f = (user_hashrate as f64 / p2pool_hashrate as f64) * 100.0;
+			user_p2pool_percent = HumanNumber::from_f64_to_percent_6_point(f);
 		};
 		let p2pool_percent;
 		let user_monero_percent;
@@ -1448,10 +1452,10 @@ impl PubP2poolApi {
 			p2pool_percent = HumanNumber::unknown();
 			user_monero_percent = HumanNumber::unknown();
 		} else {
-			let f = (p2pool_hashrate as f32 / monero_hashrate as f32) * 100.0;
-			p2pool_percent = HumanNumber::to_percent_no_fmt(f);
-			let f = (user_hashrate as f32 / monero_hashrate as f32) * 100.0;
-			user_monero_percent = HumanNumber::to_percent_no_fmt(f);
+			let f = (p2pool_hashrate as f64 / monero_hashrate as f64) * 100.0;
+			p2pool_percent = HumanNumber::from_f64_to_percent_6_point(f);
+			let f = (user_hashrate as f64 / monero_hashrate as f64) * 100.0;
+			user_monero_percent = HumanNumber::from_f64_to_percent_6_point(f);
 		};
 		let solo_block_mean;
 		let p2pool_share_mean;
@@ -1466,6 +1470,8 @@ impl PubP2poolApi {
 		*public = Self {
 			p2pool_difficulty_u64: p2pool_difficulty,
 			monero_difficulty_u64: monero_difficulty,
+			p2pool_hashrate_u64: p2pool_hashrate,
+			monero_hashrate_u64: monero_hashrate,
 			monero_difficulty: HumanNumber::from_u64(monero_difficulty),
 			monero_hashrate: HumanNumber::from_u64_to_gigahash_3_point(monero_hashrate),
 			hash: net.hash,
@@ -1489,6 +1495,15 @@ impl PubP2poolApi {
 			HumanTime::new()
 		} else {
 			HumanTime::from_u64(difficulty / hashrate)
+		}
+	}
+
+	pub fn calculate_dominance(my_hashrate: u64, global_hashrate: u64) -> HumanNumber {
+		if global_hashrate == 0 {
+			HumanNumber::unknown()
+		} else {
+			let f = (my_hashrate as f64 / global_hashrate as f64) * 100.0;
+			HumanNumber::from_f64_to_percent_6_point(f)
 		}
 	}
 
