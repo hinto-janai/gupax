@@ -524,12 +524,11 @@ impl Helper {
 
 		// 4. Loop as watchdog
 		info!("P2Pool | Entering watchdog mode... woof!");
-		let mut tick = 0;
 		loop {
 			// Set timer
 			let now = Instant::now();
 			debug!("P2Pool Watchdog | ----------- Start of loop -----------");
-			tick += 1;
+			lock!(gui_api).tick += 1;
 
 			// Check if the process is secretly died without us knowing :)
 			if let Ok(Some(code)) = lock!(child_pty).try_wait() {
@@ -648,12 +647,12 @@ impl Helper {
 				}
 			}
 			// If more than 1 minute has passed, read the other API files.
-			if tick >= 60 {
+			if lock!(gui_api).tick >= 60 {
 				debug!("P2Pool Watchdog | Attempting [network] & [pool] API file read");
 				if let (Ok(network_api), Ok(pool_api)) = (Self::path_to_string(&api_path_network, ProcessName::P2pool), Self::path_to_string(&api_path_pool, ProcessName::P2pool)) {
 					if let (Ok(network_api), Ok(pool_api)) = (PrivP2poolNetworkApi::from_str(&network_api), PrivP2poolPoolApi::from_str(&pool_api)) {
 						PubP2poolApi::update_from_network_pool(&pub_api, network_api, pool_api);
-						tick = 0;
+						lock!(gui_api).tick = 0;
 					}
 				}
 			}
@@ -663,10 +662,10 @@ impl Helper {
 			// Since logic goes off if less than 1000, casting should be safe
 			if elapsed < 900 {
 				let sleep = (900-elapsed) as u64;
-				debug!("P2Pool Watchdog | END OF LOOP -  Tick: [{}/60] - Sleeping for [{}]ms...", tick, sleep);
+				debug!("P2Pool Watchdog | END OF LOOP -  Tick: [{}/60] - Sleeping for [{}]ms...", lock!(gui_api).tick, sleep);
 				sleep!(sleep);
 			} else {
-				debug!("P2Pool Watchdog | END OF LOOP - Tick: [{}/60] Not sleeping!", tick);
+				debug!("P2Pool Watchdog | END OF LOOP - Tick: [{}/60] Not sleeping!", lock!(gui_api).tick);
 			}
 		}
 
@@ -1246,6 +1245,9 @@ pub struct PubP2poolApi {
 	pub user_p2pool_hashrate_u64: u64,
 	pub p2pool_difficulty_u64: u64,
 	pub monero_difficulty_u64: u64,
+	// Tick. Every loop this gets incremented.
+	// At 60, it indicated we should read the below API files.
+	pub tick: u8,
 	// Network API
 	pub monero_difficulty: HumanNumber, // e.g: [15,000,000]
 	pub monero_hashrate: HumanNumber,   // e.g: [1.000 GH/s]
@@ -1292,6 +1294,7 @@ impl PubP2poolApi {
 			average_effort: HumanNumber::unknown(),
 			current_effort: HumanNumber::unknown(),
 			connections: HumanNumber::unknown(),
+			tick: 0,
 			user_p2pool_hashrate_u64: 0,
 			p2pool_difficulty_u64: 0,
 			monero_difficulty_u64: 0,
@@ -1322,6 +1325,7 @@ impl PubP2poolApi {
 		if !buf.is_empty() { output.push_str(&buf); }
 		*gui_api = Self {
 			output,
+			tick: std::mem::take(&mut gui_api.tick),
 			..pub_api.clone()
 		};
 	}
@@ -1481,6 +1485,74 @@ impl PubP2poolApi {
 			HumanTime::new()
 		} else {
 			HumanTime::from_u64(difficulty / hashrate)
+		}
+	}
+
+	pub const fn calculate_tick_bar(&self) -> &'static str {
+		// The stars are reduced by one because it takes a frame to render the stats.
+		// We want 0 stars at the same time stats are rendered, so it looks a little off here.
+		match self.tick {
+			1  => "[                                                            ]",
+			2  => "[*                                                           ]",
+			3  => "[**                                                          ]",
+			4  => "[***                                                         ]",
+			5  => "[****                                                        ]",
+			6  => "[*****                                                       ]",
+			7  => "[******                                                      ]",
+			8  => "[*******                                                     ]",
+			9  => "[********                                                    ]",
+			10 => "[*********                                                   ]",
+			11 => "[**********                                                  ]",
+			12 => "[***********                                                 ]",
+			13 => "[************                                                ]",
+			14 => "[*************                                               ]",
+			15 => "[**************                                              ]",
+			16 => "[***************                                             ]",
+			17 => "[****************                                            ]",
+			18 => "[*****************                                           ]",
+			19 => "[******************                                          ]",
+			20 => "[*******************                                         ]",
+			21 => "[********************                                        ]",
+			22 => "[*********************                                       ]",
+			23 => "[**********************                                      ]",
+			24 => "[***********************                                     ]",
+			25 => "[************************                                    ]",
+			26 => "[*************************                                   ]",
+			27 => "[**************************                                  ]",
+			28 => "[***************************                                 ]",
+			29 => "[****************************                                ]",
+			30 => "[*****************************                               ]",
+			31 => "[******************************                              ]",
+			32 => "[*******************************                             ]",
+			33 => "[********************************                            ]",
+			34 => "[*********************************                           ]",
+			35 => "[**********************************                          ]",
+			36 => "[***********************************                         ]",
+			37 => "[************************************                        ]",
+			38 => "[*************************************                       ]",
+			39 => "[**************************************                      ]",
+			40 => "[***************************************                     ]",
+			41 => "[****************************************                    ]",
+			42 => "[*****************************************                   ]",
+			43 => "[******************************************                  ]",
+			44 => "[*******************************************                 ]",
+			45 => "[********************************************                ]",
+			46 => "[*********************************************               ]",
+			47 => "[**********************************************              ]",
+			48 => "[***********************************************             ]",
+			49 => "[************************************************            ]",
+			50 => "[*************************************************           ]",
+			51 => "[**************************************************          ]",
+			52 => "[***************************************************         ]",
+			53 => "[****************************************************        ]",
+			54 => "[*****************************************************       ]",
+			55 => "[******************************************************      ]",
+			56 => "[*******************************************************     ]",
+			57 => "[********************************************************    ]",
+			58 => "[*********************************************************   ]",
+			59 => "[**********************************************************  ]",
+			60 => "[*********************************************************** ]",
+			_  => "[************************************************************]",
 		}
 	}
 }

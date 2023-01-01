@@ -131,7 +131,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	});
 	//---------------------------------------------------------------------------------------------------- [P2Pool]
 	} else if self.submenu == Submenu::P2pool {
-	let mut api = lock!(gupax_p2pool_api);
+	let api = lock!(gupax_p2pool_api);
 	let text = height / 25.0;
 	let log = height / 2.4;
 	ui.style_mut().override_text_style = Some(Monospace);
@@ -249,6 +249,8 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.add_sized([width, text], Label::new(api.user_monero_percent.as_str()));
 	})});
 	});
+	// Tick bar
+	ui.add_sized([ui.available_width(), text], Label::new(api.calculate_tick_bar())).on_hover_text(STATUS_SUBMENU_PROGRESS_BAR);
 	drop(api);
 	//---------------------------------------------------------------------------------------------------- [Monero]
 	} else if self.submenu == Submenu::Monero {

@@ -200,6 +200,7 @@ pub const STATUS_SUBMENU_P2POOL_MINERS:         &str = "The current amount of mi
 pub const STATUS_SUBMENU_P2POOL_DOMINANCE:      &str = "The percent of hashrate P2Pool accounts for in the entire Monero network";
 pub const STATUS_SUBMENU_YOUR_P2POOL_DOMINANCE: &str = "The percent of hashrate you account for in P2Pool";
 pub const STATUS_SUBMENU_YOUR_MONERO_DOMINANCE: &str = "The percent of hashrate you account for in the entire Monero network";
+pub const STATUS_SUBMENU_PROGRESS_BAR:          &str = "The next time Gupax will update P2Pool stats. Each [*] is 900ms (updates roughly every 54 seconds)";
 
 // Gupax
 pub const GUPAX_UPDATE:           &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";
