@@ -81,11 +81,7 @@ pub struct Helper {
 	pub img_xmrig: Arc<Mutex<ImgXmrig>>,          // A static "image" of the data XMRig started with
 	pub_api_p2pool: Arc<Mutex<PubP2poolApi>>,     // P2Pool API state (for Helper/P2Pool thread)
 	pub_api_xmrig: Arc<Mutex<PubXmrigApi>>,       // XMRig API state (for Helper/XMRig thread)
-	pub gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>,           //
-	priv_api_p2pool_local: Arc<Mutex<PrivP2poolLocalApi>>,      // Serde struct(s) for P2Pool's API files
-	priv_api_p2pool_network: Arc<Mutex<PrivP2poolNetworkApi>>,
-	priv_api_p2pool_pool: Arc<Mutex<PrivP2poolPoolApi>>,
-	priv_api_xmrig: Arc<Mutex<PrivXmrigApi>>, // Serde struct for XMRig's HTTP API
+	pub gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>, //
 }
 
 // The communication between the data here and the GUI thread goes as follows:
@@ -237,10 +233,6 @@ impl Helper {
 			instant,
 			pub_sys,
 			uptime: HumanTime::into_human(instant.elapsed()),
-			priv_api_p2pool_local: arc_mut!(PrivP2poolLocalApi::new()),
-			priv_api_p2pool_network: arc_mut!(PrivP2poolNetworkApi::new()),
-			priv_api_p2pool_pool: arc_mut!(PrivP2poolPoolApi::new()),
-			priv_api_xmrig: arc_mut!(PrivXmrigApi::new()),
 			pub_api_p2pool: arc_mut!(PubP2poolApi::new()),
 			pub_api_xmrig: arc_mut!(PubXmrigApi::new()),
 			// These are created when initializing [App], since it needs a handle to it as well
@@ -254,7 +246,7 @@ impl Helper {
 		}
 	}
 
-	fn read_pty_xmrig(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
+	fn read_pty_xmrig(_output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
 		// We don't need to write twice for XMRig, since we dont parse it... yet.
@@ -740,10 +732,9 @@ impl Helper {
 		let process = Arc::clone(&lock!(helper).xmrig);
 		let gui_api = Arc::clone(&lock!(helper).gui_api_xmrig);
 		let pub_api = Arc::clone(&lock!(helper).pub_api_xmrig);
-		let priv_api = Arc::clone(&lock!(helper).priv_api_xmrig);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, priv_api, args, path, sudo, api_ip_port);
+			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, args, path, sudo, api_ip_port);
 		});
 	}
 
@@ -849,7 +840,7 @@ impl Helper {
 	// The XMRig watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	// This isn't actually async, a tokio runtime is unfortunately needed because [Hyper] is an async library (HTTP API calls)
 	#[tokio::main]
-	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, _priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, mut api_ip_port: String) {
+	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, args: Vec<String>, path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, mut api_ip_port: String) {
 		// 1a. Create PTY
 		debug!("XMRig | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -1977,9 +1968,9 @@ mod test {
 		assert_eq!(p.solo_block_mean.to_string(),     "5 months, 21 days, 9 hours, 52 minutes");
 		assert_eq!(p.p2pool_block_mean.to_string(),   "3 days, 11 hours, 20 minutes");
 		assert_eq!(p.p2pool_share_mean.to_string(),   "8 minutes, 20 seconds");
-		assert_eq!(p.p2pool_percent.to_string(),      "0.04%");
-		assert_eq!(p.user_p2pool_percent.to_string(), "2%");
-		assert_eq!(p.user_monero_percent.to_string(), "0.0008%");
+		assert_eq!(p.p2pool_percent.to_string(),      "0.040000%");
+		assert_eq!(p.user_p2pool_percent.to_string(), "2.000000%");
+		assert_eq!(p.user_monero_percent.to_string(), "0.000800%");
 		drop(p);
 	}
 

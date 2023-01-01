@@ -133,7 +133,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	} else if self.submenu == Submenu::P2pool {
 	let api = lock!(gupax_p2pool_api);
 	let text = height / 25.0;
-	let log = height / 2.5;
+	let log = height / 2.8;
 	ui.style_mut().override_text_style = Some(Monospace);
 	// Payout Text + PayoutView buttons
 	ui.group(|ui| {
@@ -180,9 +180,9 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	let button = (width/20.0)-(SPACE*1.666);
 	ui.group(|ui| { ui.horizontal(|ui| {
 		ui.set_min_width(width-SPACE);
-		if ui.add_sized([button*2.0, text], SelectableLabel::new(self.manual_hash == false, "Automatic")).on_hover_text(STATUS_SUBMENU_AUTOMATIC).clicked() {self.manual_hash = false; }
+		if ui.add_sized([button*2.0, text], SelectableLabel::new(!self.manual_hash, "Automatic")).on_hover_text(STATUS_SUBMENU_AUTOMATIC).clicked() {self.manual_hash = false; }
 		ui.separator();
-		if ui.add_sized([button*2.0, text], SelectableLabel::new(self.manual_hash == true, "Manual")).on_hover_text(STATUS_SUBMENU_MANUAL).clicked() { self.manual_hash = true; }
+		if ui.add_sized([button*2.0, text], SelectableLabel::new(self.manual_hash, "Manual")).on_hover_text(STATUS_SUBMENU_MANUAL).clicked() { self.manual_hash = true; }
 		ui.separator();
 		ui.set_enabled(self.manual_hash);
 		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Hash, "Hash")).on_hover_text(STATUS_SUBMENU_HASH).clicked() { self.hash_metric = Hash::Hash; }
@@ -200,7 +200,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	ui.set_enabled(p2pool_alive);
 	let text = height / 25.0;
 	let width = (width/3.0)-(SPACE*1.666);
-	let min_height = ui.available_height()/1.35;
+	let min_height = ui.available_height()/1.3;
 	let api = lock!(p2pool_api);
 	ui.horizontal(|ui| {
 	ui.group(|ui| { ui.vertical(|ui| {

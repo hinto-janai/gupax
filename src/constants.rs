@@ -174,7 +174,6 @@ pub const STATUS_XMRIG_THREADS:     &str = "The amount of threads XMRig is curre
 // Status Submenus
 pub const STATUS_SUBMENU_PROCESSES: &str = "View the status of process related data for [Gupax|P2Pool|XMRig]";
 pub const STATUS_SUBMENU_P2POOL:    &str = "View P2Pool specific data";
-pub const STATUS_SUBMENU_MONERO:    &str = "View general Monero blockchain data";
 //-- P2Pool
 pub const STATUS_SUBMENU_PAYOUT:    &str = "The total amount of payouts received via P2Pool across all time. This includes all payouts you have ever received using Gupax and P2Pool.";
 pub const STATUS_SUBMENU_XMR:       &str = "The total of XMR mined via P2Pool across all time. This includes all the XMR you have ever mined using Gupax and P2Pool.";
@@ -316,6 +315,7 @@ pub const XMRIG_NAME:           &str = "Add a unique name to identify this pool;
 pub const XMRIG_IP:             &str = "Specify the pool IP to connect to with XMRig; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const XMRIG_PORT:           &str = "Specify the port of the pool; [1-65535]";
 pub const XMRIG_RIG:            &str = "Add an optional rig ID. This will be the name shown on the pool; Only [A-Za-z0-9-_] and spaces allowed; Max length = 30 characters";
+#[cfg(not(target_os =  "linux"))]
 pub const XMRIG_PAUSE:          &str = "THIS SETTING IS DISABLED IF SET TO [0]. Pause mining if user is active, resume after";
 pub const XMRIG_API_IP:         &str = "Specify which IP to bind to for XMRig's HTTP API; If empty: [localhost/127.0.0.1]";
 pub const XMRIG_API_PORT:       &str = "Specify which port to bind to for XMRig's HTTP API; If empty: [18088]";

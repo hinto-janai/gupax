@@ -48,7 +48,6 @@ use crate::{
 	Tab,
 	xmr::*,
 	macros::*,
-	P2poolRegex,
 };
 use log::*;
 #[cfg(target_family = "unix")]
@@ -167,7 +166,7 @@ pub fn create_gupax_dir(path: &PathBuf) -> Result<(), TomlError> {
 		Ok(_) => info!("OS | Create data path ... OK"),
 		Err(e) => { error!("OS | Create data path ... FAIL ... {}", e); return Err(TomlError::Io(e)) },
 	}
-	set_unix_750_perms(&path)
+	set_unix_750_perms(path)
 }
 
 pub fn create_gupax_p2pool_dir(path: &PathBuf) -> Result<(), TomlError> {
@@ -196,13 +195,6 @@ pub fn read_to_string(file: File, path: &PathBuf) -> Result<String, TomlError> {
 pub fn print_dash(toml: &str) {
 	info!("{}", HORIZONTAL);
 	for i in toml.lines() { info!("{}", i); }
-	info!("{}", HORIZONTAL);
-}
-
-// Write str to console with [debug!] surrounded by "---"
-pub fn print_dash_debug(toml: &str) {
-	info!("{}", HORIZONTAL);
-	for i in toml.lines() { debug!("{}", i); }
 	info!("{}", HORIZONTAL);
 }
 
@@ -689,7 +681,7 @@ impl GupaxP2poolApi {
 		let mut log_rev = String::with_capacity(self.log.len());
 		for line in self.log.lines().rev() {
 			log_rev.push_str(line);
-			log_rev.push_str("\n");
+			log_rev.push('\n');
 		}
 		self.log_rev = log_rev;
 	}
@@ -700,7 +692,7 @@ impl GupaxP2poolApi {
 
 	pub fn append_log(&mut self, formatted_log_line: &str) {
 		self.log.push_str(formatted_log_line);
-		self.log.push_str("\n");
+		self.log.push('\n');
 	}
 
 	pub fn append_head_log_rev(&mut self, formatted_log_line: &str) {
@@ -836,7 +828,7 @@ impl Display for Submenu {
 		use Submenu::*;
 		match self {
 			P2pool => write!(f, "P2Pool"),
-			_ => write!(f, "{}", self),
+			_ => write!(f, "{:?}", self),
 		}
 	}
 }
@@ -865,7 +857,7 @@ impl Default for PayoutView {
 
 impl Display for PayoutView {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		write!(f, "{}", self)
+		write!(f, "{:?}", self)
 	}
 }
 
@@ -935,8 +927,8 @@ impl Hash {
 impl Display for Hash {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 		match self {
-			Hash::Hash => write!(f, "{}", self),
-			_ => write!(f, "{}hash", self),
+			Hash::Hash => write!(f, "Hash"),
+			_ => write!(f, "{:?}hash", self),
 		}
 	}
 }

@@ -27,7 +27,6 @@ use egui::{
 };
 use crate::{
 	constants::*,
-	disk::Gupax,
 	update::*,
 	ErrorState,
 	Restart,
