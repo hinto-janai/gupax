@@ -823,7 +823,6 @@ pub enum File {
 pub enum Submenu {
 	Processes,
 	P2pool,
-	Monero,
 }
 
 impl Default for Submenu {

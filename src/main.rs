@@ -1058,9 +1058,8 @@ impl eframe::App for App {
 			match self.tab {
 				Tab::Status => {
 					match self.state.status.submenu {
-						Submenu::Processes => self.state.status.submenu = Submenu::Monero,
+						Submenu::Processes => self.state.status.submenu = Submenu::P2pool,
 						Submenu::P2pool    => self.state.status.submenu = Submenu::Processes,
-						Submenu::Monero    => self.state.status.submenu = Submenu::P2pool,
 					}
 				},
 				Tab::Gupax  => flip!(self.state.gupax.simple),
@@ -1074,8 +1073,7 @@ impl eframe::App for App {
 				Tab::Status => {
 					match self.state.status.submenu {
 						Submenu::Processes => self.state.status.submenu = Submenu::P2pool,
-						Submenu::P2pool    => self.state.status.submenu = Submenu::Monero,
-						Submenu::Monero    => self.state.status.submenu = Submenu::Processes,
+						Submenu::P2pool    => self.state.status.submenu = Submenu::Processes,
 					}
 				},
 				Tab::Gupax  => flip!(self.state.gupax.simple),
@@ -1473,11 +1471,7 @@ impl eframe::App for App {
 				match self.tab {
 					Tab::Status => {
 						ui.group(|ui| {
-							let width = (ui.available_width() / 3.0)-14.25;
-							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::Monero, "Monero")).on_hover_text(STATUS_SUBMENU_MONERO).clicked() {
-								self.state.status.submenu = Submenu::Monero;
-							}
-							ui.separator();
+							let width = (ui.available_width() / 2.0)-10.5;
 							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::P2pool, "P2Pool")).on_hover_text(STATUS_SUBMENU_P2POOL).clicked() {
 								self.state.status.submenu = Submenu::P2pool;
 							}

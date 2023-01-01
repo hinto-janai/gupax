@@ -133,7 +133,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	} else if self.submenu == Submenu::P2pool {
 	let api = lock!(gupax_p2pool_api);
 	let text = height / 25.0;
-	let log = height / 2.4;
+	let log = height / 2.5;
 	ui.style_mut().override_text_style = Some(Monospace);
 	// Payout Text + PayoutView buttons
 	ui.group(|ui| {
@@ -164,6 +164,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		// Actual logs
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			egui::ScrollArea::vertical().stick_to_bottom(self.payout_view == PayoutView::Oldest).max_width(width).max_height(log).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
+				ui.style_mut().override_text_style = Some(Name("MonospaceLarge".into()));
 				match self.payout_view {
 					PayoutView::Latest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log_rev.as_str())),
 					PayoutView::Oldest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log.as_str())),
@@ -175,6 +176,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	});
 	drop(api);
 	// Payout/Share Calculator
+	ui.style_mut().override_text_style = Some(Monospace);
 	let button = (width/20.0)-(SPACE*1.666);
 	ui.group(|ui| { ui.horizontal(|ui| {
 		ui.set_min_width(width-SPACE);
@@ -198,7 +200,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	ui.set_enabled(p2pool_alive);
 	let text = height / 25.0;
 	let width = (width/3.0)-(SPACE*1.666);
-	let min_height = ui.available_height()/1.25;
+	let min_height = ui.available_height()/1.35;
 	let api = lock!(p2pool_api);
 	ui.horizontal(|ui| {
 	ui.group(|ui| { ui.vertical(|ui| {
@@ -252,8 +254,6 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	// Tick bar
 	ui.add_sized([ui.available_width(), text], Label::new(api.calculate_tick_bar())).on_hover_text(STATUS_SUBMENU_PROGRESS_BAR);
 	drop(api);
-	//---------------------------------------------------------------------------------------------------- [Monero]
-	} else if self.submenu == Submenu::Monero {
 	}
 }
 }
