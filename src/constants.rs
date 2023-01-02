@@ -331,16 +331,18 @@ pub const XMRIG_PATH_EMPTY:     &str = "XMRig PATH is empty! To fix: goto the [G
 pub const ARG_HELP: &str =
 r#"USAGE: ./gupax [--flag]
 
-    --help         Print this help message
-    --version      Print version and build info
-    --state        Print Gupax state
-    --nodes        Print the manual node list
-    --no-startup   Disable all auto-startup settings for this instance
-    --reset-state  Reset all Gupax state (your settings)
-    --reset-nodes  Reset the manual node list in the [P2Pool] tab
-    --reset-pools  Reset the manual pool list in the [XMRig] tab
-    --reset-all    Reset the state, the manual node list, and the manual pool list
-    --ferris       Print an extremely cute crab
+    --help            Print this help message
+    --version         Print version and build info
+    --state           Print Gupax state
+    --nodes           Print the manual node list
+    --payouts         Print the P2Pool payout log, payout count, and total XMR mined
+    --no-startup      Disable all auto-startup settings for this instance (auto-update, auto-ping, etc)
+    --reset-state     Reset all Gupax state (your settings)
+    --reset-nodes     Reset the manual node list in the [P2Pool] tab
+    --reset-pools     Reset the manual pool list in the [XMRig] tab
+    --reset-payouts   Reset the permanent P2Pool stats that appear in the [Status] tab
+    --reset-all       Reset the state, manual node list, manual pool list, and P2Pool stats
+    --ferris          Print an extremely cute crab
 
 To view more detailed console debug information, start Gupax with
 the environment variable [RUST_LOG] set to a log level like so:

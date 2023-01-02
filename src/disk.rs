@@ -172,8 +172,8 @@ pub fn create_gupax_dir(path: &PathBuf) -> Result<(), TomlError> {
 pub fn create_gupax_p2pool_dir(path: &PathBuf) -> Result<(), TomlError> {
 	// Create Gupax directory
 	match fs::create_dir_all(path) {
-		Ok(_) => { info!("OS | Create Gupax-P2Pool API path ... OK"); Ok(()) },
-		Err(e) => { error!("OS | Create Gupax-P2Pool API path ... FAIL ... {}", e); Err(TomlError::Io(e)) },
+		Ok(_) => { info!("OS | Create Gupax-P2Pool API path [{}] ... OK", path.display()); Ok(()) },
+		Err(e) => { error!("OS | Create Gupax-P2Pool API path [{}] ... FAIL ... {}", path.display(), e); Err(TomlError::Io(e)) },
 	}
 }
 
@@ -673,6 +673,16 @@ impl GupaxP2poolApi {
 			..std::mem::take(self)
 		};
 		self.update_log_rev();
+		Ok(())
+	}
+
+	// Completely delete the [p2pool] folder and create defaults.
+	pub fn create_new(path: &PathBuf) -> Result<(), TomlError> {
+		info!("GupaxP2poolApi | Deleting old folder at [{}]...", path.display());
+		std::fs::remove_dir_all(&path)?;
+		info!("GupaxP2poolApi | Creating new default folder at [{}]...", path.display());
+		create_gupax_p2pool_dir(&path)?;
+		Self::create_all_files(&path)?;
 		Ok(())
 	}
 

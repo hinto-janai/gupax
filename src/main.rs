@@ -276,6 +276,9 @@ impl App {
 		app.node_path.push(NODE_TOML);
 		app.pool_path = app.os_data_path.clone();
 		app.pool_path.push(POOL_TOML);
+		// Set GupaxP2poolApi path
+		app.gupax_p2pool_api_path = crate::disk::get_gupax_p2pool_path(&app.os_data_path);
+		lock!(app.gupax_p2pool_api).fill_paths(&app.gupax_p2pool_api_path);
 
 		// Apply arg state
 		// It's not safe to [--reset] if any of the previous variables
@@ -348,9 +351,7 @@ impl App {
 
 		//----------------------------------------------------------------------------------------------------
 		// Read [GupaxP2poolApi] disk files
-		app.gupax_p2pool_api_path = crate::disk::get_gupax_p2pool_path(&app.os_data_path);
 		let mut gupax_p2pool_api = lock!(app.gupax_p2pool_api);
-		gupax_p2pool_api.fill_paths(&app.gupax_p2pool_api_path);
 		match GupaxP2poolApi::create_all_files(&app.gupax_p2pool_api_path) {
 			Ok(_) => debug!("App Init | Creating Gupax-P2Pool API files ... OK"),
 			Err(err) => {
@@ -835,7 +836,14 @@ fn reset_pools(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
-fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf) {
+fn reset_gupax_p2pool_api(path: &PathBuf) -> Result<(), TomlError> {
+	match GupaxP2poolApi::create_new(path) {
+		Ok(_)  => { info!("Resetting GupaxP2poolApi ... OK"); Ok(()) },
+		Err(e) => { error!("Resetting GupaxP2poolApi folder ... FAIL ... {}", e); Err(e) },
+	}
+}
+
+fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf, gupax_p2pool_api: &PathBuf) {
 	let mut code = 0;
 	// Attempt to remove directory first
 	match std::fs::remove_dir_all(path) {
@@ -856,6 +864,10 @@ fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf) {
 		Err(_) => code = 1,
 	}
 	match reset_pools(pool) {
+		Ok(_) => (),
+		Err(_) => code = 1,
+	}
+	match reset_gupax_p2pool_api(gupax_p2pool_api) {
 		Ok(_) => (),
 		Err(_) => code = 1,
 	}
@@ -893,14 +905,16 @@ fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 	// Everything else
 	for arg in args {
 		match arg.as_str() {
-			"--state"       => { info!("Printing state..."); print_disk_file(&app.state_path); }
-			"--nodes"       => { info!("Printing node list..."); print_disk_file(&app.node_path); }
-			"--reset-state" => if let Ok(()) = reset_state(&app.state_path) { println!("\nState reset ... OK"); exit(0); } else { eprintln!("\nState reset ... FAIL"); exit(1) },
-			"--reset-nodes" => if let Ok(()) = reset_nodes(&app.node_path) { println!("\nNode reset ... OK"); exit(0) } else { eprintln!("\nNode reset ... FAIL"); exit(1) },
-			"--reset-pools" => if let Ok(()) = reset_pools(&app.pool_path) { println!("\nPool reset ... OK"); exit(0) } else { eprintln!("\nPool reset ... FAIL"); exit(1) },
-			"--reset-all"   => reset(&app.os_data_path, &app.state_path, &app.node_path, &app.pool_path),
-			"--no-startup"  => app.no_startup = true,
-			_               => { eprintln!("\n[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
+			"--state"         => { info!("Printing state..."); print_disk_file(&app.state_path); },
+			"--nodes"         => { info!("Printing node list..."); print_disk_file(&app.node_path); },
+			"--payouts"       => { info!("Printing payouts...\n"); print_gupax_p2pool_api(&app.gupax_p2pool_api); },
+			"--reset-state"   => if let Ok(()) = reset_state(&app.state_path) { println!("\nState reset ... OK"); exit(0); } else { eprintln!("\nState reset ... FAIL"); exit(1) },
+			"--reset-nodes"   => if let Ok(()) = reset_nodes(&app.node_path) { println!("\nNode reset ... OK"); exit(0) } else { eprintln!("\nNode reset ... FAIL"); exit(1) },
+			"--reset-pools"   => if let Ok(()) = reset_pools(&app.pool_path) { println!("\nPool reset ... OK"); exit(0) } else { eprintln!("\nPool reset ... FAIL"); exit(1) },
+			"--reset-payouts" => if let Ok(()) = reset_gupax_p2pool_api(&app.gupax_p2pool_api_path) { println!("\nGupaxP2poolApi reset ... OK"); exit(0) } else { eprintln!("\nGupaxP2poolApi reset ... FAIL"); exit(1) },
+			"--reset-all"     => reset(&app.os_data_path, &app.state_path, &app.node_path, &app.pool_path, &app.gupax_p2pool_api_path),
+			"--no-startup"    => app.no_startup = true,
+			_                 => { eprintln!("\n[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
 		}
 	}
 	app
@@ -946,6 +960,33 @@ fn print_disk_file(path: &PathBuf) {
 		Ok(string) => { print!("{}", string); exit(0); },
 		Err(e) => { error!("{}", e); exit(1); },
 	}
+}
+
+// Prints the GupaxP2PoolApi files.
+fn print_gupax_p2pool_api(gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>) {
+	let api = lock!(gupax_p2pool_api);
+	let log = match std::fs::read_to_string(&api.path_log) {
+		Ok(string) => string,
+		Err(e) => { error!("{}", e); exit(1); },
+	};
+	let payout = match std::fs::read_to_string(&api.path_payout) {
+		Ok(string) => string,
+		Err(e) => { error!("{}", e); exit(1); },
+	};
+	let xmr = match std::fs::read_to_string(&api.path_xmr) {
+		Ok(string) => string,
+		Err(e) => { error!("{}", e); exit(1); },
+	};
+	let xmr = match xmr.trim().parse::<u64>() {
+		Ok(o)  => crate::xmr::AtomicUnit::from_u64(o),
+		Err(e) => { warn!("GupaxP2poolApi | [xmr] parse error: {}", e); exit(1); }
+	};
+	println!("{}\nTotal payouts | {}\nTotal XMR     | {} ({} Atomic Units)", log, payout.trim(), xmr, xmr.to_u64());
+	exit(0);
+}
+
+// Prints the GupaxP2PoolApi [xmr] file in AtomicUnits and floating point.
+fn print_xmr_file(path: &PathBuf) {
 }
 
 //---------------------------------------------------------------------------------------------------- Main [App] frame
