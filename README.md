@@ -7,6 +7,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 * [What is Monero/P2Pool/XMRig/Gupax?](#what-is-monero-p2pool-xmrig-and-gupax)
 * [How-To](#How-To)
 * [Simple](#Simple)
+	- [Status](#Status)
 	- [Gupax](#Gupax)
 	- [P2Pool](#P2Pool)
 	- [XMRig](#XMRig)
@@ -20,6 +21,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 	- [Logs](#Logs)
 	- [Disk](#Disk)
 	- [Swapping P2Pool/XMRig](#Swapping-P2PoolXMRig)
+	- [Status](#Status-1)
 	- [Gupax](#Gupax-1)
 	- [P2Pool](#P2Pool-1)
 	- [XMRig](#XMRig-1)
@@ -105,8 +107,23 @@ The `Gupax/P2Pool/XMRig` tabs have two versions, `Simple` & `Advanced`.
 
 `Simple` is for a minimal & working out-of-the-box configuration.
 
+### Status
+This tab has 2 submenus that show some info about running processes and P2Pool-specific stats.
+
+**Processes:**
+
+![processes.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/processes.png)
+
+**P2Pool:**
+This submenu shows:
+- ***Permanent*** stats on all your payouts received via P2Pool & Gupax
+- Payout sorting options
+- Share/block time calculator
+
+![payouts.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/payouts.png)
+
 ### Gupax
-In this tab, there is the updater and general Gupax settings.
+This tab has the updater and general Gupax settings.
 
 If `Check for updates` is pressed, Gupax will update your `Gupax/P2Pool/XMRig` (if needed) using the [GitHub API](#where-are-updates-downloaded-from).
 
@@ -190,16 +207,18 @@ Gupax comes with some command line options:
 ```
 USAGE: ./gupax [--flag]
 
-    --help         Print this help message
-    --version      Print version and build info
-    --state        Print Gupax state
-    --nodes        Print the manual node list
-    --no-startup   Disable all auto-startup settings for this instance
-    --reset-state  Reset all Gupax state (your settings)
-    --reset-nodes  Reset the manual node list in the [P2Pool] tab
-    --reset-pools  Reset the manual pool list in the [XMRig] tab
-    --reset-all    Reset the state, the manual node list, and the manual pool list
-    --ferris       Print an extremely cute crab
+    --help            Print this help message
+    --version         Print version and build info
+    --state           Print Gupax state
+    --nodes           Print the manual node list
+    --payouts         Print the P2Pool payout log, payout count, and total XMR mined
+    --no-startup      Disable all auto-startup settings for this instance (auto-update, auto-ping, etc)
+    --reset-state     Reset all Gupax state (your settings)
+    --reset-nodes     Reset the manual node list in the [P2Pool] tab
+    --reset-pools     Reset the manual pool list in the [XMRig] tab
+    --reset-payouts   Reset the permanent P2Pool stats that appear in the [Status] tab
+    --reset-all       Reset the state, manual node list, manual pool list, and P2Pool stats
+    --ferris          Print an extremely cute crab
 ```
 
 By default, Gupax has `auto-update` & `auto-ping` enabled. This can only be turned off in the GUI which causes a chicken-and-egg problem. To get around this, start Gupax with `--no-startup`. This will disable all `auto` features for that instance.
@@ -278,6 +297,7 @@ The current files saved to disk:
 * `state.toml` Gupax state/settings
 * `node.toml` The manual node database used for P2Pool advanced
 * `pool.toml` The manual pool database used for XMRig advanced
+* `p2pool/` The Gupax-P2Pool API files
 
 ---
 
@@ -339,6 +359,49 @@ gupax/
 ├─ xmrig/
    ├─ xmrig
 ```
+
+---
+
+### Status
+The `[P2Pool]` submenu in this tab reads/writes to a file-based API in a folder called `p2pool` located in the [Gupax OS data directory:](#Disk)
+
+| File     | Purpose                                                 | Specific Data Type |
+|----------|---------------------------------------------------------|--------------------|
+| `log`    | Formatted payout lines extracted from P2Pool            | Basically a `String` that needs to be parsed correctly
+| `payout` | The total amount of payouts received via P2Pool & Gupax | `u64`
+| `xmr`    | The total amount of XMR mined via P2Pool & Gupax        | Atomic Units represented with a `u64`
+
+The `log` file contains formatted payout lines extracted from your P2Pool:
+```
+<DATE> <TIME> | <12_FLOATING_POINT> XMR | Block <HUMAN_READABLE_BLOCK>
+```
+e.g:
+```
+2023-01-01 00:00:00.0000 | 0.600000000000 XMR | Block 2,123,123
+```
+
+The `payout` file is just a simple count of how many payouts have been received.
+
+The `xmr` file is the sum of XMR mined represented as [Atomic Units](https://web.getmonero.org/resources/moneropedia/atomic-units.html). The equation to represent this as normal XMR is:
+```rust
+XMR_ATOMIC_UNITS / 1,000,000,000,000
+```
+e.g:
+```rust
+600,000,000,000 / 1,000,000,000,000 = 0.6 XMR
+```
+
+Gupax interacts with these files in two ways:
+- Reading the files when initially starting
+- Appending/overwriting new data to the files upon P2Pool payout
+
+These files shouldn't be written to manually or Gupax will report wrong data.
+
+If you want to reset these stats, you can run:
+```bash
+./gupax --reset-payouts
+```
+or just manually delete the `p2pool` folder in the Gupax OS data directory.
 
 ---
 
