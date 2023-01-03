@@ -27,11 +27,11 @@ use egui::{
 };
 use crate::{
 	constants::*,
-	disk::Gupax,
 	update::*,
 	ErrorState,
 	Restart,
 	Tab,
+	macros::*,
 };
 use std::{
 	thread,
@@ -55,13 +55,13 @@ pub struct FileWindow {
 
 impl FileWindow {
 	pub fn new() -> Arc<Mutex<Self>> {
-		Arc::new(Mutex::new(Self {
+		arc_mut!(Self {
 			thread: false,
 			picked_p2pool: false,
 			picked_xmrig: false,
 			p2pool_path: String::new(),
 			xmrig_path: String::new(),
-		}))
+		})
 	}
 }
 
@@ -81,7 +81,7 @@ pub enum Ratio {
 }
 
 //---------------------------------------------------------------------------------------------------- Gupax
-impl Gupax {
+impl crate::disk::Gupax {
 	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_path: &Path, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, error_state: &mut ErrorState, restart: &Arc<Mutex<Restart>>, width: f32, height: f32, frame: &mut eframe::Frame, _ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		debug!("Gupax Tab | Rendering [Update] button + progress bar");
@@ -89,7 +89,7 @@ impl Gupax {
 				let button = if self.simple { height/5.0 } else { height/15.0 };
 				let height = if self.simple { height/5.0 } else { height/10.0 };
 				let width = width - SPACE;
-				let updating = *update.lock().unwrap().updating.lock().unwrap();
+				let updating = *lock2!(update,updating);
 				ui.vertical(|ui| {
 					// If [Gupax] is being built for a Linux distro,
 					// disable built-in updating completely.
@@ -106,8 +106,8 @@ impl Gupax {
 				});
 				ui.vertical(|ui| {
 					ui.set_enabled(updating);
-					let prog = *update.lock().unwrap().prog.lock().unwrap();
-					let msg = format!("{}\n{}{}", *update.lock().unwrap().msg.lock().unwrap(), prog, "%");
+					let prog = *lock2!(update,prog);
+					let msg = format!("{}\n{}{}", *lock2!(update,msg), prog, "%");
 					ui.add_sized([width, height*1.4], Label::new(RichText::text_style(RichText::new(msg), Monospace)));
 					let height = height/2.0;
 					if updating {
@@ -115,7 +115,7 @@ impl Gupax {
 					} else {
 						ui.add_sized([width, height], Label::new("..."));
 					}
-					ui.add_sized([width, height], ProgressBar::new(update.lock().unwrap().prog.lock().unwrap().round() / 100.0));
+					ui.add_sized([width, height], ProgressBar::new(lock2!(update,prog).round() / 100.0));
 				});
 		});
 
@@ -160,7 +160,7 @@ impl Gupax {
 				ui.add_sized([text_edit, height], Label::new(RichText::new("P2Pool Binary Path ✔").color(GREEN))).on_hover_text(P2POOL_PATH_OK);
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
-			ui.set_enabled(!file_window.lock().unwrap().thread);
+			ui.set_enabled(!lock!(file_window).thread);
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				Self::spawn_file_window_thread(file_window, FileType::P2pool);
 			}
@@ -177,14 +177,14 @@ impl Gupax {
 				ui.add_sized([text_edit, height], Label::new(RichText::new(" XMRig Binary Path ✔").color(GREEN))).on_hover_text(XMRIG_PATH_OK);
 			}
 			ui.spacing_mut().text_edit_width = ui.available_width() - SPACE;
-			ui.set_enabled(!file_window.lock().unwrap().thread);
+			ui.set_enabled(!lock!(file_window).thread);
 			if ui.button("Open").on_hover_text(GUPAX_SELECT).clicked() {
 				Self::spawn_file_window_thread(file_window, FileType::Xmrig);
 			}
 			ui.add_sized([ui.available_width(), height], TextEdit::singleline(&mut self.xmrig_path)).on_hover_text(GUPAX_PATH_XMRIG);
 		});
 		});
-		let mut guard = file_window.lock().unwrap();
+		let mut guard = lock!(file_window);
 		if guard.picked_p2pool { self.p2pool_path = guard.p2pool_path.clone(); guard.picked_p2pool = false; }
 		if guard.picked_xmrig { self.xmrig_path = guard.xmrig_path.clone(); guard.picked_xmrig = false; }
 		drop(guard);
@@ -276,19 +276,19 @@ impl Gupax {
 			Xmrig  => "XMRig",
 		};
 		let file_window = file_window.clone();
-		file_window.lock().unwrap().thread = true;
+		lock!(file_window).thread = true;
 		thread::spawn(move|| {
 			match rfd::FileDialog::new().set_title(&format!("Select {} Binary for Gupax", name)).pick_file() {
 				Some(path) => {
 					info!("Gupax | Path selected for {} ... {}", name, path.display());
 					match file_type {
-						P2pool => { file_window.lock().unwrap().p2pool_path = path.display().to_string(); file_window.lock().unwrap().picked_p2pool = true; },
-						Xmrig  => { file_window.lock().unwrap().xmrig_path = path.display().to_string(); file_window.lock().unwrap().picked_xmrig = true; },
+						P2pool => { lock!(file_window).p2pool_path = path.display().to_string(); lock!(file_window).picked_p2pool = true; },
+						Xmrig  => { lock!(file_window).xmrig_path = path.display().to_string(); lock!(file_window).picked_xmrig = true; },
 					};
 				},
 				None => info!("Gupax | No path selected for {}", name),
 			};
-			file_window.lock().unwrap().thread = false;
+			lock!(file_window).thread = false;
 		});
 	}
 }

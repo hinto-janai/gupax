@@ -4,6 +4,7 @@
 * [Bootstrap](#Bootstrap)
 * [Scale](#Scale)
 * [Naming Scheme](#naming-scheme)
+* [Mining Stat Reference](#mining-stat-reference)
 * [Sudo](#Sudo)
 * [Why does Gupax need to be Admin? (on Windows)](#why-does-gupax-need-to-be-admin-on-windows)
 	- [The issue](#the-issue)
@@ -17,17 +18,20 @@
 ## Structure
 | File/Folder  | Purpose |
 |--------------|---------|
-| constants.rs | General constants needed in Gupax
+| constants.rs | General constants used in Gupax
 | disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State] struct
 | ferris.rs    | Cute crab bytes
 | gupax.rs     | `Gupax` tab
 | helper.rs   | The "helper" thread that runs for the entire duration Gupax is alive. All the processing that needs to be done without blocking the main GUI thread runs here, including everything related to handling P2Pool/XMRig
+| macros.rs    | General `macros!()` used in Gupax
 | main.rs      | The main `App` struct that holds all data + misc data/functions
 | node.rs      | Community node ping code for the `P2Pool` simple tab
 | p2pool.rs    | `P2Pool` tab
+| regex.rs     | General regexes used in Gupax
 | status.rs    | `Status` tab
 | sudo.rs      | Code for handling `sudo` escalation for XMRig on Unix
 | update.rs    | Update code for the `Gupax` tab
+| xmr.rs       | Code for handling actual XMR, `AtomicUnit` & `PayoutOrd`
 | xmrig.rs     | `XMRig` tab
 
 ## Thread Model
@@ -124,6 +128,31 @@ Exceptions (there are always exceptions...):
 - XMRig separates the hash and signature
 - P2Pool hashes are in UPPERCASE
 
+## Mining Stat Reference
+Some pseudo JSON for constants/equations needed for generating mining stats. They're here for easy reference, I was never good at math :)
+```
+block_time_in_seconds: {
+	P2POOL_BLOCK_TIME: 10,
+	MONERO_BLOCK_TIME: 120,
+}
+
+difficulty: {
+	P2POOL_DIFFICULTY: (current_p2pool_hashrate * P2POOL_BLOCK_TIME),
+	MONERO_DIFFICULTY: (current_monero_hashrate * MONERO_BLOCK_TIME),
+}
+
+hashrate_per_second: {
+	P2POOL_HASHRATE: (P2POOL_DIFFICULTY / P2POOL_BLOCK_TIME),
+	MONERO_HASHRATE: (MONERO_DIFFICULTY / MONERO_BLOCK_TIME),
+}
+
+mean_in_seconds: {
+	P2POOL_BLOCK_MEAN: (MONERO_DIFF / P2POOL_HASHRATE),
+	MY_SOLO_BLOCK_MEAN: (MONERO_DIFF / my_hashrate),
+	MY_P2POOL_SHARE_MEAN: (P2POOL_DIFF / my_hashrate),
+}
+```
+
 ## Sudo
 Unlike Windows, Unix (macOS/Linux) has a userland program that handles all the dirty details of privilege escalation: `sudo`.
 
@@ -208,7 +237,7 @@ This was the solution I would have gone with, but alas, the abstracted `Command`
 ---
 
 ### Windows vs Unix
-Unix (macOS/Linux) has have a super nice, easy, friendly, not-completely-garbage userland program called: `sudo`. It is so extremely simple to use `sudo` as a sort of wrapper around XMRig since `sudo` isn't completely backwards and actually has valuable flags! No legacy `Administrator`, no UAC prompt, no shells within shells, no low-level system APIs, no messing with the user Registry. 
+Unix (macOS/Linux) has a super nice, easy, friendly, not-completely-garbage userland program called: `sudo`. It is so extremely simple to use `sudo` as a sort of wrapper around XMRig since `sudo` isn't completely backwards and actually has valuable flags! No legacy `Administrator`, no UAC prompt, no shells within shells, no low-level system APIs, no messing with the user Registry. 
 
 You get the user's password, you input it to `sudo` with `--stdin` and you execute XMRig with it. Simple, easy, nice. (Don't forget to zero the password memory, though).
 

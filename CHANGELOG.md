@@ -1,4 +1,24 @@
-# v1.0.1
+# v1.1.0
+## Updates
+* **Status:** Added P2Pool submenu:
+	- Total payouts across all time
+	- Total XMR mined across all time
+	- Formatted log lines of ALL payouts (date, amount, block) with sorting options
+	- Automatic/Manual calculator for average share/block time
+	- P2Pool/Monero stats for difficulty/hashrate/dominance
+* **Status:** Added more process stats:
+	- P2Pool: Current Monero node IP/RPC/ZMQ
+	- P2Pool: Current Sidechain
+	- P2Pool: Current Monero address
+	- XMRig: Current Pool IP
+	- XMRig: Current thread usage
+* **Key Shortcut:** Added two shortcuts:
+	- `C | Left Submenu`
+	- `V | Left Submenu`
+* **Command Line:** Added two flags:
+	- `--payouts         Print the P2Pool payout log, payout count, and total XMR mined`
+	- `--reset-payouts   Reset the permanent P2Pool stats that appear in the [Status] tab`
+	
 ## Fixes
 * **macOS:** Added warning (and solution) if `Gupax/P2Pool/XMRig` were quarantined by [`Gatekeeper`](https://support.apple.com/en-us/HT202491)
 * **P2Pool/XMRig:** Added a red `Start` button on errors (bad PATH, invalid file, etc) and a solution in the tooltip
@@ -7,7 +27,7 @@
 * Miscellaneous UI changes and fixes
 
 ## Bundled Versions
-* [`P2Pool v2.6`](https://github.com/SChernykh/p2pool/releases/tag/v2.6)
+* [`P2Pool v2.7`](https://github.com/SChernykh/p2pool/releases/tag/v2.7)
 * [`XMRig v6.18.1`](https://github.com/xmrig/xmrig/releases/tag/v6.18.1)
 
 

@@ -37,7 +37,7 @@ use eframe::{egui,NativeOptions};
 use log::*;
 use env_logger::{Builder,WriteStyle};
 // Regex
-use regex::Regex;
+use ::regex::Regex;
 // Serde
 use serde::{Serialize,Deserialize};
 // std
@@ -62,7 +62,11 @@ mod p2pool;
 mod xmrig;
 mod update;
 mod helper;
-use {ferris::*,constants::*,node::*,disk::*,status::*,update::*,gupax::*,helper::*};
+mod human;
+mod regex;
+mod xmr;
+mod macros;
+use {macros::*,crate::regex::*,ferris::*,constants::*,node::*,disk::*,update::*,gupax::*,helper::*};
 
 // Sudo (dummy values for Windows)
 mod sudo;
@@ -128,6 +132,12 @@ pub struct App {
 	sudo: Arc<Mutex<SudoState>>, // This is just a dummy struct on [Windows].
 	// State from [--flags]
 	no_startup: bool,
+	// Gupax-P2Pool API
+	// Gupax's P2Pool API (e.g: ~/.local/share/gupax/p2pool/)
+	// This is a file-based API that contains data for permanent stats.
+	// The below struct holds everything needed for it, the paths, the
+	// actual stats, and all the functions needed to mutate them.
+	gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>,
 	// Static stuff
 	pid: sysinfo::Pid, // Gupax's PID
 	max_threads: usize, // Max amount of detected system threads
@@ -137,7 +147,8 @@ pub struct App {
 	resolution: Vec2, // Frame resolution
 	os: &'static str, // OS
 	admin: bool, // Are we admin? (for Windows)
-	os_data_path: PathBuf, // OS data path (e.g: ~/.local/share/gupax)
+	os_data_path: PathBuf, // OS data path (e.g: ~/.local/share/gupax/)
+	gupax_p2pool_api_path: PathBuf, // Gupax-P2Pool API path (e.g: ~/.local/share/gupax/p2pool/)
 	state_path: PathBuf, // State file path
 	node_path: PathBuf, // Node file path
 	pool_path: PathBuf, // Pool file path
@@ -166,12 +177,12 @@ impl App {
 	fn new(now: Instant) -> Self {
 		info!("Initializing App Struct...");
 		debug!("App Init | P2Pool & XMRig processes...");
-		let p2pool = Arc::new(Mutex::new(Process::new(ProcessName::P2pool, String::new(), PathBuf::new())));
-		let xmrig = Arc::new(Mutex::new(Process::new(ProcessName::Xmrig, String::new(), PathBuf::new())));
-		let p2pool_api = Arc::new(Mutex::new(PubP2poolApi::new()));
-		let xmrig_api = Arc::new(Mutex::new(PubXmrigApi::new()));
-		let p2pool_img = Arc::new(Mutex::new(ImgP2pool::new()));
-		let xmrig_img = Arc::new(Mutex::new(ImgXmrig::new()));
+		let p2pool = arc_mut!(Process::new(ProcessName::P2pool, String::new(), PathBuf::new()));
+		let xmrig = arc_mut!(Process::new(ProcessName::Xmrig, String::new(), PathBuf::new()));
+		let p2pool_api = arc_mut!(PubP2poolApi::new());
+		let xmrig_api = arc_mut!(PubXmrigApi::new());
+		let p2pool_img = arc_mut!(ImgP2pool::new());
+		let xmrig_img = arc_mut!(ImgXmrig::new());
 
 		debug!("App Init | Sysinfo...");
 		// We give this to the [Helper] thread.
@@ -185,27 +196,27 @@ impl App {
 			Ok(pid) => pid,
 			Err(e) => { error!("App Init | Failed to get sysinfo PID: {}", e); exit(1) }
 		};
-		let pub_sys = Arc::new(Mutex::new(Sys::new()));
+		let pub_sys = arc_mut!(Sys::new());
 
 		debug!("App Init | The rest of the [App]...");
 		let mut app = Self {
 			tab: Tab::default(),
-			ping: Arc::new(Mutex::new(Ping::new())),
+			ping: arc_mut!(Ping::new()),
 			width: APP_DEFAULT_WIDTH,
 			height: APP_DEFAULT_HEIGHT,
 			must_resize: false,
-			og: Arc::new(Mutex::new(State::new())),
+			og: arc_mut!(State::new()),
 			state: State::new(),
-			update: Arc::new(Mutex::new(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true))),
+			update: arc_mut!(Update::new(String::new(), PathBuf::new(), PathBuf::new(), true)),
 			file_window: FileWindow::new(),
 			og_node_vec: Node::new_vec(),
 			node_vec: Node::new_vec(),
 			og_pool_vec: Pool::new_vec(),
 			pool_vec: Pool::new_vec(),
-			restart: Arc::new(Mutex::new(Restart::No)),
+			restart: arc_mut!(Restart::No),
 			diff: false,
 			error_state: ErrorState::new(),
-			helper: Arc::new(Mutex::new(Helper::new(now, pub_sys.clone(), p2pool.clone(), xmrig.clone(), p2pool_api.clone(), xmrig_api.clone(), p2pool_img.clone(), xmrig_img.clone()))),
+			helper: arc_mut!(Helper::new(now, pub_sys.clone(), p2pool.clone(), xmrig.clone(), p2pool_api.clone(), xmrig_api.clone(), p2pool_img.clone(), xmrig_img.clone(), arc_mut!(GupaxP2poolApi::new()))),
 			p2pool,
 			xmrig,
 			p2pool_api,
@@ -214,10 +225,11 @@ impl App {
 			xmrig_img,
 			p2pool_stdin: String::with_capacity(10),
 			xmrig_stdin: String::with_capacity(10),
-			sudo: Arc::new(Mutex::new(SudoState::new())),
+			sudo: arc_mut!(SudoState::new()),
 			resizing: false,
 			alpha: 0,
 			no_startup: false,
+			gupax_p2pool_api: arc_mut!(GupaxP2poolApi::new()),
 			pub_sys,
 			pid,
 			max_threads: num_cpus::get(),
@@ -228,6 +240,7 @@ impl App {
 			resolution: Vec2::new(APP_DEFAULT_HEIGHT, APP_DEFAULT_WIDTH),
 			os: OS,
 			os_data_path: PathBuf::new(),
+			gupax_p2pool_api_path: PathBuf::new(),
 			state_path: PathBuf::new(),
 			node_path: PathBuf::new(),
 			pool_path: PathBuf::new(),
@@ -258,11 +271,14 @@ impl App {
 		debug!("App Init | Setting TOML path...");
 		// Set [*.toml] path
 		app.state_path = app.os_data_path.clone();
-		app.state_path.push("state.toml");
+		app.state_path.push(STATE_TOML);
 		app.node_path = app.os_data_path.clone();
-		app.node_path.push("node.toml");
+		app.node_path.push(NODE_TOML);
 		app.pool_path = app.os_data_path.clone();
-		app.pool_path.push("pool.toml");
+		app.pool_path.push(POOL_TOML);
+		// Set GupaxP2poolApi path
+		app.gupax_p2pool_api_path = crate::disk::get_gupax_p2pool_path(&app.os_data_path);
+		lock!(app.gupax_p2pool_api).fill_paths(&app.gupax_p2pool_api_path);
 
 		// Apply arg state
 		// It's not safe to [--reset] if any of the previous variables
@@ -289,7 +305,7 @@ impl App {
 				State::new()
 			},
 		};
-		app.og = Arc::new(Mutex::new(app.state.clone()));
+		app.og = arc_mut!(app.state.clone());
 		// Read node list
 		debug!("App Init | Reading node list...");
 		app.node_vec = match Node::get(&app.node_path) {
@@ -333,9 +349,51 @@ impl App {
 		debug!("Pool Vec:");
 		debug!("{:#?}", app.pool_vec);
 
+		//----------------------------------------------------------------------------------------------------
+		// Read [GupaxP2poolApi] disk files
+		let mut gupax_p2pool_api = lock!(app.gupax_p2pool_api);
+		match GupaxP2poolApi::create_all_files(&app.gupax_p2pool_api_path) {
+			Ok(_) => debug!("App Init | Creating Gupax-P2Pool API files ... OK"),
+			Err(err) => {
+				error!("GupaxP2poolApi ... {}", err);
+				match err {
+					Io(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+				};
+			},
+		}
+		debug!("App Init | Reading Gupax-P2Pool API files...");
+		match gupax_p2pool_api.read_all_files_and_update() {
+			Ok(_) => {
+				info!(
+					"GupaxP2poolApi ... Payouts: {} | XMR (atomic-units): {}",
+					gupax_p2pool_api.payout,
+					gupax_p2pool_api.xmr,
+				);
+			},
+			Err(err) => {
+				error!("GupaxP2poolApi ... {}", err);
+				match err {
+					Io(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+				};
+			},
+		};
+		drop(gupax_p2pool_api);
+		lock!(app.helper).gupax_p2pool_api = Arc::clone(&app.gupax_p2pool_api);
 
 		//----------------------------------------------------------------------------------------------------
-		let mut og = app.og.lock().unwrap(); // Lock [og]
+		let mut og = lock!(app.og); // Lock [og]
 		// Handle max threads
 		debug!("App Init | Handling max thread overflow...");
 		og.xmrig.max_threads = app.max_threads;
@@ -380,13 +438,13 @@ impl App {
 		let p2pool_path = og.gupax.absolute_p2pool_path.clone();
 		let xmrig_path = og.gupax.absolute_xmrig_path.clone();
 		let tor = og.gupax.update_via_tor;
-		app.update = Arc::new(Mutex::new(Update::new(app.exe.clone(), p2pool_path, xmrig_path, tor)));
+		app.update = arc_mut!(Update::new(app.exe.clone(), p2pool_path, xmrig_path, tor));
 
 
 		debug!("App Init | Setting state Gupax version...");
 		// Set state version as compiled in version
-		og.version.lock().unwrap().gupax = GUPAX_VERSION.to_string();
-		app.state.version.lock().unwrap().gupax = GUPAX_VERSION.to_string();
+		lock!(og.version).gupax = GUPAX_VERSION.to_string();
+		lock!(app.state.version).gupax = GUPAX_VERSION.to_string();
 
 		debug!("App Init | Setting saved [Tab]...");
 		// Set saved [Tab]
@@ -562,33 +620,6 @@ impl Images {
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- [Regexes] struct
-#[derive(Clone, Debug)]
-pub struct Regexes {
-	pub name: Regex,
-	pub address: Regex,
-	pub ipv4: Regex,
-	pub domain: Regex,
-	pub port: Regex,
-}
-
-impl Regexes {
-	fn new() -> Self {
-		Regexes {
-			name: Regex::new("^[A-Za-z0-9-_.]+( [A-Za-z0-9-_.]+)*$").unwrap(),
-			address: Regex::new("^4[A-Za-z1-9]+$").unwrap(), // This still needs to check for (l, I, o, 0)
-			ipv4: Regex::new(r#"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$"#).unwrap(),
-			domain: Regex::new(r#"^(([a-zA-Z]{1})|([a-zA-Z]{1}[a-zA-Z]{1})|([a-zA-Z]{1}[0-9]{1})|([0-9]{1}[a-zA-Z]{1})|([a-zA-Z0-9][a-zA-Z0-9-_]{1,61}[a-zA-Z0-9]))\.([a-zA-Z]{2,6}|[a-zA-Z0-9-]{2,30}\.[a-zA-Z]{2,3})$"#).unwrap(),
-			port: Regex::new(r#"^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"#).unwrap(),
-		}
-	}
-
-	// Check if a Monero address is correct.
-	pub fn addr_ok(&self, address: &str) -> bool {
-		address.len() == 95 && Regex::is_match(&self.address, address) && !address.contains('0') && !address.contains('O') && !address.contains('l')
-	}
-}
-
 //---------------------------------------------------------------------------------------------------- [Pressed] enum
 // These represent the keys pressed during the frame.
 // I could use egui's [Key] but there is no option for
@@ -605,6 +636,8 @@ enum KeyPressed {
 	Esc,
 	Z,
 	X,
+	C,
+	V,
 	S,
 	R,
 	D,
@@ -638,6 +671,12 @@ impl KeyPressed {
 	}
 	fn is_d(&self) -> bool {
 		*self == Self::D
+	}
+	fn is_c(&self) -> bool {
+		*self == Self::C
+	}
+	fn is_v(&self) -> bool {
+		*self == Self::V
 	}
 	fn is_none(&self) -> bool {
 		*self == Self::None
@@ -761,7 +800,7 @@ fn init_auto(app: &mut App) {
 		} else if cfg!(windows) {
 			Helper::start_xmrig(&app.helper, &app.state.xmrig, &app.state.gupax.absolute_xmrig_path, Arc::clone(&app.sudo));
 		} else {
-			app.sudo.lock().unwrap().signal = ProcessSignal::Start;
+			lock!(app.sudo).signal = ProcessSignal::Start;
 			app.error_state.ask_sudo(&app.sudo);
 		}
 	} else {
@@ -791,7 +830,14 @@ fn reset_pools(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
-fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf) {
+fn reset_gupax_p2pool_api(path: &PathBuf) -> Result<(), TomlError> {
+	match GupaxP2poolApi::create_new(path) {
+		Ok(_)  => { info!("Resetting GupaxP2poolApi ... OK"); Ok(()) },
+		Err(e) => { error!("Resetting GupaxP2poolApi folder ... FAIL ... {}", e); Err(e) },
+	}
+}
+
+fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf, gupax_p2pool_api: &PathBuf) {
 	let mut code = 0;
 	// Attempt to remove directory first
 	match std::fs::remove_dir_all(path) {
@@ -812,6 +858,10 @@ fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf) {
 		Err(_) => code = 1,
 	}
 	match reset_pools(pool) {
+		Ok(_) => (),
+		Err(_) => code = 1,
+	}
+	match reset_gupax_p2pool_api(gupax_p2pool_api) {
 		Ok(_) => (),
 		Err(_) => code = 1,
 	}
@@ -849,14 +899,16 @@ fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 	// Everything else
 	for arg in args {
 		match arg.as_str() {
-			"--state"       => { info!("Printing state..."); print_disk_file(&app.state_path); }
-			"--nodes"       => { info!("Printing node list..."); print_disk_file(&app.node_path); }
-			"--reset-state" => if let Ok(()) = reset_state(&app.state_path) { println!("\nState reset ... OK"); exit(0); } else { eprintln!("\nState reset ... FAIL"); exit(1) },
-			"--reset-nodes" => if let Ok(()) = reset_nodes(&app.node_path) { println!("\nNode reset ... OK"); exit(0) } else { eprintln!("\nNode reset ... FAIL"); exit(1) },
-			"--reset-pools" => if let Ok(()) = reset_pools(&app.pool_path) { println!("\nPool reset ... OK"); exit(0) } else { eprintln!("\nPool reset ... FAIL"); exit(1) },
-			"--reset-all"   => reset(&app.os_data_path, &app.state_path, &app.node_path, &app.pool_path),
-			"--no-startup"  => app.no_startup = true,
-			_               => { eprintln!("\n[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
+			"--state"         => { info!("Printing state..."); print_disk_file(&app.state_path); },
+			"--nodes"         => { info!("Printing node list..."); print_disk_file(&app.node_path); },
+			"--payouts"       => { info!("Printing payouts...\n"); print_gupax_p2pool_api(&app.gupax_p2pool_api); },
+			"--reset-state"   => if let Ok(()) = reset_state(&app.state_path) { println!("\nState reset ... OK"); exit(0); } else { eprintln!("\nState reset ... FAIL"); exit(1) },
+			"--reset-nodes"   => if let Ok(()) = reset_nodes(&app.node_path) { println!("\nNode reset ... OK"); exit(0) } else { eprintln!("\nNode reset ... FAIL"); exit(1) },
+			"--reset-pools"   => if let Ok(()) = reset_pools(&app.pool_path) { println!("\nPool reset ... OK"); exit(0) } else { eprintln!("\nPool reset ... FAIL"); exit(1) },
+			"--reset-payouts" => if let Ok(()) = reset_gupax_p2pool_api(&app.gupax_p2pool_api_path) { println!("\nGupaxP2poolApi reset ... OK"); exit(0) } else { eprintln!("\nGupaxP2poolApi reset ... FAIL"); exit(1) },
+			"--reset-all"     => reset(&app.os_data_path, &app.state_path, &app.node_path, &app.pool_path, &app.gupax_p2pool_api_path),
+			"--no-startup"    => app.no_startup = true,
+			_                 => { eprintln!("\n[Gupax error] Invalid option: [{}]\nFor help, use: [--help]", arg); exit(1); },
 		}
 	}
 	app
@@ -904,6 +956,33 @@ fn print_disk_file(path: &PathBuf) {
 	}
 }
 
+// Prints the GupaxP2PoolApi files.
+fn print_gupax_p2pool_api(gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>) {
+	let api = lock!(gupax_p2pool_api);
+	let log = match std::fs::read_to_string(&api.path_log) {
+		Ok(string) => string,
+		Err(e) => { error!("{}", e); exit(1); },
+	};
+	let payout = match std::fs::read_to_string(&api.path_payout) {
+		Ok(string) => string,
+		Err(e) => { error!("{}", e); exit(1); },
+	};
+	let xmr = match std::fs::read_to_string(&api.path_xmr) {
+		Ok(string) => string,
+		Err(e) => { error!("{}", e); exit(1); },
+	};
+	let xmr = match xmr.trim().parse::<u64>() {
+		Ok(o)  => crate::xmr::AtomicUnit::from_u64(o),
+		Err(e) => { warn!("GupaxP2poolApi | [xmr] parse error: {}", e); exit(1); }
+	};
+	println!("{}\nTotal payouts | {}\nTotal XMR     | {} ({} Atomic Units)", log, payout.trim(), xmr, xmr.to_u64());
+	exit(0);
+}
+
+// Prints the GupaxP2PoolApi [xmr] file in AtomicUnits and floating point.
+fn print_xmr_file(path: &PathBuf) {
+}
+
 //---------------------------------------------------------------------------------------------------- Main [App] frame
 fn main() {
 	let now = Instant::now();
@@ -923,7 +1002,7 @@ fn main() {
 		Ok(_) => info!("Temporary folder cleanup ... OK"),
 		Err(e) => warn!("Could not cleanup [gupax_tmp] folders: {}", e),
 	}
-	info!("Init ... DONE");
+	info!("/*************************************/ Init ... OK /*************************************/");
 	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
 
@@ -962,6 +1041,10 @@ impl eframe::App for App {
 				KeyPressed::Z
 			} else if input.consume_key(Modifiers::NONE, Key::X) {
 				KeyPressed::X
+			} else if input.consume_key(Modifiers::NONE, Key::C) {
+				KeyPressed::C
+			} else if input.consume_key(Modifiers::NONE, Key::V) {
+				KeyPressed::V
 			} else if input.consume_key(Modifiers::NONE, Key::ArrowUp) {
 				KeyPressed::Up
 			} else if input.consume_key(Modifiers::NONE, Key::ArrowDown) {
@@ -1005,6 +1088,34 @@ impl eframe::App for App {
 				Tab::P2pool => self.tab = Tab::Xmrig,
 				Tab::Xmrig  => self.tab = Tab::About,
 			};
+ 		// Change Submenu LEFT
+        } else if key.is_c() && !wants_input {
+			match self.tab {
+				Tab::Status => {
+					match self.state.status.submenu {
+						Submenu::Processes => self.state.status.submenu = Submenu::P2pool,
+						Submenu::P2pool    => self.state.status.submenu = Submenu::Processes,
+					}
+				},
+				Tab::Gupax  => flip!(self.state.gupax.simple),
+				Tab::P2pool => flip!(self.state.p2pool.simple),
+				Tab::Xmrig  => flip!(self.state.xmrig.simple),
+				_ => (),
+			};
+		// Change Submenu RIGHT
+        } else if key.is_v() && !wants_input {
+			match self.tab {
+				Tab::Status => {
+					match self.state.status.submenu {
+						Submenu::Processes => self.state.status.submenu = Submenu::P2pool,
+						Submenu::P2pool    => self.state.status.submenu = Submenu::Processes,
+					}
+				},
+				Tab::Gupax  => flip!(self.state.gupax.simple),
+				Tab::P2pool => flip!(self.state.p2pool.simple),
+				Tab::Xmrig  => flip!(self.state.xmrig.simple),
+				_ => (),
+			};
         }
 
 		// Refresh AT LEAST once a second
@@ -1016,13 +1127,13 @@ impl eframe::App for App {
 		// might as well check only once here to save
 		// on a bunch of [.lock().unwrap()]s.
 		debug!("App | Locking and collecting P2Pool state...");
-		let p2pool = self.p2pool.lock().unwrap();
+		let p2pool = lock!(self.p2pool);
 		let p2pool_is_alive = p2pool.is_alive();
 		let p2pool_is_waiting = p2pool.is_waiting();
 		let p2pool_state = p2pool.state;
 		drop(p2pool);
 		debug!("App | Locking and collecting XMRig state...");
-		let xmrig = self.xmrig.lock().unwrap();
+		let xmrig = lock!(self.xmrig);
 		let xmrig_is_alive = xmrig.is_alive();
 		let xmrig_is_waiting = xmrig.is_waiting();
 		let xmrig_state = xmrig.state;
@@ -1113,7 +1224,7 @@ impl eframe::App for App {
 				match self.error_state.buttons {
 					StayQuit => {
 						let mut text = "".to_string();
-						if *self.update.lock().unwrap().updating.lock().unwrap() { text = format!("{}\nUpdate is in progress...! Quitting may cause file corruption!", text); }
+						if *lock2!(self.update,updating) { text = format!("{}\nUpdate is in progress...! Quitting may cause file corruption!", text); }
 						if p2pool_is_alive { text = format!("{}\nP2Pool is online...!", text); }
 						if xmrig_is_alive { text = format!("{}\nXMRig is online...!", text); }
 						ui.add_sized([width, height], Label::new("--- Are you sure you want to quit? ---"));
@@ -1193,7 +1304,7 @@ impl eframe::App for App {
 									match State::get(&self.state_path) {
 										Ok(s) => {
 											self.state = s;
-											self.og = Arc::new(Mutex::new(self.state.clone()));
+											self.og = arc_mut!(self.state.clone());
 											self.error_state.set("State read OK", ErrorFerris::Happy, ErrorButtons::Okay);
 										},
 										Err(e) => self.error_state.set(format!("State read fail: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
@@ -1225,7 +1336,7 @@ impl eframe::App for App {
 					ErrorButtons::Sudo => {
 						let sudo_width = width/10.0;
 						let height = ui.available_height()/4.0;
-						let mut sudo = self.sudo.lock().unwrap();
+						let mut sudo = lock!(self.sudo);
 						let hide = sudo.hide;
 						ui.style_mut().override_text_style = Some(Monospace);
 						if sudo.testing {
@@ -1248,7 +1359,7 @@ impl eframe::App for App {
 								}
 							}
 							let color = if hide { BLACK } else { BRIGHT_YELLOW };
-							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { sudo.hide = !sudo.hide; }
+							if ui.add_sized([box_width, height], Button::new(RichText::new("👁").color(color))).on_hover_text(PASSWORD_HIDE).clicked() { flip!(sudo.hide); }
 						});
 						if (key.is_esc() && !sudo.testing) || ui.add_sized([width, height*4.0], Button::new("Leave")).on_hover_text(PASSWORD_LEAVE).clicked() { self.error_state.reset(); };
 						// If [test_sudo()] finished, reset error state.
@@ -1269,8 +1380,9 @@ impl eframe::App for App {
 		// contains Arc<Mutex>'s that cannot be compared easily.
 		// They don't need to be compared anyway.
 		debug!("App | Checking diff between [og] & [state]");
-		let og = self.og.lock().unwrap();
-		if og.gupax != self.state.gupax       ||
+		let og = lock!(self.og);
+		if og.status != self.state.status     ||
+			og.gupax != self.state.gupax      ||
 			og.p2pool != self.state.p2pool    ||
 			og.xmrig != self.state.xmrig      ||
 			self.og_node_vec != self.node_vec ||
@@ -1316,7 +1428,7 @@ impl eframe::App for App {
 					let width = ((self.width/2.0)/4.0)-(SPACE*2.0);
 					// [Gupax Version]
 					// Is yellow if the user updated and should (but isn't required to) restart.
-					match *self.restart.lock().unwrap() {
+					match *lock!(self.restart) {
 						Restart::Yes => ui.add_sized([width, height], Label::new(RichText::new(&self.name_version).color(YELLOW))).on_hover_text(GUPAX_SHOULD_RESTART),
 						_ => ui.add_sized([width, height], Label::new(&self.name_version)).on_hover_text(GUPAX_UP_TO_DATE),
 					};
@@ -1353,15 +1465,13 @@ impl eframe::App for App {
 
 				// [Save/Reset]
 				ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
-				let width = match self.tab {
-					Tab::Gupax => (ui.available_width()/2.0)-(SPACE*3.0),
-					_ => (ui.available_width()/3.0)-(SPACE*3.0),
-				};
+				let width = (ui.available_width()/3.0)-(SPACE*3.0);
 				ui.group(|ui| {
 					ui.set_enabled(self.diff);
 					let width = width / 2.0;
 					if key.is_r() && !wants_input && self.diff || ui.add_sized([width, height], Button::new("Reset")).on_hover_text("Reset changes").clicked() {
-						let og = self.og.lock().unwrap().clone();
+						let og = lock!(self.og).clone();
+						self.state.status = og.status;
 						self.state.gupax = og.gupax;
 						self.state.p2pool = og.p2pool;
 						self.state.xmrig = og.xmrig;
@@ -1371,7 +1481,8 @@ impl eframe::App for App {
 					if key.is_s() && !wants_input && self.diff || ui.add_sized([width, height], Button::new("Save")).on_hover_text("Save changes").clicked() {
 						match State::save(&mut self.state, &self.state_path) {
 							Ok(_) => {
-								let mut og = self.og.lock().unwrap();
+								let mut og = lock!(self.og);
+								og.status = self.state.status.clone();
 								og.gupax = self.state.gupax.clone();
 								og.p2pool = self.state.p2pool.clone();
 								og.xmrig = self.state.xmrig.clone();
@@ -1393,9 +1504,21 @@ impl eframe::App for App {
 
 				// [Simple/Advanced] + [Start/Stop/Restart]
 				match self.tab {
+					Tab::Status => {
+						ui.group(|ui| {
+							let width = (ui.available_width() / 2.0)-10.5;
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::P2pool, "P2Pool")).on_hover_text(STATUS_SUBMENU_P2POOL).clicked() {
+								self.state.status.submenu = Submenu::P2pool;
+							}
+							ui.separator();
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::Processes, "Processes")).on_hover_text(STATUS_SUBMENU_PROCESSES).clicked() {
+								self.state.status.submenu = Submenu::Processes;
+							}
+						});
+					},
 					Tab::Gupax => {
 						ui.group(|ui| {
-							let width = width / 2.0;
+							let width = (ui.available_width() / 2.0)-10.5;
 							if ui.add_sized([width, height], SelectableLabel::new(!self.state.gupax.simple, "Advanced")).on_hover_text(GUPAX_ADVANCED).clicked() {
 								self.state.gupax.simple = false;
 							}
@@ -1426,6 +1549,8 @@ impl eframe::App for App {
 								});
 							} else if p2pool_is_alive {
 								if key.is_up() && !wants_input || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() {
+									lock!(self.og).update_absolute_path();
+									self.state.update_absolute_path();
 									Helper::restart_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 								if key.is_down() && !wants_input || ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() {
@@ -1455,8 +1580,8 @@ impl eframe::App for App {
 								ui.set_enabled(ui_enabled);
 								let color = if ui_enabled { GREEN } else { RED };
 								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start P2Pool").on_disabled_hover_text(text).clicked() {
-									self.og.lock().unwrap().update_absolute_path();
-									self.state.update_absolute_path(); // The above checks make sure this can unwrap safely, probably should handle it though.
+									lock!(self.og).update_absolute_path();
+									self.state.update_absolute_path();
 									Helper::start_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
 								}
 							}
@@ -1483,16 +1608,18 @@ impl eframe::App for App {
 								});
 							} else if xmrig_is_alive {
 								if key.is_up() && !wants_input || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart XMRig").clicked() {
+									lock!(self.og).update_absolute_path();
+									self.state.update_absolute_path();
 									if cfg!(windows) {
 										Helper::restart_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
 									} else {
-										self.sudo.lock().unwrap().signal = ProcessSignal::Restart;
+										lock!(self.sudo).signal = ProcessSignal::Restart;
 										self.error_state.ask_sudo(&self.sudo);
 									}
 								}
 								if key.is_down() && !wants_input || ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop XMRig").clicked() {
 									if cfg!(target_os = "macos") {
-										self.sudo.lock().unwrap().signal = ProcessSignal::Stop;
+										lock!(self.sudo).signal = ProcessSignal::Stop;
 										self.error_state.ask_sudo(&self.sudo);
 									} else {
 										Helper::stop_xmrig(&self.helper);
@@ -1518,12 +1645,12 @@ impl eframe::App for App {
 								ui.set_enabled(ui_enabled);
 								let color = if ui_enabled { GREEN } else { RED };
 								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start XMRig").on_disabled_hover_text(text).clicked() {
-									self.og.lock().unwrap().update_absolute_path();
-									self.state.update_absolute_path(); // The above checks make sure this can unwrap safely, probably should handle it though.
+									lock!(self.og).update_absolute_path();
+									self.state.update_absolute_path();
 									if cfg!(windows) {
 										Helper::start_xmrig(&self.helper, &self.state.xmrig, &self.state.gupax.absolute_xmrig_path, Arc::clone(&self.sudo));
 									} else if cfg!(unix) {
-										self.sudo.lock().unwrap().signal = ProcessSignal::Start;
+										lock!(self.sudo).signal = ProcessSignal::Start;
 										self.error_state.ask_sudo(&self.sudo);
 									}
 								}
@@ -1553,6 +1680,8 @@ impl eframe::App for App {
 						let distro = true;
 						#[cfg(not(feature = "distro"))]
 						let distro = false;
+						let p2pool_gui_len = lock!(self.p2pool_api).output.len();
+						let xmrig_gui_len = lock!(self.xmrig_api).output.len();
 						let debug_info = format!(
 "Gupax version: {}\n
 Bundled P2Pool version: {}\n
@@ -1581,6 +1710,8 @@ XMRig console byte length: {}\n
 {:#?}\n
 ------------------------------------------ XMRIG IMAGE ------------------------------------------
 {:#?}\n
+------------------------------------------ GUPAX-P2POOL API ------------------------------------------
+{:#?}\n
 ------------------------------------------ WORKING STATE ------------------------------------------
 {:#?}\n
 ------------------------------------------ ORIGINAL STATE ------------------------------------------
@@ -1589,10 +1720,10 @@ XMRig console byte length: {}\n
 							P2POOL_VERSION,
 							XMRIG_VERSION,
 							self.now.elapsed().as_secs_f32(),
-							self.state.gupax.selected_width as u16,
-							self.state.gupax.selected_height as u16,
-							self.width as u16,
-							self.height as u16,
+							self.state.gupax.selected_width,
+							self.state.gupax.selected_height,
+							self.width,
+							self.height,
 							OS_NAME,
 							self.max_threads,
 							self.pid,
@@ -1608,12 +1739,13 @@ XMRig console byte length: {}\n
 							self.exe,
 							self.state.gupax.absolute_p2pool_path.display(),
 							self.state.gupax.absolute_xmrig_path.display(),
-							self.p2pool_api.lock().unwrap().output.len(),
-							self.xmrig_api.lock().unwrap().output.len(),
-							self.p2pool_img.lock().unwrap(),
-							self.xmrig_img.lock().unwrap(),
+							p2pool_gui_len,
+							xmrig_gui_len,
+							lock!(self.p2pool_img),
+							lock!(self.xmrig_img),
+							lock!(self.gupax_p2pool_api),
 							self.state,
-							self.og.lock().unwrap(),
+							lock!(self.og),
 						);
 						self.error_state.set(debug_info, ErrorFerris::Cute, ErrorButtons::Debug);
 					}
@@ -1646,19 +1778,19 @@ XMRig console byte length: {}\n
 				}
 				Tab::Status => {
 					debug!("App | Entering [Status] Tab");
-					Status::show(&self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, self.width, self.height, ctx, ui);
+					crate::disk::Status::show(&mut self.state.status, &self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, &self.gupax_p2pool_api, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
 					debug!("App | Entering [Gupax] Tab");
-					Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
+					crate::disk::Gupax::show(&mut self.state.gupax, &self.og, &self.state_path, &self.update, &self.file_window, &mut self.error_state, &self.restart, self.width, self.height, frame, ctx, ui);
 				}
 				Tab::P2pool => {
 					debug!("App | Entering [P2Pool] Tab");
-					P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_stdin, self.width, self.height, ctx, ui);
+					crate::disk::P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_stdin, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
 					debug!("App | Entering [XMRig] Tab");
-					Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_stdin, self.width, self.height, ctx, ui);
+					crate::disk::Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_stdin, self.width, self.height, ctx, ui);
 				}
 			}
 		});

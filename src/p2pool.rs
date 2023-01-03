@@ -21,6 +21,7 @@ use crate::{
 	disk::*,
 	node::*,
 	helper::*,
+	macros::*,
 };
 use egui::{
 	TextEdit,SelectableLabel,ComboBox,Label,Button,
@@ -31,7 +32,7 @@ use std::sync::{Arc,Mutex};
 use regex::Regex;
 use log::*;
 
-impl P2pool {
+impl crate::disk::P2pool {
 	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, _og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
@@ -44,7 +45,7 @@ impl P2pool {
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
-				ui.add_sized([width, height], TextEdit::multiline(&mut api.lock().unwrap().output.as_str()));
+				ui.add_sized([width, height], TextEdit::multiline(&mut lock!(api).output.as_str()));
 			});
 		});
 	//---------------------------------------------------------------------------------------------------- [Advanced] Console
@@ -55,7 +56,7 @@ impl P2pool {
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
-				ui.add_sized([width, height], TextEdit::multiline(&mut api.lock().unwrap().output.as_str()));
+				ui.add_sized([width, height], TextEdit::multiline(&mut lock!(api).output.as_str()));
 			});
 		});
 		ui.separator();
@@ -64,7 +65,7 @@ impl P2pool {
 		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
 			response.request_focus();                  // Get focus back
 			let buffer = std::mem::take(buffer);       // Take buffer
-			let mut process = process.lock().unwrap(); // Lock
+			let mut process = lock!(process); // Lock
 			if process.is_alive() { process.input.push(buffer); } // Push only if alive
 		}
 	}
@@ -122,7 +123,7 @@ impl P2pool {
 		// Two atomic bools = enough to represent this data
 		debug!("P2Pool Tab | Running [auto-select] check");
 		if self.auto_select {
-			let mut ping = ping.lock().unwrap();
+			let mut ping = lock!(ping);
 			// If we haven't auto_selected yet, auto-select and turn it off
 			if ping.pinged && !ping.auto_selected {
 				self.node = ping.fastest;
@@ -139,8 +140,8 @@ impl P2pool {
 			let ip = enum_to_ip(id);
 			let mut ms = 0;
 			let mut color = Color32::LIGHT_GRAY;
-			if ping.lock().unwrap().pinged {
-				for data in ping.lock().unwrap().nodes.iter() {
+			if lock!(ping).pinged {
+				for data in lock!(ping).nodes.iter() {
 					if data.id == id {
 						ms = data.ms;
 						color = data.color;
@@ -151,7 +152,7 @@ impl P2pool {
 			debug!("P2Pool Tab | Rendering [ComboBox] of Community Nodes");
 			let text = RichText::new(format!(" ⏺ {}ms | {} | {}", ms, id, ip)).color(color);
 			ComboBox::from_id_source("community_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
-				for data in ping.lock().unwrap().nodes.iter() {
+				for data in lock!(ping).nodes.iter() {
 					let ms = crate::node::format_ms(data.ms);
 					let id = crate::node::format_enum(data.id);
 					let text = RichText::text_style(RichText::new(format!(" ⏺ {} | {} | {}", ms, id, data.ip)).color(data.color), Monospace);
@@ -170,18 +171,18 @@ impl P2pool {
 				self.node = NodeEnum::get_random(&self.node);
 			}
 			// [Select fastest node]
-			if ui.add_sized([width, height], Button::new("Select fastest node")).on_hover_text(P2POOL_SELECT_FASTEST).clicked() && ping.lock().unwrap().pinged {
-				self.node = ping.lock().unwrap().fastest;
+			if ui.add_sized([width, height], Button::new("Select fastest node")).on_hover_text(P2POOL_SELECT_FASTEST).clicked() && lock!(ping).pinged {
+				self.node = lock!(ping).fastest;
 			}
 			// [Ping Button]
-			ui.add_enabled_ui(!ping.lock().unwrap().pinging, |ui| {
+			ui.add_enabled_ui(!lock!(ping).pinging, |ui| {
 				if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
 					Ping::spawn_thread(ping);
 				}
 			});
 			// [Last <-]
 			if ui.add_sized([width, height], Button::new("⬅ Last")).on_hover_text(P2POOL_SELECT_LAST).clicked() {
-				let ping = ping.lock().unwrap();
+				let ping = lock!(ping);
 				match ping.pinged {
 					true  => self.node = NodeEnum::get_last_from_ping(&self.node, &ping.nodes),
 					false => self.node = NodeEnum::get_last(&self.node),
@@ -190,7 +191,7 @@ impl P2pool {
 			}
 			// [Next ->]
 			if ui.add_sized([width, height], Button::new("Next ➡")).on_hover_text(P2POOL_SELECT_NEXT).clicked() {
-				let ping = ping.lock().unwrap();
+				let ping = lock!(ping);
 				match ping.pinged {
 					true  => self.node = NodeEnum::get_next_from_ping(&self.node, &ping.nodes),
 					false => self.node = NodeEnum::get_next(&self.node),
@@ -201,10 +202,10 @@ impl P2pool {
 
 		ui.vertical(|ui| {
 			let height = height / 2.0;
-			let pinging = ping.lock().unwrap().pinging;
+			let pinging = lock!(ping).pinging;
 			ui.set_enabled(pinging);
-			let prog = ping.lock().unwrap().prog.round();
-			let msg = RichText::text_style(RichText::new(format!("{} ... {}%", ping.lock().unwrap().msg, prog)), Monospace);
+			let prog = lock!(ping).prog.round();
+			let msg = RichText::text_style(RichText::new(format!("{} ... {}%", lock!(ping).msg, prog)), Monospace);
 			let height = height / 1.25;
 			ui.add_space(5.0);
 			ui.add_sized([width, height], Label::new(msg));

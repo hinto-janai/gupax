@@ -22,6 +22,12 @@ use crate::{
 	ImgXmrig,
 	constants::*,
 	Sys,
+	Hash,
+	Submenu,
+	macros::*,
+	GupaxP2poolApi,
+	PayoutView,
+	human::HumanNumber,
 };
 use std::sync::{Arc,Mutex};
 use log::*;
@@ -29,14 +35,15 @@ use egui::{
 	Label,RichText,TextStyle,
 	TextStyle::Monospace,
 	TextStyle::Name,
+	TextEdit,
+	SelectableLabel,
+	Slider,
 };
 
-// Main data structure for the Status tab
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Status {}
-
-impl Status {
-pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, max_threads: usize, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+impl crate::disk::Status {
+pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, max_threads: usize, gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+	//---------------------------------------------------------------------------------------------------- [Processes]
+	if self.submenu == Submenu::Processes {
 	let width = (width/3.0)-(SPACE*1.666);
 	let min_height = height/1.1;
 	let height = height/25.0;
@@ -47,7 +54,7 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height], Label::new(RichText::new("[Gupax]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("Gupax is online");
 		ui.style_mut().override_text_style = Some(Monospace);
-		let sys = sys.lock().unwrap();
+		let sys = lock!(sys);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_GUPAX_UPTIME);
 		ui.add_sized([width, height], Label::new(sys.gupax_uptime.to_string()));
 		ui.add_sized([width, height], Label::new(RichText::new("Gupax CPU").underline().color(BONE))).on_hover_text(STATUS_GUPAX_CPU_USAGE);
@@ -70,7 +77,7 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.add_sized([width, height], Label::new(RichText::new("[P2Pool]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("P2Pool is online").on_disabled_hover_text("P2Pool is offline");
 		let height = height/1.4;
 		ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
-		let api = p2pool_api.lock().unwrap();
+		let api = lock!(p2pool_api);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_P2POOL_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
 		ui.add_sized([width, height], Label::new(RichText::new("Shares Found").underline().color(BONE))).on_hover_text(STATUS_P2POOL_SHARES);
@@ -87,7 +94,7 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.add_sized([width, height], Label::new(format!("{}", api.connections)));
 		ui.add_sized([width, height], Label::new(RichText::new("Effort").underline().color(BONE))).on_hover_text(STATUS_P2POOL_EFFORT);
 		ui.add_sized([width, height], Label::new(format!("[Average: {}] [Current: {}]", api.average_effort, api.current_effort)));
-		let img = p2pool_img.lock().unwrap();
+		let img = lock!(p2pool_img);
 		ui.add_sized([width, height], Label::new(RichText::new("Monero Node").underline().color(BONE))).on_hover_text(STATUS_P2POOL_MONERO_NODE);
 		ui.add_sized([width, height], Label::new(format!("[IP: {}]\n[RPC: {}] [ZMQ: {}]", &img.host, &img.rpc, &img.zmq)));
 		ui.add_sized([width, height], Label::new(RichText::new("Sidechain").underline().color(BONE))).on_hover_text(STATUS_P2POOL_POOL);
@@ -104,7 +111,7 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height], Label::new(RichText::new("[XMRig]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("XMRig is online").on_disabled_hover_text("XMRig is offline");
 		ui.style_mut().override_text_style = Some(Monospace);
-		let api = xmrig_api.lock().unwrap();
+		let api = lock!(xmrig_api);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_XMRIG_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
 		ui.add_sized([width, height], Label::new(RichText::new("CPU Load Averages").underline().color(BONE))).on_hover_text(STATUS_XMRIG_CPU);
@@ -116,11 +123,151 @@ pub fn show(sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_
 		ui.add_sized([width, height], Label::new(RichText::new("Shares").underline().color(BONE))).on_hover_text(STATUS_XMRIG_SHARES);
 		ui.add_sized([width, height], Label::new(format!("[Accepted: {}] [Rejected: {}]", api.accepted, api.rejected)));
 		ui.add_sized([width, height], Label::new(RichText::new("Pool").underline().color(BONE))).on_hover_text(STATUS_XMRIG_POOL);
-		ui.add_sized([width, height], Label::new(&xmrig_img.lock().unwrap().url));
+		ui.add_sized([width, height], Label::new(&lock!(xmrig_img).url));
 		ui.add_sized([width, height], Label::new(RichText::new("Threads").underline().color(BONE))).on_hover_text(STATUS_XMRIG_THREADS);
-		ui.add_sized([width, height], Label::new(format!("{}/{}", &xmrig_img.lock().unwrap().threads, max_threads)));
+		ui.add_sized([width, height], Label::new(format!("{}/{}", &lock!(xmrig_img).threads, max_threads)));
 		drop(api);
 	})});
 	});
+	//---------------------------------------------------------------------------------------------------- [P2Pool]
+	} else if self.submenu == Submenu::P2pool {
+	let api = lock!(gupax_p2pool_api);
+	let text = height / 25.0;
+	let log = height / 2.8;
+	ui.style_mut().override_text_style = Some(Monospace);
+	// Payout Text + PayoutView buttons
+	ui.group(|ui| {
+		ui.horizontal(|ui| {
+			let width = (width/3.0)-(SPACE*4.0);
+			ui.add_sized([width, text], Label::new(RichText::new(format!("Total Payouts: {}", api.payout)).underline().color(LIGHT_GRAY))).on_hover_text(STATUS_SUBMENU_PAYOUT);
+			ui.separator();
+			ui.add_sized([width, text], Label::new(RichText::new(format!("Total XMR: {}", api.xmr)).underline().color(LIGHT_GRAY))).on_hover_text(STATUS_SUBMENU_XMR);
+			let width = width / 4.0;
+			ui.separator();
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Latest, "Latest")).on_hover_text(STATUS_SUBMENU_LATEST).clicked() {
+				self.payout_view = PayoutView::Latest;
+			}
+			ui.separator();
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Oldest, "Oldest")).on_hover_text(STATUS_SUBMENU_OLDEST).clicked() {
+				self.payout_view = PayoutView::Oldest;
+			}
+			ui.separator();
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Biggest, "Biggest")).on_hover_text(STATUS_SUBMENU_BIGGEST).clicked() {
+				self.payout_view = PayoutView::Biggest;
+			}
+			ui.separator();
+			if ui.add_sized([width, text], SelectableLabel::new(self.payout_view == PayoutView::Smallest, "Smallest")).on_hover_text(STATUS_SUBMENU_SMALLEST).clicked() {
+				self.payout_view = PayoutView::Smallest;
+			}
+		});
+		ui.separator();
+		// Actual logs
+		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
+			egui::ScrollArea::vertical().stick_to_bottom(self.payout_view == PayoutView::Oldest).max_width(width).max_height(log).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
+				ui.style_mut().override_text_style = Some(Name("MonospaceLarge".into()));
+				match self.payout_view {
+					PayoutView::Latest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log_rev.as_str())),
+					PayoutView::Oldest   => ui.add_sized([width, log], TextEdit::multiline(&mut api.log.as_str())),
+					PayoutView::Biggest  => ui.add_sized([width, log], TextEdit::multiline(&mut api.payout_high.as_str())),
+					PayoutView::Smallest => ui.add_sized([width, log], TextEdit::multiline(&mut api.payout_low.as_str())),
+				};
+			});
+		});
+	});
+	drop(api);
+	// Payout/Share Calculator
+	ui.style_mut().override_text_style = Some(Monospace);
+	let button = (width/20.0)-(SPACE*1.666);
+	ui.group(|ui| { ui.horizontal(|ui| {
+		ui.set_min_width(width-SPACE);
+		if ui.add_sized([button*2.0, text], SelectableLabel::new(!self.manual_hash, "Automatic")).on_hover_text(STATUS_SUBMENU_AUTOMATIC).clicked() {self.manual_hash = false; }
+		ui.separator();
+		if ui.add_sized([button*2.0, text], SelectableLabel::new(self.manual_hash, "Manual")).on_hover_text(STATUS_SUBMENU_MANUAL).clicked() { self.manual_hash = true; }
+		ui.separator();
+		ui.set_enabled(self.manual_hash);
+		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Hash, "Hash")).on_hover_text(STATUS_SUBMENU_HASH).clicked() { self.hash_metric = Hash::Hash; }
+		ui.separator();
+		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Kilo, "Kilo")).on_hover_text(STATUS_SUBMENU_KILO).clicked() { self.hash_metric = Hash::Kilo; }
+		ui.separator();
+		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Mega, "Mega")).on_hover_text(STATUS_SUBMENU_MEGA).clicked() { self.hash_metric = Hash::Mega; }
+		ui.separator();
+		if ui.add_sized([button, text], SelectableLabel::new(self.hash_metric == Hash::Giga, "Giga")).on_hover_text(STATUS_SUBMENU_GIGA).clicked() { self.hash_metric = Hash::Giga; }
+		ui.separator();
+		ui.spacing_mut().slider_width = button*11.5;
+		ui.add_sized([button*14.0, text], Slider::new(&mut self.hashrate, 1.0..=1_000.0));
+	})});
+	// Actual stats
+	ui.set_enabled(p2pool_alive);
+	let text = height / 25.0;
+	let width = (width/3.0)-(SPACE*1.666);
+	let min_height = ui.available_height()/1.3;
+	let api = lock!(p2pool_api);
+	ui.horizontal(|ui| {
+	ui.group(|ui| { ui.vertical(|ui| {
+		ui.set_min_height(min_height);
+		ui.add_sized([width, text], Label::new(RichText::new("Monero Difficulty").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_MONERO_DIFFICULTY);
+		ui.add_sized([width, text], Label::new(api.monero_difficulty.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("Monero Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_MONERO_HASHRATE);
+		ui.add_sized([width, text], Label::new(api.monero_hashrate.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("P2Pool Difficulty").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_DIFFICULTY);
+		ui.add_sized([width, text], Label::new(api.p2pool_difficulty.as_str()));
+		ui.add_sized([width, text], Label::new(RichText::new("P2Pool Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_HASHRATE);
+		ui.add_sized([width, text], Label::new(api.p2pool_hashrate.as_str()));
+	})});
+	ui.group(|ui| { ui.vertical(|ui| {
+		ui.set_min_height(min_height);
+		if self.manual_hash {
+			let hashrate          = Hash::convert_to_hash(self.hashrate, self.hash_metric) as u64;
+			let p2pool_share_mean = PubP2poolApi::calculate_share_or_block_time(hashrate, api.p2pool_difficulty_u64);
+			let solo_block_mean   = PubP2poolApi::calculate_share_or_block_time(hashrate, api.monero_difficulty_u64);
+			ui.add_sized([width, text], Label::new(RichText::new("Manually Inputted Hashrate").underline().color(BONE)));
+			ui.add_sized([width, text], Label::new(format!("{} H/s", HumanNumber::from_u64(hashrate))));
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(api.p2pool_block_mean.to_string()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Share Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_SHARE_MEAN);
+			ui.add_sized([width, text], Label::new(p2pool_share_mean.to_string()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your Solo Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_SOLO_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(solo_block_mean.to_string()));
+		} else {
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Hashrate").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_P2POOL_HASHRATE);
+			ui.add_sized([width, text], Label::new(format!("{} H/s", api.hashrate_1h)));
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(api.p2pool_block_mean.to_string()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Share Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_SHARE_MEAN);
+			ui.add_sized([width, text], Label::new(api.p2pool_share_mean.to_string()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your Solo Block Mean").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_SOLO_BLOCK_MEAN);
+			ui.add_sized([width, text], Label::new(api.solo_block_mean.to_string()));
+		}
+	})});
+	ui.group(|ui| { ui.vertical(|ui| {
+		ui.set_min_height(min_height);
+		if self.manual_hash {
+			let hashrate            = Hash::convert_to_hash(self.hashrate, self.hash_metric) as u64;
+			let user_p2pool_percent = PubP2poolApi::calculate_dominance(hashrate, api.p2pool_hashrate_u64);
+			let user_monero_percent = PubP2poolApi::calculate_dominance(hashrate, api.monero_hashrate_u64);
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Miners").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_MINERS);
+			ui.add_sized([width, text], Label::new(api.miners.as_str()));
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_DOMINANCE);
+			ui.add_sized([width, text], Label::new(api.p2pool_percent.as_str()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_P2POOL_DOMINANCE);
+			ui.add_sized([width, text], Label::new(user_p2pool_percent.as_str()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your Monero Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_MONERO_DOMINANCE);
+			ui.add_sized([width, text], Label::new(user_monero_percent.as_str()));
+		} else {
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Miners").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_MINERS);
+			ui.add_sized([width, text], Label::new(api.miners.as_str()));
+			ui.add_sized([width, text], Label::new(RichText::new("P2Pool Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_P2POOL_DOMINANCE);
+			ui.add_sized([width, text], Label::new(api.p2pool_percent.as_str()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your P2Pool Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_P2POOL_DOMINANCE);
+			ui.add_sized([width, text], Label::new(api.user_p2pool_percent.as_str()));
+			ui.add_sized([width, text], Label::new(RichText::new("Your Monero Dominance").underline().color(BONE))).on_hover_text(STATUS_SUBMENU_YOUR_MONERO_DOMINANCE);
+			ui.add_sized([width, text], Label::new(api.user_monero_percent.as_str()));
+		}
+	})});
+	});
+	// Tick bar
+	ui.add_sized([ui.available_width(), text], Label::new(api.calculate_tick_bar())).on_hover_text(STATUS_SUBMENU_PROGRESS_BAR);
+	drop(api);
+	}
 }
 }

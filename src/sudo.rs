@@ -32,6 +32,7 @@ use crate::{
 	disk::Xmrig,
 	ProcessSignal,
 	constants::*,
+	macros::*,
 };
 use log::*;
 
@@ -81,7 +82,7 @@ impl SudoState {
 	// Resets the state.
 	pub fn reset(state: &Arc<Mutex<Self>>) {
 		Self::wipe(state);
-		let mut state = state.lock().unwrap();
+		let mut state = lock!(state);
 		state.testing = false;
 		state.success = false;
 //		state.signal = ProcessSignal::None;
@@ -92,7 +93,7 @@ impl SudoState {
 	pub fn wipe(state: &Arc<Mutex<Self>>) {
 		let mut new = String::with_capacity(256);
 		// new is now == old, and vice-versa.
-		std::mem::swap(&mut new, &mut state.lock().unwrap().pass);
+		std::mem::swap(&mut new, &mut lock!(state).pass);
 		// we're wiping & dropping the old pass here.
 		new.zeroize();
 		std::mem::drop(new);
@@ -108,7 +109,7 @@ impl SudoState {
 		let path = path.clone();
 		thread::spawn(move || {
 			// Set to testing
-			state.lock().unwrap().testing = true;
+			lock!(state).testing = true;
 
 			// Make sure sudo timestamp is reset
 			let reset = Command::new("sudo")
@@ -122,8 +123,8 @@ impl SudoState {
 				Err(e) => {
 					error!("Sudo | Couldn't reset timestamp: {}", e);
 					Self::wipe(&state);
-					state.lock().unwrap().msg = format!("Sudo error: {}", e);
-					state.lock().unwrap().testing = false;
+					lock!(state).msg = format!("Sudo error: {}", e);
+					lock!(state).testing = false;
 					return
 				},
 			}
@@ -139,7 +140,7 @@ impl SudoState {
 
 			// Write pass to STDIN
 			let mut stdin = sudo.stdin.take().unwrap();
-			stdin.write_all(state.lock().unwrap().pass.as_bytes()).unwrap();
+			stdin.write_all(lock!(state).pass.as_bytes()).unwrap();
 			drop(stdin);
 
 			// Sudo re-prompts and will hang.
@@ -149,7 +150,7 @@ impl SudoState {
 				match sudo.try_wait() {
 					Ok(Some(code)) => if code.success() {
 						info!("Sudo | Password ... OK!");
-						state.lock().unwrap().success = true;
+						lock!(state).success = true;
 						break
 					},
 					Ok(None) => {
@@ -159,25 +160,25 @@ impl SudoState {
 					Err(e) => {
 						error!("Sudo | Couldn't reset timestamp: {}", e);
 						Self::wipe(&state);
-						state.lock().unwrap().msg = format!("Sudo error: {}", e);
-						state.lock().unwrap().testing = false;
+						lock!(state).msg = format!("Sudo error: {}", e);
+						lock!(state).testing = false;
 						return
 					},
 				}
 			}
 			if let Err(e) = sudo.kill() { warn!("Sudo | Kill error (it probably already exited): {}", e); }
-			if state.lock().unwrap().success {
-				match state.lock().unwrap().signal {
+			if lock!(state).success {
+				match lock!(state).signal {
 					ProcessSignal::Restart => crate::helper::Helper::restart_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),
 					ProcessSignal::Stop => crate::helper::Helper::stop_xmrig(&helper),
 					_ => crate::helper::Helper::start_xmrig(&helper, &xmrig, &path, Arc::clone(&state)),
 				}
 			} else {
-				state.lock().unwrap().msg = "Incorrect password! (or sudo timeout)".to_string();
+				lock!(state).msg = "Incorrect password! (or sudo timeout)".to_string();
 				Self::wipe(&state);
 			}
-			state.lock().unwrap().signal = ProcessSignal::None;
-			state.lock().unwrap().testing = false;
+			lock!(state).signal = ProcessSignal::None;
+			lock!(state).testing = false;
 		});
 	}
 }

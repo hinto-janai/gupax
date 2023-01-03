@@ -26,7 +26,7 @@
 // found here, e.g: User clicks [Stop P2Pool] -> Arc<Mutex<ProcessSignal> is set
 // indicating to this thread during its loop: "I should stop P2Pool!", e.g:
 //
-//     if p2pool.lock().unwrap().signal == ProcessSignal::Stop {
+//     if lock!(p2pool).signal == ProcessSignal::Stop {
 //         stop_p2pool(),
 //     }
 //
@@ -45,6 +45,11 @@ use std::{
 use crate::{
 	constants::*,
 	SudoState,
+	human::*,
+	GupaxP2poolApi,
+	P2poolRegex,
+	xmr::*,
+	macros::*,
 };
 use sysinfo::SystemExt;
 use serde::{Serialize,Deserialize};
@@ -52,14 +57,15 @@ use sysinfo::{CpuExt,ProcessExt};
 use log::*;
 
 //---------------------------------------------------------------------------------------------------- Constants
-// The locale numbers are formatting in is English, which looks like: [1,000]
-const LOCALE: num_format::Locale = num_format::Locale::en;
 // The max amount of bytes of process output we are willing to
 // hold in memory before it's too much and we need to reset.
 const MAX_GUI_OUTPUT_BYTES: usize = 500_000;
 // Just a little leeway so a reset will go off before the [String] allocates more memory.
 const GUI_OUTPUT_LEEWAY: usize = MAX_GUI_OUTPUT_BYTES - 1000;
 
+// Some constants for generating hashrate/difficulty.
+const MONERO_BLOCK_TIME_IN_SECONDS: u64 = 120;
+const P2POOL_BLOCK_TIME_IN_SECONDS: u64 = 10;
 
 //---------------------------------------------------------------------------------------------------- [Helper] Struct
 // A meta struct holding all the data that gets processed in this thread
@@ -75,8 +81,7 @@ pub struct Helper {
 	pub img_xmrig: Arc<Mutex<ImgXmrig>>,          // A static "image" of the data XMRig started with
 	pub_api_p2pool: Arc<Mutex<PubP2poolApi>>,     // P2Pool API state (for Helper/P2Pool thread)
 	pub_api_xmrig: Arc<Mutex<PubXmrigApi>>,       // XMRig API state (for Helper/XMRig thread)
-	priv_api_p2pool: Arc<Mutex<PrivP2poolApi>>,   // For "watchdog" thread
-	priv_api_xmrig: Arc<Mutex<PrivXmrigApi>>,     // For "watchdog" thread
+	pub gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>, //
 }
 
 // The communication between the data here and the GUI thread goes as follows:
@@ -110,12 +115,7 @@ impl Sys {
 		}
 	}
 }
-
-impl Default for Sys {
-	fn default() -> Self {
-		Self::new()
-	}
-}
+impl Default for Sys { fn default() -> Self { Self::new() } }
 
 //---------------------------------------------------------------------------------------------------- [Process] Struct
 // This holds all the state of a (child) process.
@@ -165,8 +165,8 @@ impl Process {
 			start: Instant::now(),
 			stdin: Option::None,
 			child: Option::None,
-			output_parse: Arc::new(Mutex::new(String::with_capacity(500))),
-			output_pub: Arc::new(Mutex::new(String::with_capacity(500))),
+			output_parse: arc_mut!(String::with_capacity(500)),
+			output_pub: arc_mut!(String::with_capacity(500)),
 			input: vec![String::new()],
 		}
 	}
@@ -196,6 +196,8 @@ pub enum ProcessState {
 	Waiting, // Process was successfully killed by a restart, and is ready to be started again, YELLOW!
 }
 
+impl Default for ProcessState { fn default() -> Self { Self::Dead } }
+
 #[derive(Copy,Clone,Eq,PartialEq,Debug)]
 pub enum ProcessSignal {
 	None,
@@ -203,6 +205,8 @@ pub enum ProcessSignal {
 	Stop,
 	Restart,
 }
+
+impl Default for ProcessSignal { fn default() -> Self { Self::None } }
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug)]
 pub enum ProcessName {
@@ -224,15 +228,13 @@ impl std::fmt::Display for ProcessName   {
 //---------------------------------------------------------------------------------------------------- [Helper]
 impl Helper {
 	//---------------------------------------------------------------------------------------------------- General Functions
-	pub fn new(instant: std::time::Instant, pub_sys: Arc<Mutex<Sys>>, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, gui_api_xmrig: Arc<Mutex<PubXmrigApi>>, img_p2pool: Arc<Mutex<ImgP2pool>>, img_xmrig: Arc<Mutex<ImgXmrig>>) -> Self {
+	pub fn new(instant: std::time::Instant, pub_sys: Arc<Mutex<Sys>>, p2pool: Arc<Mutex<Process>>, xmrig: Arc<Mutex<Process>>, gui_api_p2pool: Arc<Mutex<PubP2poolApi>>, gui_api_xmrig: Arc<Mutex<PubXmrigApi>>, img_p2pool: Arc<Mutex<ImgP2pool>>, img_xmrig: Arc<Mutex<ImgXmrig>>, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) -> Self {
 		Self {
 			instant,
 			pub_sys,
 			uptime: HumanTime::into_human(instant.elapsed()),
-			priv_api_p2pool: Arc::new(Mutex::new(PrivP2poolApi::new())),
-			priv_api_xmrig: Arc::new(Mutex::new(PrivXmrigApi::new())),
-			pub_api_p2pool: Arc::new(Mutex::new(PubP2poolApi::new())),
-			pub_api_xmrig: Arc::new(Mutex::new(PubXmrigApi::new())),
+			pub_api_p2pool: arc_mut!(PubP2poolApi::new()),
+			pub_api_xmrig: arc_mut!(PubXmrigApi::new()),
 			// These are created when initializing [App], since it needs a handle to it as well
 			p2pool,
 			xmrig,
@@ -240,26 +242,34 @@ impl Helper {
 			gui_api_xmrig,
 			img_p2pool,
 			img_xmrig,
+			gupax_p2pool_api,
 		}
 	}
 
-	// Reads a PTY which combines STDOUT/STDERR for me, yay
-	fn read_pty(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>, name: ProcessName) {
+	fn read_pty_xmrig(_output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
 		// We don't need to write twice for XMRig, since we dont parse it... yet.
-		if name == ProcessName::Xmrig {
-			while let Some(Ok(line)) = stdout.next() {
-//				println!("{}", line); // For debugging.
-//				if let Err(e) = writeln!(output_parse.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
-				if let Err(e) = writeln!(output_pub.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
+		while let Some(Ok(line)) = stdout.next() {
+//			println!("{}", line); // For debugging.
+			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("XMRig PTY | Output error: {}", e); }
+		}
+	}
+
+	fn read_pty_p2pool(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>, regex: P2poolRegex, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
+		use std::io::BufRead;
+		let mut stdout = std::io::BufReader::new(reader).lines();
+		while let Some(Ok(line)) = stdout.next() {
+//			println!("{}", line); // For debugging.
+			if regex.payout.is_match(&line) {
+				debug!("P2Pool PTY | Found payout, attempting write: {}", line);
+				let (date, atomic_unit, block) = PayoutOrd::parse_raw_payout_line(&line, &regex);
+				let formatted_log_line = GupaxP2poolApi::format_payout(&date, &atomic_unit, &block);
+				GupaxP2poolApi::add_payout(&mut lock!(gupax_p2pool_api), &formatted_log_line, date, atomic_unit, block);
+				if let Err(e) = GupaxP2poolApi::write_to_all_files(&lock!(gupax_p2pool_api), &formatted_log_line) { error!("P2Pool PTY GupaxP2poolApi | Write error: {}", e); }
 			}
-		} else {
-			while let Some(Ok(line)) = stdout.next() {
-//				println!("{}", line); // For debugging.
-				if let Err(e) = writeln!(output_parse.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
-				if let Err(e) = writeln!(output_pub.lock().unwrap(), "{}", line) { error!("PTY | Output error: {}", e); }
-			}
+			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("P2Pool PTY Parse | Output error: {}", e); }
+			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("P2Pool PTY Pub | Output error: {}", e); }
 		}
 	}
 
@@ -278,29 +288,37 @@ impl Helper {
 		}
 	}
 
+	// Read P2Pool/XMRig's API file to a [String].
+	fn path_to_string(path: &std::path::PathBuf, name: ProcessName) -> std::result::Result<String, std::io::Error> {
+		match std::fs::read_to_string(path) {
+			Ok(s) => Ok(s),
+			Err(e) => { warn!("{} API | [{}] read error: {}", name, path.display(), e); Err(e) },
+		}
+	}
+
 	//---------------------------------------------------------------------------------------------------- P2Pool specific
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_p2pool(helper: &Arc<Mutex<Self>>) {
 		info!("P2Pool | Attempting to stop...");
-		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Stop;
-		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
+		lock2!(helper,p2pool).signal = ProcessSignal::Stop;
+		lock2!(helper,p2pool).state = ProcessState::Middle;
 	}
 
 	// The "restart frontend" to a "frontend" function.
 	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
 	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
 		info!("P2Pool | Attempting to restart...");
-		helper.lock().unwrap().p2pool.lock().unwrap().signal = ProcessSignal::Restart;
-		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
+		lock2!(helper,p2pool).signal = ProcessSignal::Restart;
+		lock2!(helper,p2pool).state = ProcessState::Middle;
 
 		let helper = Arc::clone(helper);
 		let state = state.clone();
 		let path = path.clone();
 		// This thread lives to wait, start p2pool then die.
 		thread::spawn(move || {
-			while helper.lock().unwrap().p2pool.lock().unwrap().is_alive() {
+			while lock2!(helper,p2pool).is_alive() {
 				warn!("P2Pool | Want to restart but process is still alive, waiting...");
-				thread::sleep(SECOND);
+				sleep!(1000);
 			}
 			// Ok, process is not alive, start the new one!
 			info!("P2Pool | Old process seems dead, starting new one!");
@@ -311,21 +329,27 @@ impl Helper {
 
 	// The "frontend" function that parses the arguments, and spawns either the [Simple] or [Advanced] P2Pool watchdog thread.
 	pub fn start_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
-		helper.lock().unwrap().p2pool.lock().unwrap().state = ProcessState::Middle;
+		lock2!(helper,p2pool).state = ProcessState::Middle;
 
-		let (args, api_path) = Self::build_p2pool_args_and_mutate_img(helper, state, path);
+		let (args, api_path_local, api_path_network, api_path_pool) = Self::build_p2pool_args_and_mutate_img(helper, state, path);
 
 		// Print arguments & user settings to console
-		crate::disk::print_dash(&format!("P2Pool | Launch arguments: {:#?} | API Path: {:#?}", args, api_path));
+		crate::disk::print_dash(&format!(
+			"P2Pool | Launch arguments: {:#?} | Local API Path: {:#?} | Network API Path: {:#?} | Pool API Path: {:#?}",
+			 args,
+			 api_path_local,
+			 api_path_network,
+			 api_path_pool,
+		));
 
 		// Spawn watchdog thread
-		let process = Arc::clone(&helper.lock().unwrap().p2pool);
-		let gui_api = Arc::clone(&helper.lock().unwrap().gui_api_p2pool);
-		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_p2pool);
-		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_p2pool);
+		let process = Arc::clone(&lock!(helper).p2pool);
+		let gui_api = Arc::clone(&lock!(helper).gui_api_p2pool);
+		let pub_api = Arc::clone(&lock!(helper).pub_api_p2pool);
+		let gupax_p2pool_api = Arc::clone(&lock!(helper).gupax_p2pool_api);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, priv_api, args, path, api_path);
+			Self::spawn_p2pool_watchdog(process, gui_api, pub_api, args, path, api_path_local, api_path_network, api_path_pool, gupax_p2pool_api);
 		});
 	}
 
@@ -333,7 +357,7 @@ impl Helper {
 	// 6 characters separated with dots like so: [4abcde...abcdef]
 	fn head_tail_of_monero_address(address: &str) -> String {
 		if address.len() < 95 { return "???".to_string() }
-		let head = &address[0..5];
+		let head = &address[0..6];
 		let tail = &address[89..95];
 		head.to_owned() + "..." + tail
 	}
@@ -341,7 +365,7 @@ impl Helper {
 	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
 	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
-	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> (Vec<String>, PathBuf) {
+	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> (Vec<String>, PathBuf, PathBuf, PathBuf) {
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
 		let mut api_path = path;
@@ -359,7 +383,7 @@ impl Helper {
 			args.push("--local-api".to_string()); // Enable API
 			args.push("--no-color".to_string());  // Remove color escape sequences, Gupax terminal can't parse it :(
 			args.push("--mini".to_string());      // P2Pool Mini
-			*helper.lock().unwrap().img_p2pool.lock().unwrap() = ImgP2pool {
+			*lock2!(helper,img_p2pool) = ImgP2pool {
 				mini: "P2Pool Mini".to_string(),
 				address: Self::head_tail_of_monero_address(&state.address),
 				host: ip.to_string(),
@@ -376,8 +400,8 @@ impl Helper {
 				// This parses the input and attemps to fill out
 				// the [ImgP2pool]... This is pretty bad code...
 				let mut last = "";
-				let lock = helper.lock().unwrap();
-				let mut p2pool_image = lock.img_p2pool.lock().unwrap();
+				let lock = lock!(helper);
+				let mut p2pool_image = lock!(lock.img_p2pool);
 				let mut mini = false;
 				for arg in state.arguments.split_whitespace() {
 					match last {
@@ -408,7 +432,7 @@ impl Helper {
 				args.push("--local-api".to_string());               // Enable API
 				args.push("--no-color".to_string());                // Remove color escape sequences
 				if state.mini { args.push("--mini".to_string()); }; // Mini
-				*helper.lock().unwrap().img_p2pool.lock().unwrap() = ImgP2pool {
+				*lock2!(helper,img_p2pool) = ImgP2pool {
 					mini: if state.mini { "P2Pool Mini".to_string() } else { "P2Pool Main".to_string() },
 					address: Self::head_tail_of_monero_address(&state.address),
 					host: state.selected_ip.to_string(),
@@ -419,12 +443,17 @@ impl Helper {
 				};
 			}
 		}
-		api_path.push(P2POOL_API_PATH);
-		(args, api_path)
+		let mut api_path_local = api_path.clone();
+		let mut api_path_network = api_path.clone();
+		let mut api_path_pool = api_path.clone();
+		api_path_local.push(P2POOL_API_PATH_LOCAL);
+		api_path_network.push(P2POOL_API_PATH_NETWORK);
+		api_path_pool.push(P2POOL_API_PATH_POOL);
+		(args, api_path_local, api_path_network, api_path_pool)
 	}
 
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
-	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, _priv_api: Arc<Mutex<PrivP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path: std::path::PathBuf) {
+	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path_local: std::path::PathBuf, api_path_network: std::path::PathBuf, api_path_pool: std::path::PathBuf, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
 		// 1a. Create PTY
 		debug!("P2Pool | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -441,11 +470,11 @@ impl Helper {
 		cmd.cwd(path.as_path().parent().unwrap());
 		// 1c. Create child
 		debug!("P2Pool | Creating child...");
-		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
+		let child_pty = arc_mut!(pair.slave.spawn_command(cmd).unwrap());
 
         // 2. Set process state
 		debug!("P2Pool | Setting process state...");
-        let mut lock = process.lock().unwrap();
+        let mut lock = lock!(process);
         lock.state = ProcessState::Alive;
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
@@ -454,37 +483,40 @@ impl Helper {
 		lock.stdin = Some(pair.master);
 		drop(lock);
 
+		let regex = P2poolRegex::new();
+
 		// 3. Spawn PTY read thread
 		debug!("P2Pool | Spawning PTY read thread...");
-		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
-		let output_pub = Arc::clone(&process.lock().unwrap().output_pub);
+		let output_parse = Arc::clone(&lock!(process).output_parse);
+		let output_pub = Arc::clone(&lock!(process).output_pub);
+		let gupax_p2pool_api = Arc::clone(&gupax_p2pool_api);
+		let regex_clone = regex.clone();
 		thread::spawn(move || {
-			Self::read_pty(output_parse, output_pub, reader, ProcessName::P2pool);
+			Self::read_pty_p2pool(output_parse, output_pub, reader, regex_clone, gupax_p2pool_api);
 		});
-		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
-		let output_pub = Arc::clone(&process.lock().unwrap().output_pub);
+		let output_parse = Arc::clone(&lock!(process).output_parse);
+		let output_pub = Arc::clone(&lock!(process).output_pub);
 
-		debug!("P2Pool | Cleaning old API files...");
+		debug!("P2Pool | Cleaning old [local] API files...");
 		// Attempt to remove stale API file
-		match std::fs::remove_file(&api_path) {
+		match std::fs::remove_file(&api_path_local) {
 			Ok(_) => info!("P2Pool | Attempting to remove stale API file ... OK"),
 			Err(e) => warn!("P2Pool | Attempting to remove stale API file ... FAIL ... {}", e),
 		}
 		// Attempt to create a default empty one.
 		use std::io::Write;
-		if std::fs::File::create(&api_path).is_ok() {
+		if std::fs::File::create(&api_path_local).is_ok() {
 			let text = r#"{"hashrate_15m":0,"hashrate_1h":0,"hashrate_24h":0,"shares_found":0,"average_effort":0.0,"current_effort":0.0,"connections":0}"#;
-			match std::fs::write(&api_path, text) {
+			match std::fs::write(&api_path_local, text) {
 				Ok(_) => info!("P2Pool | Creating default empty API file ... OK"),
 				Err(e) => warn!("P2Pool | Creating default empty API file ... FAIL ... {}", e),
 			}
 		}
-		let regex = P2poolRegex::new();
-		let start = process.lock().unwrap().start;
+		let start = lock!(process).start;
 
 		// Reset stats before loop
-		*pub_api.lock().unwrap() = PubP2poolApi::new();
-		*gui_api.lock().unwrap() = PubP2poolApi::new();
+		*lock!(pub_api) = PubP2poolApi::new();
+		*lock!(gui_api) = PubP2poolApi::new();
 
 		// 4. Loop as watchdog
 		info!("P2Pool | Entering watchdog mode... woof!");
@@ -492,19 +524,20 @@ impl Helper {
 			// Set timer
 			let now = Instant::now();
 			debug!("P2Pool Watchdog | ----------- Start of loop -----------");
+			lock!(gui_api).tick += 1;
 
 			// Check if the process is secretly died without us knowing :)
-			if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
+			if let Ok(Some(code)) = lock!(child_pty).try_wait() {
 				debug!("P2Pool Watchdog | Process secretly died! Getting exit status");
 				let exit_status = match code.success() {
-					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
-					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
+					true  => { lock!(process).state = ProcessState::Dead; "Successful" },
+					false => { lock!(process).state = ProcessState::Failed; "Failed" },
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI, because sometimes the 900ms event loop can't catch it.
 				if let Err(e) = writeln!(
-					gui_api.lock().unwrap().output,
+					lock!(gui_api).output,
 					"{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
 					HORI_CONSOLE,
 					uptime,
@@ -513,32 +546,32 @@ impl Helper {
 				) {
 					error!("P2Pool Watchdog | GUI Uptime/Exit status write failed: {}", e);
 				}
-				process.lock().unwrap().signal = ProcessSignal::None;
+				lock!(process).signal = ProcessSignal::None;
 				debug!("P2Pool Watchdog | Secret dead process reap OK, breaking");
 				break
 			}
 
 			// Check SIGNAL
-			if process.lock().unwrap().signal == ProcessSignal::Stop {
+			if lock!(process).signal == ProcessSignal::Stop {
 				debug!("P2Pool Watchdog | Stop SIGNAL caught");
 				// This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
-				if let Err(e) = child_pty.lock().unwrap().kill() { error!("P2Pool Watchdog | Kill error: {}", e); }
+				if let Err(e) = lock!(child_pty).kill() { error!("P2Pool Watchdog | Kill error: {}", e); }
 				// Wait to get the exit status
-				let exit_status = match child_pty.lock().unwrap().wait() {
+				let exit_status = match lock!(child_pty).wait() {
 					Ok(e) => {
 						if e.success() {
-							process.lock().unwrap().state = ProcessState::Dead; "Successful"
+							lock!(process).state = ProcessState::Dead; "Successful"
 						} else {
-							process.lock().unwrap().state = ProcessState::Failed; "Failed"
+							lock!(process).state = ProcessState::Failed; "Failed"
 						}
 					},
-					_ => { process.lock().unwrap().state = ProcessState::Failed; "Unknown Error" },
+					_ => { lock!(process).state = ProcessState::Failed; "Unknown Error" },
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
 				if let Err(e) = writeln!(
-					gui_api.lock().unwrap().output,
+					lock!(gui_api).output,
 					"{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
 					HORI_CONSOLE,
 					uptime,
@@ -547,16 +580,16 @@ impl Helper {
 				) {
 					error!("P2Pool Watchdog | GUI Uptime/Exit status write failed: {}", e);
 				}
-				process.lock().unwrap().signal = ProcessSignal::None;
+				lock!(process).signal = ProcessSignal::None;
 				debug!("P2Pool Watchdog | Stop SIGNAL done, breaking");
 				break
 			// Check RESTART
-			} else if process.lock().unwrap().signal == ProcessSignal::Restart {
+			} else if lock!(process).signal == ProcessSignal::Restart {
 				debug!("P2Pool Watchdog | Restart SIGNAL caught");
 				// This actually sends a SIGHUP to p2pool (closes the PTY, hangs up on p2pool)
-				if let Err(e) = child_pty.lock().unwrap().kill() { error!("P2Pool Watchdog | Kill error: {}", e); }
+				if let Err(e) = lock!(child_pty).kill() { error!("P2Pool Watchdog | Kill error: {}", e); }
 				// Wait to get the exit status
-				let exit_status = match child_pty.lock().unwrap().wait() {
+				let exit_status = match lock!(child_pty).wait() {
 					Ok(e) => if e.success() { "Successful" } else { "Failed" },
 					_ => "Unknown Error",
 				};
@@ -564,7 +597,7 @@ impl Helper {
 				info!("P2Pool Watchdog | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				// This is written directly into the GUI API, because sometimes the 900ms event loop can't catch it.
 				if let Err(e) = writeln!(
-					gui_api.lock().unwrap().output,
+					lock!(gui_api).output,
 					"{}\nP2Pool stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
 					HORI_CONSOLE,
 					uptime,
@@ -573,13 +606,13 @@ impl Helper {
 				) {
 					error!("P2Pool Watchdog | GUI Uptime/Exit status write failed: {}", e);
 				}
-				process.lock().unwrap().state = ProcessState::Waiting;
+				lock!(process).state = ProcessState::Waiting;
 				debug!("P2Pool Watchdog | Restart SIGNAL done, breaking");
 				break
 			}
 
 			// Check vector of user input
-			let mut lock = process.lock().unwrap();
+			let mut lock = lock!(process);
 			if !lock.input.is_empty() {
 				let input = std::mem::take(&mut lock.input);
 				for line in input {
@@ -592,7 +625,7 @@ impl Helper {
 
 			// Check if logs need resetting
 			debug!("P2Pool Watchdog | Attempting GUI log reset check");
-			let mut lock = gui_api.lock().unwrap();
+			let mut lock = lock!(gui_api);
 			Self::check_reset_gui_output(&mut lock.output, ProcessName::P2pool);
 			drop(lock);
 
@@ -600,13 +633,23 @@ impl Helper {
 			debug!("P2Pool Watchdog | Starting [update_from_output()]");
 			PubP2poolApi::update_from_output(&pub_api, &output_parse, &output_pub, start.elapsed(), &regex);
 
-			// Read API file into string
-			debug!("P2Pool Watchdog | Attempting API file read");
-			if let Ok(string) = PrivP2poolApi::read_p2pool_api(&api_path) {
+			// Read [local] API
+			debug!("P2Pool Watchdog | Attempting [local] API file read");
+			if let Ok(string) = Self::path_to_string(&api_path_local, ProcessName::P2pool) {
 				// Deserialize
-				if let Ok(s) = PrivP2poolApi::str_to_priv_p2pool_api(&string) {
+				if let Ok(local_api) = PrivP2poolLocalApi::from_str(&string) {
 					// Update the structs.
-					PubP2poolApi::update_from_priv(&pub_api, s);
+					PubP2poolApi::update_from_local(&pub_api, local_api);
+				}
+			}
+			// If more than 1 minute has passed, read the other API files.
+			if lock!(gui_api).tick >= 60 {
+				debug!("P2Pool Watchdog | Attempting [network] & [pool] API file read");
+				if let (Ok(network_api), Ok(pool_api)) = (Self::path_to_string(&api_path_network, ProcessName::P2pool), Self::path_to_string(&api_path_pool, ProcessName::P2pool)) {
+					if let (Ok(network_api), Ok(pool_api)) = (PrivP2poolNetworkApi::from_str(&network_api), PrivP2poolPoolApi::from_str(&pool_api)) {
+						PubP2poolApi::update_from_network_pool(&pub_api, network_api, pool_api);
+						lock!(gui_api).tick = 0;
+					}
 				}
 			}
 
@@ -615,10 +658,10 @@ impl Helper {
 			// Since logic goes off if less than 1000, casting should be safe
 			if elapsed < 900 {
 				let sleep = (900-elapsed) as u64;
-				debug!("P2Pool Watchdog | END OF LOOP - Sleeping for [{}]ms...", sleep);
-				std::thread::sleep(std::time::Duration::from_millis(sleep));
+				debug!("P2Pool Watchdog | END OF LOOP -  Tick: [{}/60] - Sleeping for [{}]ms...", lock!(gui_api).tick, sleep);
+				sleep!(sleep);
 			} else {
-				debug!("P2Pool Watchdog | END OF LOOP - Not sleeping!");
+				debug!("P2Pool Watchdog | END OF LOOP - Tick: [{}/60] Not sleeping!", lock!(gui_api).tick);
 			}
 		}
 
@@ -640,7 +683,7 @@ impl Helper {
 		// Write the [sudo] password to STDIN.
 		let mut stdin = child.stdin.take().unwrap();
 		use std::io::Write;
-		if let Err(e) = writeln!(stdin, "{}\n", sudo.lock().unwrap().pass) { error!("Sudo Kill | STDIN error: {}", e); }
+		if let Err(e) = writeln!(stdin, "{}\n", lock!(sudo).pass) { error!("Sudo Kill | STDIN error: {}", e); }
 
 		// Return exit code of [sudo/kill].
 		child.wait().unwrap().success()
@@ -649,25 +692,25 @@ impl Helper {
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_xmrig(helper: &Arc<Mutex<Self>>) {
 		info!("XMRig | Attempting to stop...");
-		helper.lock().unwrap().xmrig.lock().unwrap().signal = ProcessSignal::Stop;
-		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
+		lock2!(helper,xmrig).signal = ProcessSignal::Stop;
+		lock2!(helper,xmrig).state = ProcessState::Middle;
 	}
 
 	// The "restart frontend" to a "frontend" function.
 	// Basically calls to kill the current xmrig, waits a little, then starts the below function in a a new thread, then exit.
 	pub fn restart_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
 		info!("XMRig | Attempting to restart...");
-		helper.lock().unwrap().xmrig.lock().unwrap().signal = ProcessSignal::Restart;
-		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
+		lock2!(helper,xmrig).signal = ProcessSignal::Restart;
+		lock2!(helper,xmrig).state = ProcessState::Middle;
 
 		let helper = Arc::clone(helper);
 		let state = state.clone();
 		let path = path.clone();
 		// This thread lives to wait, start xmrig then die.
 		thread::spawn(move || {
-			while helper.lock().unwrap().xmrig.lock().unwrap().state != ProcessState::Waiting {
+			while lock2!(helper,xmrig).state != ProcessState::Waiting {
 				warn!("XMRig | Want to restart but process is still alive, waiting...");
-				thread::sleep(SECOND);
+				sleep!(1000);
 			}
 			// Ok, process is not alive, start the new one!
 			info!("XMRig | Old process seems dead, starting new one!");
@@ -677,7 +720,7 @@ impl Helper {
 	}
 
 	pub fn start_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
-		helper.lock().unwrap().xmrig.lock().unwrap().state = ProcessState::Middle;
+		lock2!(helper,xmrig).state = ProcessState::Middle;
 
 		let (args, api_ip_port) = Self::build_xmrig_args_and_mutate_img(helper, state, path);
 
@@ -686,13 +729,12 @@ impl Helper {
 		info!("XMRig | Using path: [{}]", path.display());
 
 		// Spawn watchdog thread
-		let process = Arc::clone(&helper.lock().unwrap().xmrig);
-		let gui_api = Arc::clone(&helper.lock().unwrap().gui_api_xmrig);
-		let pub_api = Arc::clone(&helper.lock().unwrap().pub_api_xmrig);
-		let priv_api = Arc::clone(&helper.lock().unwrap().priv_api_xmrig);
+		let process = Arc::clone(&lock!(helper).xmrig);
+		let gui_api = Arc::clone(&lock!(helper).gui_api_xmrig);
+		let pub_api = Arc::clone(&lock!(helper).pub_api_xmrig);
 		let path = path.clone();
 		thread::spawn(move || {
-			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, priv_api, args, path, sudo, api_ip_port);
+			Self::spawn_xmrig_watchdog(process, gui_api, pub_api, args, path, sudo, api_ip_port);
 		});
 	}
 
@@ -725,7 +767,7 @@ impl Helper {
 			args.push("--http-host".to_string()); args.push("127.0.0.1".to_string());         // HTTP API IP
 			args.push("--http-port".to_string()); args.push("18088".to_string());             // HTTP API Port
 			if state.pause != 0 { args.push("--pause-on-active".to_string()); args.push(state.pause.to_string()); } // Pause on active
-			*helper.lock().unwrap().img_xmrig.lock().unwrap() = ImgXmrig {
+			*lock2!(helper,img_xmrig) = ImgXmrig {
 				threads: state.current_threads.to_string(),
 				url: "127.0.0.1:3333 (Local P2Pool)".to_string(),
 			};
@@ -739,8 +781,8 @@ impl Helper {
 				// This parses the input and attemps to fill out
 				// the [ImgXmrig]... This is pretty bad code...
 				let mut last = "";
-				let lock = helper.lock().unwrap();
-				let mut xmrig_image = lock.img_xmrig.lock().unwrap();
+				let lock = lock!(helper);
+				let mut xmrig_image = lock!(lock.img_xmrig);
 				for arg in state.arguments.split_whitespace() {
 					match last {
 						"--threads"   => xmrig_image.threads = arg.to_string(),
@@ -768,7 +810,7 @@ impl Helper {
 				if state.tls { args.push("--tls".to_string()); }             // TLS
 				if state.keepalive { args.push("--keepalive".to_string()); } // Keepalive
 				if state.pause != 0 { args.push("--pause-on-active".to_string()); args.push(state.pause.to_string()); } // Pause on active
-				*helper.lock().unwrap().img_xmrig.lock().unwrap() = ImgXmrig {
+				*lock2!(helper,img_xmrig) = ImgXmrig {
 					url,
 					threads: state.current_threads.to_string(),
 				};
@@ -798,7 +840,7 @@ impl Helper {
 	// The XMRig watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	// This isn't actually async, a tokio runtime is unfortunately needed because [Hyper] is an async library (HTTP API calls)
 	#[tokio::main]
-	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, _priv_api: Arc<Mutex<PrivXmrigApi>>, args: Vec<String>, path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, mut api_ip_port: String) {
+	async fn spawn_xmrig_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubXmrigApi>>, pub_api: Arc<Mutex<PubXmrigApi>>, args: Vec<String>, path: std::path::PathBuf, sudo: Arc<Mutex<SudoState>>, mut api_ip_port: String) {
 		// 1a. Create PTY
 		debug!("XMRig | Creating PTY...");
 		let pty = portable_pty::native_pty_system();
@@ -816,21 +858,21 @@ impl Helper {
 		let cmd = Self::create_xmrig_cmd_unix(args, path);
 		// 1c. Create child
 		debug!("XMRig | Creating child...");
-		let child_pty = Arc::new(Mutex::new(pair.slave.spawn_command(cmd).unwrap()));
+		let child_pty = arc_mut!(pair.slave.spawn_command(cmd).unwrap());
 
 		// 2. Input [sudo] pass, wipe, then drop.
 		if cfg!(unix) {
 			debug!("XMRig | Inputting [sudo] and wiping...");
 			// 1d. Sleep to wait for [sudo]'s non-echo prompt (on Unix).
 			// this prevents users pass from showing up in the STDOUT.
-			std::thread::sleep(std::time::Duration::from_secs(3));
-			if let Err(e) = writeln!(pair.master, "{}", sudo.lock().unwrap().pass) { error!("XMRig | Sudo STDIN error: {}", e); };
+			sleep!(3000);
+			if let Err(e) = writeln!(pair.master, "{}", lock!(sudo).pass) { error!("XMRig | Sudo STDIN error: {}", e); };
 			SudoState::wipe(&sudo);
 		}
 
         // 3. Set process state
 		debug!("XMRig | Setting process state...");
-        let mut lock = process.lock().unwrap();
+        let mut lock = lock!(process);
         lock.state = ProcessState::Alive;
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
@@ -841,17 +883,17 @@ impl Helper {
 
 		// 4. Spawn PTY read thread
 		debug!("XMRig | Spawning PTY read thread...");
-		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
-		let output_pub = Arc::clone(&process.lock().unwrap().output_pub);
+		let output_parse = Arc::clone(&lock!(process).output_parse);
+		let output_pub = Arc::clone(&lock!(process).output_pub);
 		thread::spawn(move || {
-			Self::read_pty(output_parse, output_pub, reader, ProcessName::Xmrig);
+			Self::read_pty_xmrig(output_parse, output_pub, reader);
 		});
 		// We don't parse anything in XMRigs output... yet.
-//		let output_parse = Arc::clone(&process.lock().unwrap().output_parse);
-		let output_pub = Arc::clone(&process.lock().unwrap().output_pub);
+//		let output_parse = Arc::clone(&lock!(process).output_parse);
+		let output_pub = Arc::clone(&lock!(process).output_pub);
 
 		let client: hyper::Client<hyper::client::HttpConnector> = hyper::Client::builder().build(hyper::client::HttpConnector::new());
-		let start = process.lock().unwrap().start;
+		let start = lock!(process).start;
 		let api_uri = {
 			if !api_ip_port.ends_with('/') { api_ip_port.push('/'); }
 			"http://".to_owned() + &api_ip_port + XMRIG_API_URI
@@ -859,8 +901,8 @@ impl Helper {
 		info!("XMRig | Final API URI: {}", api_uri);
 
 		// Reset stats before loop
-		*pub_api.lock().unwrap() = PubXmrigApi::new();
-		*gui_api.lock().unwrap() = PubXmrigApi::new();
+		*lock!(pub_api) = PubXmrigApi::new();
+		*lock!(gui_api) = PubXmrigApi::new();
 
 		// 5. Loop as watchdog
 		info!("XMRig | Entering watchdog mode... woof!");
@@ -870,16 +912,16 @@ impl Helper {
 			debug!("XMRig Watchdog | ----------- Start of loop -----------");
 
 			// Check if the process secretly died without us knowing :)
-			if let Ok(Some(code)) = child_pty.lock().unwrap().try_wait() {
+			if let Ok(Some(code)) = lock!(child_pty).try_wait() {
 				debug!("XMRig Watchdog | Process secretly died on us! Getting exit status...");
 				let exit_status = match code.success() {
-					true  => { process.lock().unwrap().state = ProcessState::Dead; "Successful" },
-					false => { process.lock().unwrap().state = ProcessState::Failed; "Failed" },
+					true  => { lock!(process).state = ProcessState::Dead; "Successful" },
+					false => { lock!(process).state = ProcessState::Failed; "Failed" },
 				};
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				if let Err(e) = writeln!(
-					gui_api.lock().unwrap().output,
+					lock!(gui_api).output,
 					"{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
 					HORI_CONSOLE,
 					uptime,
@@ -888,13 +930,13 @@ impl Helper {
 				) {
 					error!("XMRig Watchdog | GUI Uptime/Exit status write failed: {}", e);
 				}
-				process.lock().unwrap().signal = ProcessSignal::None;
+				lock!(process).signal = ProcessSignal::None;
 				debug!("XMRig Watchdog | Secret dead process reap OK, breaking");
 				break
 			}
 
 			// Stop on [Stop/Restart] SIGNAL
-			let signal = process.lock().unwrap().signal;
+			let signal = lock!(process).signal;
 			if signal == ProcessSignal::Stop || signal == ProcessSignal::Restart  {
 				debug!("XMRig Watchdog | Stop/Restart SIGNAL caught");
 				// macOS requires [sudo] again to kill [XMRig]
@@ -902,16 +944,16 @@ impl Helper {
 					// If we're at this point, that means the user has
 					// entered their [sudo] pass again, after we wiped it.
 					// So, we should be able to find it in our [Arc<Mutex<SudoState>>].
-					Self::sudo_kill(child_pty.lock().unwrap().process_id().unwrap(), &sudo);
+					Self::sudo_kill(lock!(child_pty).process_id().unwrap(), &sudo);
 					// And... wipe it again (only if we're stopping full).
 					// If we're restarting, the next start will wipe it for us.
 					if signal != ProcessSignal::Restart { SudoState::wipe(&sudo); }
-				} else if let Err(e) = child_pty.lock().unwrap().kill() {
+				} else if let Err(e) = lock!(child_pty).kill() {
 					error!("XMRig Watchdog | Kill error: {}", e);
 				}
-				let exit_status = match child_pty.lock().unwrap().wait() {
+				let exit_status = match lock!(child_pty).wait() {
 					Ok(e) => {
-						let mut process = process.lock().unwrap();
+						let mut process = lock!(process);
 						if e.success() {
 							if process.signal == ProcessSignal::Stop { process.state = ProcessState::Dead; }
 							"Successful"
@@ -921,7 +963,7 @@ impl Helper {
 						}
 					},
 					_ => {
-						let mut process = process.lock().unwrap();
+						let mut process = lock!(process);
 						if process.signal == ProcessSignal::Stop { process.state = ProcessState::Failed; }
 						"Unknown Error"
 					},
@@ -929,7 +971,7 @@ impl Helper {
 				let uptime = HumanTime::into_human(start.elapsed());
 				info!("XMRig | Stopped ... Uptime was: [{}], Exit status: [{}]", uptime, exit_status);
 				if let Err(e) = writeln!(
-					gui_api.lock().unwrap().output,
+					lock!(gui_api).output,
 					"{}\nXMRig stopped | Uptime: [{}] | Exit status: [{}]\n{}\n\n\n\n",
 					HORI_CONSOLE,
 					uptime,
@@ -938,7 +980,7 @@ impl Helper {
 				) {
 					error!("XMRig Watchdog | GUI Uptime/Exit status write failed: {}", e);
 				}
-				let mut process = process.lock().unwrap();
+				let mut process = lock!(process);
 				match process.signal {
 					ProcessSignal::Stop    => process.signal = ProcessSignal::None,
 					ProcessSignal::Restart => process.state = ProcessState::Waiting,
@@ -949,7 +991,7 @@ impl Helper {
 			}
 
 			// Check vector of user input
-			let mut lock = process.lock().unwrap();
+			let mut lock = lock!(process);
 			if !lock.input.is_empty() {
 				let input = std::mem::take(&mut lock.input);
 				for line in input {
@@ -961,7 +1003,7 @@ impl Helper {
 
 			// Check if logs need resetting
 			debug!("XMRig Watchdog | Attempting GUI log reset check");
-			let mut lock = gui_api.lock().unwrap();
+			let mut lock = lock!(gui_api);
 			Self::check_reset_gui_output(&mut lock.output, ProcessName::Xmrig);
 			drop(lock);
 
@@ -984,7 +1026,7 @@ impl Helper {
 			if elapsed < 900 {
 				let sleep = (900-elapsed) as u64;
 				debug!("XMRig Watchdog | END OF LOOP - Sleeping for [{}]ms...", sleep);
-				std::thread::sleep(std::time::Duration::from_millis(sleep));
+				sleep!(sleep);
 			} else {
 				debug!("XMRig Watchdog | END OF LOOP - Not sleeping!");
 			}
@@ -1043,7 +1085,7 @@ impl Helper {
 		// order as the main GUI thread (top to bottom).
 
 		let helper = Arc::clone(helper);
-		let lock = helper.lock().unwrap();
+		let lock = lock!(helper);
 		let p2pool = Arc::clone(&lock.p2pool);
 		let xmrig = Arc::clone(&lock.xmrig);
 		let pub_sys = Arc::clone(&lock.pub_sys);
@@ -1069,14 +1111,14 @@ impl Helper {
 		// down the culprit of an [Arc<Mutex>] deadlock. I know, they're ugly.
 
 		// 2. Lock... EVERYTHING!
-		let mut lock = helper.lock().unwrap();                                debug!("Helper | Locking (1/8) ... [helper]");
-		let p2pool = p2pool.lock().unwrap();                                  debug!("Helper | Locking (2/8) ... [p2pool]");
-		let xmrig = xmrig.lock().unwrap();                                    debug!("Helper | Locking (3/8) ... [xmrig]");
-		let mut lock_pub_sys = pub_sys.lock().unwrap();                       debug!("Helper | Locking (4/8) ... [pub_sys]");
-		let mut gui_api_p2pool = gui_api_p2pool.lock().unwrap();              debug!("Helper | Locking (5/8) ... [gui_api_p2pool]");
-		let mut gui_api_xmrig = gui_api_xmrig.lock().unwrap();                debug!("Helper | Locking (6/8) ... [gui_api_xmrig]");
-		let mut pub_api_p2pool = pub_api_p2pool.lock().unwrap();              debug!("Helper | Locking (7/8) ... [pub_api_p2pool]");
-		let mut pub_api_xmrig = pub_api_xmrig.lock().unwrap();                debug!("Helper | Locking (8/8) ... [pub_api_xmrig]");
+		let mut lock           = lock!(helper);              debug!("Helper | Locking (1/8) ... [helper]");
+		let p2pool             = lock!(p2pool);              debug!("Helper | Locking (2/8) ... [p2pool]");
+		let xmrig              = lock!(xmrig);               debug!("Helper | Locking (3/8) ... [xmrig]");
+		let mut lock_pub_sys   = lock!(pub_sys);             debug!("Helper | Locking (4/8) ... [pub_sys]");
+		let mut gui_api_p2pool = lock!(gui_api_p2pool);      debug!("Helper | Locking (5/8) ... [gui_api_p2pool]");
+		let mut gui_api_xmrig  = lock!(gui_api_xmrig);       debug!("Helper | Locking (6/8) ... [gui_api_xmrig]");
+		let mut pub_api_p2pool = lock!(pub_api_p2pool);      debug!("Helper | Locking (7/8) ... [pub_api_p2pool]");
+		let mut pub_api_xmrig  = lock!(pub_api_xmrig);       debug!("Helper | Locking (8/8) ... [pub_api_xmrig]");
 		// Calculate Gupax's uptime always.
 		lock.uptime = HumanTime::into_human(lock.instant.elapsed());
 		// If [P2Pool] is alive...
@@ -1119,7 +1161,7 @@ impl Helper {
 			// is less than 1000, meaning it can fit into a u64 easy.
 			let sleep = (1000-elapsed) as u64;
 			debug!("Helper | END OF LOOP - Sleeping for [{}]ms...", sleep);
-			std::thread::sleep(std::time::Duration::from_millis(sleep));
+			sleep!(sleep);
 		} else {
 			debug!("Helper | END OF LOOP - Not sleeping!");
 		}
@@ -1127,210 +1169,6 @@ impl Helper {
 		// 5. End loop
 		}
 		});
-	}
-}
-
-//---------------------------------------------------------------------------------------------------- [HumanTime]
-// This converts a [std::time::Duration] into something more readable.
-// Used for uptime display purposes: [7 years, 8 months, 15 days, 23 hours, 35 minutes, 1 second]
-// Code taken from [https://docs.rs/humantime/] and edited to remove sub-second time, change spacing and some words.
-use std::time::Duration;
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct HumanTime(Duration);
-
-impl Default for HumanTime {
-	fn default() -> Self {
-		Self::new()
-	}
-}
-
-impl HumanTime {
-	pub fn new() -> HumanTime {
-		HumanTime(ZERO_SECONDS)
-	}
-
-	pub fn into_human(d: Duration) -> HumanTime {
-		HumanTime(d)
-	}
-
-	fn plural(f: &mut std::fmt::Formatter, started: &mut bool, name: &str, value: u64) -> std::fmt::Result {
-		if value > 0 {
-			if *started {
-				f.write_str(", ")?;
-			}
-			write!(f, "{} {}", value, name)?;
-			if value > 1 {
-				f.write_str("s")?;
-			}
-			*started = true;
-		}
-		Ok(())
-	}
-}
-
-impl std::fmt::Display for HumanTime {
-	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		let secs = self.0.as_secs();
-		if secs == 0 {
-			f.write_str("0 seconds")?;
-			return Ok(());
-		}
-
-		let years = secs / 31_557_600;  // 365.25d
-		let ydays = secs % 31_557_600;
-		let months = ydays / 2_630_016;  // 30.44d
-		let mdays = ydays % 2_630_016;
-		let days = mdays / 86400;
-		let day_secs = mdays % 86400;
-		let hours = day_secs / 3600;
-		let minutes = day_secs % 3600 / 60;
-		let seconds = day_secs % 60;
-
-		let started = &mut false;
-		Self::plural(f, started, "year", years)?;
-		Self::plural(f, started, "month", months)?;
-		Self::plural(f, started, "day", days)?;
-		Self::plural(f, started, "hour", hours)?;
-		Self::plural(f, started, "minute", minutes)?;
-		Self::plural(f, started, "second", seconds)?;
-		Ok(())
-	}
-}
-
-//---------------------------------------------------------------------------------------------------- [HumanNumber]
-// Human readable numbers.
-// Float    | [1234.57] -> [1,234]                    | Casts as u64/u128, adds comma
-// Unsigned | [1234567] -> [1,234,567]                | Adds comma
-// Percent  | [99.123] -> [99.12%]                    | Truncates to 2 after dot, adds percent
-// Percent  | [0.001]  -> [0%]                        | Rounds down, removes redundant zeros
-// Hashrate | [123.0, 311.2, null] -> [123, 311, ???] | Casts, replaces null with [???]
-// CPU Load | [12.0, 11.4, null] -> [12.0, 11.4, ???] | No change, just into [String] form
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct HumanNumber(String);
-
-impl std::fmt::Display for HumanNumber {
-	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		write!(f, "{}", &self.0)
-	}
-}
-
-impl HumanNumber {
-	fn unknown() -> Self {
-		Self("???".to_string())
-	}
-	fn to_percent(f: f32) -> Self {
-		if f < 0.01 {
-			Self("0%".to_string())
-		} else {
-			Self(format!("{:.2}%", f))
-		}
-	}
-	fn from_f32(f: f32) -> Self {
-		let mut buf = num_format::Buffer::new();
-		buf.write_formatted(&(f as u64), &LOCALE);
-		Self(buf.as_str().to_string())
-	}
-	fn from_f64(f: f64) -> Self {
-		let mut buf = num_format::Buffer::new();
-		buf.write_formatted(&(f as u128), &LOCALE);
-		Self(buf.as_str().to_string())
-	}
-	fn from_u16(u: u16) -> Self {
-		let mut buf = num_format::Buffer::new();
-		buf.write_formatted(&u, &LOCALE);
-		Self(buf.as_str().to_string())
-	}
-	fn from_u32(u: u32) -> Self {
-		let mut buf = num_format::Buffer::new();
-		buf.write_formatted(&u, &LOCALE);
-		Self(buf.as_str().to_string())
-	}
-	fn from_u64(u: u64) -> Self {
-		let mut buf = num_format::Buffer::new();
-		buf.write_formatted(&u, &LOCALE);
-		Self(buf.as_str().to_string())
-	}
-	fn from_u128(u: u128) -> Self {
-		let mut buf = num_format::Buffer::new();
-		buf.write_formatted(&u, &LOCALE);
-		Self(buf.as_str().to_string())
-	}
-	fn from_hashrate(array: [Option<f32>; 3]) -> Self {
-		let mut string = "[".to_string();
-		let mut buf = num_format::Buffer::new();
-
-		let mut n = 0;
-		for i in array {
-			match i {
-				Some(f) => {
-					let f = f as u128;
-					buf.write_formatted(&f, &LOCALE);
-					string.push_str(buf.as_str());
-					string.push_str(" H/s");
-				},
-				None => string.push_str("??? H/s"),
-			}
-			if n != 2 {
-				string.push_str(", ");
-				n += 1;
-			} else {
-				string.push(']');
-				break
-			}
-		}
-
-		Self(string)
-	}
-	fn from_load(array: [Option<f32>; 3]) -> Self {
-		let mut string = "[".to_string();
-		let mut n = 0;
-		for i in array {
-			match i {
-				Some(f) => string.push_str(format!("{:.2}", f).as_str()),
-				None => string.push_str("???"),
-			}
-			if n != 2 {
-				string.push_str(", ");
-				n += 1;
-			} else {
-				string.push(']');
-				break
-			}
-		}
-		Self(string)
-	}
-}
-
-//---------------------------------------------------------------------------------------------------- Regexes
-// Not to be confused with the [Regexes] struct in [main.rs], this one is meant
-// for parsing the output of P2Pool and finding payouts and total XMR found.
-// Why Regex instead of the standard library?
-//    1. I'm already using Regex
-//    2. It's insanely faster
-//
-// The following STDLIB implementation takes [0.003~] seconds to find all matches given a [String] with 30k lines:
-//     let mut n = 0;
-//     for line in P2POOL_OUTPUT.lines() {
-//         if line.contains("payout of [0-9].[0-9]+ XMR") { n += 1; }
-//     }
-//
-// This regex function takes [0.0003~] seconds (10x faster):
-//     let regex = Regex::new("payout of [0-9].[0-9]+ XMR").unwrap();
-//     let n = regex.find_iter(P2POOL_OUTPUT).count();
-//
-// Both are nominally fast enough where it doesn't matter too much but meh, why not use regex.
-struct P2poolRegex {
-	payout: regex::Regex,
-	float: regex::Regex,
-}
-
-impl P2poolRegex {
-	fn new() -> Self {
-		Self {
-			payout: regex::Regex::new("payout of [0-9].[0-9]+ XMR").unwrap(),
-			float: regex::Regex::new("[0-9].[0-9]+").unwrap(),
-		}
 	}
 }
 
@@ -1388,7 +1226,7 @@ pub struct PubP2poolApi {
 	pub xmr_hour: f64,
 	pub xmr_day: f64,
 	pub xmr_month: f64,
-	// The rest are serialized from the API, then turned into [HumanNumber]s
+	// Local API
 	pub hashrate_15m: HumanNumber,
 	pub hashrate_1h: HumanNumber,
 	pub hashrate_24h: HumanNumber,
@@ -1396,6 +1234,35 @@ pub struct PubP2poolApi {
 	pub average_effort: HumanNumber,
 	pub current_effort: HumanNumber,
 	pub connections: HumanNumber,
+	// The API needs a raw ints to go off of and
+	// there's not a good way to access it without doing weird
+	// [Arc<Mutex>] shenanigans, so some raw ints are stored here.
+	pub user_p2pool_hashrate_u64: u64,
+	pub p2pool_difficulty_u64: u64,
+	pub monero_difficulty_u64: u64,
+	pub p2pool_hashrate_u64: u64,
+	pub monero_hashrate_u64: u64,
+	// Tick. Every loop this gets incremented.
+	// At 60, it indicated we should read the below API files.
+	pub tick: u8,
+	// Network API
+	pub monero_difficulty: HumanNumber, // e.g: [15,000,000]
+	pub monero_hashrate: HumanNumber,   // e.g: [1.000 GH/s]
+	pub hash: String, // Current block hash
+	pub height: HumanNumber,
+	pub reward: AtomicUnit,
+	// Pool API
+	pub p2pool_difficulty: HumanNumber,
+	pub p2pool_hashrate: HumanNumber,
+	pub miners: HumanNumber, // Current amount of miners on P2Pool sidechain
+	// Mean (calcualted in functions, not serialized)
+	pub solo_block_mean: HumanTime,   // Time it would take the user to find a solo block
+	pub p2pool_block_mean: HumanTime, // Time it takes the P2Pool sidechain to find a block
+	pub p2pool_share_mean: HumanTime, // Time it would take the user to find a P2Pool share
+	// Percent
+	pub p2pool_percent: HumanNumber,      // Percentage of P2Pool hashrate capture of overall Monero hashrate.
+	pub user_p2pool_percent: HumanNumber, // How much percent the user's hashrate accounts for in P2Pool.
+	pub user_monero_percent: HumanNumber, // How much percent the user's hashrate accounts for in all of Monero hashrate.
 }
 
 impl Default for PubP2poolApi {
@@ -1424,6 +1291,26 @@ impl PubP2poolApi {
 			average_effort: HumanNumber::unknown(),
 			current_effort: HumanNumber::unknown(),
 			connections: HumanNumber::unknown(),
+			tick: 0,
+			user_p2pool_hashrate_u64: 0,
+			p2pool_difficulty_u64: 0,
+			monero_difficulty_u64: 0,
+			p2pool_hashrate_u64: 0,
+			monero_hashrate_u64: 0,
+			monero_difficulty: HumanNumber::unknown(),
+			monero_hashrate: HumanNumber::unknown(),
+			hash: String::from("???"),
+			height: HumanNumber::unknown(),
+			reward: AtomicUnit::new(),
+			p2pool_difficulty: HumanNumber::unknown(),
+			p2pool_hashrate: HumanNumber::unknown(),
+			miners: HumanNumber::unknown(),
+			solo_block_mean: HumanTime::new(),
+			p2pool_block_mean: HumanTime::new(),
+			p2pool_share_mean: HumanTime::new(),
+			p2pool_percent: HumanNumber::unknown(),
+			user_p2pool_percent: HumanNumber::unknown(),
+			user_monero_percent: HumanNumber::unknown(),
 		}
 	}
 
@@ -1437,26 +1324,44 @@ impl PubP2poolApi {
 		if !buf.is_empty() { output.push_str(&buf); }
 		*gui_api = Self {
 			output,
+			tick: std::mem::take(&mut gui_api.tick),
 			..pub_api.clone()
 		};
+	}
+
+	// Essentially greps the output for [x.xxxxxxxxxxxx XMR] where x = a number.
+	// It sums each match and counts along the way, handling an error by not adding and printing to console.
+	fn calc_payouts_and_xmr(output: &str, regex: &P2poolRegex) -> (u128 /* payout count */, f64 /* total xmr */) {
+		let iter = regex.payout.find_iter(output);
+		let mut sum: f64 = 0.0;
+		let mut count: u128 = 0;
+		for i in iter {
+			if let Some(word) = regex.payout_float.find(i.as_str()) {
+				match word.as_str().parse::<f64>() {
+					Ok(num) => { sum += num; count += 1; },
+					Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
+				}
+			}
+		}
+		(count, sum)
 	}
 
 	// Mutate "watchdog"'s [PubP2poolApi] with data the process output.
 	fn update_from_output(public: &Arc<Mutex<Self>>, output_parse: &Arc<Mutex<String>>, output_pub: &Arc<Mutex<String>>, elapsed: std::time::Duration, regex: &P2poolRegex) {
 		// 1. Take the process's current output buffer and combine it with Pub (if not empty)
-		let mut output_pub = output_pub.lock().unwrap();
+		let mut output_pub = lock!(output_pub);
 		if !output_pub.is_empty() {
-			public.lock().unwrap().output.push_str(&std::mem::take(&mut *output_pub));
+			lock!(public).output.push_str(&std::mem::take(&mut *output_pub));
 		}
 
 		// 2. Parse the full STDOUT
-		let mut output_parse = output_parse.lock().unwrap();
+		let mut output_parse = lock!(output_parse);
 		let (payouts_new, xmr_new) = Self::calc_payouts_and_xmr(&output_parse, regex);
 		// 3. Throw away [output_parse]
 		output_parse.clear();
 		drop(output_parse);
 		// 4. Add to current values
-		let mut public = public.lock().unwrap();
+		let mut public = lock!(public);
 		let (payouts, xmr) = (public.payouts + payouts_new, public.xmr + xmr_new);
 
 		// 5. Calculate hour/day/month given elapsed time
@@ -1498,54 +1403,187 @@ impl PubP2poolApi {
 		};
 	}
 
-	// Mutate [PubP2poolApi] with data from a [PrivP2poolApi] and the process output.
-	fn update_from_priv(public: &Arc<Mutex<Self>>, private: PrivP2poolApi) {
-		// priv -> pub conversion
-		let mut public = public.lock().unwrap();
+	// Mutate [PubP2poolApi] with data from a [PrivP2poolLocalApi] and the process output.
+	fn update_from_local(public: &Arc<Mutex<Self>>, local: PrivP2poolLocalApi) {
+		let mut public = lock!(public);
 		*public = Self {
-			hashrate_15m: HumanNumber::from_u128(private.hashrate_15m),
-			hashrate_1h: HumanNumber::from_u128(private.hashrate_1h),
-			hashrate_24h: HumanNumber::from_u128(private.hashrate_24h),
-			shares_found: HumanNumber::from_u128(private.shares_found),
-			average_effort: HumanNumber::to_percent(private.average_effort),
-			current_effort: HumanNumber::to_percent(private.current_effort),
-			connections: HumanNumber::from_u16(private.connections),
+			hashrate_15m: HumanNumber::from_u64(local.hashrate_15m),
+			hashrate_1h: HumanNumber::from_u64(local.hashrate_1h),
+			hashrate_24h: HumanNumber::from_u64(local.hashrate_24h),
+			shares_found: HumanNumber::from_u64(local.shares_found),
+			average_effort: HumanNumber::to_percent(local.average_effort),
+			current_effort: HumanNumber::to_percent(local.current_effort),
+			connections: HumanNumber::from_u16(local.connections),
+			user_p2pool_hashrate_u64: local.hashrate_1h,
 			..std::mem::take(&mut *public)
 		};
 	}
 
-	// Essentially greps the output for [x.xxxxxxxxxxxx XMR] where x = a number.
-	// It sums each match and counts along the way, handling an error by not adding and printing to console.
-	fn calc_payouts_and_xmr(output: &str, regex: &P2poolRegex) -> (u128 /* payout count */, f64 /* total xmr */) {
-		let iter = regex.payout.find_iter(output);
-		let mut sum: f64 = 0.0;
-		let mut count: u128 = 0;
-		for i in iter {
-			match regex.float.find(i.as_str()).unwrap().as_str().parse::<f64>() {
-				Ok(num) => { sum += num; count += 1; },
-				Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
-			}
+	// Mutate [PubP2poolApi] with data from a [PrivP2pool(Network|Pool)Api].
+	fn update_from_network_pool(public: &Arc<Mutex<Self>>, net: PrivP2poolNetworkApi, pool: PrivP2poolPoolApi) {
+		let user_hashrate = lock!(public).user_p2pool_hashrate_u64; // The user's total P2Pool hashrate
+		let monero_difficulty = net.difficulty;
+		let monero_hashrate = monero_difficulty / MONERO_BLOCK_TIME_IN_SECONDS;
+		let p2pool_hashrate = pool.pool_statistics.hashRate;
+		let p2pool_difficulty = p2pool_hashrate * P2POOL_BLOCK_TIME_IN_SECONDS;
+		// These [0] checks prevent dividing by 0 (it [panic!()]s)
+		let p2pool_block_mean;
+		let user_p2pool_percent;
+		if p2pool_hashrate == 0 {
+			p2pool_block_mean = HumanTime::new();
+			user_p2pool_percent = HumanNumber::unknown();
+		} else {
+			p2pool_block_mean = HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / p2pool_hashrate));
+			let f = (user_hashrate as f64 / p2pool_hashrate as f64) * 100.0;
+			user_p2pool_percent = HumanNumber::from_f64_to_percent_6_point(f);
+		};
+		let p2pool_percent;
+		let user_monero_percent;
+		if monero_hashrate == 0 {
+			p2pool_percent = HumanNumber::unknown();
+			user_monero_percent = HumanNumber::unknown();
+		} else {
+			let f = (p2pool_hashrate as f64 / monero_hashrate as f64) * 100.0;
+			p2pool_percent = HumanNumber::from_f64_to_percent_6_point(f);
+			let f = (user_hashrate as f64 / monero_hashrate as f64) * 100.0;
+			user_monero_percent = HumanNumber::from_f64_to_percent_6_point(f);
+		};
+		let solo_block_mean;
+		let p2pool_share_mean;
+		if user_hashrate == 0 {
+			solo_block_mean = HumanTime::new();
+			p2pool_share_mean = HumanTime::new();
+		} else {
+			solo_block_mean = HumanTime::into_human(std::time::Duration::from_secs(monero_difficulty / user_hashrate));
+			p2pool_share_mean = HumanTime::into_human(std::time::Duration::from_secs(p2pool_difficulty / user_hashrate));
 		}
-		(count, sum)
+		let mut public = lock!(public);
+		*public = Self {
+			p2pool_difficulty_u64: p2pool_difficulty,
+			monero_difficulty_u64: monero_difficulty,
+			p2pool_hashrate_u64: p2pool_hashrate,
+			monero_hashrate_u64: monero_hashrate,
+			monero_difficulty: HumanNumber::from_u64(monero_difficulty),
+			monero_hashrate: HumanNumber::from_u64_to_gigahash_3_point(monero_hashrate),
+			hash: net.hash,
+			height: HumanNumber::from_u32(net.height),
+			reward: AtomicUnit::from_u64(net.reward),
+			p2pool_difficulty: HumanNumber::from_u64(p2pool_difficulty),
+			p2pool_hashrate: HumanNumber::from_u64_to_megahash_3_point(p2pool_hashrate),
+			miners: HumanNumber::from_u32(pool.pool_statistics.miners),
+			solo_block_mean,
+			p2pool_block_mean,
+			p2pool_share_mean,
+			p2pool_percent,
+			user_p2pool_percent,
+			user_monero_percent,
+			..std::mem::take(&mut *public)
+		};
+	}
+
+	pub fn calculate_share_or_block_time(hashrate: u64, difficulty: u64) -> HumanTime {
+		if hashrate == 0 {
+			HumanTime::new()
+		} else {
+			HumanTime::from_u64(difficulty / hashrate)
+		}
+	}
+
+	pub fn calculate_dominance(my_hashrate: u64, global_hashrate: u64) -> HumanNumber {
+		if global_hashrate == 0 {
+			HumanNumber::unknown()
+		} else {
+			let f = (my_hashrate as f64 / global_hashrate as f64) * 100.0;
+			HumanNumber::from_f64_to_percent_6_point(f)
+		}
+	}
+
+	pub const fn calculate_tick_bar(&self) -> &'static str {
+		// The stars are reduced by one because it takes a frame to render the stats.
+		// We want 0 stars at the same time stats are rendered, so it looks a little off here.
+		match self.tick {
+			1  => "[                                                            ]",
+			2  => "[*                                                           ]",
+			3  => "[**                                                          ]",
+			4  => "[***                                                         ]",
+			5  => "[****                                                        ]",
+			6  => "[*****                                                       ]",
+			7  => "[******                                                      ]",
+			8  => "[*******                                                     ]",
+			9  => "[********                                                    ]",
+			10 => "[*********                                                   ]",
+			11 => "[**********                                                  ]",
+			12 => "[***********                                                 ]",
+			13 => "[************                                                ]",
+			14 => "[*************                                               ]",
+			15 => "[**************                                              ]",
+			16 => "[***************                                             ]",
+			17 => "[****************                                            ]",
+			18 => "[*****************                                           ]",
+			19 => "[******************                                          ]",
+			20 => "[*******************                                         ]",
+			21 => "[********************                                        ]",
+			22 => "[*********************                                       ]",
+			23 => "[**********************                                      ]",
+			24 => "[***********************                                     ]",
+			25 => "[************************                                    ]",
+			26 => "[*************************                                   ]",
+			27 => "[**************************                                  ]",
+			28 => "[***************************                                 ]",
+			29 => "[****************************                                ]",
+			30 => "[*****************************                               ]",
+			31 => "[******************************                              ]",
+			32 => "[*******************************                             ]",
+			33 => "[********************************                            ]",
+			34 => "[*********************************                           ]",
+			35 => "[**********************************                          ]",
+			36 => "[***********************************                         ]",
+			37 => "[************************************                        ]",
+			38 => "[*************************************                       ]",
+			39 => "[**************************************                      ]",
+			40 => "[***************************************                     ]",
+			41 => "[****************************************                    ]",
+			42 => "[*****************************************                   ]",
+			43 => "[******************************************                  ]",
+			44 => "[*******************************************                 ]",
+			45 => "[********************************************                ]",
+			46 => "[*********************************************               ]",
+			47 => "[**********************************************              ]",
+			48 => "[***********************************************             ]",
+			49 => "[************************************************            ]",
+			50 => "[*************************************************           ]",
+			51 => "[**************************************************          ]",
+			52 => "[***************************************************         ]",
+			53 => "[****************************************************        ]",
+			54 => "[*****************************************************       ]",
+			55 => "[******************************************************      ]",
+			56 => "[*******************************************************     ]",
+			57 => "[********************************************************    ]",
+			58 => "[*********************************************************   ]",
+			59 => "[**********************************************************  ]",
+			60 => "[*********************************************************** ]",
+			_  => "[************************************************************]",
+		}
 	}
 }
 
-//---------------------------------------------------------------------------------------------------- Private P2Pool API
-// This is the data the "watchdog" threads mutate.
-// It matches directly to P2Pool's [local/stats] JSON API file (excluding a few stats).
+//---------------------------------------------------------------------------------------------------- Private P2Pool "Local" Api
+// This matches directly to P2Pool's [local/stats] JSON API file (excluding a few stats).
 // P2Pool seems to initialize all stats at 0 (or 0.0), so no [Option] wrapper seems needed.
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
-struct PrivP2poolApi {
-	hashrate_15m: u128,
-	hashrate_1h: u128,
-	hashrate_24h: u128,
-	shares_found: u128,
+struct PrivP2poolLocalApi {
+	hashrate_15m: u64,
+	hashrate_1h: u64,
+	hashrate_24h: u64,
+	shares_found: u64,
 	average_effort: f32,
 	current_effort: f32,
 	connections: u16, // No one will have more than 65535 connections... right?
 }
 
-impl PrivP2poolApi {
+impl Default for PrivP2poolLocalApi { fn default() -> Self { Self::new() } }
+
+impl PrivP2poolLocalApi {
 	fn new() -> Self {
 		Self {
 			hashrate_15m: 0,
@@ -1558,22 +1596,79 @@ impl PrivP2poolApi {
 		}
 	}
 
-	// Read P2Pool's API file to a [String].
-	fn read_p2pool_api(path: &std::path::PathBuf) -> Result<String, std::io::Error> {
-		match std::fs::read_to_string(path) {
-			Ok(s) => Ok(s),
-			Err(e) => { warn!("P2Pool API | [{}] read error: {}", path.display(), e); Err(e) },
-		}
-	}
-
 	// Deserialize the above [String] into a [PrivP2poolApi]
-	fn str_to_priv_p2pool_api(string: &str) -> Result<Self, serde_json::Error> {
+	fn from_str(string: &str) -> std::result::Result<Self, serde_json::Error> {
 		match serde_json::from_str::<Self>(string) {
 			Ok(a) => Ok(a),
-			Err(e) => { warn!("P2Pool API | Could not deserialize API data: {}", e); Err(e) },
+			Err(e) => { warn!("P2Pool Local API | Could not deserialize API data: {}", e); Err(e) },
 		}
 	}
 }
+
+//---------------------------------------------------------------------------------------------------- Private P2Pool "Network" API
+// This matches P2Pool's [network/stats] JSON API file.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct PrivP2poolNetworkApi {
+	difficulty: u64,
+	hash: String,
+	height: u32,
+	reward: u64,
+	timestamp: u32,
+}
+
+impl Default for PrivP2poolNetworkApi { fn default() -> Self { Self::new() } }
+
+impl PrivP2poolNetworkApi {
+	fn new() -> Self {
+		Self {
+			difficulty: 0,
+			hash: String::from("???"),
+			height: 0,
+			reward: 0,
+			timestamp: 0,
+		}
+	}
+
+	fn from_str(string: &str) -> std::result::Result<Self, serde_json::Error> {
+		match serde_json::from_str::<Self>(string) {
+			Ok(a) => Ok(a),
+			Err(e) => { warn!("P2Pool Network API | Could not deserialize API data: {}", e); Err(e) },
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- Private P2Pool "Pool" API
+// This matches P2Pool's [pool/stats] JSON API file.
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+struct PrivP2poolPoolApi {
+	pool_statistics: PoolStatistics,
+}
+
+impl Default for PrivP2poolPoolApi { fn default() -> Self { Self::new() } }
+
+impl PrivP2poolPoolApi {
+	fn new() -> Self {
+		Self {
+			pool_statistics: PoolStatistics::new(),
+		}
+	}
+
+	fn from_str(string: &str) -> std::result::Result<Self, serde_json::Error> {
+		match serde_json::from_str::<Self>(string) {
+			Ok(a) => Ok(a),
+			Err(e) => { warn!("P2Pool Pool API | Could not deserialize API data: {}", e); Err(e) },
+		}
+	}
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+struct PoolStatistics {
+	hashRate: u64,
+	miners: u32,
+}
+impl Default for PoolStatistics { fn default() -> Self { Self::new() } }
+impl PoolStatistics { fn new() -> Self { Self { hashRate: 0, miners: 0 } } }
 
 //---------------------------------------------------------------------------------------------------- [ImgXmrig]
 #[derive(Debug, Clone)]
@@ -1644,8 +1739,8 @@ impl PubXmrigApi {
 	// with the actual [PubApiXmrig] output field.
 	fn update_from_output(public: &Arc<Mutex<Self>>, output_pub: &Arc<Mutex<String>>, elapsed: std::time::Duration) {
 		// 1. Take process output buffer if not empty
-		let mut output_pub = output_pub.lock().unwrap();
-		let mut public = public.lock().unwrap();
+		let mut output_pub = lock!(output_pub);
+		let mut public = lock!(public);
 		// 2. Append
 		if !output_pub.is_empty() {
 			public.output.push_str(&std::mem::take(&mut *output_pub));
@@ -1656,7 +1751,7 @@ impl PubXmrigApi {
 
 	// Formats raw private data into ready-to-print human readable version.
 	fn update_from_priv(public: &Arc<Mutex<Self>>, private: PrivXmrigApi) {
-		let mut public = public.lock().unwrap();
+		let mut public = lock!(public);
 		*public = Self {
 			worker_id: private.worker_id,
 			resources: HumanNumber::from_load(private.resources.load_average),
@@ -1692,7 +1787,7 @@ impl PrivXmrigApi {
 		}
 	}
 	// Send an HTTP request to XMRig's API, serialize it into [Self] and return it
-	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_uri: &str) -> Result<Self, anyhow::Error> {
+	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_uri: &str) -> std::result::Result<Self, anyhow::Error> {
 		let request = hyper::Request::builder()
 			.method("GET")
 			.uri(api_uri)
@@ -1784,85 +1879,6 @@ mod test {
 		}
 
 	#[test]
-	fn human_number() {
-		use crate::HumanNumber;
-		assert!(HumanNumber::to_percent(0.001).to_string() == "0%");
-		assert!(HumanNumber::to_percent(12.123123123123).to_string() == "12.12%");
-		assert!(HumanNumber::from_hashrate([Some(123.1), Some(11111.1), None]).to_string() == "[123 H/s, 11,111 H/s, ??? H/s]");
-		assert!(HumanNumber::from_hashrate([None, Some(1.123), Some(123123.312)]).to_string() == "[??? H/s, 1 H/s, 123,123 H/s]");
-		assert!(HumanNumber::from_load([Some(123.1234), Some(321.321), None]).to_string() == "[123.12, 321.32, ???]");
-		assert!(HumanNumber::from_load([None, Some(4321.43), Some(1234.1)]).to_string() == "[???, 4321.43, 1234.10]");
-		assert!(HumanNumber::from_f32(123_123.123123123).to_string() == "123,123");
-		assert!(HumanNumber::from_f64(123_123_123.123123123123123).to_string() == "123,123,123");
-		assert!(HumanNumber::from_u16(1_000).to_string() == "1,000");
-		assert!(HumanNumber::from_u16(65_535).to_string() == "65,535");
-		assert!(HumanNumber::from_u32(65_536).to_string() == "65,536");
-		assert!(HumanNumber::from_u32(100_000).to_string() == "100,000");
-		assert!(HumanNumber::from_u32(1_000_000).to_string() == "1,000,000");
-		assert!(HumanNumber::from_u32(10_000_000).to_string() == "10,000,000");
-		assert!(HumanNumber::from_u32(100_000_000).to_string() == "100,000,000");
-		assert!(HumanNumber::from_u32(1_000_000_000).to_string() == "1,000,000,000");
-		assert!(HumanNumber::from_u32(4_294_967_295).to_string() == "4,294,967,295");
-		assert!(HumanNumber::from_u64(4_294_967_296).to_string() == "4,294,967,296");
-		assert!(HumanNumber::from_u64(10_000_000_000).to_string() == "10,000,000,000");
-		assert!(HumanNumber::from_u64(100_000_000_000).to_string() == "100,000,000,000");
-		assert!(HumanNumber::from_u64(1_000_000_000_000).to_string() == "1,000,000,000,000");
-		assert!(HumanNumber::from_u64(10_000_000_000_000).to_string() == "10,000,000,000,000");
-		assert!(HumanNumber::from_u64(100_000_000_000_000).to_string() == "100,000,000,000,000");
-		assert!(HumanNumber::from_u64(1_000_000_000_000_000).to_string() == "1,000,000,000,000,000");
-		assert!(HumanNumber::from_u64(10_000_000_000_000_000).to_string() == "10,000,000,000,000,000");
-		assert!(HumanNumber::from_u64(18_446_744_073_709_551_615).to_string() == "18,446,744,073,709,551,615");
-		assert!(HumanNumber::from_u128(18_446_744_073_709_551_616).to_string() == "18,446,744,073,709,551,616");
-		assert!(HumanNumber::from_u128(100_000_000_000_000_000_000).to_string() == "100,000,000,000,000,000,000");
-		assert_eq!(
-			HumanNumber::from_u128(340_282_366_920_938_463_463_374_607_431_768_211_455).to_string(),
-			"340,282,366,920,938,463,463,374,607,431,768,211,455",
-		);
-	}
-
-	#[test]
-	fn human_time() {
-		use crate::HumanTime;
-		use std::time::Duration;
-		assert!(HumanTime::into_human(Duration::from_secs(0)).to_string()        == "0 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(1)).to_string()        == "1 second");
-		assert!(HumanTime::into_human(Duration::from_secs(2)).to_string()        == "2 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(59)).to_string()       == "59 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(60)).to_string()       == "1 minute");
-		assert!(HumanTime::into_human(Duration::from_secs(61)).to_string()       == "1 minute, 1 second");
-		assert!(HumanTime::into_human(Duration::from_secs(62)).to_string()       == "1 minute, 2 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(120)).to_string()      == "2 minutes");
-		assert!(HumanTime::into_human(Duration::from_secs(121)).to_string()      == "2 minutes, 1 second");
-		assert!(HumanTime::into_human(Duration::from_secs(122)).to_string()      == "2 minutes, 2 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(179)).to_string()      == "2 minutes, 59 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(3599)).to_string()     == "59 minutes, 59 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(3600)).to_string()     == "1 hour");
-		assert!(HumanTime::into_human(Duration::from_secs(3601)).to_string()     == "1 hour, 1 second");
-		assert!(HumanTime::into_human(Duration::from_secs(3602)).to_string()     == "1 hour, 2 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(3660)).to_string()     == "1 hour, 1 minute");
-		assert!(HumanTime::into_human(Duration::from_secs(3720)).to_string()     == "1 hour, 2 minutes");
-		assert!(HumanTime::into_human(Duration::from_secs(86399)).to_string()    == "23 hours, 59 minutes, 59 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(86400)).to_string()    == "1 day");
-		assert!(HumanTime::into_human(Duration::from_secs(86401)).to_string()    == "1 day, 1 second");
-		assert!(HumanTime::into_human(Duration::from_secs(86402)).to_string()    == "1 day, 2 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(86460)).to_string()    == "1 day, 1 minute");
-		assert!(HumanTime::into_human(Duration::from_secs(86520)).to_string()    == "1 day, 2 minutes");
-		assert!(HumanTime::into_human(Duration::from_secs(90000)).to_string()    == "1 day, 1 hour");
-		assert!(HumanTime::into_human(Duration::from_secs(93600)).to_string()    == "1 day, 2 hours");
-		assert!(HumanTime::into_human(Duration::from_secs(604799)).to_string()   == "6 days, 23 hours, 59 minutes, 59 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(604800)).to_string()   == "7 days");
-		assert!(HumanTime::into_human(Duration::from_secs(2630016)).to_string()  == "1 month");
-		assert!(HumanTime::into_human(Duration::from_secs(3234815)).to_string()  == "1 month, 6 days, 23 hours, 59 minutes, 59 seconds");
-		assert!(HumanTime::into_human(Duration::from_secs(5260032)).to_string()  == "2 months");
-		assert!(HumanTime::into_human(Duration::from_secs(31557600)).to_string() == "1 year");
-		assert!(HumanTime::into_human(Duration::from_secs(63115200)).to_string() == "2 years");
-		assert_eq!(
-			HumanTime::into_human(Duration::from_secs(18446744073709551615)).to_string(),
-			"584542046090 years, 7 months, 15 days, 17 hours, 5 minutes, 3 seconds",
-		);
-	}
-
-	#[test]
 	fn build_p2pool_regex() {
 		crate::helper::P2poolRegex::new();
 	}
@@ -1894,7 +1910,72 @@ mod test {
 	}
 
 	#[test]
-	fn serde_priv_p2pool_api() {
+	fn update_pub_p2pool_from_local_network_pool() {
+		use std::sync::{Arc,Mutex};
+		use crate::helper::PubP2poolApi;
+		use crate::helper::PrivP2poolLocalApi;
+		use crate::helper::PrivP2poolNetworkApi;
+		use crate::helper::PrivP2poolPoolApi;
+		use crate::helper::PoolStatistics;
+		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
+		let local = PrivP2poolLocalApi {
+			hashrate_15m: 10_000,
+			hashrate_1h: 20_000,
+			hashrate_24h: 30_000,
+			shares_found: 1000,
+			average_effort: 100.000,
+			current_effort: 200.000,
+			connections: 1234,
+		};
+		let network = PrivP2poolNetworkApi {
+			difficulty: 300_000_000_000,
+			hash: "asdf".to_string(),
+			height: 1234,
+			reward: 2345,
+			timestamp: 3456,
+		};
+		let pool = PrivP2poolPoolApi {
+			pool_statistics: PoolStatistics {
+				hashRate: 1_000_000, // 1 MH/s
+				miners: 1_000,
+			}
+		};
+		// Update Local
+		PubP2poolApi::update_from_local(&public, local);
+		let p = public.lock().unwrap();
+		println!("AFTER LOCAL: {:#?}", p);
+		assert_eq!(p.hashrate_15m.to_string(),   "10,000");
+		assert_eq!(p.hashrate_1h.to_string(),    "20,000");
+		assert_eq!(p.hashrate_24h.to_string(),   "30,000");
+		assert_eq!(p.shares_found.to_string(),   "1,000");
+		assert_eq!(p.average_effort.to_string(), "100.00%");
+		assert_eq!(p.current_effort.to_string(), "200.00%");
+		assert_eq!(p.connections.to_string(),    "1,234");
+		assert_eq!(p.user_p2pool_hashrate_u64,   20000);
+		drop(p);
+		// Update Network + Pool
+		PubP2poolApi::update_from_network_pool(&public, network, pool);
+		let p = public.lock().unwrap();
+		println!("AFTER NETWORK+POOL: {:#?}", p);
+		assert_eq!(p.monero_difficulty.to_string(),   "300,000,000,000");
+		assert_eq!(p.monero_hashrate.to_string(),     "2.500 GH/s");
+		assert_eq!(p.hash.to_string(),                "asdf");
+		assert_eq!(p.height.to_string(),              "1,234");
+		assert_eq!(p.reward.to_u64(),                 2345);
+		assert_eq!(p.p2pool_difficulty.to_string(),   "10,000,000");
+		assert_eq!(p.p2pool_hashrate.to_string(),     "1.000 MH/s");
+		assert_eq!(p.miners.to_string(),              "1,000");
+		assert_eq!(p.solo_block_mean.to_string(),     "5 months, 21 days, 9 hours, 52 minutes");
+		assert_eq!(p.p2pool_block_mean.to_string(),   "3 days, 11 hours, 20 minutes");
+		assert_eq!(p.p2pool_share_mean.to_string(),   "8 minutes, 20 seconds");
+		assert_eq!(p.p2pool_percent.to_string(),      "0.040000%");
+		assert_eq!(p.user_p2pool_percent.to_string(), "2.000000%");
+		assert_eq!(p.user_monero_percent.to_string(), "0.000800%");
+		drop(p);
+	}
+
+	#[test]
+	fn serde_priv_p2pool_local_api() {
 		let data =
 			r#"{
 				"hashrate_15m": 12,
@@ -1907,8 +1988,7 @@ mod test {
 				"connections": 123,
 				"incoming_connections": 96
 			}"#;
-		use crate::helper::PrivP2poolApi;
-		let priv_api = PrivP2poolApi::str_to_priv_p2pool_api(data).unwrap();
+		let priv_api = crate::helper::PrivP2poolLocalApi::from_str(data).unwrap();
 		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
 		println!("{}", json);
 		let data_after_ser =
@@ -1920,6 +2000,57 @@ r#"{
   "average_effort": 915.563,
   "current_effort": 129.297,
   "connections": 123
+}"#;
+		assert_eq!(data_after_ser, json)
+	}
+
+	#[test]
+	fn serde_priv_p2pool_network_api() {
+		let data =
+			r#"{
+				"difficulty": 319028180924,
+				"hash": "22ae1b83d727bb2ff4efc17b485bc47bc8bf5e29a7b3af65baf42213ac70a39b",
+				"height": 2776576,
+				"reward": 600499860000,
+				"timestamp": 1670953659
+			}"#;
+		let priv_api = crate::helper::PrivP2poolNetworkApi::from_str(data).unwrap();
+		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
+		println!("{}", json);
+		let data_after_ser =
+r#"{
+  "difficulty": 319028180924,
+  "hash": "22ae1b83d727bb2ff4efc17b485bc47bc8bf5e29a7b3af65baf42213ac70a39b",
+  "height": 2776576,
+  "reward": 600499860000,
+  "timestamp": 1670953659
+}"#;
+		assert_eq!(data_after_ser, json)
+	}
+
+	#[test]
+	fn serde_priv_p2pool_pool_api() {
+		let data =
+			r#"{
+				"pool_list": ["pplns"],
+				"pool_statistics": {
+					"hashRate": 10225772,
+					"miners": 713,
+					"totalHashes": 487463929193948,
+					"lastBlockFoundTime": 1670453228,
+					"lastBlockFound": 2756570,
+					"totalBlocksFound": 4
+				}
+			}"#;
+		let priv_api = crate::helper::PrivP2poolPoolApi::from_str(data).unwrap();
+		let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
+		println!("{}", json);
+		let data_after_ser =
+r#"{
+  "pool_statistics": {
+    "hashRate": 10225772,
+    "miners": 713
+  }
 }"#;
 		assert_eq!(data_after_ser, json)
 	}
