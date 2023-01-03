@@ -107,6 +107,8 @@ The `Gupax/P2Pool/XMRig` tabs have two versions, `Simple` & `Advanced`.
 
 `Simple` is for a minimal & working out-of-the-box configuration.
 
+---
+
 ### Status
 This tab has 2 submenus that show some info about running processes and P2Pool-specific stats.
 
@@ -115,12 +117,15 @@ This tab has 2 submenus that show some info about running processes and P2Pool-s
 ![processes.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/processes.png)
 
 **P2Pool:**
+
 This submenu shows:
 - ***Permanent*** stats on all your payouts received via P2Pool & Gupax
 - Payout sorting options
 - Share/block time calculator
 
 ![payouts.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/payouts.png)
+
+---
 
 ### Gupax
 This tab has the updater and general Gupax settings.
@@ -384,7 +389,7 @@ e.g:
 
 The `payout` file is just a simple count of how many payouts have been received.
 
-The `xmr` file is the sum of XMR mined represented as [Atomic Units](https://web.getmonero.org/resources/moneropedia/atomic-units.html). The equation to represent this as normal XMR is:
+The `xmr` file is the sum of XMR mined as [Atomic Units](https://web.getmonero.org/resources/moneropedia/atomic-units.html). The equation to represent this as XMR is:
 ```rust
 XMR_ATOMIC_UNITS / 1,000,000,000,000
 ```
@@ -403,7 +408,7 @@ If you want to reset these stats, you can run:
 ```bash
 ./gupax --reset-payouts
 ```
-or just manually delete the `p2pool` folder in the Gupax OS data directory.
+or just manually delete the `p2pool` folder in the [Gupax OS data directory.](#Disk)
 
 ---
 
@@ -634,7 +639,7 @@ Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store tem
 ---
 
 ### How much memory does Gupax use?
-Gupax itself uses around 100-300 megabytes of memory.
+Gupax itself uses around 100-400 megabytes of memory.
 
 Gupax also holds up to [500,000 bytes](https://github.com/hinto-janaiyo/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/helper.rs#L59) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-4 hours.
 

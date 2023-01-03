@@ -1,21 +1,23 @@
 # v1.1.0
 ## Updates
-* **Status:** Added P2Pool submenu:
+* **Status:** [Added P2Pool submenu](https://github.com/hinto-janaiyo/gupax#Status)
 	- Total payouts across all time
 	- Total XMR mined across all time
 	- Formatted log lines of ALL payouts (date, amount, block) with sorting options
 	- Automatic/Manual calculator for average share/block time
 	- P2Pool/Monero stats for difficulty/hashrate/dominance
-* **Status:** Added more process stats:
-	- P2Pool: Current Monero node IP/RPC/ZMQ
-	- P2Pool: Current Sidechain
-	- P2Pool: Current Monero address
-	- XMRig: Current Pool IP
-	- XMRig: Current thread usage
-* **Key Shortcut:** Added two shortcuts:
+* **Status:** Added more process stats
+	- P2Pool
+		- Current Monero node IP/RPC/ZMQ
+		- Current Sidechain
+		- Current Monero address
+	- XMRig
+		- Current Pool IP
+		- Current thread usage
+* **Key Shortcut:** Added two shortcuts
 	- `C | Left Submenu`
 	- `V | Left Submenu`
-* **Command Line:** Added two flags:
+* **Command Line:** Added two flags
 	- `--payouts         Print the P2Pool payout log, payout count, and total XMR mined`
 	- `--reset-payouts   Reset the permanent P2Pool stats that appear in the [Status] tab`
 	

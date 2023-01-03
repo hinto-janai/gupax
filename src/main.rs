@@ -979,10 +979,6 @@ fn print_gupax_p2pool_api(gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>) {
 	exit(0);
 }
 
-// Prints the GupaxP2PoolApi [xmr] file in AtomicUnits and floating point.
-fn print_xmr_file(path: &PathBuf) {
-}
-
 //---------------------------------------------------------------------------------------------------- Main [App] frame
 fn main() {
 	let now = Instant::now();
@@ -1682,6 +1678,7 @@ impl eframe::App for App {
 						let distro = false;
 						let p2pool_gui_len = lock!(self.p2pool_api).output.len();
 						let xmrig_gui_len = lock!(self.xmrig_api).output.len();
+						let gupax_p2pool_api = lock!(self.gupax_p2pool_api);
 						let debug_info = format!(
 "Gupax version: {}\n
 Bundled P2Pool version: {}\n
@@ -1711,7 +1708,12 @@ XMRig console byte length: {}\n
 ------------------------------------------ XMRIG IMAGE ------------------------------------------
 {:#?}\n
 ------------------------------------------ GUPAX-P2POOL API ------------------------------------------
-{:#?}\n
+payout: {:#?}
+payout_u64: {:#?}
+xmr: {:#?}
+path_log: {:#?}
+path_payout: {:#?}
+path_xmr: {:#?}\n
 ------------------------------------------ WORKING STATE ------------------------------------------
 {:#?}\n
 ------------------------------------------ ORIGINAL STATE ------------------------------------------
@@ -1743,7 +1745,12 @@ XMRig console byte length: {}\n
 							xmrig_gui_len,
 							lock!(self.p2pool_img),
 							lock!(self.xmrig_img),
-							lock!(self.gupax_p2pool_api),
+							gupax_p2pool_api.payout,
+							gupax_p2pool_api.payout_u64,
+							gupax_p2pool_api.xmr,
+							gupax_p2pool_api.path_log,
+							gupax_p2pool_api.path_payout,
+							gupax_p2pool_api.path_xmr,
 							self.state,
 							lock!(self.og),
 						);

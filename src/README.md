@@ -22,7 +22,8 @@
 | disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State] struct
 | ferris.rs    | Cute crab bytes
 | gupax.rs     | `Gupax` tab
-| helper.rs   | The "helper" thread that runs for the entire duration Gupax is alive. All the processing that needs to be done without blocking the main GUI thread runs here, including everything related to handling P2Pool/XMRig
+| helper.rs    | The "helper" thread that runs for the entire duration Gupax is alive. All the processing that needs to be done without blocking the main GUI thread runs here, including everything related to handling P2Pool/XMRig
+| human.rs     | Code for displaying human readable numbers & time
 | macros.rs    | General `macros!()` used in Gupax
 | main.rs      | The main `App` struct that holds all data + misc data/functions
 | node.rs      | Community node ping code for the `P2Pool` simple tab

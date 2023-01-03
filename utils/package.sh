@@ -80,8 +80,8 @@ mv macos "gupax-$NEW_VER-macos-x64-bundle"; check "macos -> gupax-$NEW_VER-macos
 tar -czpf "gupax-${NEW_VER}-macos-x64-bundle.tar.gz" "gupax-$NEW_VER-macos-x64-bundle" --owner=hinto --group=hinto --mtime="$DATE"; check "tar macos-bundle"
 # Tar macOS Standalone
 mv "gupax-$NEW_VER-macos-x64-bundle" "gupax-$NEW_VER-macos-x64-standalone"; check "gupax-$NEW_VER-macos-x64-bundle -> gupax-$NEW_VER-macos-x64-standalone"
-rm -r "gupax-$NEW_VER-macos-x64-standalone/p2pool"; check "rm gupax-$NEW_VER-macos-x64-standalone/p2pool"
-rm -r "gupax-$NEW_VER-macos-x64-standalone/xmrig"; check "rm gupax-$NEW_VER-macos-x64-standalone/xmrig"
+rm -r "gupax-$NEW_VER-macos-x64-standalone/Gupax.app/Contents/MacOS/p2pool"; check "rm gupax-$NEW_VER-macos-x64-standalone/Gupax.app/Contents/MacOS/p2pool"
+rm -r "gupax-$NEW_VER-macos-x64-standalone/Gupax.app/Contents/MacOS/xmrig"; check "rm gupax-$NEW_VER-macos-x64-standalone/Gupax.app/Contents/MacOS/xmrig/xmrig"
 tar -czpf "gupax-${NEW_VER}-macos-x64-standalone.tar.gz" "gupax-$NEW_VER-macos-x64-standalone" --owner=hinto --group=hinto --mtime="$DATE"; check "tar macos-standalone"
 # Remove dir
 rm -r "gupax-$NEW_VER-macos-x64-standalone"; check "rm macos dir"
