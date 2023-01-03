@@ -226,7 +226,7 @@ By default, Gupax has `auto-update` & `auto-ping` enabled. This can only be turn
 ---
 
 ### Key Shortcuts
-The letter keys (Z/X/S/R) will only work if nothing is in focus, i.e, you _are not_ editing a text box.
+The letter keys (Z/X/C/V/S/R) will only work if nothing is in focus, i.e, you _are not_ editing a text box.
 
 An ALT+F4 will also trigger the exit confirm screen (if enabled).
 ```
@@ -237,8 +237,10 @@ An ALT+F4 will also trigger the exit confirm screen (if enabled).
 |          Escape | Quit screen         |
 |              Up | Start/Restart       |
 |            Down | Stop                |
-|               Z | Switch to Left Tab  |
-|               X | Switch to Right Tab |
+|               Z | Left Tab            |
+|               X | Right Tab           |
+|               C | Left Submenu        |
+|               V | Right Submenu       |
 |               S | Save                |
 |               R | Reset               |
 *---------------------------------------*
@@ -254,7 +256,7 @@ This can be changed by dragging the corner of the window itself or by using the 
 If you have changed your OS's pixel scaling, you may need to resize Gupax to see all UI correctly.
 
 The minimum window size is: `640x480`  
-The maximum window size is: `2560x1920`  
+The maximum window size is: `3840x2160`  
 Fullscreen mode can also be entered by pressing `F11`.
 
 ---
