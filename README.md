@@ -292,7 +292,7 @@ Long-term state is saved onto the disk in the "OS data folder", using the [TOML]
 
 Given a slightly corrupted `state.toml` file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). The node/pool database cannot be merged.
 
-If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an un-recoverable error screen.
+If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an unrecoverable error screen.
 
 | OS       | Data Folder                              | Example                                         |
 |----------|------------------------------------------|-------------------------------------------------|

@@ -1255,7 +1255,7 @@ impl eframe::App for App {
 					},
 					_ => {
 						match self.error_state.ferris {
-							Panic => ui.add_sized([width, height], Label::new("--- Gupax has encountered an un-recoverable error! ---")),
+							Panic => ui.add_sized([width, height], Label::new("--- Gupax has encountered an unrecoverable error! ---")),
 							Happy => ui.add_sized([width, height], Label::new("--- Success! ---")),
 							_ => ui.add_sized([width, height], Label::new("--- Gupax has encountered an error! ---")),
 						};
