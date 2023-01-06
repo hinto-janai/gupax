@@ -1426,7 +1426,7 @@ impl eframe::App for App {
 					// Is yellow if the user updated and should (but isn't required to) restart.
 					match *lock!(self.restart) {
 						Restart::Yes => ui.add_sized([width, height], Label::new(RichText::new(&self.name_version).color(YELLOW))).on_hover_text(GUPAX_SHOULD_RESTART),
-						_ => ui.add_sized([width, height], Label::new(&self.name_version)).on_hover_text(GUPAX_UP_TO_DATE),
+						_ => ui.add_sized([width, height], Label::new(&self.name_version)),
 					};
 					ui.separator();
 					// [OS]
