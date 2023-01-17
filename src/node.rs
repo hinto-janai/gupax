@@ -42,8 +42,10 @@ pub const CAKE_UK: &str = "xmr-node-uk.cakewallet.com:18081";
 pub const CAKE_US: &str = "xmr-node-usa-east.cakewallet.com:18081";
 pub const FEATHER_1: &str = "selsta1.featherwallet.net:18081";
 pub const FEATHER_2: &str = "selsta2.featherwallet.net:18081";
+pub const HASHVAULT: &str = "nodes.hashvault.pro:18081";
 pub const MAJESTICBANK_IS: &str = "node.majesticbank.is:18089";
 pub const MAJESTICBANK_SU: &str = "node.majesticbank.su:18089";
+pub const MONEROWORLD: &str = "node.moneroworld.com:18089";
 pub const MONERUJO: &str = "nodex.monerujo.io:18081";
 pub const PLOWSOF_1: &str = "node.monerodevs.org:18089"; // ZMQ = 18084
 pub const PLOWSOF_2: &str = "node2.monerodevs.org:18089"; // ZMQ = 18084
@@ -53,9 +55,9 @@ pub const SUPPORTXMR: &str = "node.supportxmr.com:18081";
 pub const SUPPORTXMR_IR: &str = "node.supportxmr.ir:18081";
 pub const XMRVSBEAST: &str = "p2pmd.xmrvsbeast.com:18081";
 
-pub const NODE_IPS: [&str; 17] = [
-	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,MAJESTICBANK_IS,MAJESTICBANK_SU,
-	MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
+pub const NODE_IPS: [&str; 19] = [
+	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,HASHVAULT,MAJESTICBANK_IS,MAJESTICBANK_SU,
+	MONEROWORLD,MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
 ];
 
 pub const COMMUNITY_NODE_LENGTH: usize = NODE_IPS.len();
@@ -63,8 +65,8 @@ pub const COMMUNITY_NODE_MAX_CHARS: usize = 14;
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum NodeEnum {
-	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,Monerujo,Plowsof1,
-	Plowsof2,Rino,Feather1,Feather2,Seth,SupportXmr,SupportXmrIr,XmrVsBeast,
+	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,MoneroWorld,Monerujo,Plowsof1,
+	Plowsof2,Rino,Feather1,Feather2,HashVault,Seth,SupportXmr,SupportXmrIr,XmrVsBeast,
 }
 
 impl Default for NodeEnum {
@@ -87,16 +89,18 @@ impl NodeEnum {
 			CakeUs         => 4,
 			Feather1       => 5,
 			Feather2       => 6,
-			MajesticBankIs => 7,
-			MajesticBankSu => 8,
-			Monerujo       => 9,
-			Plowsof1       => 10,
-			Plowsof2       => 11,
-			Rino           => 12,
-			Seth           => 13,
-			SupportXmr     => 14,
-			SupportXmrIr   => 15,
-			_              => 16,
+			HashVault      => 7,
+			MajesticBankIs => 8,
+			MajesticBankSu => 9,
+			MoneroWorld    => 10,
+			Monerujo       => 11,
+			Plowsof1       => 12,
+			Plowsof2       => 13,
+			Rino           => 14,
+			Seth           => 15,
+			SupportXmr     => 16,
+			SupportXmrIr   => 17,
+			_              => 18,
 		}
 	}
 
@@ -193,8 +197,10 @@ pub fn ip_to_enum(ip: &'static str) -> NodeEnum {
 		CAKE_US         => CakeUs,
 		FEATHER_1       => Feather1,
 		FEATHER_2       => Feather2,
+		HASHVAULT       => HashVault,
 		MAJESTICBANK_IS => MajesticBankIs,
 		MAJESTICBANK_SU => MajesticBankSu,
+		MONEROWORLD     => MoneroWorld,
 		MONERUJO        => Monerujo,
 		PLOWSOF_1       => Plowsof1,
 		PLOWSOF_2       => Plowsof2,
@@ -215,8 +221,10 @@ pub fn enum_to_ip(node: NodeEnum) -> &'static str {
 		CakeUs         => CAKE_US,
 		Feather1       => FEATHER_1,
 		Feather2       => FEATHER_2,
+		HashVault      => HASHVAULT,
 		MajesticBankIs => MAJESTICBANK_IS,
 		MajesticBankSu => MAJESTICBANK_SU,
+		MoneroWorld    => MONEROWORLD,
 		Monerujo       => MONERUJO,
 		Plowsof1       => PLOWSOF_1,
 		Plowsof2       => PLOWSOF_2,

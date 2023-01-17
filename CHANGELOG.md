@@ -1,3 +1,18 @@
+# v1.1.1
+## Updates
+* Added [`nodes.hashvault.pro`](https://hashvault.pro) to [Community Monero Nodes](https://github.com/hinto-janaiyo/gupax#community-monero-nodes) list
+* Added [`node.moneroworld.com`](https://moneroworld.com) to [Community Monero Nodes](https://github.com/hinto-janaiyo/gupax#community-monero-nodes) list
+
+## Fixes
+*
+
+## Bundled Versions
+* [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)
+* [`XMRig v6.18.1`](https://github.com/xmrig/xmrig/releases/tag/v6.18.1)
+
+---
+
+
 # v1.1.0
 ## Updates
 * **Status:** [Added P2Pool submenu](https://github.com/hinto-janaiyo/gupax#Status)
