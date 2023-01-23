@@ -1393,7 +1393,7 @@ impl eframe::App for App {
 		debug!("App | Rendering TOP tabs");
 		TopBottomPanel::top("top").show(ctx, |ui| {
 			let width = (self.width - (SPACE*10.0))/5.0;
-			let height = self.height/12.0;
+			let height = self.height/15.0;
 		    ui.add_space(4.0);
 			ui.horizontal(|ui| {
 				let style = ui.style_mut();
@@ -1417,7 +1417,7 @@ impl eframe::App for App {
 		// Bottom: app info + state/process buttons
 		debug!("App | Rendering BOTTOM bar");
 		TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-			let height = self.height/20.0;
+			let height = self.height/22.0;
 			ui.style_mut().override_text_style = Some(Name("Bottom".into()));
 			ui.horizontal(|ui| {
 				ui.group(|ui| {
