@@ -74,7 +74,7 @@ Every frame, the max available `[width, height]` are calculated, and those are u
 
 ```
 Main [App] outer frame (default: [1280.0, 960.0], 4:3 aspect ratio)
-   ├─ TopPanel     = height: 1/14
+   ├─ TopPanel     = height: 1/15
    ├─ BottomPanel  = height: 1/22
    ├─ CentralPanel = height: the rest
 ```

@@ -2,9 +2,10 @@
 ## Updates
 * Added [`nodes.hashvault.pro`](https://hashvault.pro) to [Community Monero Nodes](https://github.com/hinto-janaiyo/gupax#community-monero-nodes) list
 * Added [`node.moneroworld.com`](https://moneroworld.com) to [Community Monero Nodes](https://github.com/hinto-janaiyo/gupax#community-monero-nodes) list
+* Added warning in `[P2Pool Simple]` tab about using remote nodes
 
 ## Fixes
-*
+* Top/Bottom bars are smaller, fixes some UI overflowing or being cramped
 
 ## Bundled Versions
 * [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)

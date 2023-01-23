@@ -36,6 +36,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 * [License](#License)
 * [FAQ](#FAQ)
 	- [Where are updates downloaded from?](#where-are-updates-downloaded-from)
+	- [P2Pool connection errors](#p2pool-connection-errors)
 	- [Can I quit mid-update?](#can-i-quit-mid-update)
 	- [Bundled vs Standalone](#bundled-vs-standalone)
 	- [How much memory does Gupax use?](#how-much-memory-does-gupax-use)
@@ -623,6 +624,21 @@ The latest versions are downloaded using GitHub's API.
 * XMRig [`https://github.com/xmrig/xmrig`](https://github.com/xmrig/xmrig)
 
 GitHub's API blocks request that do not have an HTTP `User-Agent` header. [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janaiyo/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/update.rs#L134)
+
+---
+
+### P2Pool connection errors
+**TL;DR: Run & use your own Monero Node.**
+
+If you are using the [default P2Pool settings](#P2Pool) then you are using a [Community Monero Node](#community-monero-nodes). Using a community node is convenient but comes at the cost of privacy and reliability. You may encounter connections issues with these nodes that look like this:
+```
+2023-01-05 12:27:37.7962 P2PServer peer 23.233.96.72:37888 is ahead on mainchain (height 2792939, your height 2792936). Is your monerod stuck or lagging?
+```
+To fix this you can select a different community node, or better yet: [Run your own local Monero Node](#running-a-local-monero-node).
+
+Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently 155GB). If you have the disk space, consider using the [P2Pool Advanced](#p2pool-1) tab and connecting to your own Monero node.
+
+For a simple guide, see the [Running a Local Monero Node](#running-a-local-monero-node) section.
 
 ---
 

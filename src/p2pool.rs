@@ -230,6 +230,9 @@ impl crate::disk::P2pool {
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_ping, "Auto-ping")).on_hover_text(P2POOL_AUTO_NODE);
 		})});
 
+		debug!("P2Pool Tab | Rendering warning text");
+		ui.add_sized([width, height/2.0], Label::new(RichText::new("WARNING: It is recommended to run/use your own Monero Node (hover for details)").color(YELLOW))).on_hover_text(P2POOL_COMMUNITY_NODE_WARNING);
+
 	//---------------------------------------------------------------------------------------------------- Advanced
 	} else {
 		debug!("P2Pool Tab | Rendering [Node List] elements");

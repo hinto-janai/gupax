@@ -257,6 +257,17 @@ pub const P2POOL_SELECT_LAST:    &str = "Select the previous community Monero no
 pub const P2POOL_SELECT_NEXT:    &str = "Select the next community Monero node";
 pub const P2POOL_PING:           &str = "Ping the built-in community Monero nodes";
 pub const P2POOL_ADDRESS:        &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
+pub const P2POOL_COMMUNITY_NODE_WARNING: &str =
+r#"TL;DR: Run & use your own Monero Node.
+
+Using a Community Monero Node is convenient but comes at the cost of privacy and reliability.
+
+You may encounter connection issues with community nodes which may cause mining performance loss! Late info from laggy nodes will cause your mining jobs to start later than they should.
+
+Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently 155GB). If you have the disk space, consider using the [Advanced] tab and connecting to your own Monero node.
+
+For a simple guide, see the [Running a Local Monero Node] section on Gupax's GitHub at: 'https://github.com/hinto-janaiyo/gupax'"#;
+
 pub const P2POOL_INPUT: &str = "Send a command to P2Pool";
 pub const P2POOL_ARGUMENTS: &str =
 r#"WARNING: Use [--no-color] and make sure to set [--data-api <PATH>] & [--local-api] so that the [Status] tab can work!
