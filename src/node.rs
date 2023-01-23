@@ -45,7 +45,10 @@ pub const FEATHER_2: &str = "selsta2.featherwallet.net:18081";
 pub const HASHVAULT: &str = "nodes.hashvault.pro:18081";
 pub const MAJESTICBANK_IS: &str = "node.majesticbank.is:18089";
 pub const MAJESTICBANK_SU: &str = "node.majesticbank.su:18089";
-pub const MONEROWORLD: &str = "node.moneroworld.com:18089";
+pub const MONEROSEED_1: &str = "176.9.0.187:18089";
+pub const MONEROSEED_2: &str = "51.79.173.165:18089";
+pub const MONEROWORLD_1: &str = "node.moneroworld.com:18089";
+pub const MONEROWORLD_2: &str = "uwillrunanodesoon.moneroworld.com:18089";
 pub const MONERUJO: &str = "nodex.monerujo.io:18081";
 pub const PLOWSOF_1: &str = "node.monerodevs.org:18089"; // ZMQ = 18084
 pub const PLOWSOF_2: &str = "node2.monerodevs.org:18089"; // ZMQ = 18084
@@ -55,9 +58,9 @@ pub const SUPPORTXMR: &str = "node.supportxmr.com:18081";
 pub const SUPPORTXMR_IR: &str = "node.supportxmr.ir:18081";
 pub const XMRVSBEAST: &str = "p2pmd.xmrvsbeast.com:18081";
 
-pub const NODE_IPS: [&str; 19] = [
-	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,HASHVAULT,MAJESTICBANK_IS,MAJESTICBANK_SU,
-	MONEROWORLD,MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
+pub const NODE_IPS: [&str; 22] = [
+	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,HASHVAULT,MAJESTICBANK_IS,MAJESTICBANK_SU,MONEROSEED_1,MONEROSEED_2,
+	MONEROWORLD_1,MONEROWORLD_2,MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
 ];
 
 pub const COMMUNITY_NODE_LENGTH: usize = NODE_IPS.len();
@@ -65,8 +68,8 @@ pub const COMMUNITY_NODE_MAX_CHARS: usize = 14;
 
 #[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
 pub enum NodeEnum {
-	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,MoneroWorld,Monerujo,Plowsof1,
-	Plowsof2,Rino,Feather1,Feather2,HashVault,Seth,SupportXmr,SupportXmrIr,XmrVsBeast,
+	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,MoneroSeed1,MoneroSeed2,MoneroWorld1,MoneroWorld2,
+	Monerujo,Plowsof1,Plowsof2,Rino,Feather1,Feather2,HashVault,Seth,SupportXmr,SupportXmrIr,XmrVsBeast,
 }
 
 impl Default for NodeEnum {
@@ -92,15 +95,18 @@ impl NodeEnum {
 			HashVault      => 7,
 			MajesticBankIs => 8,
 			MajesticBankSu => 9,
-			MoneroWorld    => 10,
-			Monerujo       => 11,
-			Plowsof1       => 12,
-			Plowsof2       => 13,
-			Rino           => 14,
-			Seth           => 15,
-			SupportXmr     => 16,
-			SupportXmrIr   => 17,
-			_              => 18,
+			MoneroSeed1    => 10,
+			MoneroSeed2    => 11,
+			MoneroWorld1   => 12,
+			MoneroWorld2   => 13,
+			Monerujo       => 14,
+			Plowsof1       => 15,
+			Plowsof2       => 16,
+			Rino           => 17,
+			Seth           => 18,
+			SupportXmr     => 19,
+			SupportXmrIr   => 20,
+			_              => 21,
 		}
 	}
 
@@ -200,7 +206,10 @@ pub fn ip_to_enum(ip: &'static str) -> NodeEnum {
 		HASHVAULT       => HashVault,
 		MAJESTICBANK_IS => MajesticBankIs,
 		MAJESTICBANK_SU => MajesticBankSu,
-		MONEROWORLD     => MoneroWorld,
+		MONEROSEED_1    => MoneroSeed1,
+		MONEROSEED_2    => MoneroSeed2,
+		MONEROWORLD_1   => MoneroWorld1,
+		MONEROWORLD_2   => MoneroWorld2,
 		MONERUJO        => Monerujo,
 		PLOWSOF_1       => Plowsof1,
 		PLOWSOF_2       => Plowsof2,
@@ -224,7 +233,10 @@ pub fn enum_to_ip(node: NodeEnum) -> &'static str {
 		HashVault      => HASHVAULT,
 		MajesticBankIs => MAJESTICBANK_IS,
 		MajesticBankSu => MAJESTICBANK_SU,
-		MoneroWorld    => MONEROWORLD,
+		MoneroSeed1    => MONEROSEED_1,
+		MoneroSeed2    => MONEROSEED_2,
+		MoneroWorld1   => MONEROWORLD_1,
+		MoneroWorld2   => MONEROWORLD_2,
 		Monerujo       => MONERUJO,
 		Plowsof1       => PLOWSOF_1,
 		Plowsof2       => PLOWSOF_2,
@@ -347,9 +359,9 @@ impl Ping {
 	// This used to be done 3x linearly but after testing, sending a single
 	// JSON-RPC call to all IPs asynchronously resulted in the same data.
 	//
-	// <300ms  = GREEN
-	// <1000ms = YELLOW
-	// >1000ms = RED
+	// <200ms  = GREEN
+	// <500ms = YELLOW
+	// >500ms = RED
 	// timeout = BLACK
 	// default = GRAY
 	#[tokio::main]
@@ -421,9 +433,9 @@ impl Ping {
 			},
 		};
 		let color;
-		if ms < 300 {
+		if ms < 200 {
 			color = GREEN;
-		} else if ms < 1000 {
+		} else if ms < 500 {
 			color = YELLOW;
 		} else if ms < 5000 {
 			color = RED;

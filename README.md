@@ -525,27 +525,30 @@ In general, a suitable node needs to:
 - Have ZMQ enabled
 - Have an owner known by the general Monero community
 
-| Name                                                  | Owner Type | IP/Domain                        | RPC Port | ZMQ Port |
-|-------------------------------------------------------|------------|----------------------------------|----------|----------|
-| [C3pool](https://www.c3pool.com)                      | Pool       | node.c3pool.com                  | 18081    | 18083    |
-| [Cake](https://cakewallet.com)                        | Wallet     | xmr-node.cakewallet.com          | 18081    | 18083    |
-| [CakeEu](https://cakewallet.com)                      | Wallet     | xmr-node-eu.cakewallet.com       | 18081    | 18083    |
-| [CakeUk](https://cakewallet.com)                      | Wallet     | xmr-node-uk.cakewallet.com       | 18081    | 18083    |
-| [CakeUs](https://cakewallet.com)                      | Wallet     | xmr-node-usa-east.cakewallet.com | 18081    | 18083    |
-| [Feather1](https://github.com/feather-wallet/feather) | Wallet     | selsta1.featherwallet.net        | 18081    | 18083    |
-| [Feather2](https://github.com/feather-wallet/feather) | Wallet     | selsta2.featherwallet.net        | 18081    | 18083    |
-| [HashVault](https://hashvault.pro)                    | Pool       | nodes.hashvault.pro              | 18081    | 18083    |
-| [MajesticBankIs](https://www.majesticbank.sc)         | Exchange   | node.majesticbank.is             | 18089    | 18083    |
-| [MajesticBankSu](https://www.majesticbank.sc)         | Exchange   | node.majesticbank.su             | 18089    | 18083    |
-| [MoneroWorld](https://moneroworld.com)                | Individual | node.moneroworld.com             | 18089    | 18083    |
-| [Monerujo](https://www.monerujo.io)                   | Wallet     | nodex.monerujo.io                | 18081    | 18083    |
-| [Plowsof1](https://github.com/plowsof)                | Individual | node.monerodevs.org              | 18089    | 18084    |
-| [Plowsof2](https://github.com/plowsof)                | Individual | node2.monerodevs.org             | 18089    | 18084    |
-| [Rino](https://rino.io)                               | Wallet     | node.community.rino.io           | 18081    | 18083    |
-| [Seth](https://github.com/sethforprivacy)             | Individual | node.sethforprivacy.com          | 18089    | 18083    |
-| [SupportXmr](https://www.supportxmr.com)              | Pool       | node.supportxmr.com              | 18081    | 18083    |
-| [SupportXmrIr](https://www.supportxmr.com)            | Pool       | node.supportxmr.ir               | 18089    | 18083    |
-| [XmrVsBeast](https://xmrvsbeast.com)                  | Pool       | p2pmd.xmrvsbeast.com             | 18081    | 18083    |
+| Name           | Owner                                             | Owner Type | IP/Domain                         | RPC Port | ZMQ Port |
+|----------------|---------------------------------------------------|------------|-----------------------------------|----------|----------|
+| C3pool         | [C3pool](https://www.c3pool.com)                  | Pool       | node.c3pool.com                   | 18081    | 18083    |
+| Cake           | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node.cakewallet.com           | 18081    | 18083    |
+| CakeEu         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-eu.cakewallet.com        | 18081    | 18083    |
+| CakeUk         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-uk.cakewallet.com        | 18081    | 18083    |
+| CakeUs         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-usa-east.cakewallet.com  | 18081    | 18083    |
+| Feather1       | [Feather](https://featherwallet.org)              | Wallet     | selsta1.featherwallet.net         | 18081    | 18083    |
+| Feather2       | [Feather](https://featherwallet.org)              | Wallet     | selsta2.featherwallet.net         | 18081    | 18083    |
+| HashVault      | [HashVault](https://hashvault.pro)                | Pool       | nodes.hashvault.pro               | 18081    | 18083    |
+| MajesticBankIs | [MajesticBank](https://www.majesticbank.sc)       | Exchange   | node.majesticbank.is              | 18089    | 18083    |
+| MajesticBankSu | [MajesticBank](https://www.majesticbank.sc)       | Exchange   | node.majesticbank.su              | 18089    | 18083    |
+| MoneroSeed1    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L708) | Seed Node | 176.9.0.187   | 18089 | 18083 |
+| MoneroSeed2    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L715) | Seed Node | 51.79.173.165 | 18089 | 18083 |
+| MoneroWorld1   | [Gingeropolous](https://github.com/Gingeropolous) | Individual | node.moneroworld.com              | 18089    | 18083    |
+| MoneroWorld2   | [Gingeropolous](https://github.com/Gingeropolous) | Individual | uwillrunanodesoon.moneroworld.com | 18089    | 18083    |
+| Monerujo       | [Monerujo](https://www.monerujo.io)               | Wallet     | nodex.monerujo.io                 | 18081    | 18083    |
+| Plowsof1       | [Plowsof](https://github.com/plowsof)             | Individual | node.monerodevs.org               | 18089    | 18084    |
+| Plowsof2       | [Plowsof](https://github.com/plowsof)             | Individual | node2.monerodevs.org              | 18089    | 18084    |
+| Rino           | [Rino](https://rino.io)                           | Wallet     | node.community.rino.io            | 18081    | 18083    |
+| Seth           | [Seth](https://github.com/sethforprivacy)         | Individual | node.sethforprivacy.com           | 18089    | 18083    |
+| SupportXmr     | [SupportXMR](https://www.supportxmr.com)          | Pool       | node.supportxmr.com               | 18081    | 18083    |
+| SupportXmrIr   | [SupportXMR](https://www.supportxmr.com)          | Pool       | node.supportxmr.ir                | 18089    | 18083    |
+| XmrVsBeast     | [XMRvsBeast](https://xmrvsbeast.com)              | Pool       | p2pmd.xmrvsbeast.com              | 18081    | 18083    |
 
 ## Build
 ### General Info

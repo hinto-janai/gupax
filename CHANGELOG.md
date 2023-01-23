@@ -1,11 +1,16 @@
 # v1.1.1
 ## Updates
-* Added [`nodes.hashvault.pro`](https://hashvault.pro) to [Community Monero Nodes](https://github.com/hinto-janaiyo/gupax#community-monero-nodes) list
-* Added [`node.moneroworld.com`](https://moneroworld.com) to [Community Monero Nodes](https://github.com/hinto-janaiyo/gupax#community-monero-nodes) list
-* Added warning in `[P2Pool Simple]` tab about using remote nodes
+* **Nodes:** Added 5 nodes to [Community Monero Nodes](https://github.com/hinto-janaiyo/gupax#community-monero-nodes) list:
+	- `nodes.hashvault.pro`
+	- `node.moneroworld.com`
+	- `uwillrunanodesoon.moneroworld.com`
+	- `176.9.0.187` [(Monero seed node)](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L708)
+	- `51.79.173.165` [(Monero seed node)](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L715)
+* **P2Pool:** Added warning in `[P2Pool Simple]` tab about using remote nodes
 
 ## Fixes
-* Top/Bottom bars are smaller, fixes some UI overflowing or being cramped
+* **UI:** Top/Bottom bars are smaller, fixes some UI overflowing or being cramped
+* **Nodes:** Node ping colors are more strict (<200ms = GREEN, 200ms-499ms = YELLOW, >500ms = RED) 
 
 ## Bundled Versions
 * [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)
