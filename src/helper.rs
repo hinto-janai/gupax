@@ -50,6 +50,7 @@ use crate::{
 	P2poolRegex,
 	xmr::*,
 	macros::*,
+	RemoteNode,
 };
 use sysinfo::SystemExt;
 use serde::{Serialize,Deserialize};
@@ -374,7 +375,7 @@ impl Helper {
 		// [Simple]
 		if state.simple {
 			// Build the p2pool argument
-			let (ip, rpc, zmq) = crate::node::enum_to_ip_rpc_zmq_tuple(state.node);         // Get: (IP, RPC, ZMQ)
+			let (ip, rpc, zmq) = RemoteNode::get_ip_rpc_zmq(&state.node);                   // Get: (IP, RPC, ZMQ)
 			args.push("--wallet".to_string());   args.push(state.address.clone());          // Wallet address
 			args.push("--host".to_string());     args.push(ip.to_string());                 // IP Address
 			args.push("--rpc-port".to_string()); args.push(rpc.to_string());                // RPC Port

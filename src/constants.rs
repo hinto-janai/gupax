@@ -249,20 +249,20 @@ pub const P2POOL_MINI:           &str = "Use the P2Pool mini-chain. This P2Pool 
 pub const P2POOL_OUT:            &str = "How many out-bound peers to connect to? (you connecting to others)";
 pub const P2POOL_IN:             &str = "How many in-bound peers to allow? (others connecting to you)";
 pub const P2POOL_LOG:            &str = "Verbosity of the console log";
-pub const P2POOL_AUTO_NODE:      &str = "Automatically ping the community Monero nodes at Gupax startup";
-pub const P2POOL_AUTO_SELECT:    &str = "Automatically select the fastest community Monero node after pinging";
-pub const P2POOL_SELECT_FASTEST: &str = "Select the fastest community Monero node";
-pub const P2POOL_SELECT_RANDOM:  &str = "Select a random community Monero node";
-pub const P2POOL_SELECT_LAST:    &str = "Select the previous community Monero node";
-pub const P2POOL_SELECT_NEXT:    &str = "Select the next community Monero node";
-pub const P2POOL_PING:           &str = "Ping the built-in community Monero nodes";
+pub const P2POOL_AUTO_NODE:      &str = "Automatically ping the remote Monero nodes at Gupax startup";
+pub const P2POOL_AUTO_SELECT:    &str = "Automatically select the fastest remote Monero node after pinging";
+pub const P2POOL_SELECT_FASTEST: &str = "Select the fastest remote Monero node";
+pub const P2POOL_SELECT_RANDOM:  &str = "Select a random remote Monero node";
+pub const P2POOL_SELECT_LAST:    &str = "Select the previous remote Monero node";
+pub const P2POOL_SELECT_NEXT:    &str = "Select the next remote Monero node";
+pub const P2POOL_PING:           &str = "Ping the built-in remote Monero nodes";
 pub const P2POOL_ADDRESS:        &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
 pub const P2POOL_COMMUNITY_NODE_WARNING: &str =
 r#"TL;DR: Run & use your own Monero Node.
 
-Using a Community Monero Node is convenient but comes at the cost of privacy and reliability.
+Using a Remote Monero Node is convenient but comes at the cost of privacy and reliability.
 
-You may encounter connection issues with community nodes which may cause mining performance loss! Late info from laggy nodes will cause your mining jobs to start later than they should.
+You may encounter connection issues with remote nodes which may cause mining performance loss! Late info from laggy nodes will cause your mining jobs to start later than they should.
 
 Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently 155GB). If you have the disk space, consider using the [Advanced] tab and connecting to your own Monero node.
 
@@ -275,7 +275,7 @@ r#"WARNING: Use [--no-color] and make sure to set [--data-api <PATH>] & [--local
 Start P2Pool with these arguments and override all below settings"#;
 pub const P2POOL_SIMPLE: &str =
 r#"Use simple P2Pool settings:
-    - Remote community Monero node
+    - Remote remote Monero node
     - Default P2Pool settings + Mini"#;
 pub const P2POOL_ADVANCED: &str =
 r#"Use advanced P2Pool settings:

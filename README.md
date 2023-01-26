@@ -543,11 +543,6 @@ For transparency, here's all the connections Gupax makes:
 ## Remote Monero Nodes
 These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are sourced from [this list](https://github.com/hinto-janaiyo/monero-nodes), which itself sources from [`monero.fail`](https://monero.fail). The nodes with the most consistent uptime are used.
 
-In general, a suitable node needs to:
-- Have good uptime
-- Have RPC enabled
-- Have ZMQ enabled
-
 | IP/Domain                        | Location                          | RPC Port | ZMQ Port    |
 |----------------------------------|-----------------------------------|----------|-------------|
 | monero.10z.com.ar                | 🇦🇷 AR - Buenos Aires F.D.         | 18089    | 18084       |
@@ -575,27 +570,27 @@ In general, a suitable node needs to:
 
 These are community nodes that **DON'T** have ZMQ enabled but are fast and well-known. These are not used in Gupax but can be used for general Monero usage.
 
-| Name           | Owner                                             | Owner Type | IP/Domain                         | RPC Port |
-|----------------|---------------------------------------------------|------------|-----------------------------------|----------|
-| C3pool         | [C3pool](https://www.c3pool.com)                  | Pool       | node.c3pool.com                   | 18081    |
-| Cake           | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node.cakewallet.com           | 18081    |
-| CakeEu         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-eu.cakewallet.com        | 18081    |
-| CakeUk         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-uk.cakewallet.com        | 18081    |
-| CakeUs         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-usa-east.cakewallet.com  | 18081    |
-| Feather1       | [Feather](https://featherwallet.org)              | Wallet     | selsta1.featherwallet.net         | 18081    |
-| Feather2       | [Feather](https://featherwallet.org)              | Wallet     | selsta2.featherwallet.net         | 18081    |
-| HashVault      | [HashVault](https://hashvault.pro)                | Pool       | nodes.hashvault.pro               | 18081    |
-| MajesticBankIs | [MajesticBank](https://www.majesticbank.sc)       | Exchange   | node.majesticbank.is              | 18089    |
-| MajesticBankSu | [MajesticBank](https://www.majesticbank.sc)       | Exchange   | node.majesticbank.su              | 18089    |
-| MoneroSeed1    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L708) | Seed Node | 176.9.0.187   | 18089 |
-| MoneroSeed2    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L715) | Seed Node | 51.79.173.165 | 18089 |
-| MoneroWorld1   | [Gingeropolous](https://github.com/Gingeropolous) | Individual | node.moneroworld.com              | 18089    |
-| MoneroWorld2   | [Gingeropolous](https://github.com/Gingeropolous) | Individual | uwillrunanodesoon.moneroworld.com | 18089    |
-| Monerujo       | [Monerujo](https://www.monerujo.io)               | Wallet     | nodex.monerujo.io                 | 18081    |
-| Rino           | [Rino](https://rino.io)                           | Wallet     | node.community.rino.io            | 18081    |
-| Seth           | [Seth](https://github.com/sethforprivacy)         | Individual | node.sethforprivacy.com           | 18089    |
-| SupportXmr     | [SupportXMR](https://www.supportxmr.com)          | Pool       | node.supportxmr.com               | 18081    |
-| SupportXmrIr   | [SupportXMR](https://www.supportxmr.com)          | Pool       | node.supportxmr.ir                | 18089    |
+| IP/Domain                         | RPC Port | Owner                                             | Owner Type |
+|-----------------------------------|----------|---------------------------------------------------|------------|
+| node.c3pool.com                   | 18081    | [C3pool](https://www.c3pool.com)                  | Pool       |
+| xmr-node.cakewallet.com           | 18081    | [Cake](https://cakewallet.com)                    | Wallet     |
+| xmr-node-eu.cakewallet.com        | 18081    | [Cake](https://cakewallet.com)                    | Wallet     |
+| xmr-node-uk.cakewallet.com        | 18081    | [Cake](https://cakewallet.com)                    | Wallet     |
+| xmr-node-usa-east.cakewallet.com  | 18081    | [Cake](https://cakewallet.com)                    | Wallet     |
+| selsta1.featherwallet.net         | 18081    | [Feather](https://featherwallet.org)              | Wallet     |
+| selsta2.featherwallet.net         | 18081    | [Feather](https://featherwallet.org)              | Wallet     |
+| nodes.hashvault.pro               | 18081    | [HashVault](https://hashvault.pro)                | Pool       |
+| node.majesticbank.is              | 18089    | [MajesticBank](https://www.majesticbank.sc)       | Exchange   |
+| node.majesticbank.su              | 18089    | [MajesticBank](https://www.majesticbank.sc)       | Exchange   |
+| 176.9.0.187                       | 18089    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L708) | Seed Node |
+| 51.79.173.165                     | 18089    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L715) | Seed Node |
+| node.moneroworld.com              | 18089    | [Gingeropolous](https://github.com/Gingeropolous) | Individual |
+| uwillrunanodesoon.moneroworld.com | 18089    | [Gingeropolous](https://github.com/Gingeropolous) | Individual |
+| nodex.monerujo.io                 | 18081    | [Monerujo](https://www.monerujo.io)               | Wallet     |
+| node.community.rino.io            | 18081    | [Rino](https://rino.io)                           | Wallet     |
+| node.sethforprivacy.com           | 18089    | [Seth](https://github.com/sethforprivacy)         | Individual |
+| node.supportxmr.com               | 18081    | [SupportXMR](https://www.supportxmr.com)          | Pool       |
+| node.supportxmr.ir                | 18089    | [SupportXMR](https://www.supportxmr.com)          | Pool       |
 
 ## Build
 ### General Info

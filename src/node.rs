@@ -35,28 +35,28 @@ use hyper::{
 // The format is an array of tuples consisting of: (ARRAY_INDEX, IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
 pub const REMOTE_NODES: [(usize, &str, &str, &str, &str); 22] = [
-	(0,  "monero.10z.com.ar",       "🇦🇷 AR - Buenos Aires F.D.",         "18089", "18084"),
-	(1,  "escom.sadovo.com",        "🇧🇬 BG - Plovdiv",                   "18089", "18084"),
-	(2,  "monero2.10z.com.ar",      "🇧🇷 BR - São Paulo",                 "18089", "18083"),
-	(3,  "monero1.heitechsoft.com", "🇨🇦 CA - Ontario",                   "18081", "18084"),
-	(4,  "node.monerodevs.org",     "🇨🇦 CA - Quebec",                    "18089", "18084"),
-	(5,  "de.poiuty.com",           "🇩🇪 DE - Berlin",                    "18081", "18084"),
-	(6,  "m1.poiuty.com",           "🇩🇪 DE - Berlin",                    "18081", "18084"),
-	(7,  "p2pmd.xmrvsbeast.com",    "🇩🇪 DE - Hesse",                     "18081", "18083"),
-	(8,  "fbx.tranbert.com",        "🇫🇷 FR - Île-de-France",             "18089", "18084"),
-	(9,  "reynald.ro",              "🇫🇷 FR - Île-de-France",             "18089", "18084"),
-	(10, "node2.monerodevs.org",    "🇫🇷 FR - Occitanie",                 "18089", "18084"),
-	(11, "monero.homeqloud.com",    "🇬🇷 GR - East Macedonia and Thrace", "18089", "18083"),
-	(12, "home.allantaylor.kiwi",   "🇳🇿 NZ - Canterbury",                "18089", "18083"),
-	(13, "ru.poiuty.com",           "🇷🇺 RU - Kuzbass",                   "18081", "18084"),
-	(14, "radishfields.hopto.org",  "🇺🇸 US - Colorado",                  "18081", "18084"),
-	(15, "xmrbandwagon.hopto.org",  "🇺🇸 US - Colorado",                  "18081", "18084"),
-	(16, "xmr.spotlightsound.com",  "🇺🇸 US - Kansas",                    "18081", "18084"),
-	(17, "xmrnode.facspro.net",     "🇺🇸 US - Nebraska",                  "18089", "18084"),
-	(18, "jameswillhoite.com",      "🇺🇸 US - Ohio",                      "18089", "18084"),
-	(19, "moneronode.ddns.net",     "🇺🇸 US - Pennsylvania",              "18089", "18084"),
-	(20, "node.richfowler.net",     "🇺🇸 US - Pennsylvania",              "18089", "18084"),
-	(21, "bunkernet.ddns.net",      "🇿🇦 ZA - Western Cape",              "18089", "18084"),
+	(0,  "monero.10z.com.ar",       "AR - Buenos Aires F.D.",         "18089", "18084"),
+	(1,  "escom.sadovo.com",        "BG - Plovdiv",                   "18089", "18084"),
+	(2,  "monero2.10z.com.ar",      "BR - São Paulo",                 "18089", "18083"),
+	(3,  "monero1.heitechsoft.com", "CA - Ontario",                   "18081", "18084"),
+	(4,  "node.monerodevs.org",     "CA - Quebec",                    "18089", "18084"),
+	(5,  "de.poiuty.com",           "DE - Berlin",                    "18081", "18084"),
+	(6,  "m1.poiuty.com",           "DE - Berlin",                    "18081", "18084"),
+	(7,  "p2pmd.xmrvsbeast.com",    "DE - Hesse",                     "18081", "18083"),
+	(8,  "fbx.tranbert.com",        "FR - Île-de-France",             "18089", "18084"),
+	(9,  "reynald.ro",              "FR - Île-de-France",             "18089", "18084"),
+	(10, "node2.monerodevs.org",    "FR - Occitanie",                 "18089", "18084"),
+	(11, "monero.homeqloud.com",    "GR - East Macedonia and Thrace", "18089", "18083"),
+	(12, "home.allantaylor.kiwi",   "NZ - Canterbury",                "18089", "18083"),
+	(13, "ru.poiuty.com",           "RU - Kuzbass",                   "18081", "18084"),
+	(14, "radishfields.hopto.org",  "US - Colorado",                  "18081", "18084"),
+	(15, "xmrbandwagon.hopto.org",  "US - Colorado",                  "18081", "18084"),
+	(16, "xmr.spotlightsound.com",  "US - Kansas",                    "18081", "18084"),
+	(17, "xmrnode.facspro.net",     "US - Nebraska",                  "18089", "18084"),
+	(18, "jameswillhoite.com",      "US - Ohio",                      "18089", "18084"),
+	(19, "moneronode.ddns.net",     "US - Pennsylvania",              "18089", "18084"),
+	(20, "node.richfowler.net",     "US - Pennsylvania",              "18089", "18084"),
+	(21, "bunkernet.ddns.net",      "ZA - Western Cape",              "18089", "18084"),
 ];
 
 pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
@@ -65,7 +65,7 @@ pub const REMOTE_NODE_MAX_CHARS: usize = 24; // monero1.heitechsoft.com
 pub struct RemoteNode {
 	pub index: usize,
 	pub ip: &'static str,
-	pub flag: &'static str,
+	pub location: &'static str,
 	pub rpc: &'static str,
 	pub zmq: &'static str,
 }
@@ -78,21 +78,33 @@ impl Default for RemoteNode {
 
 impl RemoteNode {
 	pub fn new() -> Self {
-		let (index, ip, flag, rpc, zmq) = REMOTE_NODES[0];
+		let (index, ip, location, rpc, zmq) = REMOTE_NODES[0];
 		Self {
 			index,
 			ip,
-			flag,
+			location,
 			rpc,
 			zmq,
 		}
 	}
 
+	pub fn check_exists(og_ip: &str) -> String {
+		for (_, ip, _, _, _) in REMOTE_NODES {
+			if og_ip == ip {
+				info!("Found remote node in array: {}", ip);
+				return ip.to_string()
+			}
+		}
+		let ip = REMOTE_NODES[0].1.to_string();
+		warn!("[{}] remote node does not exist, returning default: {}", og_ip, ip);
+		ip
+	}
+
 	// Returns a default if IP is not found.
 	pub fn from_ip(from_ip: &str) -> Self {
-		for (index, ip, flag, rpc, zmq) in REMOTE_NODES {
+		for (index, ip, location, rpc, zmq) in REMOTE_NODES {
 			if from_ip == ip {
-				return Self { index, ip, flag, rpc, zmq }
+				return Self { index, ip, location, rpc, zmq }
 			}
 		}
 		Self::new()
@@ -103,99 +115,132 @@ impl RemoteNode {
 		if index > REMOTE_NODE_LENGTH {
 			Self::new()
 		} else {
-			let (index, ip, flag, rpc, zmq) = REMOTE_NODES[index];
-			Self { index, ip, flag, rpc, zmq }
+			let (index, ip, location, rpc, zmq) = REMOTE_NODES[index];
+			Self { index, ip, location, rpc, zmq }
 		}
 	}
 
 	pub fn from_tuple(t: (usize, &'static str, &'static str, &'static str, &'static str)) -> Self {
-		let (index, ip, flag, rpc, zmq) = (t.0, t.1, t.2, t.3, t.4);
-		Self { index, ip, flag, rpc, zmq }
+		let (index, ip, location, rpc, zmq) = (t.0, t.1, t.2, t.3, t.4);
+		Self { index, ip, location, rpc, zmq }
 	}
 
-	// monero1.heitechsoft.com = 24 max length
-	pub fn format_ip(&self) -> String {
-		match self.ip.len() {
-			1  => format!("{}                       ", self.ip),
-			2  => format!("{}                      ", self.ip),
-			3  => format!("{}                     ", self.ip),
-			4  => format!("{}                    ", self.ip),
-			5  => format!("{}                   ", self.ip),
-			6  => format!("{}                  ", self.ip),
-			7  => format!("{}                 ", self.ip),
-			8  => format!("{}                ", self.ip),
-			9  => format!("{}               ", self.ip),
-			10 => format!("{}              ", self.ip),
-			11 => format!("{}             ", self.ip),
-			12 => format!("{}            ", self.ip),
-			13 => format!("{}           ", self.ip),
-			14 => format!("{}          ", self.ip),
-			15 => format!("{}         ", self.ip),
-			16 => format!("{}        ", self.ip),
-			17 => format!("{}       ", self.ip),
-			18 => format!("{}      ", self.ip),
-			19 => format!("{}     ", self.ip),
-			20 => format!("{}    ", self.ip),
-			21 => format!("{}   ", self.ip),
-			22 => format!("{}  ", self.ip),
-			23 => format!("{} ", self.ip),
-			_  => format!("{}", self.ip),
+	pub fn get_ip_rpc_zmq(og_ip: &str) -> (&str, &str, &str) {
+		for (_, ip, _, rpc, zmq) in REMOTE_NODES {
+			if og_ip == ip { return (ip, rpc, zmq) }
 		}
+		let (_, ip, _, rpc, zmq) = REMOTE_NODES[0];
+		(ip, rpc, zmq)
 	}
 
 	// Return a random node (that isn't the one already selected).
-	pub fn get_random(&self) -> Self {
-		let mut rand = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
-		while rand == self.index {
-			rand = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
+	pub fn get_random(current_ip: &str) -> String {
+		let mut rng = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
+		let mut node = REMOTE_NODES[rng].1;
+		while current_ip == node {
+			rng = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
+			node = REMOTE_NODES[rng].1;
 		}
-		Self::from_index(rand)
+		node.to_string()
 	}
 
-	// Return the node [-1] of this one (wraps around)
-	pub fn get_last(&self) -> Self {
-		let index = self.index;
-		if index == 0 {
-			Self::from_index(REMOTE_NODE_LENGTH-1)
-		} else {
-			Self::from_index(index-1)
+	// Return the node [-1] of this one
+	pub fn get_last(current_ip: &str) -> String {
+		let mut found = false;
+		let mut last = current_ip;
+		for (_, ip, _, _, _) in REMOTE_NODES {
+			if found { return ip.to_string() }
+			if current_ip == ip { found = true; } else { last = ip; }
 		}
+		last.to_string()
 	}
 
-	// Return the node [+1] of this one (wraps around)
-	pub fn get_next(&self) -> Self {
-		let index = self.index;
-		if index == REMOTE_NODE_LENGTH-1 {
-			Self::from_index(0)
-		} else {
-			Self::from_index(index+1)
+	// Return the node [+1] of this one
+	pub fn get_next(current_ip: &str) -> String {
+		let mut found = false;
+		for (_, ip, _, _, _) in REMOTE_NODES {
+			if found { return ip.to_string() }
+			if current_ip == ip { found = true; }
 		}
+		current_ip.to_string()
 	}
 
 	// This returns relative to the ping.
-	pub fn get_last_from_ping(&self, nodes: &Vec<NodeData>) -> Self {
+	pub fn get_last_from_ping(current_ip: &str, nodes: &Vec<NodeData>) -> String {
 		let mut found = false;
-		let mut last = self.ip;
+		let mut last = current_ip;
 		for data in nodes {
-			if found { return Self::from_ip(last) }
-			if self.ip == data.ip { found = true; } else { last = data.ip; }
+			if found { return last.to_string() }
+			if current_ip == data.ip { found = true; } else { last = data.ip; }
 		}
-		Self::from_ip(last)
+		last.to_string()
 	}
 
-	pub fn get_next_from_ping(&self, nodes: &Vec<NodeData>) -> Self {
+	pub fn get_next_from_ping(current_ip: &str, nodes: &Vec<NodeData>) -> String {
 		let mut found = false;
 		for data in nodes {
-			if found { return Self::from_ip(data.ip) }
-			if self.ip == data.ip { found = true; }
+			if found { return data.ip.to_string() }
+			if current_ip == data.ip { found = true; }
 		}
-		*self
+		current_ip.to_string()
 	}
 }
 
 impl std::fmt::Display for RemoteNode {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 		write!(f, "{:#?}", self.ip)
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- Formatting
+// 5000 = 4 max length
+pub fn format_ms(ms: u128) -> String {
+	match ms.to_string().len() {
+		1 => format!("{}ms   ", ms),
+		2 => format!("{}ms  ", ms),
+		3 => format!("{}ms ", ms),
+		_ => format!("{}ms", ms),
+	}
+}
+
+// format_ip_location(monero1.heitechsoft.com) -> "monero1.heitechsoft.com | XX - LOCATION"
+// [extra_space] controls whether extra space is appended so the list aligns.
+pub fn format_ip_location(og_ip: &str, extra_space: bool) -> String {
+	for (_, ip, location, _, _) in REMOTE_NODES {
+		if og_ip == ip {
+			let ip = if extra_space { format_ip(ip) } else { ip.to_string() };
+			return format!("{} | {}", ip, location)
+		}
+	}
+	"??? | ???".to_string()
+}
+
+// monero1.heitechsoft.com = 24 max length
+pub fn format_ip(ip: &str) -> String {
+	match ip.len() {
+		1  => format!("{}                      ", ip),
+		2  => format!("{}                     ", ip),
+		3  => format!("{}                    ", ip),
+		4  => format!("{}                   ", ip),
+		5  => format!("{}                  ", ip),
+		6  => format!("{}                 ", ip),
+		7  => format!("{}                ", ip),
+		8  => format!("{}               ", ip),
+		9  => format!("{}              ", ip),
+		10 => format!("{}             ", ip),
+		11 => format!("{}            ", ip),
+		12 => format!("{}           ", ip),
+		13 => format!("{}          ", ip),
+		14 => format!("{}         ", ip),
+		15 => format!("{}        ", ip),
+		16 => format!("{}       ", ip),
+		17 => format!("{}      ", ip),
+		18 => format!("{}     ", ip),
+		19 => format!("{}    ", ip),
+		20 => format!("{}   ", ip),
+		21 => format!("{}  ", ip),
+		22 => format!("{} ", ip),
+		_  => format!("{}", ip),
 	}
 }
 
@@ -210,7 +255,7 @@ pub struct NodeData {
 impl NodeData {
 	pub fn new_vec() -> Vec<Self> {
 		let mut vec = Vec::new();
-		for tuple in REMOTE_NODES {
+		for (_, ip, _, _, _) in REMOTE_NODES {
 			vec.push(Self {
 				ip,
 				ms: 0,
@@ -218,16 +263,6 @@ impl NodeData {
 			});
 		}
 		vec
-	}
-}
-
-// 5000 = 4 max length
-pub fn format_ms(ms: u128) -> String {
-	match ms.to_string().len() {
-		1 => format!("{}ms   ", ms),
-		2 => format!("{}ms  ", ms),
-		3 => format!("{}ms ", ms),
-		_ => format!("{}ms", ms),
 	}
 }
 
@@ -300,8 +335,8 @@ impl Ping {
 	// This used to be done 3x linearly but after testing, sending a single
 	// JSON-RPC call to all IPs asynchronously resulted in the same data.
 	//
-	// <200ms  = GREEN
-	// <500ms = YELLOW
+	// <300ms  = GREEN
+	// >300ms = YELLOW
 	// >500ms = RED
 	// timeout = BLACK
 	// default = GRAY
@@ -325,17 +360,17 @@ impl Ping {
 		let mut handles = Vec::with_capacity(REMOTE_NODE_LENGTH);
 		let node_vec = arc_mut!(Vec::with_capacity(REMOTE_NODE_LENGTH));
 
-		for (index, ip, location, rpc, zmq) in REMOTE_NODES {
+		for (_, ip, _, rpc, zmq) in REMOTE_NODES {
 			let client = client.clone();
 			let ping = Arc::clone(&ping);
 			let node_vec = Arc::clone(&node_vec);
 			let request = Request::builder()
 				.method("POST")
-				.uri("http://".to_string() + ip + "/json_rpc")
+				.uri("http://".to_string() + ip + ":" + rpc + "/json_rpc")
 				.header("User-Agent", rand_user_agent)
 				.body(hyper::Body::from(r#"{"jsonrpc":"2.0","id":"0","method":"get_info"}"#))
 				.unwrap();
-			let handle = tokio::task::spawn(async move { Self::response(client, request, ip, rpc, ping, percent, node_vec).await; });
+			let handle = tokio::task::spawn(async move { Self::response(client, request, ip, ping, percent, node_vec).await; });
 			handles.push(handle);
 		}
 
@@ -356,7 +391,7 @@ impl Ping {
 		Ok(fastest_info)
 	}
 
-	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, rpc: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
+	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
 		let ms;
 		let info;
 		let now = Instant::now();
@@ -373,7 +408,7 @@ impl Ping {
 			},
 		};
 		let color;
-		if ms < 200 {
+		if ms < 300 {
 			color = GREEN;
 		} else if ms < 500 {
 			color = YELLOW;

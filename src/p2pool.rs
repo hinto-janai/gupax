@@ -126,7 +126,7 @@ impl crate::disk::P2pool {
 			let mut ping = lock!(ping);
 			// If we haven't auto_selected yet, auto-select and turn it off
 			if ping.pinged && !ping.auto_selected {
-				self.node = ping.fastest;
+				self.node = ping.fastest.to_string();
 				ping.auto_selected = true;
 			}
 			drop(ping);
@@ -137,27 +137,26 @@ impl crate::disk::P2pool {
 
 			debug!("P2Pool Tab | Rendering [Ping List]");
 			// [Ping List]
-			let id = self.node;
-			let ip = enum_to_ip(id);
 			let mut ms = 0;
 			let mut color = Color32::LIGHT_GRAY;
 			if lock!(ping).pinged {
 				for data in lock!(ping).nodes.iter() {
-					if data.id == id {
+ 					if data.ip == self.node {
 						ms = data.ms;
 						color = data.color;
 						break
 					}
 				}
 			}
-			debug!("P2Pool Tab | Rendering [ComboBox] of Community Nodes");
-			let text = RichText::new(format!(" ⏺ {}ms | {} | {}", ms, id, ip)).color(color);
-			ComboBox::from_id_source("community_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
+			debug!("P2Pool Tab | Rendering [ComboBox] of Remote Nodes");
+			let ip_location = crate::node::format_ip_location(&self.node, false);
+			let text = RichText::new(format!(" ⏺ {}ms | {}", ms, ip_location)).color(color);
+			ComboBox::from_id_source("remote_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
 				for data in lock!(ping).nodes.iter() {
 					let ms = crate::node::format_ms(data.ms);
-					let id = crate::node::format_enum(data.id);
-					let text = RichText::text_style(RichText::new(format!(" ⏺ {} | {} | {}", ms, id, data.ip)).color(data.color), Monospace);
-					ui.selectable_value(&mut self.node, data.id, text);
+					let ip_location = crate::node::format_ip_location(data.ip, true);
+					let text = RichText::text_style(RichText::new(format!(" ⏺ {} | {}", ms, ip_location)).color(data.color), Monospace);
+					ui.selectable_value(&mut self.node, data.ip.to_string(), text);
 				}
 			});
 		});
@@ -169,15 +168,15 @@ impl crate::disk::P2pool {
 			let width = (width/5.0)-6.0;
 			// [Select random node]
 			if ui.add_sized([width, height], Button::new("Select random node")).on_hover_text(P2POOL_SELECT_RANDOM).clicked() {
-				self.node = NodeEnum::get_random(&self.node);
+				self.node = RemoteNode::get_random(&self.node);
 			}
 			// [Select fastest node]
 			if ui.add_sized([width, height], Button::new("Select fastest node")).on_hover_text(P2POOL_SELECT_FASTEST).clicked() && lock!(ping).pinged {
-				self.node = lock!(ping).fastest;
+				self.node = lock!(ping).fastest.to_string();
 			}
 			// [Ping Button]
 			ui.add_enabled_ui(!lock!(ping).pinging, |ui| {
-				if ui.add_sized([width, height], Button::new("Ping community nodes")).on_hover_text(P2POOL_PING).clicked() {
+				if ui.add_sized([width, height], Button::new("Ping remote nodes")).on_hover_text(P2POOL_PING).clicked() {
 					Ping::spawn_thread(ping);
 				}
 			});
@@ -185,8 +184,8 @@ impl crate::disk::P2pool {
 			if ui.add_sized([width, height], Button::new("⬅ Last")).on_hover_text(P2POOL_SELECT_LAST).clicked() {
 				let ping = lock!(ping);
 				match ping.pinged {
-					true  => self.node = NodeEnum::get_last_from_ping(&self.node, &ping.nodes),
-					false => self.node = NodeEnum::get_last(&self.node),
+					true  => self.node = RemoteNode::get_last_from_ping(&self.node, &ping.nodes),
+					false => self.node = RemoteNode::get_last(&self.node),
 				}
 				drop(ping);
 			}
@@ -194,8 +193,8 @@ impl crate::disk::P2pool {
 			if ui.add_sized([width, height], Button::new("Next ➡")).on_hover_text(P2POOL_SELECT_NEXT).clicked() {
 				let ping = lock!(ping);
 				match ping.pinged {
-					true  => self.node = NodeEnum::get_next_from_ping(&self.node, &ping.nodes),
-					false => self.node = NodeEnum::get_next(&self.node),
+					true  => self.node = RemoteNode::get_next_from_ping(&self.node, &ping.nodes),
+					false => self.node = RemoteNode::get_next(&self.node),
 				}
 				drop(ping);
 			}

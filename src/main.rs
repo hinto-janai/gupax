@@ -176,7 +176,7 @@ impl App {
 
 	fn new(now: Instant) -> Self {
 		info!("Initializing App Struct...");
-		debug!("App Init | P2Pool & XMRig processes...");
+		info!("App Init | P2Pool & XMRig processes...");
 		let p2pool = arc_mut!(Process::new(ProcessName::P2pool, String::new(), PathBuf::new()));
 		let xmrig = arc_mut!(Process::new(ProcessName::Xmrig, String::new(), PathBuf::new()));
 		let p2pool_api = arc_mut!(PubP2poolApi::new());
@@ -184,7 +184,7 @@ impl App {
 		let p2pool_img = arc_mut!(ImgP2pool::new());
 		let xmrig_img = arc_mut!(ImgXmrig::new());
 
-		debug!("App Init | Sysinfo...");
+		info!("App Init | Sysinfo...");
 		// We give this to the [Helper] thread.
 		let mut sysinfo = sysinfo::System::new_with_specifics(
 			sysinfo::RefreshKind::new()
@@ -198,7 +198,7 @@ impl App {
 		};
 		let pub_sys = arc_mut!(Sys::new());
 
-		debug!("App Init | The rest of the [App]...");
+		info!("App Init | The rest of the [App]...");
 		let mut app = Self {
 			tab: Tab::default(),
 			ping: arc_mut!(Ping::new()),
@@ -250,7 +250,7 @@ impl App {
 			regex: Regexes::new(),
 		};
 		//---------------------------------------------------------------------------------------------------- App init data that *could* panic
-		debug!("App Init | Getting EXE path...");
+		info!("App Init | Getting EXE path...");
 		let mut panic = String::new();
 		// Get exe path
 		app.exe = match get_exe() {
@@ -268,7 +268,7 @@ impl App {
 			Err(e) => { panic = format!("get_os_data_path(): {}", e); app.error_state.set(panic.clone(), ErrorFerris::Panic, ErrorButtons::Quit); PathBuf::new() },
 		};
 
-		debug!("App Init | Setting TOML path...");
+		info!("App Init | Setting TOML path...");
 		// Set [*.toml] path
 		app.state_path = app.os_data_path.clone();
 		app.state_path.push(STATE_TOML);
@@ -283,11 +283,11 @@ impl App {
 		// Apply arg state
 		// It's not safe to [--reset] if any of the previous variables
 		// are unset (null path), so make sure we just abort if the [panic] String contains something.
-		debug!("App Init | Applying argument state...");
+		info!("App Init | Applying argument state...");
 		let mut app = parse_args(app, panic);
 
 		// Read disk state
-		debug!("App Init | Reading disk state...");
+		info!("App Init | Reading disk state...");
 		use TomlError::*;
 		app.state = match State::get(&app.state_path) {
 			Ok(toml) => toml,
@@ -307,7 +307,7 @@ impl App {
 		};
 		app.og = arc_mut!(app.state.clone());
 		// Read node list
-		debug!("App Init | Reading node list...");
+		info!("App Init | Reading node list...");
 		app.node_vec = match Node::get(&app.node_path) {
 			Ok(toml) => toml,
 			Err(err) => {
@@ -328,7 +328,7 @@ impl App {
 		debug!("Node Vec:");
 		debug!("{:#?}", app.node_vec);
 		// Read pool list
-		debug!("App Init | Reading pool list...");
+		info!("App Init | Reading pool list...");
 		app.pool_vec = match Pool::get(&app.pool_path) {
 			Ok(toml) => toml,
 			Err(err) => {
@@ -353,7 +353,7 @@ impl App {
 		// Read [GupaxP2poolApi] disk files
 		let mut gupax_p2pool_api = lock!(app.gupax_p2pool_api);
 		match GupaxP2poolApi::create_all_files(&app.gupax_p2pool_api_path) {
-			Ok(_) => debug!("App Init | Creating Gupax-P2Pool API files ... OK"),
+			Ok(_) => info!("App Init | Creating Gupax-P2Pool API files ... OK"),
 			Err(err) => {
 				error!("GupaxP2poolApi ... {}", err);
 				match err {
@@ -367,7 +367,7 @@ impl App {
 				};
 			},
 		}
-		debug!("App Init | Reading Gupax-P2Pool API files...");
+		info!("App Init | Reading Gupax-P2Pool API files...");
 		match gupax_p2pool_api.read_all_files_and_update() {
 			Ok(_) => {
 				info!(
@@ -395,7 +395,7 @@ impl App {
 		//----------------------------------------------------------------------------------------------------
 		let mut og = lock!(app.og); // Lock [og]
 		// Handle max threads
-		debug!("App Init | Handling max thread overflow...");
+		info!("App Init | Handling max thread overflow...");
 		og.xmrig.max_threads = app.max_threads;
 		let current = og.xmrig.current_threads;
 		let max = og.xmrig.max_threads;
@@ -403,7 +403,7 @@ impl App {
 			og.xmrig.current_threads = max;
 		}
 		// Handle [node_vec] overflow
-		debug!("App Init | Handling [node_vec] overflow");
+		info!("App Init | Handling [node_vec] overflow");
 		if og.p2pool.selected_index > app.og_node_vec.len() {
 			warn!("App | Overflowing manual node index [{} > {}], resetting to 1", og.p2pool.selected_index, app.og_node_vec.len());
 			let (name, node) = app.og_node_vec[0].clone();
@@ -419,7 +419,7 @@ impl App {
 			app.state.p2pool.selected_zmq = node.zmq;
 		}
 		// Handle [pool_vec] overflow
-		debug!("App Init | Handling [pool_vec] overflow...");
+		info!("App Init | Handling [pool_vec] overflow...");
 		if og.xmrig.selected_index > app.og_pool_vec.len() {
 			warn!("App | Overflowing manual pool index [{} > {}], resetting to 1", og.xmrig.selected_index, app.og_pool_vec.len());
 			let (name, pool) = app.og_pool_vec[0].clone();
@@ -434,24 +434,26 @@ impl App {
 		}
 
 		// Apply TOML values to [Update]
-		debug!("App Init | Applying TOML values to [Update]...");
+		info!("App Init | Applying TOML values to [Update]...");
 		let p2pool_path = og.gupax.absolute_p2pool_path.clone();
 		let xmrig_path = og.gupax.absolute_xmrig_path.clone();
 		let tor = og.gupax.update_via_tor;
 		app.update = arc_mut!(Update::new(app.exe.clone(), p2pool_path, xmrig_path, tor));
 
-
-		debug!("App Init | Setting state Gupax version...");
 		// Set state version as compiled in version
+		info!("App Init | Setting state Gupax version...");
 		lock!(og.version).gupax = GUPAX_VERSION.to_string();
 		lock!(app.state.version).gupax = GUPAX_VERSION.to_string();
 
-		debug!("App Init | Setting saved [Tab]...");
 		// Set saved [Tab]
+		info!("App Init | Setting saved [Tab]...");
 		app.tab = app.state.gupax.tab;
 
+		// Check if [P2pool.node] exists
+		info!("App Init | Checking if saved remote node still exists...");
+		app.state.p2pool.node = RemoteNode::check_exists(&app.state.p2pool.node);
+
 		drop(og); // Unlock [og]
-		info!("App ... OK");
 
 		// Spawn the "Helper" thread.
 		info!("Helper | Spawning helper thread...");
@@ -459,7 +461,7 @@ impl App {
 		info!("Helper ... OK");
 
 		// Check for privilege. Should be Admin on [Windows] and NOT root on Unix.
-		debug!("App Init | Checking for privilege level...");
+		info!("App Init | Checking for privilege level...");
 		#[cfg(target_os = "windows")]
 		if is_elevated::is_elevated() {
 			app.admin = true;
@@ -482,6 +484,7 @@ impl App {
 			app.error_state.set(format!("macOS thinks Gupax is a virus!\n(macOS has relocated Gupax for security reasons)\n\nThe directory: [{}]\nSince this is a private read-only directory, it causes issues with updates and correctly locating P2Pool/XMRig. Please move Gupax into the [Applications] directory, this lets macOS relax a little.\n", app.exe), ErrorFerris::Panic, ErrorButtons::Quit);
 		}
 
+		info!("App ... OK");
 		app
 	}
 }
