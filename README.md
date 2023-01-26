@@ -1,7 +1,11 @@
-![banner.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/banner.png)
+<div align="center">
+	<img src="images/banner.png" width="66%"/>
+
 Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
 
 **To see a 3-minute video on how to download and run Gupax: [click here.](#How-To)**
+
+</div>
 
 ## Contents
 * [What is Monero/P2Pool/XMRig/Gupax?](#what-is-monerop2poolxmriggupax)
@@ -26,7 +30,7 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 	- [P2Pool](#P2Pool-1)
 	- [XMRig](#XMRig-1)
 * [Connections](#Connections)
-* [Community Monero Nodes](#community-monero-nodes)
+* [Remote Monero Nodes](#remote-monero-nodes)
 * [Build](#Build)
 	- [General Info](#General-Info)
 	- [Linux](#Linux)
@@ -75,16 +79,20 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 
 **Gupax** is a GUI that helps with configuring, updating, and managing P2Pool & XMRig (both originally CLI-only).
 
-***Recap:***
-1. **XMRig** mines to **P2Pool** which fetchs blocks from a **Monero node**
-2. **Monero GUI** runs the ***Monero node***
-3. **Gupax** runs ***P2Pool/XMRig***
+<img src="images/local.png" align="right" width="50%"/>
 
-![local.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/local.png)
+&emsp; ***Recap:***
+&emsp; 1. **XMRig** mines to **P2Pool** which fetchs blocks from a **Monero node**
+&emsp; 2. **Monero GUI** runs the ***Monero node***
+&emsp; 3. **Gupax** runs ***P2Pool/XMRig***
 
-By default, though, Gupax will use a [Community Monero Node](#community-monero-nodes) so you don't even have to run your own full Monero node to start mining on P2Pool:
+<br clear="left"/>
 
-![community.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/community.png)
+<img src="images/remote.png" align="right" width="50%"/>
+
+By default, though, Gupax will use a [Remote Monero Node](#remote-monero-nodes) so you don't even have to run your own full Monero node to start mining on P2Pool:
+
+<br clear="left"/>
 
 ## How-To
 https://user-images.githubusercontent.com/101352116/207978455-6ffdc0cc-204c-4594-9a2f-e10c505745bc.mp4
@@ -93,7 +101,7 @@ https://user-images.githubusercontent.com/101352116/207978455-6ffdc0cc-204c-4594
 2. Extract somewhere (Desktop, Documents, etc)
 3. Launch Gupax
 4. Input your Monero address in the `[P2Pool]` tab
-5. Select a [`Community Monero Node`](#community-monero-nodes) that you trust
+5. Select a [`Remote Monero Node`](#remote-monero-nodes) that you trust
 5. Start P2Pool
 6. Start XMRig
 
@@ -113,18 +121,25 @@ The `Gupax/P2Pool/XMRig` tabs have two versions, `Simple` & `Advanced`.
 ### Status
 This tab has 2 submenus that show some info about running processes and P2Pool-specific stats.
 
-**Processes:**
+<img src="images/processes.png" align="right" width="50%"/>
 
-![processes.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/processes.png)
+**Processes:**  
+This submenu shows:
+- General PC stats
+- General P2Pool stats
+- General XMRig stats
 
-**P2Pool:**
+<br clear="left"/>
 
+<img src="images/payouts.png" align="right" width="50%"/>
+
+**P2Pool:**  
 This submenu shows:
 - ***Permanent*** stats on all your payouts received via P2Pool & Gupax
 - Payout sorting options
 - Share/block time calculator
 
-![payouts.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/payouts.png)
+<br clear="left"/>
 
 ---
 
@@ -146,11 +161,11 @@ Below that, there are some general Gupax settings:
 ---
 
 ### P2Pool
-P2Pool Simple allows you to ping & connect to a [Community Monero Node](#community-monero-nodes) and start your own local P2Pool instance on the `Mini` sidechain.
+P2Pool Simple allows you to ping & connect to a [Remote Monero Node](#remote-monero-nodes) and start your own local P2Pool instance on the `Mini` sidechain.
 
 To start P2Pool, first input the Monero address you'd like to receive payouts from. You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!
 
-**Warning: [There are negative privacy/security implications when using a Monero node not in your control.](https://www.getmonero.org/resources/moneropedia/remote-node.html)** Select a community node that you trust, or better yet, run your own node. If you'd like to manually specify a node to connect to, see [Advanced.](#advanced)
+**Warning: [There are negative privacy/security implications when using a Monero node not in your control.](https://www.getmonero.org/resources/moneropedia/remote-node.html)** Select a remote node that you trust, or better yet, run your own node. If you'd like to manually specify a node to connect to, see [Advanced.](#advanced)
 
 ---
 
@@ -192,11 +207,14 @@ Make sure the _version_ you are comparing against is correct, and make sure you 
 ---
 
 ### Running a Local Monero Node
-Running and using your own local Monero node improves privacy and security. It also means you won't be depending on one of the [Community Monero Nodes](#community-monero-nodes) provided by Gupax. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently `155GB`).
+Running and using your own local Monero node improves privacy and security. It also means you won't be depending on one of the [Remote Monero Nodes](#remote-monero-nodes) provided by Gupax. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently `155GB`).
 
 If you'd like to run and use your own local Monero node for P2Pool, follow these steps:
 
-![local_node.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/local_node.png)
+<div align="center">
+	<img src="images/local_node.png" width="66%"/>
+</div>
+
 1. In the Monero GUI, go to `Settings`
 2. Go to the `Node` tab
 3. Enable `Local node`
@@ -512,43 +530,65 @@ For transparency, here's all the connections Gupax makes:
 | Domain             | Why                                                   | When | Where |
 |--------------------|-------------------------------------------------------|------|-------|
 | https://github.com | Fetching metadata information on packages + download  | `[Gupax]` tab -> `Check for updates` | [`update.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/update.rs) |
-| Community Monero Nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/node.rs) |
+| Remote Monero Nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/node.rs) |
 | DNS | DNS connections will usually be handled by your OS (or whatever custom DNS setup you have). If using Tor, DNS requests for updates [*should*](https://tpo.pages.torproject.net/core/doc/rust/arti/) be routed through the Tor network automatically | All of the above | All of the above |
 
-## Community Monero Nodes
-These are the community nodes used by Gupax in the `[P2Pool Simple]` tab. If you would like to have a node added/removed, please submit an [Issue](https://github.com/hinto-janaiyo/gupax/issues) with the reasoning.
+## Remote Monero Nodes
+These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are sourced from [this list](https://github.com/hinto-janaiyo/monero-nodes), which itself sources from [`monero.fail`](https://monero.fail). The nodes with the most consistent uptime are used.
 
 In general, a suitable node needs to:
-- Be fast
 - Have good uptime
 - Have RPC enabled
 - Have ZMQ enabled
-- Have an owner known by the general Monero community
 
-| Name           | Owner                                             | Owner Type | IP/Domain                         | RPC Port | ZMQ Port |
-|----------------|---------------------------------------------------|------------|-----------------------------------|----------|----------|
-| C3pool         | [C3pool](https://www.c3pool.com)                  | Pool       | node.c3pool.com                   | 18081    | 18083    |
-| Cake           | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node.cakewallet.com           | 18081    | 18083    |
-| CakeEu         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-eu.cakewallet.com        | 18081    | 18083    |
-| CakeUk         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-uk.cakewallet.com        | 18081    | 18083    |
-| CakeUs         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-usa-east.cakewallet.com  | 18081    | 18083    |
-| Feather1       | [Feather](https://featherwallet.org)              | Wallet     | selsta1.featherwallet.net         | 18081    | 18083    |
-| Feather2       | [Feather](https://featherwallet.org)              | Wallet     | selsta2.featherwallet.net         | 18081    | 18083    |
-| HashVault      | [HashVault](https://hashvault.pro)                | Pool       | nodes.hashvault.pro               | 18081    | 18083    |
-| MajesticBankIs | [MajesticBank](https://www.majesticbank.sc)       | Exchange   | node.majesticbank.is              | 18089    | 18083    |
-| MajesticBankSu | [MajesticBank](https://www.majesticbank.sc)       | Exchange   | node.majesticbank.su              | 18089    | 18083    |
-| MoneroSeed1    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L708) | Seed Node | 176.9.0.187   | 18089 | 18083 |
-| MoneroSeed2    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L715) | Seed Node | 51.79.173.165 | 18089 | 18083 |
-| MoneroWorld1   | [Gingeropolous](https://github.com/Gingeropolous) | Individual | node.moneroworld.com              | 18089    | 18083    |
-| MoneroWorld2   | [Gingeropolous](https://github.com/Gingeropolous) | Individual | uwillrunanodesoon.moneroworld.com | 18089    | 18083    |
-| Monerujo       | [Monerujo](https://www.monerujo.io)               | Wallet     | nodex.monerujo.io                 | 18081    | 18083    |
-| Plowsof1       | [Plowsof](https://github.com/plowsof)             | Individual | node.monerodevs.org               | 18089    | 18084    |
-| Plowsof2       | [Plowsof](https://github.com/plowsof)             | Individual | node2.monerodevs.org              | 18089    | 18084    |
-| Rino           | [Rino](https://rino.io)                           | Wallet     | node.community.rino.io            | 18081    | 18083    |
-| Seth           | [Seth](https://github.com/sethforprivacy)         | Individual | node.sethforprivacy.com           | 18089    | 18083    |
-| SupportXmr     | [SupportXMR](https://www.supportxmr.com)          | Pool       | node.supportxmr.com               | 18081    | 18083    |
-| SupportXmrIr   | [SupportXMR](https://www.supportxmr.com)          | Pool       | node.supportxmr.ir                | 18089    | 18083    |
-| XmrVsBeast     | [XMRvsBeast](https://xmrvsbeast.com)              | Pool       | p2pmd.xmrvsbeast.com              | 18081    | 18083    |
+| IP/Domain                        | Location                          | RPC Port | ZMQ Port    |
+|----------------------------------|-----------------------------------|----------|-------------|
+| monero.10z.com.ar                | 🇦🇷 AR - Buenos Aires F.D.         | 18089    | 18084       |
+| escom.sadovo.com                 | 🇧🇬 BG - Plovdiv                   | 18089    | 18084       |
+| monero2.10z.com.ar               | 🇧🇷 BR - São Paulo                 | 18089    | 18083       |
+| monero1.heitechsoft.com          | 🇨🇦 CA - Ontario                   | 18081    | 18084       |
+| node.monerodevs.org              | 🇨🇦 CA - Quebec                    | 18089    | 18084       |
+| de.poiuty.com                    | 🇩🇪 DE - Berlin                    | 18081    | 18084       |
+| m1.poiuty.com                    | 🇩🇪 DE - Berlin                    | 18081    | 18084       |
+| p2pmd.xmrvsbeast.com             | 🇩🇪 DE - Hesse                     | 18081    | 18083       |
+| fbx.tranbert.com                 | 🇫🇷 FR - Île-de-France             | 18089    | 18084       |
+| reynald.ro                       | 🇫🇷 FR - Île-de-France             | 18089    | 18084       |
+| node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
+| monero.homeqloud.com             | 🇬🇷 GR - East Macedonia and Thrace | 18089    | 18083       |
+| home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
+| ru.poiuty.com                    | 🇷🇺 RU - Kuzbass                   | 18081    | 18084       |
+| radishfields.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
+| xmrbandwagon.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
+| xmr.spotlightsound.com           | 🇺🇸 US - Kansas                    | 18081    | 18084       |
+| xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
+| jameswillhoite.com               | 🇺🇸 US - Ohio                      | 18089    | 18084       |
+| moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
+| node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
+| bunkernet.ddns.net               | 🇿🇦 ZA - Western Cape              | 18089    | 18084       |
+
+These are community nodes that **DON'T** have ZMQ enabled but are fast and well-known. These are not used in Gupax but can be used for general Monero usage.
+
+| Name           | Owner                                             | Owner Type | IP/Domain                         | RPC Port |
+|----------------|---------------------------------------------------|------------|-----------------------------------|----------|
+| C3pool         | [C3pool](https://www.c3pool.com)                  | Pool       | node.c3pool.com                   | 18081    |
+| Cake           | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node.cakewallet.com           | 18081    |
+| CakeEu         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-eu.cakewallet.com        | 18081    |
+| CakeUk         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-uk.cakewallet.com        | 18081    |
+| CakeUs         | [Cake](https://cakewallet.com)                    | Wallet     | xmr-node-usa-east.cakewallet.com  | 18081    |
+| Feather1       | [Feather](https://featherwallet.org)              | Wallet     | selsta1.featherwallet.net         | 18081    |
+| Feather2       | [Feather](https://featherwallet.org)              | Wallet     | selsta2.featherwallet.net         | 18081    |
+| HashVault      | [HashVault](https://hashvault.pro)                | Pool       | nodes.hashvault.pro               | 18081    |
+| MajesticBankIs | [MajesticBank](https://www.majesticbank.sc)       | Exchange   | node.majesticbank.is              | 18089    |
+| MajesticBankSu | [MajesticBank](https://www.majesticbank.sc)       | Exchange   | node.majesticbank.su              | 18089    |
+| MoneroSeed1    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L708) | Seed Node | 176.9.0.187   | 18089 |
+| MoneroSeed2    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L715) | Seed Node | 51.79.173.165 | 18089 |
+| MoneroWorld1   | [Gingeropolous](https://github.com/Gingeropolous) | Individual | node.moneroworld.com              | 18089    |
+| MoneroWorld2   | [Gingeropolous](https://github.com/Gingeropolous) | Individual | uwillrunanodesoon.moneroworld.com | 18089    |
+| Monerujo       | [Monerujo](https://www.monerujo.io)               | Wallet     | nodex.monerujo.io                 | 18081    |
+| Rino           | [Rino](https://rino.io)                           | Wallet     | node.community.rino.io            | 18081    |
+| Seth           | [Seth](https://github.com/sethforprivacy)         | Individual | node.sethforprivacy.com           | 18089    |
+| SupportXmr     | [SupportXMR](https://www.supportxmr.com)          | Pool       | node.supportxmr.com               | 18081    |
+| SupportXmrIr   | [SupportXMR](https://www.supportxmr.com)          | Pool       | node.supportxmr.ir                | 18089    |
 
 ## Build
 ### General Info
@@ -633,11 +673,11 @@ GitHub's API blocks request that do not have an HTTP `User-Agent` header. [Gupax
 ### P2Pool connection errors
 **TL;DR: Run & use your own Monero Node.**
 
-If you are using the [default P2Pool settings](#P2Pool) then you are using a [Community Monero Node](#community-monero-nodes). Using a community node is convenient but comes at the cost of privacy and reliability. You may encounter connections issues with these nodes that look like this:
+If you are using the [default P2Pool settings](#P2Pool) then you are using a [Remote Monero Node](#remote-monero-nodes). Using a remote node is convenient but comes at the cost of privacy and reliability. You may encounter connections issues with these nodes that look like this:
 ```
 2023-01-05 12:27:37.7962 P2PServer peer 23.233.96.72:37888 is ahead on mainchain (height 2792939, your height 2792936). Is your monerod stuck or lagging?
 ```
-To fix this you can select a different community node, or better yet: [Run your own local Monero Node](#running-a-local-monero-node).
+To fix this you can select a different remote node, or better yet: [Run your own local Monero Node](#running-a-local-monero-node).
 
 Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently 155GB). If you have the disk space, consider using the [P2Pool Advanced](#p2pool-1) tab and connecting to your own Monero node.
 
