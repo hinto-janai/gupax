@@ -26,7 +26,7 @@
 | human.rs     | Code for displaying human readable numbers & time
 | macros.rs    | General `macros!()` used in Gupax
 | main.rs      | The main `App` struct that holds all data + misc data/functions
-| node.rs      | Community node ping code for the `P2Pool` simple tab
+| node.rs      | Remote node ping code for the `P2Pool` simple tab
 | p2pool.rs    | `P2Pool` tab
 | regex.rs     | General regexes used in Gupax
 | status.rs    | `Status` tab

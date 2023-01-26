@@ -26,7 +26,7 @@ use crate::{
 use egui::{
 	TextEdit,SelectableLabel,ComboBox,Label,Button,
 	Color32,RichText,Slider,Checkbox,ProgressBar,Spinner,
-	TextStyle::*,
+	TextStyle::*,Hyperlink
 };
 use std::sync::{Arc,Mutex};
 use regex::Regex;
@@ -231,7 +231,7 @@ impl crate::disk::P2pool {
 		})});
 
 		debug!("P2Pool Tab | Rendering warning text");
-		ui.add_sized([width, height/2.0], Label::new(RichText::new("WARNING: It is recommended to run/use your own Monero Node (hover for details)").color(YELLOW))).on_hover_text(P2POOL_COMMUNITY_NODE_WARNING);
+		ui.add_sized([width, height/2.0], Hyperlink::from_label_and_url("WARNING: It is recommended to run/use your own Monero Node (hover for details)", "https://github.com/hinto-janaiyo/gupax#running-a-local-monero-node")).on_hover_text(P2POOL_COMMUNITY_NODE_WARNING);
 
 	//---------------------------------------------------------------------------------------------------- Advanced
 	} else {

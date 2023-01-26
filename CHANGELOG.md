@@ -1,16 +1,11 @@
 # v1.1.1
 ## Updates
-* **Nodes:** Added 5 nodes to [Community Monero Nodes](https://github.com/hinto-janaiyo/gupax#community-monero-nodes) list:
-	- `nodes.hashvault.pro`
-	- `node.moneroworld.com`
-	- `uwillrunanodesoon.moneroworld.com`
-	- `176.9.0.187` [(Monero seed node)](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L708)
-	- `51.79.173.165` [(Monero seed node)](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L715)
-* **P2Pool:** Added warning in `[P2Pool Simple]` tab about using remote nodes
+* **Remote Nodes:** Replaced `[Community Monero Nodes]` with known ZMQ-enabled [Remote Nodes](https://github.com/hinto-janaiyo/gupax#remote-monero-nodes). List is sourced from this [daily-updated list based off uptime](https://github.com/hinto-janaiyo/monero-nodes). **This should fix most P2Pool connection related issues.**
+* **P2Pool:** Added warning in `[P2Pool Simple]` tab about privacy/practical downsides when using remote nodes; Hyperlinks to [Running a Local Monero Node](https://github.com/hinto-janaiyo/gupax#running-a-local-monero-node).
 
 ## Fixes
+* **Ping:** Fixed ping end lag; Remote node pings are as fast as the slowest ping instead of always being 10 seconds flat
 * **UI:** Top/Bottom bars are smaller, fixes some UI overflowing or being cramped
-* **Nodes:** Node ping colors are more strict (<200ms = GREEN, 200ms-499ms = YELLOW, >500ms = RED) 
 
 ## Bundled Versions
 * [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)

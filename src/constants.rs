@@ -266,7 +266,7 @@ You may encounter connection issues with remote nodes which may cause mining per
 
 Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently 155GB). If you have the disk space, consider using the [Advanced] tab and connecting to your own Monero node.
 
-For a simple guide, see the [Running a Local Monero Node] section on Gupax's GitHub at: 'https://github.com/hinto-janaiyo/gupax'"#;
+For a simple guide, see the [Running a Local Monero Node] section on Gupax's GitHub by clicking this message."#;
 
 pub const P2POOL_INPUT: &str = "Send a command to P2Pool";
 pub const P2POOL_ARGUMENTS: &str =
