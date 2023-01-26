@@ -134,6 +134,7 @@ impl crate::disk::P2pool {
 
 		ui.vertical(|ui| {
 		ui.horizontal(|ui| {
+
 			debug!("P2Pool Tab | Rendering [Ping List]");
 			// [Ping List]
 			let id = self.node;

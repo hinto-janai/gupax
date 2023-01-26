@@ -79,23 +79,26 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 
 **Gupax** is a GUI that helps with configuring, updating, and managing P2Pool & XMRig (both originally CLI-only).
 
-<img src="images/local.png" align="right" width="50%"/>
+<img src="images/local.png" align="left" width="50%"/>
 
-&emsp; ***Recap:***
-&emsp; 1. **XMRig** mines to **P2Pool** which fetchs blocks from a **Monero node**
-&emsp; 2. **Monero GUI** runs the ***Monero node***
-&emsp; 3. **Gupax** runs ***P2Pool/XMRig***
+**XMRig** mines to **P2Pool** which fetchs blocks from a **Monero node**
+
+**Monero GUI** runs the ***Monero node***
+
+**Gupax** runs ***P2Pool/XMRig***
 
 <br clear="left"/>
 
-<img src="images/remote.png" align="right" width="50%"/>
+<img src="images/remote.png" align="left" width="50%"/>
 
-By default, though, Gupax will use a [Remote Monero Node](#remote-monero-nodes) so you don't even have to run your own full Monero node to start mining on P2Pool:
+By default, though, Gupax will use a [Remote Monero Node](#remote-monero-nodes) so you don't even have to run your own full Monero node to start mining on P2Pool.
 
 <br clear="left"/>
 
 ## How-To
 https://user-images.githubusercontent.com/101352116/207978455-6ffdc0cc-204c-4594-9a2f-e10c505745bc.mp4
+
+<div align="center">
 
 1. [Download the bundled version of Gupax for your OS here](https://github.com/hinto-janaiyo/gupax/releases) or from [gupax.io](https://gupax.io/downloads)
 2. Extract somewhere (Desktop, Documents, etc)
@@ -111,6 +114,9 @@ _Notes:_
 - _[What is bundled? What is standalone?](#bundled-vs-standalone)_
 - _If you'd like to get deeper into the settings, see [Advanced.](#advanced)_
 
+</div>
+
+
 ## Simple
 The `Gupax/P2Pool/XMRig` tabs have two versions, `Simple` & `Advanced`.
 
@@ -121,7 +127,7 @@ The `Gupax/P2Pool/XMRig` tabs have two versions, `Simple` & `Advanced`.
 ### Status
 This tab has 2 submenus that show some info about running processes and P2Pool-specific stats.
 
-<img src="images/processes.png" align="right" width="50%"/>
+<img src="images/processes.png" align="left" width="50%"/>
 
 **Processes:**  
 This submenu shows:
@@ -131,7 +137,7 @@ This submenu shows:
 
 <br clear="left"/>
 
-<img src="images/payouts.png" align="right" width="50%"/>
+<img src="images/payouts.png" align="left" width="50%"/>
 
 **P2Pool:**  
 This submenu shows:
@@ -213,12 +219,13 @@ If you'd like to run and use your own local Monero node for P2Pool, follow these
 
 <div align="center">
 	<img src="images/local_node.png" width="66%"/>
-</div>
 
 1. In the Monero GUI, go to `Settings`
 2. Go to the `Node` tab
 3. Enable `Local node`
 4. Enter `--zmq-pub=tcp://127.0.0.1:18083` into `Daemon startup flags`
+
+</div>
 
 After syncing the blockchain, you will now have your own Monero node. The 4th step enables `ZMQ`, which is extra Monero node functionality that is needed for P2Pool to work correctly.
 

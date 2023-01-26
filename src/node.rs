@@ -31,146 +31,177 @@ use hyper::{
 };
 
 //---------------------------------------------------------------------------------------------------- Node list
-// Community Monerod nodes. ALL BUT ONE of these have ZMQ on 18083 (plowsof pls)
-// Adding/removing nodes will need changes to pretty
-// much all the code in this file, and the code that
-// handles the actual Enum selector in the P2Pool tab.
-pub const C3POOL: &str = "node.c3pool.com:18081";
-pub const CAKE: &str = "xmr-node.cakewallet.com:18081";
-pub const CAKE_EU: &str = "xmr-node-eu.cakewallet.com:18081";
-pub const CAKE_UK: &str = "xmr-node-uk.cakewallet.com:18081";
-pub const CAKE_US: &str = "xmr-node-usa-east.cakewallet.com:18081";
-pub const FEATHER_1: &str = "selsta1.featherwallet.net:18081";
-pub const FEATHER_2: &str = "selsta2.featherwallet.net:18081";
-pub const HASHVAULT: &str = "nodes.hashvault.pro:18081";
-pub const MAJESTICBANK_IS: &str = "node.majesticbank.is:18089";
-pub const MAJESTICBANK_SU: &str = "node.majesticbank.su:18089";
-pub const MONEROSEED_1: &str = "176.9.0.187:18089";
-pub const MONEROSEED_2: &str = "51.79.173.165:18089";
-pub const MONEROWORLD_1: &str = "node.moneroworld.com:18089";
-pub const MONEROWORLD_2: &str = "uwillrunanodesoon.moneroworld.com:18089";
-pub const MONERUJO: &str = "nodex.monerujo.io:18081";
-pub const PLOWSOF_1: &str = "node.monerodevs.org:18089"; // ZMQ = 18084
-pub const PLOWSOF_2: &str = "node2.monerodevs.org:18089"; // ZMQ = 18084
-pub const RINO: &str = "node.community.rino.io:18081";
-pub const SETH: &str = "node.sethforprivacy.com:18089";
-pub const SUPPORTXMR: &str = "node.supportxmr.com:18081";
-pub const SUPPORTXMR_IR: &str = "node.supportxmr.ir:18081";
-pub const XMRVSBEAST: &str = "p2pmd.xmrvsbeast.com:18081";
+// Remote Monero Nodes with ZMQ enabled, sourced from: [https://github.com/hinto-janaiyo/monero-nodes]
+// The format is an array of tuples consisting of: (ARRAY_INDEX, IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
-pub const NODE_IPS: [&str; 22] = [
-	C3POOL,CAKE,CAKE_EU,CAKE_UK,CAKE_US,FEATHER_1,FEATHER_2,HASHVAULT,MAJESTICBANK_IS,MAJESTICBANK_SU,MONEROSEED_1,MONEROSEED_2,
-	MONEROWORLD_1,MONEROWORLD_2,MONERUJO,PLOWSOF_1,PLOWSOF_2,RINO,SETH,SUPPORTXMR,SUPPORTXMR_IR,XMRVSBEAST,
+pub const REMOTE_NODES: [(usize, &str, &str, &str, &str); 22] = [
+	(0,  "monero.10z.com.ar",       "🇦🇷 AR - Buenos Aires F.D.",         "18089", "18084"),
+	(1,  "escom.sadovo.com",        "🇧🇬 BG - Plovdiv",                   "18089", "18084"),
+	(2,  "monero2.10z.com.ar",      "🇧🇷 BR - São Paulo",                 "18089", "18083"),
+	(3,  "monero1.heitechsoft.com", "🇨🇦 CA - Ontario",                   "18081", "18084"),
+	(4,  "node.monerodevs.org",     "🇨🇦 CA - Quebec",                    "18089", "18084"),
+	(5,  "de.poiuty.com",           "🇩🇪 DE - Berlin",                    "18081", "18084"),
+	(6,  "m1.poiuty.com",           "🇩🇪 DE - Berlin",                    "18081", "18084"),
+	(7,  "p2pmd.xmrvsbeast.com",    "🇩🇪 DE - Hesse",                     "18081", "18083"),
+	(8,  "fbx.tranbert.com",        "🇫🇷 FR - Île-de-France",             "18089", "18084"),
+	(9,  "reynald.ro",              "🇫🇷 FR - Île-de-France",             "18089", "18084"),
+	(10, "node2.monerodevs.org",    "🇫🇷 FR - Occitanie",                 "18089", "18084"),
+	(11, "monero.homeqloud.com",    "🇬🇷 GR - East Macedonia and Thrace", "18089", "18083"),
+	(12, "home.allantaylor.kiwi",   "🇳🇿 NZ - Canterbury",                "18089", "18083"),
+	(13, "ru.poiuty.com",           "🇷🇺 RU - Kuzbass",                   "18081", "18084"),
+	(14, "radishfields.hopto.org",  "🇺🇸 US - Colorado",                  "18081", "18084"),
+	(15, "xmrbandwagon.hopto.org",  "🇺🇸 US - Colorado",                  "18081", "18084"),
+	(16, "xmr.spotlightsound.com",  "🇺🇸 US - Kansas",                    "18081", "18084"),
+	(17, "xmrnode.facspro.net",     "🇺🇸 US - Nebraska",                  "18089", "18084"),
+	(18, "jameswillhoite.com",      "🇺🇸 US - Ohio",                      "18089", "18084"),
+	(19, "moneronode.ddns.net",     "🇺🇸 US - Pennsylvania",              "18089", "18084"),
+	(20, "node.richfowler.net",     "🇺🇸 US - Pennsylvania",              "18089", "18084"),
+	(21, "bunkernet.ddns.net",      "🇿🇦 ZA - Western Cape",              "18089", "18084"),
 ];
 
-pub const COMMUNITY_NODE_LENGTH: usize = NODE_IPS.len();
-pub const COMMUNITY_NODE_MAX_CHARS: usize = 14;
+pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
+pub const REMOTE_NODE_MAX_CHARS: usize = 24; // monero1.heitechsoft.com
 
-#[derive(Copy,Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
-pub enum NodeEnum {
-	C3pool,Cake,CakeEu,CakeUk,CakeUs,MajesticBankIs,MajesticBankSu,MoneroSeed1,MoneroSeed2,MoneroWorld1,MoneroWorld2,
-	Monerujo,Plowsof1,Plowsof2,Rino,Feather1,Feather2,HashVault,Seth,SupportXmr,SupportXmrIr,XmrVsBeast,
+pub struct RemoteNode {
+	pub index: usize,
+	pub ip: &'static str,
+	pub flag: &'static str,
+	pub rpc: &'static str,
+	pub zmq: &'static str,
 }
 
-impl Default for NodeEnum {
+impl Default for RemoteNode {
 	fn default() -> Self {
 		Self::new()
 	}
 }
 
-impl NodeEnum {
-	fn new() -> Self {
-		ip_to_enum(NODE_IPS[0])
+impl RemoteNode {
+	pub fn new() -> Self {
+		let (index, ip, flag, rpc, zmq) = REMOTE_NODES[0];
+		Self {
+			index,
+			ip,
+			flag,
+			rpc,
+			zmq,
+		}
 	}
 
-	fn get_index(&self) -> usize {
-		match self {
-			C3pool         => 0,
-			Cake           => 1,
-			CakeEu         => 2,
-			CakeUk         => 3,
-			CakeUs         => 4,
-			Feather1       => 5,
-			Feather2       => 6,
-			HashVault      => 7,
-			MajesticBankIs => 8,
-			MajesticBankSu => 9,
-			MoneroSeed1    => 10,
-			MoneroSeed2    => 11,
-			MoneroWorld1   => 12,
-			MoneroWorld2   => 13,
-			Monerujo       => 14,
-			Plowsof1       => 15,
-			Plowsof2       => 16,
-			Rino           => 17,
-			Seth           => 18,
-			SupportXmr     => 19,
-			SupportXmrIr   => 20,
-			_              => 21,
+	// Returns a default if IP is not found.
+	pub fn from_ip(from_ip: &str) -> Self {
+		for (index, ip, flag, rpc, zmq) in REMOTE_NODES {
+			if from_ip == ip {
+				return Self { index, ip, flag, rpc, zmq }
+			}
+		}
+		Self::new()
+	}
+
+	// Returns a default if index is not found in the const array.
+	pub fn from_index(index: usize) -> Self {
+		if index > REMOTE_NODE_LENGTH {
+			Self::new()
+		} else {
+			let (index, ip, flag, rpc, zmq) = REMOTE_NODES[index];
+			Self { index, ip, flag, rpc, zmq }
+		}
+	}
+
+	pub fn from_tuple(t: (usize, &'static str, &'static str, &'static str, &'static str)) -> Self {
+		let (index, ip, flag, rpc, zmq) = (t.0, t.1, t.2, t.3, t.4);
+		Self { index, ip, flag, rpc, zmq }
+	}
+
+	// monero1.heitechsoft.com = 24 max length
+	pub fn format_ip(&self) -> String {
+		match self.ip.len() {
+			1  => format!("{}                       ", self.ip),
+			2  => format!("{}                      ", self.ip),
+			3  => format!("{}                     ", self.ip),
+			4  => format!("{}                    ", self.ip),
+			5  => format!("{}                   ", self.ip),
+			6  => format!("{}                  ", self.ip),
+			7  => format!("{}                 ", self.ip),
+			8  => format!("{}                ", self.ip),
+			9  => format!("{}               ", self.ip),
+			10 => format!("{}              ", self.ip),
+			11 => format!("{}             ", self.ip),
+			12 => format!("{}            ", self.ip),
+			13 => format!("{}           ", self.ip),
+			14 => format!("{}          ", self.ip),
+			15 => format!("{}         ", self.ip),
+			16 => format!("{}        ", self.ip),
+			17 => format!("{}       ", self.ip),
+			18 => format!("{}      ", self.ip),
+			19 => format!("{}     ", self.ip),
+			20 => format!("{}    ", self.ip),
+			21 => format!("{}   ", self.ip),
+			22 => format!("{}  ", self.ip),
+			23 => format!("{} ", self.ip),
+			_  => format!("{}", self.ip),
 		}
 	}
 
 	// Return a random node (that isn't the one already selected).
 	pub fn get_random(&self) -> Self {
-		let index = Self::get_index(self);
-		let mut rand = thread_rng().gen_range(0..COMMUNITY_NODE_LENGTH);
-		while rand == index {
-			rand = thread_rng().gen_range(0..COMMUNITY_NODE_LENGTH);
+		let mut rand = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
+		while rand == self.index {
+			rand = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
 		}
-		ip_to_enum(NODE_IPS[rand])
+		Self::from_index(rand)
 	}
 
 	// Return the node [-1] of this one (wraps around)
 	pub fn get_last(&self) -> Self {
-		let index = Self::get_index(self);
+		let index = self.index;
 		if index == 0 {
-			ip_to_enum(NODE_IPS[COMMUNITY_NODE_LENGTH-1])
+			Self::from_index(REMOTE_NODE_LENGTH-1)
 		} else {
-			ip_to_enum(NODE_IPS[index-1])
+			Self::from_index(index-1)
 		}
 	}
 
 	// Return the node [+1] of this one (wraps around)
 	pub fn get_next(&self) -> Self {
-		let index = Self::get_index(self);
-		if index == COMMUNITY_NODE_LENGTH-1 {
-			ip_to_enum(NODE_IPS[0])
+		let index = self.index;
+		if index == REMOTE_NODE_LENGTH-1 {
+			Self::from_index(0)
 		} else {
-			ip_to_enum(NODE_IPS[index+1])
+			Self::from_index(index+1)
 		}
 	}
 
 	// This returns relative to the ping.
 	pub fn get_last_from_ping(&self, nodes: &Vec<NodeData>) -> Self {
 		let mut found = false;
-		let mut last = *self;
+		let mut last = self.ip;
 		for data in nodes {
-			if found { return last }
-			if *self == data.id { found = true; } else { last = data.id; }
+			if found { return Self::from_ip(last) }
+			if self.ip == data.ip { found = true; } else { last = data.ip; }
 		}
-		last
+		Self::from_ip(last)
 	}
 
 	pub fn get_next_from_ping(&self, nodes: &Vec<NodeData>) -> Self {
 		let mut found = false;
 		for data in nodes {
-			if found { return data.id }
-			if *self == data.id { found = true; }
+			if found { return Self::from_ip(data.ip) }
+			if self.ip == data.ip { found = true; }
 		}
 		*self
 	}
 }
 
-impl std::fmt::Display for NodeEnum {
+impl std::fmt::Display for RemoteNode {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		write!(f, "{:#?}", self)
+		write!(f, "{:#?}", self.ip)
 	}
 }
 
 //---------------------------------------------------------------------------------------------------- Node data
 #[derive(Debug, Clone)]
 pub struct NodeData {
-	pub id: NodeEnum,
 	pub ip: &'static str,
 	pub ms: u128,
 	pub color: Color32,
@@ -179,9 +210,8 @@ pub struct NodeData {
 impl NodeData {
 	pub fn new_vec() -> Vec<Self> {
 		let mut vec = Vec::new();
-		for ip in NODE_IPS {
+		for tuple in REMOTE_NODES {
 			vec.push(Self {
-				id: ip_to_enum(ip),
 				ip,
 				ms: 0,
 				color: Color32::LIGHT_GRAY,
@@ -189,75 +219,6 @@ impl NodeData {
 		}
 		vec
 	}
-}
-
-//---------------------------------------------------------------------------------------------------- IP <-> Enum functions
-use crate::NodeEnum::*;
-// Function for returning IP/Enum
-pub fn ip_to_enum(ip: &'static str) -> NodeEnum {
-	match ip {
-		C3POOL          => C3pool,
-		CAKE            => Cake,
-		CAKE_EU         => CakeEu,
-		CAKE_UK         => CakeUk,
-		CAKE_US         => CakeUs,
-		FEATHER_1       => Feather1,
-		FEATHER_2       => Feather2,
-		HASHVAULT       => HashVault,
-		MAJESTICBANK_IS => MajesticBankIs,
-		MAJESTICBANK_SU => MajesticBankSu,
-		MONEROSEED_1    => MoneroSeed1,
-		MONEROSEED_2    => MoneroSeed2,
-		MONEROWORLD_1   => MoneroWorld1,
-		MONEROWORLD_2   => MoneroWorld2,
-		MONERUJO        => Monerujo,
-		PLOWSOF_1       => Plowsof1,
-		PLOWSOF_2       => Plowsof2,
-		RINO            => Rino,
-		SETH            => Seth,
-		SUPPORTXMR      => SupportXmr,
-		SUPPORTXMR_IR   => SupportXmrIr,
-		_               => XmrVsBeast,
-	}
-}
-
-pub fn enum_to_ip(node: NodeEnum) -> &'static str {
-	match node {
-		C3pool         => C3POOL,
-		Cake           => CAKE,
-		CakeEu         => CAKE_EU,
-		CakeUk         => CAKE_UK,
-		CakeUs         => CAKE_US,
-		Feather1       => FEATHER_1,
-		Feather2       => FEATHER_2,
-		HashVault      => HASHVAULT,
-		MajesticBankIs => MAJESTICBANK_IS,
-		MajesticBankSu => MAJESTICBANK_SU,
-		MoneroSeed1    => MONEROSEED_1,
-		MoneroSeed2    => MONEROSEED_2,
-		MoneroWorld1   => MONEROWORLD_1,
-		MoneroWorld2   => MONEROWORLD_2,
-		Monerujo       => MONERUJO,
-		Plowsof1       => PLOWSOF_1,
-		Plowsof2       => PLOWSOF_2,
-		Rino           => RINO,
-		Seth           => SETH,
-		SupportXmr     => SUPPORTXMR,
-		SupportXmrIr   => SUPPORTXMR_IR,
-		_              => XMRVSBEAST
-	}
-}
-
-// Returns a tuple of (IP, RPC_PORT, ZMQ_PORT)
-pub fn enum_to_ip_rpc_zmq_tuple(node: NodeEnum) -> (&'static str, &'static str, &'static str) {
-	// [.unwrap()] should be safe, IP:PORTs are constants after all.
-	let (ip, rpc) = enum_to_ip(node).rsplit_once(':').unwrap();
-	// Get ZMQ, grr... plowsof is the only 18084 zmq person.
-	let zmq = match node {
-		Plowsof1|Plowsof2 => "18084",
-		_ => "18083",
-	};
-	(ip, rpc, zmq)
 }
 
 // 5000 = 4 max length
@@ -270,31 +231,11 @@ pub fn format_ms(ms: u128) -> String {
 	}
 }
 
-// MajesticBankIs = 14 max length
-pub fn format_enum(id: NodeEnum) -> String {
-	match id.to_string().len() {
-		1  => format!("{}             ", id),
-		2  => format!("{}            ", id),
-		3  => format!("{}           ", id),
-		4  => format!("{}          ", id),
-		5  => format!("{}         ", id),
-		6  => format!("{}        ", id),
-		7  => format!("{}       ", id),
-		8  => format!("{}      ", id),
-		9  => format!("{}     ", id),
-		10 => format!("{}    ", id),
-		11 => format!("{}   ", id),
-		12 => format!("{}  ", id),
-		13 => format!("{} ", id),
-		_  => format!("{}", id),
-	}
-}
-
 //---------------------------------------------------------------------------------------------------- Ping data
 #[derive(Debug)]
 pub struct Ping {
 	pub nodes: Vec<NodeData>,
-	pub fastest: NodeEnum,
+	pub fastest: &'static str,
 	pub pinging: bool,
 	pub msg: String,
 	pub prog: f32,
@@ -312,7 +253,7 @@ impl Ping {
 	pub fn new() -> Self {
 		Self {
 			nodes: NodeData::new_vec(),
-			fastest: NodeEnum::new(),
+			fastest: REMOTE_NODES[0].1,
 			pinging: false,
 			msg: "No ping in progress".to_string(),
 			prog: 0.0,
@@ -347,7 +288,7 @@ impl Ping {
 		});
 	}
 
-	// This is for pinging the community nodes to
+	// This is for pinging the remote nodes to
 	// find the fastest/slowest one for the user.
 	// The process:
 	//   - Send [get_info] JSON-RPC request over HTTP to all IPs
@@ -370,7 +311,7 @@ impl Ping {
 		let ping = Arc::clone(ping);
 		lock!(ping).pinging = true;
 		lock!(ping).prog = 0.0;
-		let percent = (100.0 / (COMMUNITY_NODE_LENGTH as f32)).floor();
+		let percent = (100.0 / (REMOTE_NODE_LENGTH as f32)).floor();
 
 		// Create HTTP client
 		let info = "Creating HTTP Client".to_string();
@@ -381,10 +322,10 @@ impl Ping {
 		// Random User Agent
 		let rand_user_agent = crate::Pkg::get_user_agent();
 		// Handle vector
-		let mut handles = Vec::with_capacity(COMMUNITY_NODE_LENGTH);
-		let node_vec = arc_mut!(Vec::with_capacity(COMMUNITY_NODE_LENGTH));
+		let mut handles = Vec::with_capacity(REMOTE_NODE_LENGTH);
+		let node_vec = arc_mut!(Vec::with_capacity(REMOTE_NODE_LENGTH));
 
-		for ip in NODE_IPS {
+		for (index, ip, location, rpc, zmq) in REMOTE_NODES {
 			let client = client.clone();
 			let ping = Arc::clone(&ping);
 			let node_vec = Arc::clone(&node_vec);
@@ -394,7 +335,7 @@ impl Ping {
 				.header("User-Agent", rand_user_agent)
 				.body(hyper::Body::from(r#"{"jsonrpc":"2.0","id":"0","method":"get_info"}"#))
 				.unwrap();
-			let handle = tokio::task::spawn(async move { Self::response(client, request, ip, ping, percent, node_vec).await; });
+			let handle = tokio::task::spawn(async move { Self::response(client, request, ip, rpc, ping, percent, node_vec).await; });
 			handles.push(handle);
 		}
 
@@ -403,32 +344,31 @@ impl Ping {
 		}
 
 		let node_vec = std::mem::take(&mut *lock!(node_vec));
-		let fastest_info = format!("Fastest node: {}ms ... {} @ {}", node_vec[0].ms, node_vec[0].id, node_vec[0].ip);
+		let fastest_info = format!("Fastest node: {}ms ... {}", node_vec[0].ms, node_vec[0].ip);
 
 		let info = "Cleaning up connections".to_string();
 		info!("Ping | {}...", info);
 		let mut ping = lock!(ping);
-			ping.fastest = node_vec[0].id;
+			ping.fastest = node_vec[0].ip;
 			ping.nodes = node_vec;
 			ping.msg = info;
 			drop(ping);
 		Ok(fastest_info)
 	}
 
-	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
-		let id = ip_to_enum(ip);
+	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, rpc: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
 		let ms;
 		let info;
 		let now = Instant::now();
 		match tokio::time::timeout(Duration::from_secs(5), client.request(request)).await {
 			Ok(_) => {
 				ms = now.elapsed().as_millis();
-				info = format!("{}ms ... {}: {}", ms, id, ip);
+				info = format!("{}ms ... {}", ms, ip);
 				info!("Ping | {}", info)
 			},
 			Err(_) => {
 				ms = 5000;
-				info = format!("{}ms ... {}: {}", ms, id, ip);
+				info = format!("{}ms ... {}", ms, ip);
 				warn!("Ping | {}", info)
 			},
 		};
@@ -446,7 +386,7 @@ impl Ping {
 		ping.msg = info;
 		ping.prog += percent;
 		drop(ping);
-		lock!(node_vec).push(NodeData { id: ip_to_enum(ip), ip, ms, color, });
+		lock!(node_vec).push(NodeData { ip, ms, color, });
 	}
 }
 
@@ -455,7 +395,7 @@ impl Ping {
 mod test {
 	#[test]
 	fn validate_node_ips() {
-		for ip in crate::NODE_IPS {
+		for (_, ip, _, _, _) in crate::REMOTE_NODES {
 			assert!(ip.len() < 255);
 			assert!(ip.is_ascii());
 			assert!(ip.ends_with(":18081") || ip.ends_with(":18089"));
@@ -464,8 +404,8 @@ mod test {
 
 	#[test]
 	fn spacing() {
-		for ip in crate::NODE_IPS {
-			assert!(crate::format_enum(crate::ip_to_enum(ip)).len() == crate::COMMUNITY_NODE_MAX_CHARS);
+		for (_, ip, _, _, _) in crate::REMOTE_NODES {
+			assert!(crate::format_ip(ip).len() <= crate::REMOTE_NODE_MAX_CHARS);
 		}
 	}
 }
