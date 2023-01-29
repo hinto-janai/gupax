@@ -32,38 +32,35 @@ use hyper::{
 
 //---------------------------------------------------------------------------------------------------- Node list
 // Remote Monero Nodes with ZMQ enabled, sourced from: [https://github.com/hinto-janaiyo/monero-nodes]
-// The format is an array of tuples consisting of: (ARRAY_INDEX, IP, LOCATION, RPC_PORT, ZMQ_PORT)
+// The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
-pub const REMOTE_NODES: [(usize, &str, &str, &str, &str); 22] = [
-	(0,  "monero.10z.com.ar",       "AR - Buenos Aires F.D.",         "18089", "18084"),
-	(1,  "escom.sadovo.com",        "BG - Plovdiv",                   "18089", "18084"),
-	(2,  "monero2.10z.com.ar",      "BR - São Paulo",                 "18089", "18083"),
-	(3,  "monero1.heitechsoft.com", "CA - Ontario",                   "18081", "18084"),
-	(4,  "node.monerodevs.org",     "CA - Quebec",                    "18089", "18084"),
-	(5,  "de.poiuty.com",           "DE - Berlin",                    "18081", "18084"),
-	(6,  "m1.poiuty.com",           "DE - Berlin",                    "18081", "18084"),
-	(7,  "p2pmd.xmrvsbeast.com",    "DE - Hesse",                     "18081", "18083"),
-	(8,  "fbx.tranbert.com",        "FR - Île-de-France",             "18089", "18084"),
-	(9,  "reynald.ro",              "FR - Île-de-France",             "18089", "18084"),
-	(10, "node2.monerodevs.org",    "FR - Occitanie",                 "18089", "18084"),
-	(11, "monero.homeqloud.com",    "GR - East Macedonia and Thrace", "18089", "18083"),
-	(12, "home.allantaylor.kiwi",   "NZ - Canterbury",                "18089", "18083"),
-	(13, "ru.poiuty.com",           "RU - Kuzbass",                   "18081", "18084"),
-	(14, "radishfields.hopto.org",  "US - Colorado",                  "18081", "18084"),
-	(15, "xmrbandwagon.hopto.org",  "US - Colorado",                  "18081", "18084"),
-	(16, "xmr.spotlightsound.com",  "US - Kansas",                    "18081", "18084"),
-	(17, "xmrnode.facspro.net",     "US - Nebraska",                  "18089", "18084"),
-	(18, "jameswillhoite.com",      "US - Ohio",                      "18089", "18084"),
-	(19, "moneronode.ddns.net",     "US - Pennsylvania",              "18089", "18084"),
-	(20, "node.richfowler.net",     "US - Pennsylvania",              "18089", "18084"),
-	(21, "bunkernet.ddns.net",      "ZA - Western Cape",              "18089", "18084"),
+pub const REMOTE_NODES: [(&str, &str, &str, &str); 20] = [
+	("monero.10z.com.ar",       "AR - Buenos Aires F.D.",         "18089", "18084"),
+	("escom.sadovo.com",        "BG - Plovdiv",                   "18089", "18084"),
+	("monero2.10z.com.ar",      "BR - São Paulo",                 "18089", "18083"),
+	("monero1.heitechsoft.com", "CA - Ontario",                   "18081", "18084"),
+	("node.monerodevs.org",     "CA - Quebec",                    "18089", "18084"),
+	("de.poiuty.com",           "DE - Berlin",                    "18081", "18084"),
+	("m1.poiuty.com",           "DE - Berlin",                    "18081", "18084"),
+	("p2pmd.xmrvsbeast.com",    "DE - Hesse",                     "18081", "18083"),
+	("fbx.tranbert.com",        "FR - Île-de-France",             "18089", "18084"),
+	("reynald.ro",              "FR - Île-de-France",             "18089", "18084"),
+	("node2.monerodevs.org",    "FR - Occitanie",                 "18089", "18084"),
+	("monero.homeqloud.com",    "GR - East Macedonia and Thrace", "18089", "18083"),
+	("ru.poiuty.com",           "RU - Kuzbass",                   "18081", "18084"),
+	("radishfields.hopto.org",  "US - Colorado",                  "18081", "18084"),
+	("xmrbandwagon.hopto.org",  "US - Colorado",                  "18081", "18084"),
+	("xmr.spotlightsound.com",  "US - Kansas",                    "18081", "18084"),
+	("xmrnode.facspro.net",     "US - Nebraska",                  "18089", "18084"),
+	("moneronode.ddns.net",     "US - Pennsylvania",              "18089", "18084"),
+	("node.richfowler.net",     "US - Pennsylvania",              "18089", "18084"),
+	("bunkernet.ddns.net",      "ZA - Western Cape",              "18089", "18084"),
 ];
 
 pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
 pub const REMOTE_NODE_MAX_CHARS: usize = 24; // monero1.heitechsoft.com
 
 pub struct RemoteNode {
-	pub index: usize,
 	pub ip: &'static str,
 	pub location: &'static str,
 	pub rpc: &'static str,
@@ -78,9 +75,8 @@ impl Default for RemoteNode {
 
 impl RemoteNode {
 	pub fn new() -> Self {
-		let (index, ip, location, rpc, zmq) = REMOTE_NODES[0];
+		let (ip, location, rpc, zmq) = REMOTE_NODES[0];
 		Self {
-			index,
 			ip,
 			location,
 			rpc,
@@ -89,22 +85,22 @@ impl RemoteNode {
 	}
 
 	pub fn check_exists(og_ip: &str) -> String {
-		for (_, ip, _, _, _) in REMOTE_NODES {
+		for (ip, _, _, _) in REMOTE_NODES {
 			if og_ip == ip {
 				info!("Found remote node in array: {}", ip);
 				return ip.to_string()
 			}
 		}
-		let ip = REMOTE_NODES[0].1.to_string();
+		let ip = REMOTE_NODES[0].0.to_string();
 		warn!("[{}] remote node does not exist, returning default: {}", og_ip, ip);
 		ip
 	}
 
 	// Returns a default if IP is not found.
 	pub fn from_ip(from_ip: &str) -> Self {
-		for (index, ip, location, rpc, zmq) in REMOTE_NODES {
+		for (ip, location, rpc, zmq) in REMOTE_NODES {
 			if from_ip == ip {
-				return Self { index, ip, location, rpc, zmq }
+				return Self { ip, location, rpc, zmq }
 			}
 		}
 		Self::new()
@@ -115,31 +111,31 @@ impl RemoteNode {
 		if index > REMOTE_NODE_LENGTH {
 			Self::new()
 		} else {
-			let (index, ip, location, rpc, zmq) = REMOTE_NODES[index];
-			Self { index, ip, location, rpc, zmq }
+			let (ip, location, rpc, zmq) = REMOTE_NODES[index];
+			Self { ip, location, rpc, zmq }
 		}
 	}
 
-	pub fn from_tuple(t: (usize, &'static str, &'static str, &'static str, &'static str)) -> Self {
-		let (index, ip, location, rpc, zmq) = (t.0, t.1, t.2, t.3, t.4);
-		Self { index, ip, location, rpc, zmq }
+	pub fn from_tuple(t: (&'static str, &'static str, &'static str, &'static str)) -> Self {
+		let (ip, location, rpc, zmq) = (t.0, t.1, t.2, t.3);
+		Self { ip, location, rpc, zmq }
 	}
 
 	pub fn get_ip_rpc_zmq(og_ip: &str) -> (&str, &str, &str) {
-		for (_, ip, _, rpc, zmq) in REMOTE_NODES {
+		for (ip, _, rpc, zmq) in REMOTE_NODES {
 			if og_ip == ip { return (ip, rpc, zmq) }
 		}
-		let (_, ip, _, rpc, zmq) = REMOTE_NODES[0];
+		let (ip, _, rpc, zmq) = REMOTE_NODES[0];
 		(ip, rpc, zmq)
 	}
 
 	// Return a random node (that isn't the one already selected).
 	pub fn get_random(current_ip: &str) -> String {
 		let mut rng = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
-		let mut node = REMOTE_NODES[rng].1;
+		let mut node = REMOTE_NODES[rng].0;
 		while current_ip == node {
 			rng = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
-			node = REMOTE_NODES[rng].1;
+			node = REMOTE_NODES[rng].0;
 		}
 		node.to_string()
 	}
@@ -148,7 +144,7 @@ impl RemoteNode {
 	pub fn get_last(current_ip: &str) -> String {
 		let mut found = false;
 		let mut last = current_ip;
-		for (_, ip, _, _, _) in REMOTE_NODES {
+		for (ip, _, _, _) in REMOTE_NODES {
 			if found { return ip.to_string() }
 			if current_ip == ip { found = true; } else { last = ip; }
 		}
@@ -158,7 +154,7 @@ impl RemoteNode {
 	// Return the node [+1] of this one
 	pub fn get_next(current_ip: &str) -> String {
 		let mut found = false;
-		for (_, ip, _, _, _) in REMOTE_NODES {
+		for (ip, _, _, _) in REMOTE_NODES {
 			if found { return ip.to_string() }
 			if current_ip == ip { found = true; }
 		}
@@ -206,7 +202,7 @@ pub fn format_ms(ms: u128) -> String {
 // format_ip_location(monero1.heitechsoft.com) -> "monero1.heitechsoft.com | XX - LOCATION"
 // [extra_space] controls whether extra space is appended so the list aligns.
 pub fn format_ip_location(og_ip: &str, extra_space: bool) -> String {
-	for (_, ip, location, _, _) in REMOTE_NODES {
+	for (ip, location, _, _) in REMOTE_NODES {
 		if og_ip == ip {
 			let ip = if extra_space { format_ip(ip) } else { ip.to_string() };
 			return format!("{} | {}", ip, location)
@@ -255,7 +251,7 @@ pub struct NodeData {
 impl NodeData {
 	pub fn new_vec() -> Vec<Self> {
 		let mut vec = Vec::new();
-		for (_, ip, _, _, _) in REMOTE_NODES {
+		for (ip, _, _, _) in REMOTE_NODES {
 			vec.push(Self {
 				ip,
 				ms: 0,
@@ -288,7 +284,7 @@ impl Ping {
 	pub fn new() -> Self {
 		Self {
 			nodes: NodeData::new_vec(),
-			fastest: REMOTE_NODES[0].1,
+			fastest: REMOTE_NODES[0].0,
 			pinging: false,
 			msg: "No ping in progress".to_string(),
 			prog: 0.0,
@@ -360,7 +356,7 @@ impl Ping {
 		let mut handles = Vec::with_capacity(REMOTE_NODE_LENGTH);
 		let node_vec = arc_mut!(Vec::with_capacity(REMOTE_NODE_LENGTH));
 
-		for (_, ip, _, rpc, zmq) in REMOTE_NODES {
+		for (ip, _, rpc, zmq) in REMOTE_NODES {
 			let client = client.clone();
 			let ping = Arc::clone(&ping);
 			let node_vec = Arc::clone(&node_vec);
@@ -430,17 +426,63 @@ impl Ping {
 mod test {
 	#[test]
 	fn validate_node_ips() {
-		for (_, ip, _, _, _) in crate::REMOTE_NODES {
+		for (ip, location, rpc, zmq) in crate::REMOTE_NODES {
 			assert!(ip.len() < 255);
 			assert!(ip.is_ascii());
-			assert!(ip.ends_with(":18081") || ip.ends_with(":18089"));
+			assert!(!location.is_empty());
+			assert!(!ip.is_empty());
+			assert!(rpc == "18081" || rpc == "18089");
+			assert!(zmq == "18083" || zmq == "18084");
 		}
 	}
 
 	#[test]
 	fn spacing() {
-		for (_, ip, _, _, _) in crate::REMOTE_NODES {
+		for (ip, _, _, _) in crate::REMOTE_NODES {
 			assert!(crate::format_ip(ip).len() <= crate::REMOTE_NODE_MAX_CHARS);
+		}
+	}
+
+	// This one pings the IPs defined in [REMOTE_NODES] and fully serializes the JSON data to make sure they work.
+	// This will only be ran with be ran with [cargo test -- --ignored].
+	#[tokio::test]
+	#[ignore]
+	async fn full_ping() {
+		use hyper::{
+			client::HttpConnector,
+			Client,Body,Request,
+		};
+		use crate::{REMOTE_NODES,REMOTE_NODE_LENGTH};
+		use serde::{Serialize,Deserialize};
+
+		#[derive(Deserialize,Serialize)]
+		struct GetInfo {
+			id: String,
+			jsonrpc: String,
+		}
+
+		// Create HTTP client
+		let client: Client<HttpConnector> = Client::builder().build(HttpConnector::new());
+
+		// Random User Agent
+		let rand_user_agent = crate::Pkg::get_user_agent();
+
+		let mut n = 1;
+		for (ip, _, rpc, zmq) in REMOTE_NODES {
+			println!("[{}/{}] {} | {} | {}", n, REMOTE_NODE_LENGTH, ip, rpc, zmq);
+			let client = client.clone();
+			let request = Request::builder()
+				.method("POST")
+				.uri("http://".to_string() + ip + ":" + rpc + "/json_rpc")
+				.header("User-Agent", rand_user_agent)
+				.body(hyper::Body::from(r#"{"jsonrpc":"2.0","id":"0","method":"get_info"}"#))
+				.unwrap();
+			let mut response = client.request(request).await.unwrap();
+			let body = hyper::body::to_bytes(response.body_mut()).await.unwrap();
+			let getinfo: GetInfo = serde_json::from_slice(&body).unwrap();
+			assert!(getinfo.id == "0");
+			assert!(getinfo.jsonrpc == "2.0");
+			n += 1;
 		}
 	}
 }

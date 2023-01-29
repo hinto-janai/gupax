@@ -5,6 +5,12 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 
 **To see a 3-minute video on how to download and run Gupax: [click here.](#How-To)**
 
+![windows-build](https://github.com/hinto-janaiyo/gupax/actions/workflows/windows-build.yml/badge.svg) ![macos-build](https://github.com/hinto-janaiyo/gupax/actions/workflows/macos-build.yml/badge.svg) ![linux-build](https://github.com/hinto-janaiyo/gupax/actions/workflows/linux-build.yml/badge.svg)
+
+![windows-test](https://github.com/hinto-janaiyo/gupax/actions/workflows/windows-test.yml/badge.svg) ![macos-test](https://github.com/hinto-janaiyo/gupax/actions/workflows/macos-test.yml/badge.svg) ![linux-test](https://github.com/hinto-janaiyo/gupax/actions/workflows/linux-test.yml/badge.svg)
+
+![daily-ping](https://github.com/hinto-janaiyo/gupax/actions/workflows/ping.yml/badge.svg)
+
 </div>
 
 ## Contents
@@ -557,13 +563,11 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | reynald.ro                       | 🇫🇷 FR - Île-de-France             | 18089    | 18084       |
 | node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
 | monero.homeqloud.com             | 🇬🇷 GR - East Macedonia and Thrace | 18089    | 18083       |
-| home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
 | ru.poiuty.com                    | 🇷🇺 RU - Kuzbass                   | 18081    | 18084       |
 | radishfields.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmrbandwagon.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmr.spotlightsound.com           | 🇺🇸 US - Kansas                    | 18081    | 18084       |
 | xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
-| jameswillhoite.com               | 🇺🇸 US - Ohio                      | 18089    | 18084       |
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | bunkernet.ddns.net               | 🇿🇦 ZA - Western Cape              | 18089    | 18084       |

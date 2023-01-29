@@ -4,7 +4,7 @@
 * **P2Pool:** Added warning in `[P2Pool Simple]` tab about privacy/practical downsides when using remote nodes; Hyperlinks to [Running a Local Monero Node](https://github.com/hinto-janaiyo/gupax#running-a-local-monero-node).
 
 ## Fixes
-* **Ping:** Fixed ping end lag; Remote node pings are as fast as the slowest ping instead of always being 10 seconds flat
+* **Ping:** Fixed ping end lag; Remote node pings are as fast as the slowest ping instead of always taking 10 seconds flat
 * **UI:** Top/Bottom bars are smaller, fixes some UI overflowing or being cramped
 
 ## Bundled Versions

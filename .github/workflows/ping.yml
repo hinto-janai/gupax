@@ -1,0 +1,27 @@
+# This uses the unit test in the [node.rs] file to ping all REMOTE_NODES
+# and attempts to serialize their JSON data to make sure they are working.
+
+name: Daily Remote Node Ping
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cache
+      uses: actions/cache@v3.2.3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ping
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y libgtk-3-dev
+    - name: Ping
+      run: cargo test -- --ignored --nocapture
