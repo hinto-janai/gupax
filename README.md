@@ -563,14 +563,16 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | reynald.ro                       | 🇫🇷 FR - Île-de-France             | 18089    | 18084       |
 | node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
 | monero.homeqloud.com             | 🇬🇷 GR - East Macedonia and Thrace | 18089    | 18083       |
+| home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
 | ru.poiuty.com                    | 🇷🇺 RU - Kuzbass                   | 18081    | 18084       |
+| node-01-xmr.godevs.cloud         | 🇸🇬 SG - Singapore                 | 18089    | 18083       |
+| node-02-xmr.godevs.cloud         | 🇸🇬 SG - Singapore                 | 18089    | 18083       |
 | radishfields.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmrbandwagon.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmr.spotlightsound.com           | 🇺🇸 US - Kansas                    | 18081    | 18084       |
 | xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
-| bunkernet.ddns.net               | 🇿🇦 ZA - Western Cape              | 18089    | 18084       |
 
 These are community nodes that **DON'T** have ZMQ enabled but are fast and well-known. These are not used in Gupax but can be used for general Monero usage.
 
@@ -611,7 +613,10 @@ before attempting a full build.
 ---
 
 ### Linux
-You'll need the development versions of libraries like `OpenSSL`, `SQLite`, and maybe some other ones already installed on your system. Read the compiler errors to see which ones are missing from your system and search around to see which packages you'll need to install depending on your distro.
+The pre-compiled Linux binaries are built on Debian 11, you'll need these packages to build:
+```
+sudo apt install build-essential cmake libgtk-3-dev
+```
 
 After that, run:
 ```

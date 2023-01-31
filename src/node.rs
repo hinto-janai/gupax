@@ -34,31 +34,33 @@ use hyper::{
 // Remote Monero Nodes with ZMQ enabled, sourced from: [https://github.com/hinto-janaiyo/monero-nodes]
 // The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
-pub const REMOTE_NODES: [(&str, &str, &str, &str); 20] = [
-	("monero.10z.com.ar",       "AR - Buenos Aires F.D.",         "18089", "18084"),
-	("escom.sadovo.com",        "BG - Plovdiv",                   "18089", "18084"),
-	("monero2.10z.com.ar",      "BR - São Paulo",                 "18089", "18083"),
-	("monero1.heitechsoft.com", "CA - Ontario",                   "18081", "18084"),
-	("node.monerodevs.org",     "CA - Quebec",                    "18089", "18084"),
-	("de.poiuty.com",           "DE - Berlin",                    "18081", "18084"),
-	("m1.poiuty.com",           "DE - Berlin",                    "18081", "18084"),
-	("p2pmd.xmrvsbeast.com",    "DE - Hesse",                     "18081", "18083"),
-	("fbx.tranbert.com",        "FR - Île-de-France",             "18089", "18084"),
-	("reynald.ro",              "FR - Île-de-France",             "18089", "18084"),
-	("node2.monerodevs.org",    "FR - Occitanie",                 "18089", "18084"),
-	("monero.homeqloud.com",    "GR - East Macedonia and Thrace", "18089", "18083"),
-	("ru.poiuty.com",           "RU - Kuzbass",                   "18081", "18084"),
-	("radishfields.hopto.org",  "US - Colorado",                  "18081", "18084"),
-	("xmrbandwagon.hopto.org",  "US - Colorado",                  "18081", "18084"),
-	("xmr.spotlightsound.com",  "US - Kansas",                    "18081", "18084"),
-	("xmrnode.facspro.net",     "US - Nebraska",                  "18089", "18084"),
-	("moneronode.ddns.net",     "US - Pennsylvania",              "18089", "18084"),
-	("node.richfowler.net",     "US - Pennsylvania",              "18089", "18084"),
-	("bunkernet.ddns.net",      "ZA - Western Cape",              "18089", "18084"),
+pub const REMOTE_NODES: [(&str, &str, &str, &str); 22] = [
+	("monero.10z.com.ar",        "AR - Buenos Aires F.D.",         "18089", "18084"),
+	("escom.sadovo.com",         "BG - Plovdiv",                   "18089", "18084"),
+	("monero2.10z.com.ar",       "BR - São Paulo",                 "18089", "18083"),
+	("monero1.heitechsoft.com",  "CA - Ontario",                   "18081", "18084"),
+	("node.monerodevs.org",      "CA - Quebec",                    "18089", "18084"),
+	("de.poiuty.com",            "DE - Berlin",                    "18081", "18084"),
+	("m1.poiuty.com",            "DE - Berlin",                    "18081", "18084"),
+	("p2pmd.xmrvsbeast.com",     "DE - Hesse",                     "18081", "18083"),
+	("fbx.tranbert.com",         "FR - Île-de-France",             "18089", "18084"),
+	("reynald.ro",               "FR - Île-de-France",             "18089", "18084"),
+	("node2.monerodevs.org",     "FR - Occitanie",                 "18089", "18084"),
+	("monero.homeqloud.com",     "GR - East Macedonia and Thrace", "18089", "18083"),
+	("home.allantaylor.kiwi",    "NZ - Canterbury",                "18089", "18083"),
+	("ru.poiuty.com",            "RU - Kuzbass",                   "18081", "18084"),
+	("node-01-xmr.godevs.cloud", "SG - Singapore",                 "18089", "18083"),
+	("node-02-xmr.godevs.cloud", "SG - Singapore",                 "18089", "18083"),
+	("radishfields.hopto.org",   "US - Colorado",                  "18081", "18084"),
+	("xmrbandwagon.hopto.org",   "US - Colorado",                  "18081", "18084"),
+	("xmr.spotlightsound.com",   "US - Kansas",                    "18081", "18084"),
+	("xmrnode.facspro.net",      "US - Nebraska",                  "18089", "18084"),
+	("moneronode.ddns.net",      "US - Pennsylvania",              "18089", "18084"),
+	("node.richfowler.net",      "US - Pennsylvania",              "18089", "18084"),
 ];
 
 pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
-pub const REMOTE_NODE_MAX_CHARS: usize = 24; // monero1.heitechsoft.com
+pub const REMOTE_NODE_MAX_CHARS: usize = 25; // node-01-xmr.godevs.cloud
 
 pub struct RemoteNode {
 	pub ip: &'static str,
@@ -211,31 +213,33 @@ pub fn format_ip_location(og_ip: &str, extra_space: bool) -> String {
 	"??? | ???".to_string()
 }
 
-// monero1.heitechsoft.com = 24 max length
+// node-01-xmr.godevs.cloud = 25 max length
 pub fn format_ip(ip: &str) -> String {
 	match ip.len() {
-		1  => format!("{}                      ", ip),
-		2  => format!("{}                     ", ip),
-		3  => format!("{}                    ", ip),
-		4  => format!("{}                   ", ip),
-		5  => format!("{}                  ", ip),
-		6  => format!("{}                 ", ip),
-		7  => format!("{}                ", ip),
-		8  => format!("{}               ", ip),
-		9  => format!("{}              ", ip),
-		10 => format!("{}             ", ip),
-		11 => format!("{}            ", ip),
-		12 => format!("{}           ", ip),
-		13 => format!("{}          ", ip),
-		14 => format!("{}         ", ip),
-		15 => format!("{}        ", ip),
-		16 => format!("{}       ", ip),
-		17 => format!("{}      ", ip),
-		18 => format!("{}     ", ip),
-		19 => format!("{}    ", ip),
-		20 => format!("{}   ", ip),
-		21 => format!("{}  ", ip),
-		22 => format!("{} ", ip),
+		1  => format!("{}                        ", ip),
+		2  => format!("{}                       ", ip),
+		3  => format!("{}                      ", ip),
+		4  => format!("{}                     ", ip),
+		5  => format!("{}                    ", ip),
+		6  => format!("{}                   ", ip),
+		7  => format!("{}                  ", ip),
+		8  => format!("{}                 ", ip),
+		9  => format!("{}                ", ip),
+		10 => format!("{}               ", ip),
+		11 => format!("{}              ", ip),
+		12 => format!("{}             ", ip),
+		13 => format!("{}            ", ip),
+		14 => format!("{}           ", ip),
+		15 => format!("{}          ", ip),
+		16 => format!("{}         ", ip),
+		17 => format!("{}        ", ip),
+		18 => format!("{}       ", ip),
+		19 => format!("{}      ", ip),
+		20 => format!("{}     ", ip),
+		21 => format!("{}    ", ip),
+		22 => format!("{}   ", ip),
+		23 => format!("{}  ", ip),
+		24 => format!("{} ", ip),
 		_  => format!("{}", ip),
 	}
 }
