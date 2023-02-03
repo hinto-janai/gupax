@@ -422,8 +422,9 @@ impl Helper {
 				}
 			// Else, build the argument
 			} else {
+				let ip = if state.selected_ip == "localhost" { "127.0.0.1".to_string() } else { state.selected_ip.to_string() };
 				args.push("--wallet".to_string());    args.push(state.address.clone());          // Wallet
-				args.push("--host".to_string());      args.push(state.selected_ip.to_string());  // IP
+				args.push("--host".to_string());      args.push(ip);                             // IP
 				args.push("--rpc-port".to_string());  args.push(state.selected_rpc.to_string()); // RPC
 				args.push("--zmq-port".to_string());  args.push(state.selected_zmq.to_string()); // ZMQ
 				args.push("--loglevel".to_string());  args.push(state.log_level.to_string());    // Log Level
