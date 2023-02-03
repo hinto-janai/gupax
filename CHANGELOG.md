@@ -1,3 +1,17 @@
+# v1.2.0
+## Updates
+*
+
+## Fixes
+*
+
+## Bundled Versions
+* [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)
+* [`XMRig v6.18.1`](https://github.com/xmrig/xmrig/releases/tag/v6.18.1)
+
+---
+
+
 # v1.1.1
 ## Updates
 * **Remote Nodes:** Replaced `[Community Monero Nodes]` with known ZMQ-enabled [Remote Nodes](https://github.com/hinto-janaiyo/gupax#remote-monero-nodes). List is sourced from this [daily-updated list based off uptime](https://github.com/hinto-janaiyo/monero-nodes). **This should fix most P2Pool connection related issues.**
