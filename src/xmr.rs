@@ -219,7 +219,7 @@ impl PayoutOrd {
 		let amount_of_lines = log.lines().count();
 		let mut vec: Vec<(String, AtomicUnit, HumanNumber)> = Vec::with_capacity(70 * amount_of_lines);
 		for line in log.lines() {
-			debug!("PayoutOrg | Parsing line: [{}]", line);
+			debug!("PayoutOrd | Parsing line: [{}]", line);
 			vec.push(Self::parse_formatted_payout_line(line, &regex));
 		}
 		*self = Self(vec);
