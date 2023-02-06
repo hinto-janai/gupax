@@ -141,8 +141,8 @@ pub struct Process {
 	// The below are the handles to the actual child process.
 	// [Simple] has no STDIN, but [Advanced] does. A PTY (pseudo-terminal) is
 	// required for P2Pool/XMRig to open their STDIN pipe.
-	child: Option<Arc<Mutex<Box<dyn portable_pty::Child + Send + std::marker::Sync>>>>, // STDOUT/STDERR is combined automatically thanks to this PTY, nice
-	stdin: Option<Box<dyn portable_pty::MasterPty + Send>>, // A handle to the process's MasterPTY/STDIN
+//	child: Option<Arc<Mutex<Box<dyn portable_pty::Child + Send + std::marker::Sync>>>>, // STDOUT/STDERR is combined automatically thanks to this PTY, nice
+//	stdin: Option<Box<dyn portable_pty::MasterPty + Send>>, // A handle to the process's MasterPTY/STDIN
 
 	// This is the process's private output [String], used by both [Simple] and [Advanced].
 	// "parse" contains the output that will be parsed, then tossed out. "pub" will be written to
@@ -164,8 +164,8 @@ impl Process {
 			state: ProcessState::Dead,
 			signal: ProcessSignal::None,
 			start: Instant::now(),
-			stdin: Option::None,
-			child: Option::None,
+//			stdin: Option::None,
+//			child: Option::None,
 			output_parse: arc_mut!(String::with_capacity(500)),
 			output_pub: arc_mut!(String::with_capacity(500)),
 			input: vec![String::new()],
@@ -474,6 +474,7 @@ impl Helper {
 		// 1c. Create child
 		debug!("P2Pool | Creating child...");
 		let child_pty = arc_mut!(pair.slave.spawn_command(cmd).unwrap());
+		drop(pair.slave);
 
         // 2. Set process state
 		debug!("P2Pool | Setting process state...");
@@ -481,9 +482,8 @@ impl Helper {
         lock.state = ProcessState::Alive;
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
-		lock.child = Some(Arc::clone(&child_pty));
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
-		lock.stdin = Some(pair.master);
+		let mut stdin = pair.master;
 		drop(lock);
 
 		let regex = P2poolRegex::new();
@@ -618,13 +618,26 @@ impl Helper {
 			let mut lock = lock!(process);
 			if !lock.input.is_empty() {
 				let input = std::mem::take(&mut lock.input);
+				drop(lock);
 				for line in input {
+					if line.is_empty() { continue }
 					debug!("P2Pool Watchdog | User input not empty, writing to STDIN: [{}]", line);
-					if let Err(e) = writeln!(lock.stdin.as_mut().unwrap(), "{}", line) { error!("P2Pool Watchdog | STDIN error: {}", e); }
+					// Windows terminals (or at least the PTY abstraction I'm using, portable_pty)
+					// requires a [\r\n] to end a line, whereas Unix is okay with just a [\n].
+					//
+					// I have literally read all of [portable_pty]'s source code, dug into Win32 APIs,
+					// even rewrote some of the actual PTY code in order to understand why STDIN doesn't work
+					// on Windows. It's because of a fucking missing [\r]. Another reason to hate Windows :D
+					//
+					// XMRig did actually work before though, since it reads STDIN directly without needing a newline.
+					#[cfg(target_os = "windows")]
+					if let Err(e) = write!(stdin, "{}\r\n", line) { error!("P2Pool Watchdog | STDIN error: {}", e); }
+					#[cfg(target_family = "unix")]
+					if let Err(e) = writeln!(stdin, "{}", line) { error!("P2Pool Watchdog | STDIN error: {}", e); }
+					// Flush.
+					if let Err(e) = stdin.flush() { error!("P2Pool Watchdog | STDIN flush error: {}", e); }
 				}
 			}
-			drop(lock);
-
 
 			// Check if logs need resetting
 			debug!("P2Pool Watchdog | Attempting GUI log reset check");
@@ -863,6 +876,7 @@ impl Helper {
 		// 1c. Create child
 		debug!("XMRig | Creating child...");
 		let child_pty = arc_mut!(pair.slave.spawn_command(cmd).unwrap());
+		drop(pair.slave);
 
 		// 2. Input [sudo] pass, wipe, then drop.
 		if cfg!(unix) {
@@ -880,9 +894,8 @@ impl Helper {
         lock.state = ProcessState::Alive;
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
-		lock.child = Some(Arc::clone(&child_pty));
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
-		lock.stdin = Some(pair.master);
+		let mut stdin = pair.master;
 		drop(lock);
 
 		// 4. Spawn PTY read thread
@@ -998,12 +1011,18 @@ impl Helper {
 			let mut lock = lock!(process);
 			if !lock.input.is_empty() {
 				let input = std::mem::take(&mut lock.input);
+				drop(lock);
 				for line in input {
+					if line.is_empty() { continue }
 					debug!("XMRig Watchdog | User input not empty, writing to STDIN: [{}]", line);
-					if let Err(e) = writeln!(lock.stdin.as_mut().unwrap(), "{}", line) { error!("XMRig Watchdog | STDIN error: {}", e); };
+					#[cfg(target_os = "windows")]
+					if let Err(e) = write!(stdin, "{}\r\n", line) { error!("XMRig Watchdog | STDIN error: {}", e); }
+					#[cfg(target_family = "unix")]
+					if let Err(e) = writeln!(stdin, "{}", line) { error!("XMRig Watchdog | STDIN error: {}", e); }
+					// Flush.
+					if let Err(e) = stdin.flush() { error!("XMRig Watchdog | STDIN flush error: {}", e); }
 				}
 			}
-			drop(lock);
 
 			// Check if logs need resetting
 			debug!("XMRig Watchdog | Attempting GUI log reset check");
