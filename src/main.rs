@@ -742,6 +742,7 @@ fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	options.initial_window_size = initial_window_size;
 	options.follow_system_theme = false;
 	options.default_theme = eframe::Theme::Dark;
+	options.renderer = eframe::Renderer::Wgpu;
 	let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read icon bytes").to_rgba8();
 	let (icon_width, icon_height) = icon.dimensions();
 	options.icon_data = Some(eframe::IconData {

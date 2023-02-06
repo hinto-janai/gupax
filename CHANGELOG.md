@@ -1,5 +1,6 @@
 # v1.1.2
 ## Fixes
+* **Windows:** Fixed Gupax crashing on certain CPU-based graphics (integrated + basic drivers)
 * **P2Pool/XMRig:** Fixed parsing of `localhost` into `127.0.0.1`
 * **P2Pool/XMRig:** Current (non-saved) text-box values are now used instead of "old" selected values for custom nodes/pools
 
