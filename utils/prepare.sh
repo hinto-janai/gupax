@@ -36,6 +36,7 @@ cat << EOM > CHANGELOG.md.new
 * [\`P2Pool ${P2POOL_VERSION//\"/}\`](https://github.com/SChernykh/p2pool/releases/tag/${P2POOL_VERSION//\"/})
 * [\`XMRig ${XMRIG_VERSION//\"/}\`](https://github.com/xmrig/xmrig/releases/tag/${XMRIG_VERSION//\"/})
 
+
 ---
 
 

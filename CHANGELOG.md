@@ -1,8 +1,10 @@
 # v1.1.2
 ## Fixes
 * **Windows:** Fixed Gupax crashing on certain CPU-based graphics (integrated + basic drivers)
+* **Windows:** Fixed P2Pool Advanced command inputs being ignored
 * **P2Pool/XMRig:** Fixed parsing of `localhost` into `127.0.0.1`
 * **P2Pool/XMRig:** Current (non-saved) text-box values are now used instead of "old" selected values for custom nodes/pools
+* **Log:** Only Gupax console logs will be printed (libraries filtered out)
 
 ## Bundled Versions
 * [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)

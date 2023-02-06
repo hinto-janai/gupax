@@ -23,12 +23,12 @@ arti-hyper = "0.7.0"
 bytes = "1.2.1"
 dirs = "4.0.0"
 #--------------------------------------------------------------------------------
-eframe = { version = "0.19.0", default-features = false, features = ["wgpu"] }
 egui = "0.19.0"
 egui_extras = { version = "0.19.0", features = ["image"] }
 
 ## Update 2023-Feb-06: The below gets fixed by using the [wgpu] backend instead of [glow]
-## It also fixes crashes on CPU-based graphics.
+## It also fixes crashes on CPU-based graphics. Only used for Windows.
+## Using [wgpu] actually crashes macOS (fixed in 0.20.x though).
 
 ## [external/egui/crates/eframe/src/native/run.rs] line 41: [.with_srgb(true)]
 ## This line causes a [panic!] inside a Windows VM, from a Linux host.
@@ -66,14 +66,17 @@ serde-xml-rs = "0.6.0"
 
 # Unix dependencies
 [target.'cfg(unix)'.dependencies]
+ef
 tar = "0.4.38"
 flate2 = "1.0"
 sudo = "0.6.0"
+eframe = { version = "0.19.0", default-features = false, features = ["glow"] }
 
 # Windows dependencies
 [target.'cfg(windows)'.dependencies]
 zip = "0.6.3"
 is_elevated = "0.1.2"
+eframe = { version = "0.19.0", default-features = false, features = ["wgpu"] }
 
 # For Windows build (icon)
 [target.'cfg(windows)'.build-dependencies]

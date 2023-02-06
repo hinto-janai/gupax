@@ -713,6 +713,16 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 
 fn init_logger(now: Instant) {
 	use env_logger::fmt::Color;
+	let filter_env = std::env::var("RUST_LOG").unwrap_or_else(|_| "INFO".to_string());
+	let filter = match filter_env.as_str() {
+		"error"|"Error"|"ERROR" => LevelFilter::Error,
+		"warn"|"Warn"|"WARN"    => LevelFilter::Warn,
+		"debug"|"Debug"|"DEBUG" => LevelFilter::Debug,
+		"trace"|"Trace"|"TRACE" => LevelFilter::Trace,
+		                      _ => LevelFilter::Info,
+	};
+	std::env::set_var("RUST_LOG", format!("off,gupax={}", filter_env));
+
 	Builder::new().format(move |buf, record| {
 		let mut style = buf.style();
 		let level = match record.level() {
@@ -731,8 +741,9 @@ fn init_logger(now: Instant) {
 			buf.style().set_dimmed(true).value(record.line().unwrap_or(0)),
 			record.args(),
 		)
-	}).filter_level(LevelFilter::Info).write_style(WriteStyle::Always).parse_default_env().format_timestamp_millis().init();
+	}).filter_level(filter).write_style(WriteStyle::Always).parse_default_env().format_timestamp_millis().init();
 	info!("init_logger() ... OK");
+	info!("Log level ... {}", filter);
 }
 
 fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
@@ -742,7 +753,12 @@ fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	options.initial_window_size = initial_window_size;
 	options.follow_system_theme = false;
 	options.default_theme = eframe::Theme::Dark;
+
+	#[cfg(target_os = "windows")]
 	options.renderer = eframe::Renderer::Wgpu;
+	#[cfg(target_family = "unix")]
+	options.renderer = eframe::Renderer::Glow;
+
 	let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read icon bytes").to_rgba8();
 	let (icon_width, icon_height) = icon.dimensions();
 	options.icon_data = Some(eframe::IconData {

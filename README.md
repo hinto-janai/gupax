@@ -358,7 +358,7 @@ In general:
 - `WARN` means something has gone wrong, but things will be fine
 - `INFO` logs are general info about what Gupax (the GUI thread) is currently doing
 - `DEBUG` logs are much more verbose and include what EVERY thread is doing (not just the main GUI thread)
-- `TRACE` logs are insanely verbose and shows very low-level logs of the libraries Gupax uses (HTTP connections, GUI polling, etc)
+- `TRACE` logs are insanely verbose and shows very low-level logs
 
 ---
 
