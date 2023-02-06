@@ -18,6 +18,7 @@
 ## Structure
 | File/Folder  | Purpose |
 |--------------|---------|
+| benchmark.rs | Code for handling [XMRig's benchmark data](https://xmrig.com/docs/api/1/benchmark)
 | constants.rs | General constants used in Gupax
 | disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State] struct
 | ferris.rs    | Cute crab bytes

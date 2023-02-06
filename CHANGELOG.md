@@ -1,21 +1,4 @@
 # v1.1.2
-## Updates
-*
-
-## Fixes
-*
-
-## Bundled Versions
-* [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)
-* [`XMRig v6.18.1`](https://github.com/xmrig/xmrig/releases/tag/v6.18.1)
-
----
-
-
-# v1.2.0
-## Updates
-*
-
 ## Fixes
 *
 

@@ -52,6 +52,7 @@ use std::{
 // Sysinfo
 use sysinfo::SystemExt;
 // Modules
+//mod benchmark;
 mod ferris;
 mod constants;
 mod node;

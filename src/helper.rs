@@ -417,14 +417,15 @@ impl Helper {
 						_ => (),
 					}
 					if !mini { p2pool_image.mini = "P2Pool Main".to_string(); }
+					let arg = if arg == "localhost" { "127.0.0.1" } else { arg };
 					args.push(arg.to_string());
 					last = arg;
 				}
 			// Else, build the argument
 			} else {
-				let ip = if state.selected_ip == "localhost" { "127.0.0.1".to_string() } else { state.selected_ip.to_string() };
+				let ip = if state.selected_ip == "localhost" { "127.0.0.1" } else { &state.selected_ip };
 				args.push("--wallet".to_string());    args.push(state.address.clone());          // Wallet
-				args.push("--host".to_string());      args.push(ip);                             // IP
+				args.push("--host".to_string());      args.push(ip.to_string());                 // IP
 				args.push("--rpc-port".to_string());  args.push(state.selected_rpc.to_string()); // RPC
 				args.push("--zmq-port".to_string());  args.push(state.selected_zmq.to_string()); // ZMQ
 				args.push("--loglevel".to_string());  args.push(state.log_level.to_string());    // Log Level
@@ -799,9 +800,10 @@ impl Helper {
 			// Else, build the argument
 			} else {
 				// XMRig doesn't understand [localhost]
+				let ip = if state.selected_ip == "localhost" || state.selected_ip.is_empty() { "127.0.0.1" } else { &state.selected_ip };
 				api_ip = if state.api_ip == "localhost" || state.api_ip.is_empty() { "127.0.0.1".to_string() } else { state.api_ip.to_string() };
 				api_port = if state.api_port.is_empty() { "18088".to_string() } else { state.api_port.to_string() };
-				let url = format!("{}:{}", state.selected_ip, state.selected_port); // Combine IP:Port into one string
+				let url = format!("{}:{}", ip, state.selected_port); // Combine IP:Port into one string
 				args.push("--user".to_string()); args.push(state.address.clone());                // Wallet
 				args.push("--threads".to_string()); args.push(state.current_threads.to_string()); // Threads
 				args.push("--rig-id".to_string()); args.push(state.selected_rig.to_string());     // Rig ID
