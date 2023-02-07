@@ -618,7 +618,6 @@ impl Helper {
 			let mut lock = lock!(process);
 			if !lock.input.is_empty() {
 				let input = std::mem::take(&mut lock.input);
-				drop(lock);
 				for line in input {
 					if line.is_empty() { continue }
 					debug!("P2Pool Watchdog | User input not empty, writing to STDIN: [{}]", line);
@@ -638,6 +637,7 @@ impl Helper {
 					if let Err(e) = stdin.flush() { error!("P2Pool Watchdog | STDIN flush error: {}", e); }
 				}
 			}
+			drop(lock);
 
 			// Check if logs need resetting
 			debug!("P2Pool Watchdog | Attempting GUI log reset check");
@@ -1011,7 +1011,6 @@ impl Helper {
 			let mut lock = lock!(process);
 			if !lock.input.is_empty() {
 				let input = std::mem::take(&mut lock.input);
-				drop(lock);
 				for line in input {
 					if line.is_empty() { continue }
 					debug!("XMRig Watchdog | User input not empty, writing to STDIN: [{}]", line);
@@ -1023,6 +1022,7 @@ impl Helper {
 					if let Err(e) = stdin.flush() { error!("XMRig Watchdog | STDIN flush error: {}", e); }
 				}
 			}
+			drop(lock);
 
 			// Check if logs need resetting
 			debug!("XMRig Watchdog | Attempting GUI log reset check");
