@@ -1,3 +1,18 @@
+# v1.2.0
+## Updates
+*
+
+## Fixes
+*
+
+## Bundled Versions
+* [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)
+* [`XMRig v6.19.0`](https://github.com/xmrig/xmrig/releases/tag/v6.19.0)
+
+
+---
+
+
 # v1.1.2
 ## Fixes
 * **Windows:** Fixed Gupax crashing on certain CPU-based graphics (integrated + basic drivers)
