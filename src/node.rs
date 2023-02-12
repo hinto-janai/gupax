@@ -475,13 +475,25 @@ mod test {
 		for (ip, _, rpc, zmq) in REMOTE_NODES {
 			println!("[{}/{}] {} | {} | {}", n, REMOTE_NODE_LENGTH, ip, rpc, zmq);
 			let client = client.clone();
-			let request = Request::builder()
-				.method("POST")
-				.uri("http://".to_string() + ip + ":" + rpc + "/json_rpc")
-				.header("User-Agent", rand_user_agent)
-				.body(hyper::Body::from(r#"{"jsonrpc":"2.0","id":"0","method":"get_info"}"#))
-				.unwrap();
-			let mut response = client.request(request).await.unwrap();
+			// Try 5 times before failure
+			let mut i = 1;
+			let mut response = loop {
+				let request = Request::builder()
+					.method("POST")
+					.uri("http://".to_string() + ip + ":" + rpc + "/json_rpc")
+					.header("User-Agent", rand_user_agent)
+					.body(hyper::Body::from(r#"{"jsonrpc":"2.0","id":"0","method":"get_info"}"#))
+					.unwrap();
+				match client.request(request).await {
+					Ok(response) => break response,
+					Err(e) => {
+						println!("{:#?}", e);
+						if i > 5 { panic!("Node failure: {}:{}:{}", ip, rpc, zmq); }
+						std::thread::sleep(std::time::Duration::from_secs(3));
+						i += 1;
+					}
+				}
+			};
 			let body = hyper::body::to_bytes(response.body_mut()).await.unwrap();
 			let getinfo: GetInfo = serde_json::from_slice(&body).unwrap();
 			assert!(getinfo.id == "0");
