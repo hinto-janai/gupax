@@ -31,8 +31,8 @@
 
 # v1.1.1
 ## Updates
-* **Remote Nodes:** Replaced `[Community Monero Nodes]` with known ZMQ-enabled [Remote Nodes](https://github.com/hinto-janaiyo/gupax#remote-monero-nodes). List is sourced from this [daily-updated list based off uptime](https://github.com/hinto-janaiyo/monero-nodes). **This should fix most P2Pool connection related issues.**
-* **P2Pool:** Added warning in `[P2Pool Simple]` tab about privacy/practical downsides when using remote nodes; Hyperlinks to [Running a Local Monero Node](https://github.com/hinto-janaiyo/gupax#running-a-local-monero-node).
+* **Remote Nodes:** Replaced `[Community Monero Nodes]` with known ZMQ-enabled [Remote Nodes](https://github.com/hinto-janai/gupax#remote-monero-nodes). List is sourced from this [daily-updated list based off uptime](https://github.com/hinto-janai/monero-nodes). **This should fix most P2Pool connection related issues.**
+* **P2Pool:** Added warning in `[P2Pool Simple]` tab about privacy/practical downsides when using remote nodes; Hyperlinks to [Running a Local Monero Node](https://github.com/hinto-janai/gupax#running-a-local-monero-node).
 
 ## Fixes
 * **Ping:** Fixed ping end lag; Remote node pings are as fast as the slowest ping instead of always taking 10 seconds flat
@@ -48,7 +48,7 @@
 
 # v1.1.0
 ## Updates
-* **Status:** [Added P2Pool submenu](https://github.com/hinto-janaiyo/gupax#Status)
+* **Status:** [Added P2Pool submenu](https://github.com/hinto-janai/gupax#Status)
 	- Total payouts across all time
 	- Total XMR mined across all time
 	- Formatted log lines of ALL payouts (date, amount, block) with sorting options
@@ -85,9 +85,9 @@
 
 
 # v1.0.0
-[Download here](https://github.com/hinto-janaiyo/gupax/releases/latest) or at https://gupax.io.
+[Download here](https://github.com/hinto-janai/gupax/releases/latest) or at https://gupax.io.
 
-[Watch a 3-minute setup guide here.](https://github.com/hinto-janaiyo/gupax#How-To)
+[Watch a 3-minute setup guide here.](https://github.com/hinto-janai/gupax#How-To)
 
 ## Changes
 * Optimized PTY output handling (less memory usage)
@@ -191,7 +191,7 @@
 ## Prototype Release
 * Added `Simple` P2Pool tab:
 	- Monero address input with valid address check (base58 regex)
-	- [Community Monero node selector](https://github.com/hinto-janaiyo/gupax/tree/main/README.md#community-monero-nodes) 
+	- [Community Monero node selector](https://github.com/hinto-janai/gupax/tree/main/README.md#community-monero-nodes) 
 	- Community node ping button (asynchronous `JSON-RPC` calls to all nodes)
 	- Color coded list after ping:
 		```
@@ -226,7 +226,7 @@
 * Added fullscreen GUI error handler (Error message + UI buttons for response, Yes/No, Quit, etc)
 * Added a native `File Explorer/Finder/GTK` file selector for picking P2Pool/XMRig binary path in `Gupax` tab
 * Added detailed console log levels `RUST_LOG=(trace|debug|info|warn|error) ./gupax`
-* [Added new PGP key](https://github.com/hinto-janaiyo/gupax/blob/main/pgp/hinto-janaiyo.asc)
+* [Added new PGP key](https://github.com/hinto-janai/gupax/blob/main/pgp/hinto-janai.asc)
 * Created website (HTML/CSS only, no JavaScript): https://gupax.io
 
 
@@ -236,8 +236,8 @@
 ## v0.1.0
 ## Prototype Release
 * Added package updater (by default, via Tor using [`Arti`](https://blog.torproject.org/arti_100_released/))
-* Added [custom icons per OS](https://github.com/hinto-janaiyo/gupax/tree/main/images/icons) (File Explorer, Taskbar, Finder, App header, etc)
-* Added Monero node [`JSON-RPC ping`](https://github.com/hinto-janaiyo/gupax/blob/main/src/node.rs) system, not yet in GUI
+* Added [custom icons per OS](https://github.com/hinto-janai/gupax/tree/main/images/icons) (File Explorer, Taskbar, Finder, App header, etc)
+* Added Monero node [`JSON-RPC ping`](https://github.com/hinto-janai/gupax/blob/main/src/node.rs) system, not yet in GUI
 * Added `F11` fullscreen toggle
 * Implemented `Ask before quit`
 * Implemented `Auto-save`

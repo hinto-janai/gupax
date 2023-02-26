@@ -37,7 +37,7 @@
 | xmrig.rs     | `XMRig` tab
 
 ## Thread Model
-![thread_model.png](https://github.com/hinto-janaiyo/gupax/blob/main/images/thread_model.png)
+![thread_model.png](https://github.com/hinto-janai/gupax/blob/main/images/thread_model.png)
 
 Process's (both Simple/Advanced) have:
 - 1 OS thread for the watchdog (API fetching, watching signals, etc)

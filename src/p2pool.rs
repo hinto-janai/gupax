@@ -1,6 +1,6 @@
 // Gupax - GUI Uniting P2Pool And XMRig
 //
-// Copyright (c) 2022 hinto-janaiyo
+// Copyright (c) 2022 hinto-janai
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -231,7 +231,7 @@ impl crate::disk::P2pool {
 		})});
 
 		debug!("P2Pool Tab | Rendering warning text");
-		ui.add_sized([width, height/2.0], Hyperlink::from_label_and_url("WARNING: It is recommended to run/use your own Monero Node (hover for details)", "https://github.com/hinto-janaiyo/gupax#running-a-local-monero-node")).on_hover_text(P2POOL_COMMUNITY_NODE_WARNING);
+		ui.add_sized([width, height/2.0], Hyperlink::from_label_and_url("WARNING: It is recommended to run/use your own Monero Node (hover for details)", "https://github.com/hinto-janai/gupax#running-a-local-monero-node")).on_hover_text(P2POOL_COMMUNITY_NODE_WARNING);
 
 	//---------------------------------------------------------------------------------------------------- Advanced
 	} else {

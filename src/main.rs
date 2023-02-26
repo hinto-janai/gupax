@@ -1,6 +1,6 @@
 // Gupax - GUI Uniting P2Pool And XMRig
 //
-// Copyright (c) 2022 hinto-janaiyo
+// Copyright (c) 2022 hinto-janai
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -1279,7 +1279,7 @@ impl eframe::App for App {
 						if cfg!(windows) && self.error_state.buttons == ErrorButtons::WindowsAdmin {
 							ui.add_sized([width, height], Hyperlink::from_label_and_url(
 								"[Why does Gupax need to be Admin? (on Windows)]",
-								"https://github.com/hinto-janaiyo/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows"
+								"https://github.com/hinto-janai/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows"
 							));
 							ui.add_sized([width, height], Label::new(&self.error_state.msg))
 						} else {

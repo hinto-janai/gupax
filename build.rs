@@ -10,7 +10,7 @@ fn main() -> std::io::Result<()> {
 	// This sets the icon.
 	res.set_icon("images/icons/icon.ico");
 	// This sets the [Run as Administrator] metadata flag for Windows.
-	// Why do I do this?: [https://github.com/hinto-janaiyo/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows]
+	// Why do I do this?: [https://github.com/hinto-janai/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows]
 	// TL;DR: Because Windows.
 	res.set_manifest(r#"
 	<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">

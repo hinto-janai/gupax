@@ -1,6 +1,6 @@
 // Gupax - GUI Uniting P2Pool And XMRig
 //
-// Copyright (c) 2022 hinto-janaiyo
+// Copyright (c) 2022 hinto-janai
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -361,7 +361,7 @@ the environment variable [RUST_LOG] set to a log level like so:
 pub const ARG_COPYRIGHT: &str =
 r#"Gupax is licensed under GPLv3.
 For more information, see link below:
-<https://github.com/hinto-janaiyo/gupax>"#;
+<https://github.com/hinto-janai/gupax>"#;
 
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]

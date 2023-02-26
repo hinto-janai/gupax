@@ -1,6 +1,6 @@
 // Gupax - GUI Uniting P2Pool And XMRig
 //
-// Copyright (c) 2022 hinto-janaiyo
+// Copyright (c) 2022 hinto-janai
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ use hyper::{
 };
 
 //---------------------------------------------------------------------------------------------------- Node list
-// Remote Monero Nodes with ZMQ enabled, sourced from: [https://github.com/hinto-janaiyo/monero-nodes]
+// Remote Monero Nodes with ZMQ enabled, sourced from: [https://github.com/hinto-janai/monero-nodes]
 // The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
 pub const REMOTE_NODES: [(&str, &str, &str, &str); 22] = [

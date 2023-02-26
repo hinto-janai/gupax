@@ -1,6 +1,6 @@
 // Gupax - GUI Uniting P2Pool And XMRig
 //
-// Copyright (c) 2022 hinto-janaiyo
+// Copyright (c) 2022 hinto-janai
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -61,18 +61,18 @@ use zip::ZipArchive;
 // xmrig  | xmrig-X.X.X-(msvc-win64|macos-x64|linux-static-x64).(zip|tar.gz)
 //
 // Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
-// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64.tar.gz
+// Example: https://github.com/hinto-janai/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64.tar.gz
 //
 // Exceptions (there are always exceptions...):
 //   - XMRig doesn't have a [v], so it is [xmrig-6.18.0-...]
 //   - XMRig separates the hash and signature
 //   - P2Pool hashes are in UPPERCASE
 
-const GUPAX_METADATA: &str = "https://api.github.com/repos/hinto-janaiyo/gupax/releases/latest";
+const GUPAX_METADATA: &str = "https://api.github.com/repos/hinto-janai/gupax/releases/latest";
 const P2POOL_METADATA: &str = "https://api.github.com/repos/SChernykh/p2pool/releases/latest";
 const XMRIG_METADATA: &str = "https://api.github.com/repos/xmrig/xmrig/releases/latest";
 
-const GUPAX_PREFIX: &str = "https://github.com/hinto-janaiyo/gupax/releases/download/";
+const GUPAX_PREFIX: &str = "https://github.com/hinto-janai/gupax/releases/download/";
 const P2POOL_PREFIX: &str = "https://github.com/SChernykh/p2pool/releases/download/";
 const XMRIG_PREFIX: &str = "https://github.com/xmrig/xmrig/releases/download/";
 
@@ -626,7 +626,7 @@ impl Update {
 				let client = client.clone();
 				let version = lock!(pkg.new_ver);
 				// Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
-				// Example: https://github.com/hinto-janaiyo/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64-standalone
+				// Example: https://github.com/hinto-janai/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-x64-standalone
 				// XMRig doesn't have a [v], so slice it out
 				let link = match pkg.name {
 					Name::Xmrig => pkg.link_prefix.to_string() + &version + pkg.link_suffix + &version[1..] + pkg.link_extension,
