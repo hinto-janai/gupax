@@ -881,12 +881,17 @@ impl Helper {
 		// 2. Input [sudo] pass, wipe, then drop.
 		if cfg!(unix) {
 			debug!("XMRig | Inputting [sudo] and wiping...");
-			// 1d. Sleep to wait for [sudo]'s non-echo prompt (on Unix).
+			// a) Sleep to wait for [sudo]'s non-echo prompt (on Unix).
 			// this prevents users pass from showing up in the STDOUT.
 			sleep!(3000);
 			if let Err(e) = writeln!(pair.master, "{}", lock!(sudo).pass) { error!("XMRig | Sudo STDIN error: {}", e); };
 			SudoState::wipe(&sudo);
+
+			// b) Reset GUI STDOUT just in case.
+			debug!("XMRig | Clearing GUI output...");
+			lock!(gui_api).output.clear();
 		}
+
 
         // 3. Set process state
 		debug!("XMRig | Setting process state...");
