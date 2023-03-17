@@ -63,6 +63,7 @@ tor-rtcompat = "0.7.0"
 walkdir = "2.3.2"
 zeroize = "1.5.7"
 serde-xml-rs = "0.6.0"
+strsim = "0.10.0"
 
 # Unix dependencies
 [target.'cfg(unix)'.dependencies]
