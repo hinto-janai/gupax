@@ -1,9 +1,15 @@
 # v1.2.0
 ## Updates
-*
+* [Remote Nodes](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	```
+	+ ADD      p2pool.uk (good uptime)
+	+ ADD      xmr.aa78i2efsewr0neeknk.xyz (good uptime)
+	+ ADD      monero.jameswillhoite.com (okay uptime)
+	- REMOVE   fbx.tranbert.com (failing daily ping tests)
+	```
 
 ## Fixes
-*
+* 
 
 ## Bundled Versions
 * [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)
