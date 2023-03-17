@@ -62,7 +62,7 @@ pub const REMOTE_NODES: [(&str, &str, &str, &str); 24] = [
 ];
 
 pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
-pub const REMOTE_NODE_MAX_CHARS: usize = 25; // node-01-xmr.godevs.cloud
+pub const REMOTE_NODE_MAX_CHARS: usize = 28; // xmr.aa78i2efsewr0neeknk.xyz
 
 pub struct RemoteNode {
 	pub ip: &'static str,
@@ -215,35 +215,8 @@ pub fn format_ip_location(og_ip: &str, extra_space: bool) -> String {
 	"??? | ???".to_string()
 }
 
-// node-01-xmr.godevs.cloud = 25 max length
 pub fn format_ip(ip: &str) -> String {
-	match ip.len() {
-		1  => format!("{}                        ", ip),
-		2  => format!("{}                       ", ip),
-		3  => format!("{}                      ", ip),
-		4  => format!("{}                     ", ip),
-		5  => format!("{}                    ", ip),
-		6  => format!("{}                   ", ip),
-		7  => format!("{}                  ", ip),
-		8  => format!("{}                 ", ip),
-		9  => format!("{}                ", ip),
-		10 => format!("{}               ", ip),
-		11 => format!("{}              ", ip),
-		12 => format!("{}             ", ip),
-		13 => format!("{}            ", ip),
-		14 => format!("{}           ", ip),
-		15 => format!("{}          ", ip),
-		16 => format!("{}         ", ip),
-		17 => format!("{}        ", ip),
-		18 => format!("{}       ", ip),
-		19 => format!("{}      ", ip),
-		20 => format!("{}     ", ip),
-		21 => format!("{}    ", ip),
-		22 => format!("{}   ", ip),
-		23 => format!("{}  ", ip),
-		24 => format!("{} ", ip),
-		_  => format!("{}", ip),
-	}
+	format!("{: >28}", ip)
 }
 
 //---------------------------------------------------------------------------------------------------- Node data
@@ -445,7 +418,7 @@ mod test {
 	#[test]
 	fn spacing() {
 		for (ip, _, _, _) in crate::REMOTE_NODES {
-			assert!(crate::format_ip(ip).len() <= crate::REMOTE_NODE_MAX_CHARS);
+			assert!(crate::format_ip(ip).len() == crate::REMOTE_NODE_MAX_CHARS);
 		}
 	}
 
