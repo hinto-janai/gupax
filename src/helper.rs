@@ -1731,6 +1731,8 @@ pub struct PubXmrigApi {
 	pub diff: HumanNumber,
 	pub accepted: HumanNumber,
 	pub rejected: HumanNumber,
+
+	pub hashrate_raw: f32,
 }
 
 impl Default for PubXmrigApi {
@@ -1750,6 +1752,7 @@ impl PubXmrigApi {
 			diff: HumanNumber::unknown(),
 			accepted: HumanNumber::unknown(),
 			rejected: HumanNumber::unknown(),
+			hashrate_raw: 0.0,
 		}
 	}
 
@@ -1780,6 +1783,11 @@ impl PubXmrigApi {
 	// Formats raw private data into ready-to-print human readable version.
 	fn update_from_priv(public: &Arc<Mutex<Self>>, private: PrivXmrigApi) {
 		let mut public = lock!(public);
+		let hashrate_raw = match private.hashrate.total.get(0) {
+			Some(Some(h)) => *h,
+			_ => 0.0,
+		};
+
 		*public = Self {
 			worker_id: private.worker_id,
 			resources: HumanNumber::from_load(private.resources.load_average),
@@ -1787,6 +1795,7 @@ impl PubXmrigApi {
 			diff: HumanNumber::from_u128(private.connection.diff),
 			accepted: HumanNumber::from_u128(private.connection.accepted),
 			rejected: HumanNumber::from_u128(private.connection.rejected),
+			hashrate_raw,
 			..std::mem::take(&mut *public)
 		}
 	}

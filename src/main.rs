@@ -51,6 +51,7 @@ use std::{
 };
 // Sysinfo
 use sysinfo::SystemExt;
+use sysinfo::CpuExt;
 // Modules
 //mod benchmark;
 mod ferris;
@@ -140,6 +141,7 @@ pub struct App {
 	// actual stats, and all the functions needed to mutate them.
 	gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>,
 	// Static stuff
+	benchmarks: Vec<Benchmark>, // XMRig CPU benchmarks
 	pid: sysinfo::Pid, // Gupax's PID
 	max_threads: usize, // Max amount of detected system threads
 	now: Instant, // Internal timer
@@ -199,6 +201,18 @@ impl App {
 		};
 		let pub_sys = arc_mut!(Sys::new());
 
+		// CPU Benchmark data initialization.
+		info!("App Init | Initializing CPU benchmarks...");
+		let benchmarks: Vec<Benchmark> = {
+			let cpu = sysinfo.cpus()[0].brand();
+			let mut json: Vec<Benchmark> = serde_json::from_slice(include_bytes!("cpu.json")).unwrap();
+			json.sort_by(|a, b| {
+				cmp_f64(strsim::jaro(&b.cpu, &cpu), strsim::jaro(&a.cpu, &cpu))
+			});
+			json
+		};
+		info!("App Init | Assuming user's CPU is: {}", benchmarks[0].cpu);
+
 		info!("App Init | The rest of the [App]...");
 		let mut app = Self {
 			tab: Tab::default(),
@@ -232,6 +246,7 @@ impl App {
 			no_startup: false,
 			gupax_p2pool_api: arc_mut!(GupaxP2poolApi::new()),
 			pub_sys,
+			benchmarks,
 			pid,
 			max_threads: num_cpus::get(),
 			now,
@@ -507,6 +522,18 @@ impl Default for Tab {
     }
 }
 
+//---------------------------------------------------------------------------------------------------- CPU Benchmarks.
+#[derive(Debug,Serialize,Deserialize)]
+pub struct Benchmark {
+	pub cpu: String,
+	pub rank: u16,
+	pub percent: f32,
+	pub benchmarks: u16,
+	pub average: f32,
+	pub high: f32,
+	pub low: f32,
+}
+
 //---------------------------------------------------------------------------------------------------- [Restart] Enum
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Restart {
@@ -688,6 +715,7 @@ impl KeyPressed {
 }
 
 //---------------------------------------------------------------------------------------------------- Init functions
+#[inline(always)]
 fn init_text_styles(ctx: &egui::Context, width: f32) {
 	let scale = width / 30.0;
 	let mut style = (*ctx.style()).clone();
@@ -711,6 +739,7 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 	ctx.request_repaint();
 }
 
+#[inline(always)]
 fn init_logger(now: Instant) {
 	use env_logger::fmt::Color;
 	let filter_env = std::env::var("RUST_LOG").unwrap_or_else(|_| "INFO".to_string());
@@ -746,6 +775,7 @@ fn init_logger(now: Instant) {
 	info!("Log level ... {}", filter);
 }
 
+#[inline(always)]
 fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	let mut options = eframe::NativeOptions::default();
 	options.min_window_size = Some(Vec2::new(APP_MIN_WIDTH, APP_MIN_HEIGHT));
@@ -764,6 +794,7 @@ fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	options
 }
 
+#[inline(always)]
 fn init_auto(app: &mut App) {
 	// Return early if [--no-startup] was not passed
 	if app.no_startup {
@@ -831,6 +862,7 @@ fn reset_state(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
+#[inline(always)]
 fn reset_nodes(path: &PathBuf) -> Result<(), TomlError> {
 	match Node::create_new(path) {
 		Ok(_)  => { info!("Resetting [node.toml] ... OK"); Ok(()) },
@@ -838,6 +870,7 @@ fn reset_nodes(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
+#[inline(always)]
 fn reset_pools(path: &PathBuf) -> Result<(), TomlError> {
 	match Pool::create_new(path) {
 		Ok(_)  => { info!("Resetting [pool.toml] ... OK"); Ok(()) },
@@ -845,6 +878,7 @@ fn reset_pools(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
+#[inline(always)]
 fn reset_gupax_p2pool_api(path: &PathBuf) -> Result<(), TomlError> {
 	match GupaxP2poolApi::create_new(path) {
 		Ok(_)  => { info!("Resetting GupaxP2poolApi ... OK"); Ok(()) },
@@ -852,6 +886,7 @@ fn reset_gupax_p2pool_api(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
+#[inline(always)]
 fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf, gupax_p2pool_api: &PathBuf) {
 	let mut code = 0;
 	// Attempt to remove directory first
@@ -888,6 +923,7 @@ fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf, gupax_
 }
 
 //---------------------------------------------------------------------------------------------------- Misc functions
+#[inline(always)]
 fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 	info!("Parsing CLI arguments...");
 	let mut args: Vec<String> = env::args().collect();
@@ -930,6 +966,7 @@ fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 }
 
 // Get absolute [Gupax] binary path
+#[inline(always)]
 pub fn get_exe() -> Result<String, std::io::Error> {
 	match std::env::current_exe() {
 		Ok(path) => { Ok(path.display().to_string()) },
@@ -938,6 +975,7 @@ pub fn get_exe() -> Result<String, std::io::Error> {
 }
 
 // Get absolute [Gupax] directory path
+#[inline(always)]
 pub fn get_exe_dir() -> Result<String, std::io::Error> {
 	match std::env::current_exe() {
 		Ok(mut path) => { path.pop(); Ok(path.display().to_string()) },
@@ -947,6 +985,7 @@ pub fn get_exe_dir() -> Result<String, std::io::Error> {
 
 // Clean any [gupax_update_.*] directories
 // The trailing random bits must be exactly 10 alphanumeric characters
+#[inline(always)]
 pub fn clean_dir() -> Result<(), anyhow::Error> {
 	let regex = Regex::new("^gupax_update_[A-Za-z0-9]{10}$").unwrap();
 	for entry in std::fs::read_dir(get_exe_dir()?)? {
@@ -964,6 +1003,7 @@ pub fn clean_dir() -> Result<(), anyhow::Error> {
 }
 
 // Print disk files to console
+#[inline(always)]
 fn print_disk_file(path: &PathBuf) {
 	match std::fs::read_to_string(path) {
 		Ok(string) => { print!("{}", string); exit(0); },
@@ -972,6 +1012,7 @@ fn print_disk_file(path: &PathBuf) {
 }
 
 // Prints the GupaxP2PoolApi files.
+#[inline(always)]
 fn print_gupax_p2pool_api(gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>) {
 	let api = lock!(gupax_p2pool_api);
 	let log = match std::fs::read_to_string(&api.path_log) {
@@ -992,6 +1033,16 @@ fn print_gupax_p2pool_api(gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>) {
 	};
 	println!("{}\nTotal payouts | {}\nTotal XMR     | {} ({} Atomic Units)", log, payout.trim(), xmr, xmr.to_u64());
 	exit(0);
+}
+
+#[inline(always)]
+fn cmp_f64(a: f64, b: f64) -> std::cmp::Ordering {
+    match (a <= b, a >= b) {
+        (false, true) => std::cmp::Ordering::Greater,
+        (true, false) => std::cmp::Ordering::Less,
+        (true, true) => std::cmp::Ordering::Equal,
+        _ => std::cmp::Ordering::Less,
+    }
 }
 
 //---------------------------------------------------------------------------------------------------- Main [App] frame
@@ -1018,6 +1069,7 @@ fn main() {
 }
 
 impl eframe::App for App {
+	#[inline(always)]
 	fn on_close_event(&mut self) -> bool {
 		if self.state.gupax.ask_before_quit {
 			// If we're already on the [ask_before_quit] screen and
@@ -1037,6 +1089,7 @@ impl eframe::App for App {
 		}
 	}
 
+	#[inline(always)]
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
 		// *-------*
 		// | DEBUG |
@@ -1104,8 +1157,9 @@ impl eframe::App for App {
 			match self.tab {
 				Tab::Status => {
 					match self.state.status.submenu {
-						Submenu::Processes => self.state.status.submenu = Submenu::P2pool,
+						Submenu::Processes => self.state.status.submenu = Submenu::Benchmarks,
 						Submenu::P2pool    => self.state.status.submenu = Submenu::Processes,
+						Submenu::Benchmarks  => self.state.status.submenu = Submenu::P2pool,
 					}
 				},
 				Tab::Gupax  => flip!(self.state.gupax.simple),
@@ -1119,7 +1173,8 @@ impl eframe::App for App {
 				Tab::Status => {
 					match self.state.status.submenu {
 						Submenu::Processes => self.state.status.submenu = Submenu::P2pool,
-						Submenu::P2pool    => self.state.status.submenu = Submenu::Processes,
+						Submenu::P2pool    => self.state.status.submenu = Submenu::Benchmarks,
+						Submenu::Benchmarks => self.state.status.submenu = Submenu::Processes,
 					}
 				},
 				Tab::Gupax  => flip!(self.state.gupax.simple),
@@ -1517,7 +1572,11 @@ impl eframe::App for App {
 				match self.tab {
 					Tab::Status => {
 						ui.group(|ui| {
-							let width = (ui.available_width() / 2.0)-10.5;
+							let width = (ui.available_width() / 3.0)-14.0;
+							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::Benchmarks, "Benchmarks")).on_hover_text(STATUS_SUBMENU_HASHRATE).clicked() {
+								self.state.status.submenu = Submenu::Benchmarks;
+							}
+							ui.separator();
 							if ui.add_sized([width, height], SelectableLabel::new(self.state.status.submenu == Submenu::P2pool, "P2Pool")).on_hover_text(STATUS_SUBMENU_P2POOL).clicked() {
 								self.state.status.submenu = Submenu::P2pool;
 							}
@@ -1800,7 +1859,7 @@ path_xmr: {:#?}\n
 				}
 				Tab::Status => {
 					debug!("App | Entering [Status] Tab");
-					crate::disk::Status::show(&mut self.state.status, &self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, &self.gupax_p2pool_api, self.width, self.height, ctx, ui);
+					crate::disk::Status::show(&mut self.state.status, &self.pub_sys, &self.p2pool_api, &self.xmrig_api, &self.p2pool_img, &self.xmrig_img, p2pool_is_alive, xmrig_is_alive, self.max_threads, &self.gupax_p2pool_api, &self.benchmarks, self.width, self.height, ctx, ui);
 				}
 				Tab::Gupax => {
 					debug!("App | Entering [Gupax] Tab");
@@ -1839,5 +1898,22 @@ mod test {
 		}
 		assert!(!Regex::is_match(&r.port, "0"));
 		assert!(!Regex::is_match(&r.port, "65536"));
+	}
+
+	#[test]
+	fn detect_benchmark_cpu() {
+		use super::{Benchmark,cmp_f64};
+
+		let cpu = "AMD Ryzen 9 5950X 16-Core Processor";
+
+		let benchmarks: Vec<Benchmark> = {
+			let mut json: Vec<Benchmark> = serde_json::from_slice(include_bytes!("cpu.json")).unwrap();
+			json.sort_by(|a, b| {
+				cmp_f64(strsim::jaro(&b.cpu, &cpu), strsim::jaro(&a.cpu, &cpu))
+			});
+			json
+		};
+
+		assert!(benchmarks[0].cpu == "AMD Ryzen 9 5950X 16-Core Processor");
 	}
 }

@@ -34,6 +34,7 @@ use regex::Regex;
 use log::*;
 
 impl crate::disk::Xmrig {
+	#[inline(always)]
 	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console

@@ -82,6 +82,7 @@ pub enum Ratio {
 
 //---------------------------------------------------------------------------------------------------- Gupax
 impl crate::disk::Gupax {
+	#[inline(always)]
 	pub fn show(&mut self, og: &Arc<Mutex<State>>, state_path: &Path, update: &Arc<Mutex<Update>>, file_window: &Arc<Mutex<FileWindow>>, error_state: &mut ErrorState, restart: &Arc<Mutex<Restart>>, width: f32, height: f32, frame: &mut eframe::Frame, _ctx: &egui::Context, ui: &mut egui::Ui) {
 		// Update button + Progress bar
 		debug!("Gupax Tab | Rendering [Update] button + progress bar");

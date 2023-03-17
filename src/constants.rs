@@ -174,6 +174,7 @@ pub const STATUS_XMRIG_THREADS:     &str = "The amount of threads XMRig is curre
 // Status Submenus
 pub const STATUS_SUBMENU_PROCESSES: &str = "View the status of process related data for [Gupax|P2Pool|XMRig]";
 pub const STATUS_SUBMENU_P2POOL:    &str = "View P2Pool specific data";
+pub const STATUS_SUBMENU_HASHRATE:  &str = "Compare your CPU hashrate with others";
 //-- P2Pool
 pub const STATUS_SUBMENU_PAYOUT:    &str = "The total amount of payouts received via P2Pool across all time. This includes all payouts you have ever received using Gupax and P2Pool.";
 pub const STATUS_SUBMENU_XMR:       &str = "The total of XMR mined via P2Pool across all time. This includes all the XMR you have ever mined using Gupax and P2Pool.";
@@ -200,6 +201,21 @@ pub const STATUS_SUBMENU_P2POOL_DOMINANCE:      &str = "The percent of hashrate 
 pub const STATUS_SUBMENU_YOUR_P2POOL_DOMINANCE: &str = "The percent of hashrate you account for in P2Pool";
 pub const STATUS_SUBMENU_YOUR_MONERO_DOMINANCE: &str = "The percent of hashrate you account for in the entire Monero network";
 pub const STATUS_SUBMENU_PROGRESS_BAR:          &str = "The next time Gupax will update P2Pool stats. Each [*] is 900ms (updates roughly every 54 seconds)";
+//-- Benchmarks
+pub const STATUS_SUBMENU_YOUR_CPU:         &str = "The CPU detected by Gupax";
+pub const STATUS_SUBMENU_YOUR_BENCHMARKS:  &str = "How many benchmarks your CPU has had uploaded to [https://xmrig.com/benchmark] ";
+pub const STATUS_SUBMENU_YOUR_RANK:        &str = "Your CPU's rank out of all CPUs listed on [https://xmrig.com/benchmark] (higher is better)";
+pub const STATUS_SUBMENU_YOUR_HIGH:        &str = "The highest hashrate recorded for your CPU on [https://xmrig.com/benchmark]";
+pub const STATUS_SUBMENU_YOUR_AVERAGE:     &str = "The average hashrate of your CPU based off the data at [https://xmrig.com/benchmark]";
+pub const STATUS_SUBMENU_YOUR_LOW:         &str = "The lowest hashrate recorded for your CPU on [https://xmrig.com/benchmark]";
+pub const STATUS_SUBMENU_OTHER_CPUS:       &str = "A list of ALL the recorded CPU benchmarks. The CPUs most similar to yours are listed first. All this data is taken from [https://github.com/hinto-janai/xmrig-benchmarks] which itself takes from [https://xmrig.com/benchmark].";
+pub const STATUS_SUBMENU_OTHER_CPU:        &str = "The CPU name";
+pub const STATUS_SUBMENU_OTHER_RELATIVE:   &str = "The relative hashrate power compared to the fastest recorded CPU, which is current: [AMD EPYC 7T83 64-Core Processor]";
+pub const STATUS_SUBMENU_OTHER_HIGH:       &str = "Highest hashrate record";
+pub const STATUS_SUBMENU_OTHER_AVERAGE:    &str = "Average hashrate";
+pub const STATUS_SUBMENU_OTHER_LOW:        &str = "Lowest hashrate record";
+pub const STATUS_SUBMENU_OTHER_RANK:       &str = "The rank of this CPU out of [1567] (lower is better)";
+pub const STATUS_SUBMENU_OTHER_BENCHMARKS: &str = "How many benchmarks this CPU has had posted to [https://xmrig.com/benchmark]";
 
 // Gupax
 pub const GUPAX_UPDATE:           &str = "Check for updates on Gupax, P2Pool, and XMRig via GitHub's API and upgrade automatically";

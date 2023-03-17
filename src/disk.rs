@@ -825,6 +825,7 @@ pub enum File {
 pub enum Submenu {
 	Processes,
 	P2pool,
+	Benchmarks,
 }
 
 impl Default for Submenu {
