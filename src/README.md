@@ -18,7 +18,7 @@
 ## Structure
 | File/Folder  | Purpose |
 |--------------|---------|
-| cpu.json     | [XMRig benchmark data in JSON](https://github.com/hinto-janaiyo/xmrig-benchmarks)
+| cpu.json     | [XMRig benchmark data in JSON](https://github.com/hinto-janai/xmrig-benchmarks)
 | constants.rs | General constants used in Gupax
 | disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State] struct
 | ferris.rs    | Cute crab bytes

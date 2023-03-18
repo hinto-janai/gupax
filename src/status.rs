@@ -332,7 +332,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.add_sized([width, text], Hyperlink::from_label_and_url("Other CPUs", "https://github.com/hinto-janai/xmrig-benchmarks")).on_hover_text(STATUS_SUBMENU_OTHER_CPUS);
 	});
 
-	egui::ScrollArea::both().max_width(f32::INFINITY).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
+	egui::ScrollArea::both().always_show_scroll(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
 		let width = width / 20.0;
 		let (cpu, bar, high, average, low, rank, bench) = (
 			width*10.0,
@@ -365,7 +365,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 			ui.group(|ui| { ui.horizontal(|ui| {
 				ui.add_sized([cpu, text], Label::new(benchmark.cpu.as_str()));
 				ui.separator();
-				ui.add_sized([bar, text], ProgressBar::new(benchmark.percent / 100.0));
+				ui.add_sized([bar, text], ProgressBar::new(benchmark.percent / 100.0)).on_hover_text(HumanNumber::to_percent(benchmark.percent).as_str());
 				ui.separator();
 				ui.add_sized([high, text], Label::new(HumanNumber::to_hashrate(benchmark.high).as_str()));
 				ui.separator();

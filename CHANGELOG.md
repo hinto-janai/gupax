@@ -1,19 +1,46 @@
 # v1.2.0
 ## Updates
-* [Remote Nodes](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
-	```
-	+ ADD      p2pool.uk (good uptime)
-	+ ADD      xmr.aa78i2efsewr0neeknk.xyz (good uptime)
-	+ ADD      monero.jameswillhoite.com (okay uptime)
-	- REMOVE   fbx.tranbert.com (failing daily ping tests)
-	```
-
-## Fixes
-* 
+* Added [`Benchmarks`](https://github.com/hinto-janai/gupax#Status-1) submenu in `Status` tab
+	- Your hashrate vs others with the same CPU
+	- List of similar CPUs and their stats
+	- Data source: [Here](https://github.com/hinto-janai/xmrig-benchmarks) & [here](https://xmrig.com/benchmark)
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- `+ ADD` p2pool.uk
+	- `+ ADD` xmr.aa78i2efsewr0neeknk.xyz
+	- `+ ADD` monero.jameswillhoite.com
+	- `- REMOVE` fbx.tranbert.com
 
 ## Bundled Versions
-* [`P2Pool v3.0`](https://github.com/SChernykh/p2pool/releases/tag/v3.0)
+* [`P2Pool v3.1`](https://github.com/SChernykh/p2pool/releases/tag/v3.1)
 * [`XMRig v6.19.0`](https://github.com/xmrig/xmrig/releases/tag/v6.19.0)
+
+## PGP Key Change
+Please use the new key to verify releases, [found here](https://github.com/hinto-janai/gupax/blob/main/pgp/hinto-janai.asc), [or here.](https://gupax.io/hinto)
+
+<details>
+<summary>Verification</summary>
+
+```
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA256
+
+I'm slightly shortening my alias from
+`hinto-janaiyo` to `hinto-janai` and changing to
+this PGP key: 31C5145AAFA5A8DF1C1DB2A6D47CE05FA175A499
+
+This message is signed with the old key,
+2A8F883E016FED0380287FAFB1C5A64B80691E45
+
+Sorry for the inconvenience.
+-----BEGIN PGP SIGNATURE-----
+
+iHUEARYIAB0WIQQqj4g+AW/tA4Aof6+xxaZLgGkeRQUCZBTRkQAKCRCxxaZLgGke
+RWb4AP0T/n+2XlssCcUHh/6cNq67isJ0v10Hi/drmTPLKvNKjgEAqNavi6+sB1NQ
+Eh6+zWpoydVGzFdEkE5XKmnQ1dm/GQ8=
+=g9YL
+-----END PGP SIGNATURE-----
+```
+</details>
 
 
 ---

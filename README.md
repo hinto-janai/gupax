@@ -5,11 +5,11 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 
 **To see a 3-minute video on how to download and run Gupax: [click here.](#How-To)**
 
-![windows-build](https://github.com/hinto-janaiyo/gupax/actions/workflows/windows-build.yml/badge.svg) ![macos-build](https://github.com/hinto-janaiyo/gupax/actions/workflows/macos-build.yml/badge.svg) ![linux-build](https://github.com/hinto-janaiyo/gupax/actions/workflows/linux-build.yml/badge.svg)
+![windows-build](https://github.com/hinto-janai/gupax/actions/workflows/windows-build.yml/badge.svg) ![macos-build](https://github.com/hinto-janai/gupax/actions/workflows/macos-build.yml/badge.svg) ![linux-build](https://github.com/hinto-janai/gupax/actions/workflows/linux-build.yml/badge.svg)
 
-![windows-test](https://github.com/hinto-janaiyo/gupax/actions/workflows/windows-test.yml/badge.svg) ![macos-test](https://github.com/hinto-janaiyo/gupax/actions/workflows/macos-test.yml/badge.svg) ![linux-test](https://github.com/hinto-janaiyo/gupax/actions/workflows/linux-test.yml/badge.svg)
+![windows-test](https://github.com/hinto-janai/gupax/actions/workflows/windows-test.yml/badge.svg) ![macos-test](https://github.com/hinto-janai/gupax/actions/workflows/macos-test.yml/badge.svg) ![linux-test](https://github.com/hinto-janai/gupax/actions/workflows/linux-test.yml/badge.svg)
 
-![daily-ping](https://github.com/hinto-janaiyo/gupax/actions/workflows/ping.yml/badge.svg)
+![daily-ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)
 
 </div>
 
@@ -106,7 +106,7 @@ https://user-images.githubusercontent.com/101352116/207978455-6ffdc0cc-204c-4594
 
 <div align="center">
 
-1. [Download the bundled version of Gupax for your OS here](https://github.com/hinto-janaiyo/gupax/releases) or from [gupax.io](https://gupax.io/downloads)
+1. [Download the bundled version of Gupax for your OS here](https://github.com/hinto-janai/gupax/releases) or from [gupax.io](https://gupax.io/downloads)
 2. Extract somewhere (Desktop, Documents, etc)
 3. Launch Gupax
 4. Input your Monero address in the `[P2Pool]` tab
@@ -131,7 +131,7 @@ The `Gupax/P2Pool/XMRig` tabs have two versions, `Simple` & `Advanced`.
 ---
 
 ### Status
-This tab has 2 submenus that show some info about running processes and P2Pool-specific stats.
+This tab has 3 submenus.
 
 <img src="images/processes.png" align="left" width="50%"/>
 
@@ -150,6 +150,16 @@ This submenu shows:
 - ***Permanent*** stats on all your payouts received via P2Pool & Gupax
 - Payout sorting options
 - Share/block time calculator
+
+<br clear="left"/>
+
+<img src="images/benchmarks.png" align="left" width="50%"/>
+
+**Benchmarks:**  
+This submenu shows:
+- Your hashrate vs others with the same CPU
+- List of similar CPUs and their stats
+- Data source: [Here](https://github.com/hinto-janai/xmrig-benchmarks) & [here](https://xmrig.com/benchmark)
 
 <br clear="left"/>
 
@@ -198,10 +208,10 @@ XMRig Simple will always mine to your own local P2Pool (`127.0.0.1:3333`), if yo
 ### Verifying
 It is recommended to verify the hash and PGP signature of the download before using Gupax.
 
-Download the [`SHA256SUMS`](https://github.com/hinto-janaiyo/gupax/releases/latest) file, download and import my [`PGP key`](https://github.com/hinto-janaiyo/gupax/blob/main/pgp/hinto-janaiyo.asc), and verify:
+Download the [`SHA256SUMS`](https://github.com/hinto-janai/gupax/releases/latest) file, download and import my [`PGP key`](https://github.com/hinto-janai/gupax/blob/main/pgp/hinto-janai.asc), and verify:
 ```bash
 sha256sum -c SHA256SUMS
-gpg --import hinto-janaiyo.asc
+gpg --import hinto-janai.asc
 gpg --verify SHA256SUMS
 ```
 
@@ -542,12 +552,12 @@ For transparency, here's all the connections Gupax makes:
 
 | Domain             | Why                                                   | When | Where |
 |--------------------|-------------------------------------------------------|------|-------|
-| https://github.com | Fetching metadata information on packages + download  | `[Gupax]` tab -> `Check for updates` | [`update.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/update.rs) |
-| Remote Monero Nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janaiyo/gupax/blob/main/src/node.rs) |
+| https://github.com | Fetching metadata information on packages + download  | `[Gupax]` tab -> `Check for updates` | [`update.rs`](https://github.com/hinto-janai/gupax/blob/main/src/update.rs) |
+| Remote Monero Nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janai/gupax/blob/main/src/node.rs) |
 | DNS | DNS connections will usually be handled by your OS (or whatever custom DNS setup you have). If using Tor, DNS requests for updates [*should*](https://tpo.pages.torproject.net/core/doc/rust/arti/) be routed through the Tor network automatically | All of the above | All of the above |
 
 ## Remote Monero Nodes
-These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are sourced from [this list](https://github.com/hinto-janaiyo/monero-nodes), which itself sources from [`monero.fail`](https://monero.fail). The nodes with the most consistent uptime are used.
+These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are sourced from [this list](https://github.com/hinto-janai/monero-nodes), which itself sources from [`monero.fail`](https://monero.fail). The nodes with the most consistent uptime are used.
 
 | IP/Domain                        | Location                          | RPC Port | ZMQ Port    |
 |----------------------------------|-----------------------------------|----------|-------------|
@@ -556,12 +566,13 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | monero2.10z.com.ar               | 🇧🇷 BR - São Paulo                 | 18089    | 18083       |
 | monero1.heitechsoft.com          | 🇨🇦 CA - Ontario                   | 18081    | 18084       |
 | node.monerodevs.org              | 🇨🇦 CA - Quebec                    | 18089    | 18084       |
+| xmr.aa78i2efsewr0neeknk.xyz      | 🇩🇪 DE - Bavaria                   | 18089    | 18083       |
 | de.poiuty.com                    | 🇩🇪 DE - Berlin                    | 18081    | 18084       |
 | m1.poiuty.com                    | 🇩🇪 DE - Berlin                    | 18081    | 18084       |
 | p2pmd.xmrvsbeast.com             | 🇩🇪 DE - Hesse                     | 18081    | 18083       |
-| fbx.tranbert.com                 | 🇫🇷 FR - Île-de-France             | 18089    | 18084       |
 | reynald.ro                       | 🇫🇷 FR - Île-de-France             | 18089    | 18084       |
 | node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
+| p2pool.uk                        | 🇬🇧 GB - England                   | 18089    | 18084       |
 | monero.homeqloud.com             | 🇬🇷 GR - East Macedonia and Thrace | 18089    | 18083       |
 | home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
 | ru.poiuty.com                    | 🇷🇺 RU - Kuzbass                   | 18081    | 18084       |
@@ -573,6 +584,7 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
+| monero.jameswillhoite.com        | 🇺🇸 US - Ohio                      | 18089    | 18084       |
 
 These are community nodes that **DON'T** have ZMQ enabled but are fast and well-known. These are not used in Gupax but can be used for general Monero usage.
 
@@ -602,7 +614,7 @@ These are community nodes that **DON'T** have ZMQ enabled but are fast and well-
 ### General Info
 You need [`cargo`](https://www.rust-lang.org/learn/get-started), Rust's build tool and package manager.
 
-The `--release` profile in Gupax is set to prefer code performance & small binary sizes over compilation speed (see [`Cargo.toml`](https://github.com/hinto-janaiyo/gupax/blob/main/Cargo.toml)). Gupax itself (with all dependencies already built) takes around 1m30s to build (vs 10s on a normal `--release`) with a Ryzen 5950x.
+The `--release` profile in Gupax is set to prefer code performance & small binary sizes over compilation speed (see [`Cargo.toml`](https://github.com/hinto-janai/gupax/blob/main/Cargo.toml)). Gupax itself (with all dependencies already built) takes around 1m30s to build (vs 10s on a normal `--release`) with a Ryzen 5950x.
 
 There are `40` unit tests throughout the codebase files, you should probably run:
 ```
@@ -666,18 +678,18 @@ This will build Gupax with the MSVC toolchain (`x86_64-pc-windows-msvc`). This i
 ## License
 The GUI library Gupax uses is [egui](https://github.com/emilk/egui). It is licensed under [MIT](https://github.com/emilk/egui/blob/master/LICENSE-MIT) & [Apache 2.0.](https://github.com/emilk/egui/blob/master/LICENSE-APACHE)
 
-[Many other libraries are used that have various licenses.](https://github.com/hinto-janaiyo/gupax/blob/master/Cargo.toml)
+[Many other libraries are used that have various licenses.](https://github.com/hinto-janai/gupax/blob/master/Cargo.toml)
 
-[Gupax](https://github.com/hinto-janaiyo/gupax/blob/master/LICENSE), [P2Pool](https://github.com/SChernykh/p2pool/blob/master/LICENSE), and [XMRig](https://github.com/xmrig/xmrig/blob/master/LICENSE) are licensed under the GNU General Public License v3.0.
+[Gupax](https://github.com/hinto-janai/gupax/blob/master/LICENSE), [P2Pool](https://github.com/SChernykh/p2pool/blob/master/LICENSE), and [XMRig](https://github.com/xmrig/xmrig/blob/master/LICENSE) are licensed under the GNU General Public License v3.0.
 
 ## FAQ
 ### Where are updates downloaded from?
 The latest versions are downloaded using GitHub's API.
-* Gupax [`https://github.com/hinto-janaiyo/gupax`](https://github.com/hinto-janaiyo/gupax)
+* Gupax [`https://github.com/hinto-janai/gupax`](https://github.com/hinto-janai/gupax)
 * P2Pool [`https://github.com/SChernykh/p2pool`](https://github.com/SChernykh/p2pool)
 * XMRig [`https://github.com/xmrig/xmrig`](https://github.com/xmrig/xmrig)
 
-GitHub's API blocks request that do not have an HTTP `User-Agent` header. [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janaiyo/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/update.rs#L134)
+GitHub's API blocks request that do not have an HTTP `User-Agent` header. [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janai/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/update.rs#L134)
 
 ---
 
@@ -713,16 +725,16 @@ Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store tem
 ### How much memory does Gupax use?
 Gupax itself uses around 100-400 megabytes of memory.
 
-Gupax also holds up to [500,000 bytes](https://github.com/hinto-janaiyo/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/helper.rs#L59) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-4 hours.
+Gupax also holds up to [500,000 bytes](https://github.com/hinto-janai/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/helper.rs#L59) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-4 hours.
 
 Memory usage should *never* be above 500~ megabytes. If you see Gupax using more than this, please send a bug report.
 
 ---
 
 ### How is sudo handled? (on macOS/Linux)
-[See here for more info.](https://github.com/hinto-janaiyo/gupax/tree/main/src#sudo)
+[See here for more info.](https://github.com/hinto-janai/gupax/tree/main/src#sudo)
 
 ---
 
 ### Why does Gupax need to be Admin? (on Windows)
-[See here for more info.](https://github.com/hinto-janaiyo/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows)
+[See here for more info.](https://github.com/hinto-janai/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows)

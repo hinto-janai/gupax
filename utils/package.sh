@@ -100,7 +100,7 @@ rm -r "gupax-$NEW_VER-windows-x64-standalone"; check "rm windows dir"
 
 # SHA256SUMS + Sign
 title "Hash + Sign"
-SHA256SUMS=$(sha256sum gupax* | gpg --clearsign); check "Hash + Sign"
+SHA256SUMS=$(sha256sum gupax* | gpg --clearsign --local-user 31C5145AAFA5A8DF1C1DB2A6D47CE05FA175A499); check "Hash + Sign"
 echo "${SHA256SUMS}" > SHA256SUMS; check "Create SHA256SUMS file"
 sha256sum -c SHA256SUMS; check "Verify SHA"
 gpg --verify SHA256SUMS; check "Verify GPG"
@@ -109,7 +109,7 @@ gpg --verify SHA256SUMS; check "Verify GPG"
 title "Clipboard"
 clipboard() {
 	grep -B999 -m1 "^$" CHANGELOG.md
-	echo "## SHA256SUM & [PGP Signature](https://github.com/hinto-janaiyo/gupax/blob/main/pgp/hinto-janaiyo.asc)"
+	echo "## SHA256SUM & [PGP Signature](https://github.com/hinto-janai/gupax/blob/main/pgp/hinto-janai.asc)"
 	echo '```'
 	cat SHA256SUMS
 	echo '```'
