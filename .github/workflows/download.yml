@@ -1,0 +1,51 @@
+# Attempt downloading all files from `gupax.io`
+# and verifies the SHA256SUMS & PGP signature.
+
+name: gupax.io
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download Windows Bundle
+      run: wget --content-disposition "https://gupax.io/windows-bundle"
+    - name: Download Windows Standalone
+      run: wget --content-disposition "https://gupax.io/windows"
+    - name: Download macOS Bundle
+      run: wget --content-disposition "https://gupax.io/macos-bundle"
+    - name: Download macOS Standalone
+      run: wget --content-disposition "https://gupax.io/macos"
+    - name: Download Linux Bundle
+      run: wget --content-disposition "https://gupax.io/linux-bundle"
+    - name: Download Linux Standalone
+      run: wget --content-disposition "https://gupax.io/linux"
+    - name: Download Hashes
+      run: wget --content-disposition "https://gupax.io/sha256sums"
+    - name: Download PGP key
+      run: wget --content-disposition "https://gupax.io/hinto"
+    - name: Import PGP key
+      run: gpg --import hinto.asc
+    - name: Verify Hashes
+      run: sha256sum -c SHA256SUMS.txt
+    - name: Verify PGP Signature
+      run: gpg --verify SHA256SUMS.txt
+    - name: Remove Old Hashes
+      run: rm SHA256SUMS.txt
+    - name: Download Hashes (GitHub)
+      run: wget --content-disposition "https://github.com/hinto-janai/gupax/releases/latest/download/SHA256SUMS"
+    - name: Verify Hashes (GitHub)
+      run: sha256sum -c SHA256SUMS
+    - name: Verify PGP Signature (GitHub)
+      run: gpg --verify SHA256SUMS
