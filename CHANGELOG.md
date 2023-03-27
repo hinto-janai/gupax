@@ -1,3 +1,18 @@
+# v1.2.1
+## Updates
+*
+
+## Fixes
+*
+
+## Bundled Versions
+* [`P2Pool v3.1`](https://github.com/SChernykh/p2pool/releases/tag/v3.1)
+* [`XMRig v6.19.0`](https://github.com/xmrig/xmrig/releases/tag/v6.19.0)
+
+
+---
+
+
 # v1.2.0
 ## Updates
 * Added [`Benchmarks`](https://github.com/hinto-janai/gupax#Status-1) submenu in `Status` tab
