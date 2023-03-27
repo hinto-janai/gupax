@@ -35,6 +35,8 @@ jobs:
       run: wget --content-disposition "https://gupax.io/sha256sums"
     - name: Download PGP key
       run: wget --content-disposition "https://gupax.io/hinto"
+    - name: Verify PGP key
+      run: bash -c "[[ $(sha256sum "hinto.asc" | awk '{print $1}') == 02242a2c4b4dfb2f49d30a15630a301c72910e6e5c212d432c8b7ff438696b00 ]]"
     - name: Import PGP key
       run: gpg --import hinto.asc
     - name: Verify Hashes
