@@ -1,13 +1,10 @@
 # v1.2.1
-## Updates
-*
-
 ## Fixes
-*
+* Small internal change to be compatible with `P2Pool v3.2`
 
 ## Bundled Versions
-* [`P2Pool v3.1`](https://github.com/SChernykh/p2pool/releases/tag/v3.1)
-* [`XMRig v6.19.0`](https://github.com/xmrig/xmrig/releases/tag/v6.19.0)
+* [`P2Pool v3.2`](https://github.com/SChernykh/p2pool/releases/tag/v3.2)
+* [`XMRig v6.19.1`](https://github.com/xmrig/xmrig/releases/tag/v6.19.1)
 
 
 ---
