@@ -109,16 +109,12 @@ https://user-images.githubusercontent.com/101352116/207978455-6ffdc0cc-204c-4594
 1. [Download the bundled version of Gupax for your OS here](https://github.com/hinto-janai/gupax/releases) or from [gupax.io](https://gupax.io/downloads)
 2. Extract somewhere (Desktop, Documents, etc)
 3. Launch Gupax
-4. Input your Monero address in the `[P2Pool]` tab
-5. Select a [`Remote Monero Node`](#remote-monero-nodes) that you trust
+4. Input your Monero address in the `P2Pool` tab
+5. Select a [`Remote Monero Node`](#remote-monero-nodes) ([or run your own local Monero node...!](https://github.com/hinto-janai/gupax#running-a-local-monero-node))
 5. Start P2Pool
 6. Start XMRig
 
 You are now mining to your own instance of P2Pool, welcome to the world of decentralized peer-to-peer mining!
-
-_Notes:_
-- _[What is bundled? What is standalone?](#bundled-vs-standalone)_
-- _If you'd like to get deeper into the settings, see [Advanced.](#advanced)_
 
 </div>
 
@@ -240,17 +236,27 @@ If you'd like to run and use your own local Monero node for P2Pool, follow these
 2. Go to the `Node` tab
 3. Enable `Local node`
 4. Enter `--zmq-pub=tcp://127.0.0.1:18083` into `Daemon startup flags`
+5. [(Optionally)](https://github.com/SChernykh/p2pool#windows) enter `--disable-dns-checkpoints --enable-dns-blocklist` into `Daemon startup flags`
 
 </div>
 
-After syncing the blockchain, you will now have your own Monero node. The 4th step enables `ZMQ`, which is extra Monero node functionality that is needed for P2Pool to work correctly.
+After syncing the blockchain, you will now have your own Monero node.
 
-[For much more detailed information on configuring a Monero node, click here.](https://monerodocs.org)
+The 4th step enables `ZMQ`, which is extra Monero node functionality that is needed for P2Pool to work correctly.
+
+The 5th step:
+
+- `--disable-dns-checkpoints` avoids periodical lag when DNS is updated (it's not needed when mining)
+- `--enable-dns-blocklist` bans known bad nodes
+
+[For more detailed information on configuring a Monero node, click here.](https://monerodocs.org)
 
 ---
 
 ### Command Line
-Gupax comes with some command line options:
+By default, Gupax has `auto-update` & `auto-ping` enabled. This can only be turned off in the GUI which causes a chicken-and-egg problem.
+
+To get around this, start Gupax with `--no-startup`. This will disable all `auto` features for that instance.
 ```
 USAGE: ./gupax [--flag]
 
@@ -267,8 +273,6 @@ USAGE: ./gupax [--flag]
     --reset-all       Reset the state, manual node list, manual pool list, and P2Pool stats
     --ferris          Print an extremely cute crab
 ```
-
-By default, Gupax has `auto-update` & `auto-ping` enabled. This can only be turned off in the GUI which causes a chicken-and-egg problem. To get around this, start Gupax with `--no-startup`. This will disable all `auto` features for that instance.
 
 ---
 
@@ -332,7 +336,7 @@ Cache:
 ### Disk
 Long-term state is saved onto the disk in the "OS data folder", using the [TOML](https://github.com/toml-lang/toml) format. If not found, default files will be created.
 
-Given a slightly corrupted `state.toml` file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g removing an outdated setting). The node/pool database cannot be merged.
+Given a slightly corrupted `state.toml` file, Gupax will attempt to merge it with a new default one. This will most likely happen if the internal data structure of `state.toml` is changed in the future (e.g: removing an outdated setting). The node/pool database cannot be merged.
 
 If Gupax can't read/write to disk at all, or if there are any other big issues, it will show an unrecoverable error screen.
 
@@ -525,7 +529,9 @@ XMRig Advanced has:
 - TLS setting
 - Keepalive setting
 
-The overriding command arguments will completely override your Gupax settings and start XMRig with those arguments. **Warned:** If using this setting, use `[--no-color]` and make sure to set `[--http-host <IP>]` & `[--http-port <PORT>]` so that the `[Status]` tab can work!
+The overriding command arguments will completely override your Gupax settings and start XMRig with those arguments.
+
+**Warning:** If using this setting, use `[--no-color]` and make sure to set `[--http-host <IP>]` & `[--http-port <PORT>]` so that the `[Status]` tab can work!
 
 The manual pool list allows you save and connect up-to 1000 custom Pools (regardless if P2Pool or not):
 | Data Field | Purpose                                                       | Limits                                                 | Max Length     |
@@ -614,9 +620,7 @@ These are community nodes that **DON'T** have ZMQ enabled but are fast and well-
 ### General Info
 You need [`cargo`](https://www.rust-lang.org/learn/get-started), Rust's build tool and package manager.
 
-The `--release` profile in Gupax is set to prefer code performance & small binary sizes over compilation speed (see [`Cargo.toml`](https://github.com/hinto-janai/gupax/blob/main/Cargo.toml)). Gupax itself (with all dependencies already built) takes around 1m30s to build (vs 10s on a normal `--release`) with a Ryzen 5950x.
-
-There are `40` unit tests throughout the codebase files, you should probably run:
+There are `40` unit tests, you should probably run:
 ```
 cargo test
 ```
@@ -635,7 +639,9 @@ After that, run:
 cargo build --release
 ```
 
-The Linux release tars come with another file next to the Gupax binary: `Gupax.AppImage`. ***This is not an actual [AppImage](https://en.wikipedia.org/wiki/AppImage)***, it is just a text file that contains: `./gupax`. This allows users to double-click and execute Gupax in file explorers like `Nautilus` in Ubuntu/Debian.
+The Linux release tars come with another file next to the Gupax binary: `Gupax.AppImage`.
+
+***This is not an actual [AppImage](https://en.wikipedia.org/wiki/AppImage)***, it is just a text file that contains: `./gupax`. This allows users to double-click and execute Gupax in file explorers like `Nautilus` in Ubuntu/Debian.
 
 ### Building for a distribution
 Gupax has a build flag for use as a package in a Linux distribution:
@@ -689,7 +695,9 @@ The latest versions are downloaded using GitHub's API.
 * P2Pool [`https://github.com/SChernykh/p2pool`](https://github.com/SChernykh/p2pool)
 * XMRig [`https://github.com/xmrig/xmrig`](https://github.com/xmrig/xmrig)
 
-GitHub's API blocks request that do not have an HTTP `User-Agent` header. [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janai/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/update.rs#L134)
+GitHub's API blocks request that do not have an HTTP `User-Agent` header.
+
+[Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janai/gupax/blob/2c5bd0d7f6a39415353769427d60c0ca57f29710/src/update.rs#L178)
 
 ---
 
@@ -725,7 +733,7 @@ Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store tem
 ### How much memory does Gupax use?
 Gupax itself uses around 100-400 megabytes of memory.
 
-Gupax also holds up to [500,000 bytes](https://github.com/hinto-janai/gupax/blob/e6bf49b309c64d29e50c0a1a185fcf0ebc05e7c7/src/helper.rs#L59) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-4 hours.
+Gupax also holds up to [500,000 bytes](https://github.com/hinto-janai/gupax/blob/2c5bd0d7f6a39415353769427d60c0ca57f29710/src/helper.rs#L61) of log data from `P2Pool/XMRig` to display in the GUI terminals. These logs are reset once over capacity which takes around 1-4 hours.
 
 Memory usage should *never* be above 500~ megabytes. If you see Gupax using more than this, please send a bug report.
 

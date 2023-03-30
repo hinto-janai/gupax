@@ -1441,7 +1441,7 @@ impl PubP2poolApi {
 			shares_found: HumanNumber::from_u64(local.shares_found),
 			average_effort: HumanNumber::to_percent(local.average_effort),
 			current_effort: HumanNumber::to_percent(local.current_effort),
-			connections: HumanNumber::from_u16(local.connections),
+			connections: HumanNumber::from_u32(local.connections),
 			user_p2pool_hashrate_u64: local.hashrate_1h,
 			..std::mem::take(&mut *public)
 		};

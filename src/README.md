@@ -1,4 +1,4 @@
-# Gupax source files. Development documentation is here.
+# Gupax source
 * [Structure](#Structure)
 * [Thread Model](#Thread-Model)
 * [Bootstrap](#Bootstrap)
