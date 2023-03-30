@@ -1596,7 +1596,7 @@ impl PubP2poolApi {
 }
 
 //---------------------------------------------------------------------------------------------------- Private P2Pool "Local" Api
-// This matches directly to P2Pool's [local/stats] JSON API file (excluding a few stats).
+// This matches directly to P2Pool's [local/stratum] JSON API file (excluding a few stats).
 // P2Pool seems to initialize all stats at 0 (or 0.0), so no [Option] wrapper seems needed.
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct PrivP2poolLocalApi {
@@ -1606,7 +1606,7 @@ struct PrivP2poolLocalApi {
 	shares_found: u64,
 	average_effort: f32,
 	current_effort: f32,
-	connections: u16, // No one will have more than 65535 connections... right?
+	connections: u32, // This is a `uint32_t` in `p2pool`
 }
 
 impl Default for PrivP2poolLocalApi { fn default() -> Self { Self::new() } }

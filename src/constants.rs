@@ -71,13 +71,13 @@ r#"*---------------------------------------*
 *---------------------------------------*"#;
 // P2Pool & XMRig default API stuff
 #[cfg(target_os = "windows")]
-pub const P2POOL_API_PATH_LOCAL:   &str = r"local\stats";
+pub const P2POOL_API_PATH_LOCAL:   &str = r"local\stratum";
 #[cfg(target_os = "windows")]
 pub const P2POOL_API_PATH_NETWORK: &str = r"network\stats";
 #[cfg(target_os = "windows")]
 pub const P2POOL_API_PATH_POOL:    &str = r"pool\stats";
 #[cfg(target_family = "unix")]
-pub const P2POOL_API_PATH_LOCAL:   &str = "local/stats";
+pub const P2POOL_API_PATH_LOCAL:   &str = "local/stratum";
 #[cfg(target_family = "unix")]
 pub const P2POOL_API_PATH_NETWORK: &str = "network/stats";
 #[cfg(target_family = "unix")]
