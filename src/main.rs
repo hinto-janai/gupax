@@ -1839,7 +1839,7 @@ path_xmr: {:#?}\n
 						// Display [Gupax] banner
 						let link_width = width/15.0;
 						self.img.banner.show_max_size(ui, Vec2::new(width, height*3.0));
-						ui.add_sized([width, height], Label::new("Gupax is a cross-platform GUI for mining"));
+						ui.add_sized([width, height], Label::new("Gupax is a GUI for mining"));
 						ui.add_sized([link_width, height], Hyperlink::from_label_and_url("[Monero]", "https://www.github.com/monero-project/monero"));
 						ui.add_sized([width, height], Label::new("on"));
 						ui.add_sized([link_width, height], Hyperlink::from_label_and_url("[P2Pool]", "https://www.github.com/SChernykh/p2pool"));

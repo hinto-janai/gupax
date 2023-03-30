@@ -1,9 +1,9 @@
 <div align="center">
 	<img src="images/banner.png" width="66%"/>
 
-Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
+Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
 
-**To see a 3-minute video on how to download and run Gupax: [click here.](#How-To)**
+**To see a 3-minute video on how to set-up Gupax: [click here.](#How-To)**
 
 ![windows-build](https://github.com/hinto-janai/gupax/actions/workflows/windows-build.yml/badge.svg) ![macos-build](https://github.com/hinto-janai/gupax/actions/workflows/macos-build.yml/badge.svg) ![linux-build](https://github.com/hinto-janai/gupax/actions/workflows/linux-build.yml/badge.svg)
 
@@ -54,32 +54,26 @@ Gupax is a (Windows|macOS|Linux) GUI for mining [**Monero**](https://github.com/
 	- [Why does Gupax need to be Admin? (on Windows)](#why-does-gupax-need-to-be-admin-on-windows)
 
 ## What is Monero/P2Pool/XMRig/Gupax?
-**Monero** is a secure, private, and untraceable cryptocurrency.
+[**`Monero`**](https://getmonero.org) is a secure, private, and untraceable cryptocurrency.
 
-The [Monero GUI](https://github.com/monero-project/monero-gui) software lets you run a Monero node (among other things). A Monero node connects you to other peers and lets you download Monero's [blockchain](https://en.wikipedia.org/wiki/Blockchain).
-
-***[More info here.](https://github.com/monero-project/monero)***
+[Monero GUI](https://github.com/monero-project/monero-gui) lets you run a Monero node (among other things). A Monero node connects you to other peers on the Monero network and lets you download Monero's [blockchain](https://en.wikipedia.org/wiki/Blockchain).
 
 ---
 
-**P2Pool** is software that lets you create/join decentralized peer-to-peer Monero mining pools.
+[**`P2Pool`**](https://github.com/SChernykh/p2pool) is software that lets you create/join decentralized peer-to-peer Monero mining pools.
 
-P2Pool as a concept was [first developed for Bitcoin](https://en.bitcoin.it/wiki/P2Pool) but was [never fully realized](https://github.com/p2pool/p2pool) due to many limitations. These limitations were fixed when SChernykh rewrote P2Pool from scratch for Monero. P2Pool combines the best of solo mining and traditional pool mining:
+P2Pool as a concept was [first developed for Bitcoin](https://en.bitcoin.it/wiki/P2Pool) but was [never fully realized](https://github.com/p2pool/p2pool) due to limitations. These limitations were fixed when [`SChernykh`](https://github.com/SChernykh) rewrote P2Pool from scratch for Monero. P2Pool combines the best of solo mining and traditional pool mining:
 
-* ***It's decentralized:*** There's no central server that can be shutdown or pool admin that controls your hashrate
-* ***It's permissionless:*** It's peer-to-peer so there's no one to decide who can and cannot mine on the pool
-* ***It's trustless:*** Funds are never in custody, all pool blocks pay out to miners directly and immediately
+* **It's decentralized:** There's no central server that can be shutdown or pool admin that controls your hashrate
+* **It's permissionless:** It's peer-to-peer so there's no one to decide who can and cannot mine on the pool
+* **It's trustless:** Funds are never in custody, all pool blocks pay out to miners directly and immediately
 * **0% transaction fee, 0 payout fee, immediate ~0.0003 XMR minimum payout**
 
-***[More info here.](https://github.com/SChernykh/p2pool)***
-
 ---
 
-**XMRig** is an optimized miner which mines Monero at higher speeds.
+[**`XMRig`**](https://github.com/xmrig/xmrig) is an optimized miner that can mine Monero.
 
 Both Monero and P2Pool have built in miners but XMRig is quite faster than both of them. Due to issues like [anti-virus flagging](https://github.com/monero-project/monero-gui/pull/3829#issuecomment-1018191461), it is not feasible to integrate XMRig directly into Monero or P2Pool, however, XMRig is still freely available for anyone to download with the caveat being: you have to set it up yourself.
-
-***[More info here.](https://github.com/xmrig/xmrig)***
 
 ---
 
@@ -87,7 +81,9 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 
 <img src="images/local.png" align="left" width="50%"/>
 
-**XMRig** mines to **P2Pool** which fetchs blocks from a **Monero node**
+**XMRig** mines to **P2Pool**
+
+**P2Pool** fetchs blocks from a **Monero node**
 
 **Monero GUI** runs the ***Monero node***
 
@@ -97,7 +93,7 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 
 <img src="images/remote.png" align="left" width="50%"/>
 
-By default, though, Gupax will use a [Remote Monero Node](#remote-monero-nodes) so you don't even have to run your own full Monero node to start mining on P2Pool.
+By default, Gupax will use a [Remote Monero Node](#remote-monero-nodes) so you don't have to run your own Monero node to start mining on P2Pool.
 
 <br clear="left"/>
 
