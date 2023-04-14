@@ -47,7 +47,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	//---------------------------------------------------------------------------------------------------- [Processes]
 	if self.submenu == Submenu::Processes {
 	let width = (width/3.0)-(SPACE*1.666);
-	let min_height = height/1.1;
+	let min_height = height - SPACE;
 	let height = height/25.0;
 	ui.horizontal(|ui| {
 	// [Gupax]
