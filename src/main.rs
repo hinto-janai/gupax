@@ -309,15 +309,19 @@ impl App {
 			Ok(toml) => toml,
 			Err(err) => {
 				error!("State ... {}", err);
-				match err {
-					Io(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Path(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Serialize(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Deserialize(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Format(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Merge(e) => app.error_state.set(format!("State file: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
-					_ => (),
+				let set = match err {
+					Io(e)          => Some((e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit)),
+					Path(e)        => Some((e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit)),
+					Serialize(e)   => Some((e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit)),
+					Deserialize(e) => Some((e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit)),
+					Format(e)      => Some((e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit)),
+					Merge(e)       => Some((e.to_string(), ErrorFerris::Error, ErrorButtons::ResetState)),
+					_              => None,
 				};
+				if let Some((e, ferris, button)) = set {
+					app.error_state.set(format!("State file: {}\n\nTry deleting: {}\n\n(Warning: this will delete your Gupax settings)\n\n", e, app.state_path.display()), ferris, button);
+				}
+
 				State::new()
 			},
 		};
@@ -328,15 +332,16 @@ impl App {
 			Ok(toml) => toml,
 			Err(err) => {
 				error!("Node ... {}", err);
-				match err {
-					Io(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Path(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Serialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Deserialize(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Format(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Merge(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
-					Parse(e) => app.error_state.set(format!("Node list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+				let (e, ferris, button) = match err {
+					Io(e)          => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e)        => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e)   => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e)      => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e)       => (e.to_string(), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e)       => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
 				};
+				app.error_state.set(format!("Node list: {}\n\nTry deleting: {}\n\n(Warning: this will delete your custom node list)\n\n", e, app.node_path.display()), ferris, button);
 				Node::new_vec()
 			},
 		};
@@ -349,15 +354,16 @@ impl App {
 			Ok(toml) => toml,
 			Err(err) => {
 				error!("Pool ... {}", err);
-				match err {
-					Io(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Path(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Serialize(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Deserialize(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Format(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Merge(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
-					Parse(e) => app.error_state.set(format!("Pool list: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+				let (e, ferris, button) = match err {
+					Io(e)          => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e)        => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e)   => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e)      => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e)       => (e.to_string(), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e)       => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
 				};
+				app.error_state.set(format!("Pool list: {}\n\nTry deleting: {}\n\n(Warning: this will delete your custom pool list)\n\n", e, app.pool_path.display()), ferris, button);
 				Pool::new_vec()
 			},
 		};
@@ -372,15 +378,16 @@ impl App {
 			Ok(_) => info!("App Init | Creating Gupax-P2Pool API files ... OK"),
 			Err(err) => {
 				error!("GupaxP2poolApi ... {}", err);
-				match err {
-					Io(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Path(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Serialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Deserialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Format(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Merge(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
-					Parse(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+				let (e, ferris, button) = match err {
+					Io(e)          => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e)        => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e)   => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e)      => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e)       => (e.to_string(), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e)       => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
 				};
+				app.error_state.set(format!("Gupax P2Pool Stats: {}\n\nTry deleting: {}\n\n(Warning: this will delete your P2Pool payout history...!)\n\n", e, app.gupax_p2pool_api_path.display()), ferris, button);
 			},
 		}
 		info!("App Init | Reading Gupax-P2Pool API files...");
@@ -394,15 +401,16 @@ impl App {
 			},
 			Err(err) => {
 				error!("GupaxP2poolApi ... {}", err);
-				match err {
-					Io(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Path(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Serialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Deserialize(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Format(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
-					Merge(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Error, ErrorButtons::ResetState),
-					Parse(e) => app.error_state.set(format!("GupaxP2poolApi: {}", e), ErrorFerris::Panic, ErrorButtons::Quit),
+				let (e, ferris, button) = match err {
+					Io(e)          => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Path(e)        => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Serialize(e)   => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Deserialize(e) => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Format(e)      => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
+					Merge(e)       => (e.to_string(), ErrorFerris::Error, ErrorButtons::ResetState),
+					Parse(e)       => (e.to_string(), ErrorFerris::Panic, ErrorButtons::Quit),
 				};
+				app.error_state.set(format!("Gupax P2Pool Stats: {}\n\nTry deleting: {}\n\n(Warning: this will delete your P2Pool payout history...!)\n\n", e, app.gupax_p2pool_api_path.display()), ferris, button);
 			},
 		};
 		drop(gupax_p2pool_api);
