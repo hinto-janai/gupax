@@ -1254,6 +1254,7 @@ pub struct PubP2poolApi {
 	pub xmr_hour: f64,
 	pub xmr_day: f64,
 	pub xmr_month: f64,
+	pub synchronized: bool,
 	// Local API
 	pub hashrate_15m: HumanNumber,
 	pub hashrate_1h: HumanNumber,
@@ -1312,6 +1313,7 @@ impl PubP2poolApi {
 			xmr_hour: 0.0,
 			xmr_day: 0.0,
 			xmr_month: 0.0,
+			synchronized: false,
 			hashrate_15m: HumanNumber::unknown(),
 			hashrate_1h: HumanNumber::unknown(),
 			hashrate_24h: HumanNumber::unknown(),
@@ -1385,6 +1387,12 @@ impl PubP2poolApi {
 		// 2. Parse the full STDOUT
 		let mut output_parse = lock!(output_parse);
 		let (payouts_new, xmr_new) = Self::calc_payouts_and_xmr(&output_parse, regex);
+		// Check for "SYNCHRONIZED" only if we aren't already.
+		if !lock!(public).synchronized {
+			if regex.synchronized.is_match(&output_parse) {
+				lock!(public).synchronized = true;
+			}
+		}
 		// 3. Throw away [output_parse]
 		output_parse.clear();
 		drop(output_parse);
