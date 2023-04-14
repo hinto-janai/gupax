@@ -64,6 +64,7 @@ walkdir = "2.3.2"
 zeroize = "1.5.7"
 serde-xml-rs = "0.6.0"
 strsim = "0.10.0"
+trayicon = "0.1.3"
 
 # Unix dependencies
 [target.'cfg(unix)'.dependencies]
