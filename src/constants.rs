@@ -85,10 +85,11 @@ pub const P2POOL_API_PATH_POOL:    &str = "pool/stats";
 pub const XMRIG_API_URI:           &str = "1/summary"; // The default relative URI of XMRig's API
 
 // Process state tooltips (online, offline, etc)
-pub const P2POOL_ALIVE:  &str = "P2Pool is online";
-pub const P2POOL_DEAD:   &str = "P2Pool is offline";
-pub const P2POOL_FAILED: &str = "P2Pool is offline and failed when exiting";
-pub const P2POOL_MIDDLE: &str = "P2Pool is in the middle of (re)starting/stopping";
+pub const P2POOL_ALIVE:   &str = "P2Pool is online and fully synchronized";
+pub const P2POOL_DEAD:    &str = "P2Pool is offline";
+pub const P2POOL_FAILED:  &str = "P2Pool is offline and failed when exiting";
+pub const P2POOL_MIDDLE:  &str = "P2Pool is in the middle of (re)starting/stopping";
+pub const P2POOL_SYNCING: &str = "P2Pool is still syncing. This indicator will turn GREEN when P2Pool is ready";
 
 pub const XMRIG_ALIVE:  &str = "XMRig is online";
 pub const XMRIG_DEAD:   &str = "XMRig is offline";
@@ -104,6 +105,7 @@ pub const SPACE: f32 = 10.0;
 // Some colors
 pub const RED:           egui::Color32 = egui::Color32::from_rgb(230, 50, 50);
 pub const GREEN:         egui::Color32 = egui::Color32::from_rgb(100, 230, 100);
+pub const BLUE:          egui::Color32 = egui::Color32::from_rgb(100, 175, 255);
 pub const YELLOW:        egui::Color32 = egui::Color32::from_rgb(230, 230, 100);
 pub const BRIGHT_YELLOW: egui::Color32 = egui::Color32::from_rgb(250, 250, 100);
 pub const BONE:          egui::Color32 = egui::Color32::from_rgb(190, 190, 190); // In between LIGHT_GRAY <-> GRAY

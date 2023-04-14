@@ -179,11 +179,17 @@ impl Process {
 
 	// Convenience functions
 	pub fn is_alive(&self) -> bool {
-		self.state == ProcessState::Alive || self.state == ProcessState::Middle
+		self.state == ProcessState::Alive ||
+		self.state == ProcessState::Middle ||
+		self.state == ProcessState::Syncing
 	}
 
 	pub fn is_waiting(&self) -> bool {
 		self.state == ProcessState::Middle || self.state == ProcessState::Waiting
+	}
+
+	pub fn is_syncing(&self) -> bool {
+		self.state == ProcessState::Syncing
 	}
 }
 
@@ -195,6 +201,9 @@ pub enum ProcessState {
 	Failed, // Process is dead AND exited with a bad code, RED!
 	Middle, // Process is in the middle of something ([re]starting/stopping), YELLOW!
 	Waiting, // Process was successfully killed by a restart, and is ready to be started again, YELLOW!
+
+	// Only for P2Pool.
+	Syncing,
 }
 
 impl Default for ProcessState { fn default() -> Self { Self::Dead } }
@@ -479,7 +488,7 @@ impl Helper {
         // 2. Set process state
 		debug!("P2Pool | Setting process state...");
         let mut lock = lock!(process);
-        lock.state = ProcessState::Alive;
+        lock.state = ProcessState::Syncing;
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
@@ -647,7 +656,7 @@ impl Helper {
 
 			// Always update from output
 			debug!("P2Pool Watchdog | Starting [update_from_output()]");
-			PubP2poolApi::update_from_output(&pub_api, &output_parse, &output_pub, start.elapsed(), &regex);
+			PubP2poolApi::update_from_output(&pub_api, &output_parse, &output_pub, start.elapsed(), &regex, &process);
 
 			// Read [local] API
 			debug!("P2Pool Watchdog | Attempting [local] API file read");
@@ -1254,7 +1263,6 @@ pub struct PubP2poolApi {
 	pub xmr_hour: f64,
 	pub xmr_day: f64,
 	pub xmr_month: f64,
-	pub synchronized: bool,
 	// Local API
 	pub hashrate_15m: HumanNumber,
 	pub hashrate_1h: HumanNumber,
@@ -1313,7 +1321,6 @@ impl PubP2poolApi {
 			xmr_hour: 0.0,
 			xmr_day: 0.0,
 			xmr_month: 0.0,
-			synchronized: false,
 			hashrate_15m: HumanNumber::unknown(),
 			hashrate_1h: HumanNumber::unknown(),
 			hashrate_24h: HumanNumber::unknown(),
@@ -1377,7 +1384,14 @@ impl PubP2poolApi {
 	}
 
 	// Mutate "watchdog"'s [PubP2poolApi] with data the process output.
-	fn update_from_output(public: &Arc<Mutex<Self>>, output_parse: &Arc<Mutex<String>>, output_pub: &Arc<Mutex<String>>, elapsed: std::time::Duration, regex: &P2poolRegex) {
+	fn update_from_output(
+		public: &Arc<Mutex<Self>>,
+		output_parse: &Arc<Mutex<String>>,
+		output_pub: &Arc<Mutex<String>>,
+		elapsed: std::time::Duration,
+		regex: &P2poolRegex,
+		process: &Arc<Mutex<Process>>,
+	) {
 		// 1. Take the process's current output buffer and combine it with Pub (if not empty)
 		let mut output_pub = lock!(output_pub);
 		if !output_pub.is_empty() {
@@ -1388,9 +1402,9 @@ impl PubP2poolApi {
 		let mut output_parse = lock!(output_parse);
 		let (payouts_new, xmr_new) = Self::calc_payouts_and_xmr(&output_parse, regex);
 		// Check for "SYNCHRONIZED" only if we aren't already.
-		if !lock!(public).synchronized {
+		if lock!(process).state == ProcessState::Syncing {
 			if regex.synchronized.is_match(&output_parse) {
-				lock!(public).synchronized = true;
+				lock!(process).state = ProcessState::Alive;
 			}
 		}
 		// 3. Throw away [output_parse]
