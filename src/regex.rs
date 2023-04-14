@@ -75,6 +75,7 @@ pub struct P2poolRegex {
 	pub block: regex::Regex,
 	pub block_int: regex::Regex,
 	pub block_comma: regex::Regex,
+	pub synchronized: regex::Regex,
 }
 
 impl P2poolRegex {
@@ -86,6 +87,7 @@ impl P2poolRegex {
 			block: regex::Regex::new("block [0-9]{7}").unwrap(), // Monero blocks will be 7 digits for... the next 10,379 years
 			block_int: regex::Regex::new("[0-9]{7}").unwrap(),
 			block_comma: regex::Regex::new("[0-9],[0-9]{3},[0-9]{3}").unwrap(),
+			synchronized: regex::Regex::new("SYNCHRONIZED").unwrap(),
 		}
 	}
 }
@@ -118,11 +120,13 @@ mod test {
 		let r = crate::P2poolRegex::new();
 		let text = "NOTICE  2022-11-11 11:11:11.1111 P2Pool You received a payout of 0.111111111111 XMR in block 1111111";
 		let text2 = "2022-11-11 11:11:11.1111 | 0.111111111111 XMR | Block 1,111,111";
+		let text3 = "NOTICE  2020-12-11 12:35:41.3150 SideChain SYNCHRONIZED";
 		assert_eq!(r.payout.find(text).unwrap().as_str(),       "payout of 0.111111111111 XMR");
 		assert_eq!(r.payout_float.find(text).unwrap().as_str(), "0.111111111111");
 		assert_eq!(r.date.find(text).unwrap().as_str(),         "2022-11-11 11:11:11.1111");
 		assert_eq!(r.block.find(text).unwrap().as_str(),        "block 1111111");
 		assert_eq!(r.block_int.find(text).unwrap().as_str(),    "1111111");
 		assert_eq!(r.block_comma.find(text2).unwrap().as_str(),  "1,111,111");
+		assert_eq!(r.synchronized.find(text2).unwrap().as_str(),  "SYNCHRONIZED");
 	}
 }
