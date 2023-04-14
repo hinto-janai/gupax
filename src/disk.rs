@@ -349,6 +349,10 @@ impl Node {
 		vec![("Local Monero Node".to_string(), Self::localhost())]
 	}
 
+	pub fn new_tuple() -> (String, Self) {
+		("Local Monero Node".to_string(), Self::localhost())
+	}
+
 	// Convert [String] to [Node] Vec
 	pub fn from_str_to_vec(string: &str) -> Result<Vec<(String, Self)>, TomlError> {
 		let nodes: toml::map::Map<String, toml::Value> = match toml::de::from_str(string) {
@@ -481,6 +485,10 @@ impl Pool {
 
 	pub fn new_vec() -> Vec<(String, Self)> {
 		vec![("Local P2Pool".to_string(), Self::p2pool())]
+	}
+
+	pub fn new_tuple() -> (String, Self) {
+		("Local P2Pool".to_string(), Self::p2pool())
 	}
 
 	pub fn from_str_to_vec(string: &str) -> Result<Vec<(String, Self)>, TomlError> {

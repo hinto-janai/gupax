@@ -421,8 +421,11 @@ impl App {
 		// Handle [node_vec] overflow
 		info!("App Init | Handling [node_vec] overflow");
 		if og.p2pool.selected_index > app.og_node_vec.len() {
-			warn!("App | Overflowing manual node index [{} > {}], resetting to 1", og.p2pool.selected_index, app.og_node_vec.len());
-			let (name, node) = app.og_node_vec[0].clone();
+			warn!("App | Overflowing manual node index [{} > {}]", og.p2pool.selected_index, app.og_node_vec.len());
+			let (name, node) = match app.og_node_vec.get(0) {
+				Some(zero) => zero.clone(),
+				None       => Node::new_tuple(),
+			};
 			og.p2pool.selected_index = 0;
 			og.p2pool.selected_name = name.clone();
 			og.p2pool.selected_ip = node.ip.clone();
@@ -438,7 +441,10 @@ impl App {
 		info!("App Init | Handling [pool_vec] overflow...");
 		if og.xmrig.selected_index > app.og_pool_vec.len() {
 			warn!("App | Overflowing manual pool index [{} > {}], resetting to 1", og.xmrig.selected_index, app.og_pool_vec.len());
-			let (name, pool) = app.og_pool_vec[0].clone();
+			let (name, pool) = match app.og_pool_vec.get(0) {
+				Some(zero) => zero.clone(),
+				None       => Pool::new_tuple(),
+			};
 			og.xmrig.selected_index = 0;
 			og.xmrig.selected_name = name.clone();
 			og.xmrig.selected_ip = pool.ip.clone();
