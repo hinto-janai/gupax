@@ -1,13 +1,11 @@
 <div align="center">
-	<img src="images/banner.png" width="66%"/>
+	<img src="images/banner.png" width="50%"/>
 
 Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
 
 **To see a 3-minute video on how to set-up Gupax: [click here.](#How-To)**
 
-![windows-build](https://github.com/hinto-janai/gupax/actions/workflows/windows-build.yml/badge.svg) ![macos-build](https://github.com/hinto-janai/gupax/actions/workflows/macos-build.yml/badge.svg) ![linux-build](https://github.com/hinto-janai/gupax/actions/workflows/linux-build.yml/badge.svg)
-
-![windows-test](https://github.com/hinto-janai/gupax/actions/workflows/windows-test.yml/badge.svg) ![macos-test](https://github.com/hinto-janai/gupax/actions/workflows/macos-test.yml/badge.svg) ![linux-test](https://github.com/hinto-janai/gupax/actions/workflows/linux-test.yml/badge.svg)
+![windows](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml/badge.svg) ![macos](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml/badge.svg) ![linux](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml/badge.svg)
 
 ![daily-ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)
 

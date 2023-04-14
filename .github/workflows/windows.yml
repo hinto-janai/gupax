@@ -1,4 +1,4 @@
-name: macOS Tests
+name: Windows
 
 on:
   push:
@@ -12,17 +12,19 @@ env:
 jobs:
   build:
 
-    runs-on: macos-latest
+    runs-on: windows-latest
 
     steps:
     - name: Cache
       uses: actions/cache@v3.2.3
       with:
         path: |
-          ~/.cargo/registry
-          ~/.cargo/git
+          ~\.cargo\registry
+          ~\.cargo\git
           target
-        key: macos cargo test
+        key: windows
     - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build
     - name: Test
       run: cargo test

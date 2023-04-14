@@ -1,4 +1,4 @@
-name: macOS Build
+name: macOS
 
 on:
   push:
@@ -22,7 +22,9 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: macos cargo build
+        key: macos
     - uses: actions/checkout@v3
     - name: Build
       run: cargo build
+    - name: Test
+      run: cargo test

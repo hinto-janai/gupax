@@ -1,4 +1,4 @@
-name: Linux Build
+name: Linux
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: linux cargo build
+        key: linux
     - uses: actions/checkout@v3
     - name: Install dependencies
       run: |
@@ -30,3 +30,5 @@ jobs:
         sudo apt install -y libgtk-3-dev
     - name: Build
       run: cargo build
+    - name: Test
+      run: cargo test
