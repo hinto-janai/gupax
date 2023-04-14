@@ -121,6 +121,7 @@ impl Default for Sys { fn default() -> Self { Self::new() } }
 //---------------------------------------------------------------------------------------------------- [Process] Struct
 // This holds all the state of a (child) process.
 // The main GUI thread will use this to display console text, online state, etc.
+#[derive(Debug)]
 pub struct Process {
 	pub name: ProcessName,     // P2Pool or XMRig?
 	pub state: ProcessState,   // The state of the process (alive, dead, etc)
@@ -1900,6 +1901,8 @@ impl Hashrate {
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]
 mod test {
+	use super::*;
+
 	#[test]
 	fn reset_gui_output() {
 		let max = crate::helper::GUI_OUTPUT_LEEWAY;
@@ -1955,7 +1958,8 @@ mod test {
 		let output_pub = Arc::new(Mutex::new(String::new()));
 		let elapsed = std::time::Duration::from_secs(60);
 		let regex = P2poolRegex::new();
-		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &regex);
+		let process = Arc::new(Mutex::new(Process::new(ProcessName::P2pool, "".to_string(), PathBuf::new())));
+		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &regex, &process);
 		let public = public.lock().unwrap();
 		println!("{:#?}", public);
 		assert_eq!(public.payouts,       3);
@@ -1966,6 +1970,28 @@ mod test {
 		assert_eq!(public.xmr_hour,      900.00000000018);
 		assert_eq!(public.xmr_day,       21600.00000000432);
 		assert_eq!(public.xmr_month,     648000.0000001296);
+	}
+
+	#[test]
+	fn set_p2pool_synchronized() {
+		use crate::helper::{PubP2poolApi,P2poolRegex};
+		use std::sync::{Arc,Mutex};
+		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
+		let output_parse = Arc::new(Mutex::new(String::from(
+			r#"payout of 5.000000000001 XMR in block 1111
+			NOTICE  2021-12-27 21:42:17.2008 SideChain SYNCHRONIZED
+			payout of 5.000000000001 XMR in block 1113"#
+		)));
+		let output_pub = Arc::new(Mutex::new(String::new()));
+		let elapsed = std::time::Duration::from_secs(60);
+		let regex = P2poolRegex::new();
+		let process = Arc::new(Mutex::new(Process::new(ProcessName::P2pool, "".to_string(), PathBuf::new())));
+
+		// It only gets checked if we're `Syncing`.
+		process.lock().unwrap().state = ProcessState::Syncing;
+		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &regex, &process);
+		println!("{:#?}", process);
+		assert!(process.lock().unwrap().state == ProcessState::Alive);
 	}
 
 	#[test]

@@ -127,6 +127,6 @@ mod test {
 		assert_eq!(r.block.find(text).unwrap().as_str(),        "block 1111111");
 		assert_eq!(r.block_int.find(text).unwrap().as_str(),    "1111111");
 		assert_eq!(r.block_comma.find(text2).unwrap().as_str(),  "1,111,111");
-		assert_eq!(r.synchronized.find(text2).unwrap().as_str(),  "SYNCHRONIZED");
+		assert_eq!(r.synchronized.find(text3).unwrap().as_str(),  "SYNCHRONIZED");
 	}
 }
