@@ -109,7 +109,7 @@ impl crate::disk::Gupax {
 					ui.set_enabled(updating);
 					let prog = *lock2!(update,prog);
 					let msg = format!("{}\n{}{}", *lock2!(update,msg), prog, "%");
-					ui.add_sized([width, height*1.4], Label::new(RichText::text_style(RichText::new(msg), Monospace)));
+					ui.add_sized([width, height*1.4], Label::new(RichText::new(msg)));
 					let height = height/2.0;
 					if updating {
 						ui.add_sized([width, height], Spinner::new().size(height));
@@ -144,11 +144,10 @@ impl crate::disk::Gupax {
 
 		debug!("Gupax Tab | Rendering P2Pool/XMRig path selection");
 		// P2Pool/XMRig binary path selection
-		ui.style_mut().override_text_style = Some(Monospace);
 		let height = height/28.0;
 		let text_edit = (ui.available_width()/10.0)-SPACE;
 		ui.group(|ui| {
-		ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("P2Pool/XMRig PATHs").underline().color(LIGHT_GRAY).text_style(TextStyle::Monospace))).on_hover_text("Gupax is online");
+		ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("P2Pool/XMRig PATHs").underline().color(LIGHT_GRAY))).on_hover_text("Gupax is online");
 		ui.separator();
 		ui.horizontal(|ui| {
 			if self.p2pool_path.is_empty() {
@@ -196,7 +195,7 @@ impl crate::disk::Gupax {
 		debug!("Gupax Tab | Rendering [Tab] selector");
 		ui.group(|ui| {
 			let width = (width/5.0)-(SPACE*1.93);
-			ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("Default Tab").underline().color(LIGHT_GRAY).text_style(TextStyle::Monospace))).on_hover_text(GUPAX_TAB);
+			ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("Default Tab").underline().color(LIGHT_GRAY))).on_hover_text(GUPAX_TAB);
 			ui.separator();
 			ui.horizontal(|ui| {
 			if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).on_hover_text(GUPAX_TAB_ABOUT).clicked() { self.tab = Tab::About; }
@@ -213,7 +212,7 @@ impl crate::disk::Gupax {
 		// Gupax App resolution sliders
 		debug!("Gupax Tab | Rendering resolution sliders");
 		ui.group(|ui| {
-		ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("Width/Height Adjust").underline().color(LIGHT_GRAY).text_style(TextStyle::Monospace))).on_hover_text(GUPAX_ADJUST);
+		ui.add_sized([ui.available_width(), height/2.0], Label::new(RichText::new("Width/Height Adjust").underline().color(LIGHT_GRAY))).on_hover_text(GUPAX_ADJUST);
 		ui.separator();
 		ui.vertical(|ui| {
 			let width = width/10.0;

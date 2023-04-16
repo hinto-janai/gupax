@@ -165,6 +165,7 @@ impl App {
 	fn cc(cc: &eframe::CreationContext<'_>, app: Self) -> Self {
 		let resolution = cc.integration_info.window_info.size;
 		init_text_styles(&cc.egui_ctx, resolution[0]);
+		cc.egui_ctx.set_visuals(VISUALS.clone());
 		Self {
 			resolution,
 			..app
@@ -734,13 +735,13 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 	let scale = width / 30.0;
 	let mut style = (*ctx.style()).clone();
 	style.text_styles = [
-		(Small, FontId::new(scale/3.0, Proportional)),
-		(Body, FontId::new(scale/2.0, Proportional)),
-		(Button, FontId::new(scale/2.0, Proportional)),
+		(Small, FontId::new(scale/3.0, egui::FontFamily::Monospace)),
+		(Body, FontId::new(scale/2.0, egui::FontFamily::Monospace)),
+		(Button, FontId::new(scale/2.0, egui::FontFamily::Monospace)),
 		(Monospace, FontId::new(scale/2.0, egui::FontFamily::Monospace)),
-		(Heading, FontId::new(scale/1.5, Proportional)),
-		(Name("Tab".into()), FontId::new(scale*1.2, Proportional)),
-		(Name("Bottom".into()), FontId::new(scale/2.0, Proportional)),
+		(Heading, FontId::new(scale/1.5, egui::FontFamily::Monospace)),
+		(Name("Tab".into()), FontId::new(scale*1.2, egui::FontFamily::Monospace)),
+		(Name("Bottom".into()), FontId::new(scale/2.0, egui::FontFamily::Monospace)),
 		(Name("MonospaceSmall".into()), FontId::new(scale/2.5, egui::FontFamily::Monospace)),
 		(Name("MonospaceLarge".into()), FontId::new(scale/1.5, egui::FontFamily::Monospace)),
 	].into();
@@ -1327,7 +1328,6 @@ impl eframe::App for App {
 						ui.add_sized([width, height], Hyperlink::from_label_and_url("Click here for more info.", "https://xmrig.com/docs/miner/randomx-optimization-guide"))
 					},
 					Debug => {
-						ui.style_mut().override_text_style = Some(Monospace);
 						egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 							let width = ui.available_width();
 							let height = ui.available_height();
@@ -1418,7 +1418,6 @@ impl eframe::App for App {
 						let height = ui.available_height()/4.0;
 						let mut sudo = lock!(self.sudo);
 						let hide = sudo.hide;
-						ui.style_mut().override_text_style = Some(Monospace);
 						if sudo.testing {
 							ui.add_sized([width, height], Spinner::new().size(height));
 							ui.set_enabled(false);
@@ -1480,11 +1479,7 @@ impl eframe::App for App {
 			let height = self.height/15.0;
 		    ui.add_space(4.0);
 			ui.horizontal(|ui| {
-				let style = ui.style_mut();
-				style.override_text_style = Some(Name("Tab".into()));
-				style.visuals.widgets.inactive.fg_stroke.color = Color32::from_rgb(100, 100, 100);
-				style.visuals.selection.bg_fill = Color32::from_rgb(255, 120, 120);
-				style.visuals.selection.stroke = Stroke { width: 5.0, color: Color32::from_rgb(255, 255, 255) };
+				ui.style_mut().override_text_style = Some(Name("Tab".into()));
 				if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::About, "About")).clicked() { self.tab = Tab::About; }
 				ui.separator();
 				if ui.add_sized([width, height], SelectableLabel::new(self.tab == Tab::Status, "Status")).clicked() { self.tab = Tab::Status; }
@@ -1852,24 +1847,21 @@ path_xmr: {:#?}\n
 					ui.vertical_centered(|ui| {
 						ui.set_max_height(max_height);
 						// Display [Gupax] banner
-						let link_width = width/15.0;
+						let link_width = width/14.0;
 						self.img.banner.show_max_size(ui, Vec2::new(width, height*3.0));
-						ui.add_sized([width, height], Label::new("Gupax is a GUI for mining"));
+						ui.add_sized([width, height], Label::new("is a GUI for mining"));
 						ui.add_sized([link_width, height], Hyperlink::from_label_and_url("[Monero]", "https://www.github.com/monero-project/monero"));
 						ui.add_sized([width, height], Label::new("on"));
 						ui.add_sized([link_width, height], Hyperlink::from_label_and_url("[P2Pool]", "https://www.github.com/SChernykh/p2pool"));
 						ui.add_sized([width, height], Label::new("using"));
 						ui.add_sized([link_width, height], Hyperlink::from_label_and_url("[XMRig]", "https://www.github.com/xmrig/xmrig"));
 
-						ui.add_space(SPACE*3.0);
-						ui.style_mut().override_text_style = Some(Monospace);
+						ui.add_space(SPACE*2.0);
 						ui.add_sized([width, height], Label::new(KEYBOARD_SHORTCUTS));
-						ui.style_mut().override_text_style = Some(Body);
-						ui.add_space(SPACE*3.0);
+						ui.add_space(SPACE*2.0);
 
-						ui.add_sized([width, height], Label::new("egui is licensed under MIT & Apache-2.0"));
-						ui.add_sized([width, height], Label::new("Gupax, P2Pool, and XMRig are licensed under GPLv3"));
 						if cfg!(debug_assertions) { ui.label(format!("Gupax is running in debug mode - {}", self.now.elapsed().as_secs_f64())); }
+						ui.label(format!("Gupax has been running for: {}", lock!(self.pub_sys).gupax_uptime));
 					});
 				}
 				Tab::Status => {

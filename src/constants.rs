@@ -113,7 +113,7 @@ pub const WHITE:         egui::Color32 = egui::Color32::WHITE;
 pub const GRAY:          egui::Color32 = egui::Color32::GRAY;
 pub const LIGHT_GRAY:    egui::Color32 = egui::Color32::LIGHT_GRAY;
 pub const BLACK:         egui::Color32 = egui::Color32::BLACK;
-pub const DARK_GRAY:     egui::Color32 = egui::Color32::from_rgb(18, 18, 18);
+pub const DARK_GRAY:     egui::Color32 = egui::Color32::from_gray(13);
 
 // [Duration] constants
 pub const SECOND: std::time::Duration = std::time::Duration::from_secs(1);
@@ -248,15 +248,15 @@ pub const GUPAX_TAB_XMRIG:        &str = "Set the tab Gupax starts on to: XMRig"
 
 pub const GUPAX_SIMPLE: &str =
 r#"Use simple Gupax settings:
-    - Update button
-    - Basic toggles"#;
+  - Update button
+  - Basic toggles"#;
 pub const GUPAX_ADVANCED: &str =
 r#"Use advanced Gupax settings:
-    - Update button
-    - Basic toggles
-    - P2Pool/XMRig binary path selector
-    - Gupax resolution sliders
-    - Gupax start-up tab selector"#;
+  - Update button
+  - Basic toggles
+  - P2Pool/XMRig binary path selector
+  - Gupax resolution sliders
+  - Gupax start-up tab selector"#;
 pub const GUPAX_SELECT: &str = "Open a file explorer to select a file";
 pub const GUPAX_PATH_P2POOL: &str = "The location of the P2Pool binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 pub const GUPAX_PATH_XMRIG: &str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
@@ -293,16 +293,16 @@ r#"WARNING: Use [--no-color] and make sure to set [--data-api <PATH>] & [--local
 Start P2Pool with these arguments and override all below settings"#;
 pub const P2POOL_SIMPLE: &str =
 r#"Use simple P2Pool settings:
-    - Remote remote Monero node
-    - Default P2Pool settings + Mini"#;
+  - Remote remote Monero node
+  - Default P2Pool settings + Mini"#;
 pub const P2POOL_ADVANCED: &str =
 r#"Use advanced P2Pool settings:
-    - Terminal input
-    - Overriding command arguments
-    - Manual node list
-    - P2Pool Main/Mini selection
-    - Out/In peer setting
-    - Log level setting"#;
+  - Terminal input
+  - Overriding command arguments
+  - Manual node list
+  - P2Pool Main/Mini selection
+  - Out/In peer setting
+  - Log level setting"#;
 pub const P2POOL_NAME: &str = "Add a unique name to identify this node; Only [A-Za-z0-9-_.] and spaces allowed; Max length = 30 characters";
 pub const P2POOL_NODE_IP: &str = "Specify the Monero Node IP to connect to with P2Pool; It must be a valid IPv4 address or a valid domain name; Max length = 255 characters";
 pub const P2POOL_RPC_PORT: &str = "Specify the RPC port of the Monero node; [1-65535]";
@@ -321,19 +321,19 @@ pub const LIST_CLEAR:  &str = "Clear all current values";
 // XMRig
 pub const XMRIG_SIMPLE: &str =
 r#"Use simple XMRig settings:
-	- Mine to local P2Pool (localhost:3333)
-	- CPU thread slider
-	- HTTP API @ localhost:18088"#;
+  - Mine to local P2Pool (localhost:3333)
+  - CPU thread slider
+  - HTTP API @ localhost:18088"#;
 pub const XMRIG_ADVANCED: &str =
 r#"Use advanced XMRig settings:
-    - Terminal input
-	- Overriding command arguments
-	- Custom payout address
-	- CPU thread slider
-	- Manual pool list
-	- Custom HTTP API IP/Port
-	- TLS setting
-	- Keepalive setting"#;
+  - Terminal input
+  - Overriding command arguments
+  - Custom payout address
+  - CPU thread slider
+  - Manual pool list
+  - Custom HTTP API IP/Port
+  - TLS setting
+  - Keepalive setting"#;
 pub const XMRIG_INPUT: &str = "Send a command to XMRig";
 pub const XMRIG_ARGUMENTS: &str =
 r#"WARNING: Use [--no-color] and make sure to set [--http-host <IP>] & [--http-port <PORT>] so that the [Status] tab can work!
@@ -380,6 +380,98 @@ pub const ARG_COPYRIGHT: &str =
 r#"Gupax is licensed under GPLv3.
 For more information, see link below:
 <https://github.com/hinto-janai/gupax>"#;
+
+//---------------------------------------------------------------------------------------------------- Visuals
+use egui::epaint::{
+	Rounding,
+	Shadow,
+	Stroke
+};
+
+use egui::{
+	Color32,
+	Visuals,
+	style::Spacing,
+};
+
+use egui::style::{
+	Selection,
+	Widgets,
+	WidgetVisuals,
+};
+
+pub const ACCENT_COLOR: Color32 = Color32::from_rgb(200, 100, 100);
+pub const BG: Color32 = Color32::from_gray(20);
+
+lazy_static::lazy_static! {
+	/// This is based off [`Visuals::dark()`].
+	pub static ref VISUALS: Visuals = {
+		let selection = Selection {
+			bg_fill: ACCENT_COLOR,
+			stroke: Stroke::new(1.0, Color32::from_gray(255)),
+		};
+
+		let widgets = Widgets {
+			noninteractive: WidgetVisuals {
+				bg_fill:      BG,
+				bg_stroke:    Stroke::new(1.0, Color32::from_gray(60)), // separators, indentation lines
+				fg_stroke:    Stroke::new(1.0, Color32::from_gray(140)), // normal text color
+				rounding:     Rounding::same(10.0),
+				expansion:    0.0,
+			},
+			inactive: WidgetVisuals {
+				bg_fill:      Color32::from_gray(50),
+				bg_stroke:    Default::default(),
+				fg_stroke:    Stroke::new(1.0, Color32::from_gray(180)), // button text
+				rounding:     Rounding::same(10.0),
+				expansion:    0.0,
+			},
+			hovered: WidgetVisuals {
+				bg_fill:      Color32::from_gray(80),
+				bg_stroke:    Stroke::new(1.0, Color32::from_gray(150)), // e.g. hover over window edge or button
+				fg_stroke:    Stroke::new(1.5, Color32::from_gray(240)),
+				rounding:     Rounding::same(10.0),
+				expansion:    1.0,
+			},
+			active: WidgetVisuals {
+				bg_fill:      Color32::from_gray(55),
+				bg_stroke:    Stroke::new(1.0, Color32::WHITE),
+				fg_stroke:    Stroke::new(2.0, Color32::WHITE),
+				rounding:     Rounding::same(10.0),
+				expansion:    1.0,
+			},
+			open: WidgetVisuals {
+				bg_fill:      Color32::from_gray(27),
+				bg_stroke:    Stroke::new(1.0, Color32::from_gray(60)),
+				fg_stroke:    Stroke::new(1.0, Color32::from_gray(210)),
+				rounding:     Rounding::same(10.0),
+				expansion:    0.0,
+			},
+		};
+
+        Visuals {
+			dark_mode: true,
+			override_text_color:     None,
+			widgets,
+			selection,
+			hyperlink_color:         Color32::from_rgb(90, 170, 255),
+			faint_bg_color:          Color32::from_additive_luminance(5), // visible, but barely so
+			extreme_bg_color:        Color32::from_gray(10),            // e.g. TextEdit background
+			code_bg_color:           Color32::from_gray(64),
+			warn_fg_color:           Color32::from_rgb(255, 143, 0), // orange
+			error_fg_color:          Color32::from_rgb(255, 0, 0),  // red
+			window_rounding:         Rounding::same(6.0),
+			window_shadow:           Shadow::big_dark(),
+			popup_shadow:            Shadow::small_dark(),
+			resize_corner_size:      12.0,
+			text_cursor_width:       2.0,
+			text_cursor_preview:     false,
+			clip_rect_margin:        3.0, // should be at least half the size of the widest frame stroke + max WidgetVisuals::expansion
+			button_frame:            true,
+			collapsing_header_frame: false,
+		}
+	};
+}
 
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]

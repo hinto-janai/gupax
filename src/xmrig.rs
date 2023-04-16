@@ -43,7 +43,6 @@ impl crate::disk::Xmrig {
 	if self.simple {
 		let height = height / 1.5;
 		let width = width - SPACE;
-		ui.style_mut().override_text_style = Some(Monospace);
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
@@ -54,7 +53,6 @@ impl crate::disk::Xmrig {
 	} else {
 		let height = height / 2.8;
 		let width = width - SPACE;
-		ui.style_mut().override_text_style = Some(Monospace);
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
@@ -78,7 +76,6 @@ impl crate::disk::Xmrig {
 		debug!("XMRig Tab | Rendering [Arguments]");
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/10.0) - SPACE;
-			ui.style_mut().override_text_style = Some(Monospace);
 			ui.add_sized([width, text_edit], Label::new("Command arguments:"));
 			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.arguments), r#"--url <...> --user <...> --config <...>"#)).on_hover_text(XMRIG_ARGUMENTS);
 			self.arguments.truncate(1024);
@@ -89,7 +86,6 @@ impl crate::disk::Xmrig {
 		ui.group(|ui| {
 			let width = width - SPACE;
 			ui.spacing_mut().text_edit_width = (width)-(SPACE*3.0);
-			ui.style_mut().override_text_style = Some(Monospace);
 			let text;
 			let color;
 			let len = format!("{:02}", self.address.len());
@@ -142,7 +138,6 @@ impl crate::disk::Xmrig {
 		ui.group(|ui| {
 			let width = width/10.0;
 			ui.vertical(|ui| {
-			ui.style_mut().override_text_style = Some(Monospace);
 			ui.spacing_mut().text_edit_width = width*3.32;
 			ui.horizontal(|ui| {
 				let text;
@@ -234,10 +229,10 @@ impl crate::disk::Xmrig {
 			// [Node List]
 			debug!("XMRig Tab | Rendering [Node List] ComboBox");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
-			ComboBox::from_id_source("manual_pool").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
+			ComboBox::from_id_source("manual_pool").selected_text(text).show_ui(ui, |ui| {
 				let mut n = 0;
 				for (name, pool) in pool_vec.iter() {
-					let text = RichText::text_style(RichText::new(format!("{}. {}\n     IP: {}\n   Port: {}\n    Rig: {}", n+1, name, pool.ip, pool.port, pool.rig)), Monospace);
+					let text = format!("{}. {}\n     IP: {}\n   Port: {}\n    Rig: {}", n+1, name, pool.ip, pool.port, pool.rig);
 					if ui.add(SelectableLabel::new(self.selected_name == *name, text)).clicked() {
 						self.selected_index = n;
 						let pool = pool.clone();
@@ -356,7 +351,6 @@ impl crate::disk::Xmrig {
 		ui.group(|ui| { ui.horizontal(|ui| {
 		ui.vertical(|ui| {
 			let width = width/10.0;
-			ui.style_mut().override_text_style = Some(Monospace);
 			ui.spacing_mut().text_edit_width = width*2.39;
 			// HTTP API
 			ui.horizontal(|ui| {

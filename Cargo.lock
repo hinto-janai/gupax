@@ -1968,6 +1968,7 @@ dependencies = [
  "hyper-tls",
  "image",
  "is_elevated",
+ "lazy_static",
  "log",
  "num-format",
  "num_cpus",

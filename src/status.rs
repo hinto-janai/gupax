@@ -55,7 +55,6 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		debug!("Status Tab | Rendering [Gupax]");
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height], Label::new(RichText::new("[Gupax]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("Gupax is online");
-		ui.style_mut().override_text_style = Some(Monospace);
 		let sys = lock!(sys);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_GUPAX_UPTIME);
 		ui.add_sized([width, height], Label::new(sys.gupax_uptime.to_string()));
@@ -77,8 +76,8 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.set_enabled(p2pool_alive);
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height], Label::new(RichText::new("[P2Pool]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("P2Pool is online").on_disabled_hover_text("P2Pool is offline");
-		let height = height/1.4;
 		ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
+		let height = height/1.4;
 		let api = lock!(p2pool_api);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_P2POOL_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
@@ -112,7 +111,6 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		ui.set_enabled(xmrig_alive);
 		ui.set_min_height(min_height);
 		ui.add_sized([width, height], Label::new(RichText::new("[XMRig]").color(LIGHT_GRAY).text_style(TextStyle::Name("MonospaceLarge".into())))).on_hover_text("XMRig is online").on_disabled_hover_text("XMRig is offline");
-		ui.style_mut().override_text_style = Some(Monospace);
 		let api = lock!(xmrig_api);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_XMRIG_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
@@ -136,7 +134,6 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	let api = lock!(gupax_p2pool_api);
 	let text = height / 25.0;
 	let log = height / 2.8;
-	ui.style_mut().override_text_style = Some(Monospace);
 	// Payout Text + PayoutView buttons
 	ui.group(|ui| {
 		ui.horizontal(|ui| {
@@ -178,7 +175,6 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	});
 	drop(api);
 	// Payout/Share Calculator
-	ui.style_mut().override_text_style = Some(Monospace);
 	let button = (width/20.0)-(SPACE*1.666);
 	ui.group(|ui| { ui.horizontal(|ui| {
 		ui.set_min_width(width-SPACE);
@@ -276,7 +272,6 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 	let text = height / 20.0;
 	let double = text * 2.0;
 	let log = height / 3.0;
-	ui.style_mut().override_text_style = Some(Monospace);
 
 	// [0], The user's CPU (most likely).
 	let cpu = &benchmarks[0];

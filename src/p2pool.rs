@@ -42,7 +42,6 @@ impl crate::disk::P2pool {
 	if self.simple {
 		let height = height / 2.4;
 		let width = width - SPACE;
-		ui.style_mut().override_text_style = Some(Monospace);
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
@@ -53,7 +52,6 @@ impl crate::disk::P2pool {
 	} else {
 		let height = height / 2.8;
 		let width = width - SPACE;
-		ui.style_mut().override_text_style = Some(Monospace);
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
@@ -77,7 +75,6 @@ impl crate::disk::P2pool {
 		debug!("P2Pool Tab | Rendering [Arguments]");
 		ui.group(|ui| { ui.horizontal(|ui| {
 			let width = (width/10.0) - SPACE;
-			ui.style_mut().override_text_style = Some(Monospace);
 			ui.add_sized([width, text_edit], Label::new("Command arguments:"));
 			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.arguments), r#"--wallet <...> --host <...>"#)).on_hover_text(P2POOL_ARGUMENTS);
 			self.arguments.truncate(1024);
@@ -90,7 +87,6 @@ impl crate::disk::P2pool {
 	ui.group(|ui| {
 		let width = width - SPACE;
 		ui.spacing_mut().text_edit_width = (width)-(SPACE*3.0);
-		ui.style_mut().override_text_style = Some(Monospace);
 		let text;
 		let color;
 		let len = format!("{:02}", self.address.len());
@@ -152,11 +148,11 @@ impl crate::disk::P2pool {
 			debug!("P2Pool Tab | Rendering [ComboBox] of Remote Nodes");
 			let ip_location = crate::node::format_ip_location(&self.node, false);
 			let text = RichText::new(format!(" ⏺ {}ms | {}", ms, ip_location)).color(color);
-			ComboBox::from_id_source("remote_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
+			ComboBox::from_id_source("remote_nodes").selected_text(text).show_ui(ui, |ui| {
 				for data in lock!(ping).nodes.iter() {
 					let ms = crate::node::format_ms(data.ms);
 					let ip_location = crate::node::format_ip_location(data.ip, true);
-					let text = RichText::text_style(RichText::new(format!(" ⏺ {} | {}", ms, ip_location)).color(data.color), Monospace);
+					let text = RichText::new(format!(" ⏺ {} | {}", ms, ip_location)).color(data.color);
 					ui.selectable_value(&mut self.node, data.ip.to_string(), text);
 				}
 			});
@@ -206,7 +202,7 @@ impl crate::disk::P2pool {
 			let pinging = lock!(ping).pinging;
 			ui.set_enabled(pinging);
 			let prog = lock!(ping).prog.round();
-			let msg = RichText::text_style(RichText::new(format!("{} ... {}%", lock!(ping).msg, prog)), Monospace);
+			let msg = RichText::new(format!("{} ... {}%", lock!(ping).msg, prog));
 			let height = height / 1.25;
 			ui.add_space(5.0);
 			ui.add_sized([width, height], Label::new(msg));
@@ -243,7 +239,6 @@ impl crate::disk::P2pool {
 		ui.group(|ui| {
 			let width = width/10.0;
 			ui.vertical(|ui| {
-			ui.style_mut().override_text_style = Some(Monospace);
 			ui.spacing_mut().text_edit_width = width*3.32;
 			ui.horizontal(|ui| {
 				let text;
@@ -336,10 +331,10 @@ impl crate::disk::P2pool {
 			// [Ping List]
 			debug!("P2Pool Tab | Rendering [Node List]");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
-			ComboBox::from_id_source("manual_nodes").selected_text(RichText::text_style(text, Monospace)).show_ui(ui, |ui| {
+			ComboBox::from_id_source("manual_nodes").selected_text(text).show_ui(ui, |ui| {
 				let mut n = 0;
 				for (name, node) in node_vec.iter() {
-					let text = RichText::text_style(RichText::new(format!("{}. {}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", n+1, name, node.ip, node.rpc, node.zmq)), Monospace);
+					let text = RichText::new(format!("{}. {}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", n+1, name, node.ip, node.rpc, node.zmq));
 					if ui.add(SelectableLabel::new(self.selected_name == *name, text)).clicked() {
 						self.selected_index = n;
 						let node = node.clone();
