@@ -268,13 +268,13 @@ impl Helper {
 		}
 	}
 
-	fn read_pty_xmrig(_output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
+	fn read_pty_xmrig(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
-		// We don't need to write twice for XMRig, since we dont parse it... yet.
 		while let Some(Ok(line)) = stdout.next() {
 //			println!("{}", line); // For debugging.
-			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("XMRig PTY | Output error: {}", e); }
+			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("XMRig PTY Parse | Output error: {}", e); }
+			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("XMRig PTY Pub | Output error: {}", e); }
 		}
 	}
 
@@ -914,7 +914,7 @@ impl Helper {
         // 3. Set process state
 		debug!("XMRig | Setting process state...");
         let mut lock = lock!(process);
-        lock.state = ProcessState::Alive;
+        lock.state = ProcessState::NotMining;
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
@@ -928,8 +928,7 @@ impl Helper {
 		thread::spawn(move || {
 			Self::read_pty_xmrig(output_parse, output_pub, reader);
 		});
-		// We don't parse anything in XMRigs output... yet.
-//		let output_parse = Arc::clone(&lock!(process).output_parse);
+		let output_parse = Arc::clone(&lock!(process).output_parse);
 		let output_pub = Arc::clone(&lock!(process).output_pub);
 
 		let client: hyper::Client<hyper::client::HttpConnector> = hyper::Client::builder().build(hyper::client::HttpConnector::new());
@@ -1055,7 +1054,7 @@ impl Helper {
 
 			// Always update from output
 			debug!("XMRig Watchdog | Starting [update_from_output()]");
-			PubXmrigApi::update_from_output(&pub_api, &output_pub, start.elapsed());
+			PubXmrigApi::update_from_output(&pub_api, &output_pub, &output_parse, start.elapsed(), &process);
 
 			// Send an HTTP API request
 			debug!("XMRig Watchdog | Attempting HTTP API request...");
@@ -1798,16 +1797,33 @@ impl PubXmrigApi {
 
 	// This combines the buffer from the PTY thread [output_pub]
 	// with the actual [PubApiXmrig] output field.
-	fn update_from_output(public: &Arc<Mutex<Self>>, output_pub: &Arc<Mutex<String>>, elapsed: std::time::Duration) {
-		// 1. Take process output buffer if not empty
+	fn update_from_output(
+		public: &Arc<Mutex<Self>>,
+		output_parse: &Arc<Mutex<String>>,
+		output_pub: &Arc<Mutex<String>>,
+		elapsed: std::time::Duration,
+		process: &Arc<Mutex<Process>>,
+	) {
+		// 1. Take the process's current output buffer and combine it with Pub (if not empty)
 		let mut output_pub = lock!(output_pub);
-		let mut public = lock!(public);
-		// 2. Append
 		if !output_pub.is_empty() {
+			let mut public = lock!(public);
 			public.output.push_str(&std::mem::take(&mut *output_pub));
+			// Update uptime
+			public.uptime = HumanTime::into_human(elapsed);
 		}
-		// 3. Update uptime
-		public.uptime = HumanTime::into_human(elapsed);
+
+		// 2. Check for "new job"/"no active...".
+		let mut output_parse = lock!(output_parse);
+		if XMRIG_REGEX.new_job.is_match(&output_parse) {
+			lock!(process).state = ProcessState::Alive;
+		} else if XMRIG_REGEX.not_mining.is_match(&output_parse) {
+			lock!(process).state = ProcessState::NotMining;
+		}
+
+		// 3. Throw away [output_parse]
+		output_parse.clear();
+		drop(output_parse);
 	}
 
 	// Formats raw private data into ready-to-print human readable version.

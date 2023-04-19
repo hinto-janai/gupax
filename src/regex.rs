@@ -103,15 +103,15 @@ impl P2poolRegex {
 //---------------------------------------------------------------------------------------------------- XMRig regex.
 #[derive(Debug)]
 pub struct XmrigRegex {
-	not_mining: Regex,
-	mining: Regex,
+	pub not_mining: Regex,
+	pub new_job: Regex,
 }
 
 impl XmrigRegex {
 	fn new() -> Self {
 		Self {
 			not_mining: Regex::new("no active pools, stop mining").unwrap(),
-			mining: Regex::new("new job").unwrap(),
+			new_job: Regex::new("new job").unwrap(),
 		}
 	}
 }
