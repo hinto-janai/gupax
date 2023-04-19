@@ -158,7 +158,6 @@ pub struct App {
 	version: &'static str, // Gupax version
 	name_version: String, // [Gupax vX.X.X]
 	img: Images, // Custom Struct holding pre-compiled bytes of [Images]
-	regex: Regexes, // Custom Struct holding pre-made [Regex]'s
 }
 
 impl App {
@@ -264,7 +263,6 @@ impl App {
 			version: GUPAX_VERSION,
 			name_version: format!("Gupax {}", GUPAX_VERSION),
 			img: Images::new(),
-			regex: Regexes::new(),
 		};
 		//---------------------------------------------------------------------------------------------------- App init data that *could* panic
 		info!("App Init | Getting EXE path...");
@@ -839,7 +837,7 @@ fn init_auto(app: &mut App) {
 
 	// [Auto-P2Pool]
 	if app.state.gupax.auto_p2pool {
-		if !Regexes::addr_ok(&app.regex, &app.state.p2pool.address) {
+		if !Regexes::addr_ok(&app.state.p2pool.address) {
 			warn!("Gupax | P2Pool address is not valid! Skipping auto-p2pool...");
 		} else if !Gupax::path_is_file(&app.state.gupax.p2pool_path) {
 			warn!("Gupax | P2Pool path is not a file! Skipping auto-p2pool...");
@@ -1527,14 +1525,15 @@ impl eframe::App for App {
 						Alive  => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(GREEN))).on_hover_text(P2POOL_ALIVE),
 						Dead   => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(GRAY))).on_hover_text(P2POOL_DEAD),
 						Failed => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(RED))).on_hover_text(P2POOL_FAILED),
-						Middle|Waiting => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(YELLOW))).on_hover_text(P2POOL_MIDDLE),
 						Syncing => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(ORANGE))).on_hover_text(P2POOL_SYNCING),
+						Middle|Waiting|NotMining => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(YELLOW))).on_hover_text(P2POOL_MIDDLE),
 					};
 					ui.separator();
 					match xmrig_state {
 						Alive  => ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(GREEN))).on_hover_text(XMRIG_ALIVE),
 						Dead   => ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(GRAY))).on_hover_text(XMRIG_DEAD),
 						Failed => ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(RED))).on_hover_text(XMRIG_FAILED),
+						NotMining => ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(ORANGE))).on_hover_text(XMRIG_NOT_MINING),
 						Middle|Waiting|Syncing => ui.add_sized([width, height], Label::new(RichText::new("XMRig  ⏺").color(YELLOW))).on_hover_text(XMRIG_MIDDLE),
 					};
 				});
@@ -1647,7 +1646,7 @@ impl eframe::App for App {
 								// Check if address is okay before allowing to start.
 								let mut text = String::new();
 								let mut ui_enabled = true;
-								if !Regexes::addr_ok(&self.regex, &self.state.p2pool.address) {
+								if !Regexes::addr_ok(&self.state.p2pool.address) {
 									ui_enabled = false;
 									text = format!("Error: {}", P2POOL_ADDRESS);
 								} else if !Gupax::path_is_file(&self.state.gupax.p2pool_path) {
@@ -1874,11 +1873,11 @@ path_xmr: {:#?}\n
 				}
 				Tab::P2pool => {
 					debug!("App | Entering [P2Pool] Tab");
-					crate::disk::P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.regex, &self.p2pool, &self.p2pool_api, &mut self.p2pool_stdin, self.width, self.height, ctx, ui);
+					crate::disk::P2pool::show(&mut self.state.p2pool, &mut self.node_vec, &self.og, &self.ping, &self.p2pool, &self.p2pool_api, &mut self.p2pool_stdin, self.width, self.height, ctx, ui);
 				}
 				Tab::Xmrig => {
 					debug!("App | Entering [XMRig] Tab");
-					crate::disk::Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.regex, &self.xmrig, &self.xmrig_api, &mut self.xmrig_stdin, self.width, self.height, ctx, ui);
+					crate::disk::Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.xmrig, &self.xmrig_api, &mut self.xmrig_stdin, self.width, self.height, ctx, ui);
 				}
 			}
 		});

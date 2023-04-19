@@ -91,10 +91,11 @@ pub const P2POOL_FAILED:  &str = "P2Pool is offline and failed when exiting";
 pub const P2POOL_MIDDLE:  &str = "P2Pool is in the middle of (re)starting/stopping";
 pub const P2POOL_SYNCING: &str = "P2Pool is still syncing. This indicator will turn GREEN when P2Pool is ready";
 
-pub const XMRIG_ALIVE:  &str = "XMRig is online";
+pub const XMRIG_ALIVE:  &str = "XMRig is online and mining";
 pub const XMRIG_DEAD:   &str = "XMRig is offline";
 pub const XMRIG_FAILED: &str = "XMRig is offline and failed when exiting";
 pub const XMRIG_MIDDLE: &str = "XMRig is in the middle of (re)starting/stopping";
+pub const XMRIG_NOT_MINING: &str = "XMRig is online, but not mining to any pool";
 
 // This is the typical space added when using
 // [ui.separator()] or [ui.group()]

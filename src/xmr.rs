@@ -24,7 +24,9 @@
 
 use crate::{
 	human::*,
-	P2poolRegex,
+};
+use crate::regex::{
+	P2POOL_REGEX,
 };
 
 use log::*;
@@ -141,15 +143,15 @@ impl PayoutOrd {
 	}
 
 	// Expected input: "NOTICE  2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816"
-	pub fn parse_raw_payout_line(line: &str, regex: &P2poolRegex) -> (String, AtomicUnit, HumanNumber) {
+	pub fn parse_raw_payout_line(line: &str) -> (String, AtomicUnit, HumanNumber) {
 		// Date
-		let date = match regex.date.find(line) {
+		let date = match P2POOL_REGEX.date.find(line) {
 			Some(date) => date.as_str().to_string(),
 			None => { error!("P2Pool | Date parse error: [{}]", line); "????-??-?? ??:??:??.????".to_string() },
 		};
 		// AtomicUnit
-		let atomic_unit = if let Some(word) = regex.payout.find(line) {
-			if let Some(word) = regex.payout_float.find(word.as_str()) {
+		let atomic_unit = if let Some(word) = P2POOL_REGEX.payout.find(line) {
+			if let Some(word) = P2POOL_REGEX.payout_float.find(word.as_str()) {
 				match word.as_str().parse::<f64>() {
 					Ok(au) => AtomicUnit::from_f64(au),
 					Err(e) => { error!("P2Pool | AtomicUnit parse error: [{}] on [{}]", e, line); AtomicUnit::new() },
@@ -163,8 +165,8 @@ impl PayoutOrd {
 			AtomicUnit::new()
 		};
 		// Block
-		let block = if let Some(word) = regex.block.find(line) {
-			if let Some(word) = regex.block_int.find(word.as_str()) {
+		let block = if let Some(word) = P2POOL_REGEX.block.find(line) {
+			if let Some(word) = P2POOL_REGEX.block_int.find(word.as_str()) {
 				match word.as_str().parse::<u64>() {
 					Ok(b) => HumanNumber::from_u64(b),
 					Err(e) => { error!("P2Pool | Block parse error: [{}] on [{}]", e, line); HumanNumber::unknown() },
@@ -181,14 +183,14 @@ impl PayoutOrd {
 	}
 
 	// Expected input: "2022-01-27 01:30:23.1377 | 0.000000000001 XMR | Block 2,642,816"
-	pub fn parse_formatted_payout_line(line: &str, regex: &P2poolRegex) -> (String, AtomicUnit, HumanNumber) {
+	pub fn parse_formatted_payout_line(line: &str) -> (String, AtomicUnit, HumanNumber) {
 		// Date
-		let date = match regex.date.find(line) {
+		let date = match P2POOL_REGEX.date.find(line) {
 			Some(date) => date.as_str().to_string(),
 			None => { error!("P2Pool | Date parse error: [{}]", line); "????-??-?? ??:??:??.????".to_string() },
 		};
 		// AtomicUnit
-		let atomic_unit = if let Some(word) = regex.payout_float.find(line) {
+		let atomic_unit = if let Some(word) = P2POOL_REGEX.payout_float.find(line) {
 			match word.as_str().parse::<f64>() {
 				Ok(au) => AtomicUnit::from_f64(au),
 				Err(e) => { error!("P2Pool | AtomicUnit parse error: [{}] on [{}]", e, line); AtomicUnit::new() },
@@ -198,7 +200,7 @@ impl PayoutOrd {
 			AtomicUnit::new()
 		};
 		// Block
-		let block = match regex.block_comma.find(line) {
+		let block = match P2POOL_REGEX.block_comma.find(line) {
 			Some(b) => HumanNumber::from_str(b.as_str()),
 			None    => { error!("P2Pool | Block parse error: [{}]", line); HumanNumber::unknown() },
 		};
@@ -215,12 +217,11 @@ impl PayoutOrd {
 	// Spaces, pipes, commas and words (XMR, Block): [19]
 	// Add 7 more bytes for wrapper type overhead and it's an even [70] bytes per line.
 	pub fn update_from_payout_log(&mut self, log: &str) {
-		let regex = P2poolRegex::new();
 		let amount_of_lines = log.lines().count();
 		let mut vec: Vec<(String, AtomicUnit, HumanNumber)> = Vec::with_capacity(70 * amount_of_lines);
 		for line in log.lines() {
 			debug!("PayoutOrd | Parsing line: [{}]", line);
-			vec.push(Self::parse_formatted_payout_line(line, &regex));
+			vec.push(Self::parse_formatted_payout_line(line));
 		}
 		*self = Self(vec);
 	}

@@ -32,10 +32,13 @@ use std::{
 };
 use regex::Regex;
 use log::*;
+use crate::regex::{
+	REGEXES,
+};
 
 impl crate::disk::Xmrig {
 	#[inline(always)]
-	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	debug!("XMRig Tab | Rendering [Console]");
@@ -92,7 +95,7 @@ impl crate::disk::Xmrig {
 			if self.address.is_empty() {
 				text = format!("Monero Address [{}/95] ➖", len);
 				color = LIGHT_GRAY;
-			} else if self.address.len() == 95 && Regex::is_match(&regex.address, &self.address) && ! self.address.contains('0') && ! self.address.contains('O') && ! self.address.contains('l') {
+			} else if Regexes::addr_ok(&self.address) {
 				text = format!("Monero Address [{}/95] ✔", len);
 				color = GREEN;
 			} else {
@@ -147,7 +150,7 @@ impl crate::disk::Xmrig {
 					text = format!("Name [ {}/30 ]➖", len);
 					color = LIGHT_GRAY;
 					incorrect_input = true;
-				} else if Regex::is_match(&regex.name, &self.name) {
+				} else if REGEXES.name.is_match(&self.name) {
 					text = format!("Name [ {}/30 ]✔", len);
 					color = GREEN;
 				} else {
@@ -167,7 +170,7 @@ impl crate::disk::Xmrig {
 					text = format!("  IP [{}/255]➖", len);
 					color = LIGHT_GRAY;
 					incorrect_input = true;
-				} else if self.ip == "localhost" || Regex::is_match(&regex.ipv4, &self.ip) || Regex::is_match(&regex.domain, &self.ip) {
+				} else if self.ip == "localhost" || REGEXES.ipv4.is_match(&self.ip) || REGEXES.domain.is_match(&self.ip) {
 					text = format!("  IP [{}/255]✔", len);
 					color = GREEN;
 				} else {
@@ -187,7 +190,7 @@ impl crate::disk::Xmrig {
 					text = format!("Port [  {}/5  ]➖", len);
 					color = LIGHT_GRAY;
 					incorrect_input = true;
-				} else if Regex::is_match(&regex.port, &self.port) {
+				} else if REGEXES.port.is_match(&self.port) {
 					text = format!("Port [  {}/5  ]✔", len);
 					color = GREEN;
 				} else {
@@ -206,7 +209,7 @@ impl crate::disk::Xmrig {
 				if self.rig.is_empty() {
 					text = format!(" Rig [ {}/30 ]➖", len);
 					color = LIGHT_GRAY;
-				} else if Regex::is_match(&regex.name, &self.rig) {
+				} else if REGEXES.name.is_match(&self.rig) {
 					text = format!(" Rig [ {}/30 ]✔", len);
 					color = GREEN;
 				} else {
@@ -361,7 +364,7 @@ impl crate::disk::Xmrig {
 					text = format!("HTTP API IP   [{}/255]➖", len);
 					color = LIGHT_GRAY;
 					incorrect_input = true;
-				} else if self.api_ip == "localhost" || Regex::is_match(&regex.ipv4, &self.api_ip) || Regex::is_match(&regex.domain, &self.api_ip) {
+				} else if self.api_ip == "localhost" || REGEXES.ipv4.is_match(&self.api_ip) || REGEXES.domain.is_match(&self.api_ip) {
 					text = format!("HTTP API IP   [{}/255]✔", len);
 					color = GREEN;
 				} else {
@@ -381,7 +384,7 @@ impl crate::disk::Xmrig {
 					text = format!("HTTP API Port [  {}/5  ]➖", len);
 					color = LIGHT_GRAY;
 					incorrect_input = true;
-				} else if Regex::is_match(&regex.port, &self.api_port) {
+				} else if REGEXES.port.is_match(&self.api_port) {
 					text = format!("HTTP API Port [  {}/5  ]✔", len);
 					color = GREEN;
 				} else {

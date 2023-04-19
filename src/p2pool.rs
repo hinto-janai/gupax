@@ -31,10 +31,13 @@ use egui::{
 use std::sync::{Arc,Mutex};
 use regex::Regex;
 use log::*;
+use crate::regex::{
+	REGEXES,
+};
 
 impl crate::disk::P2pool {
 	#[inline(always)]
-	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, _og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, regex: &Regexes, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, _og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	debug!("P2Pool Tab | Rendering [Console]");
@@ -93,7 +96,7 @@ impl crate::disk::P2pool {
 		if self.address.is_empty() {
 			text = format!("Monero Address [{}/95] ➖", len);
 			color = Color32::LIGHT_GRAY;
-		} else if Regexes::addr_ok(regex, &self.address) {
+		} else if Regexes::addr_ok(&self.address) {
 			text = format!("Monero Address [{}/95] ✔", len);
 			color = Color32::from_rgb(100, 230, 100);
 		} else {
@@ -248,7 +251,7 @@ impl crate::disk::P2pool {
 					text = format!("Name [ {}/30 ]➖", len);
 					color = Color32::LIGHT_GRAY;
 					incorrect_input = true;
-				} else if Regex::is_match(&regex.name, &self.name) {
+				} else if REGEXES.name.is_match(&self.name) {
 					text = format!("Name [ {}/30 ]✔", len);
 					color = Color32::from_rgb(100, 230, 100);
 				} else {
@@ -268,7 +271,7 @@ impl crate::disk::P2pool {
 					text = format!("  IP [{}/255]➖", len);
 					color = Color32::LIGHT_GRAY;
 					incorrect_input = true;
-				} else if self.ip == "localhost" || Regex::is_match(&regex.ipv4, &self.ip) || Regex::is_match(&regex.domain, &self.ip) {
+				} else if self.ip == "localhost" || REGEXES.ipv4.is_match(&self.ip) || REGEXES.domain.is_match(&self.ip) {
 					text = format!("  IP [{}/255]✔", len);
 					color = Color32::from_rgb(100, 230, 100);
 				} else {
@@ -288,7 +291,7 @@ impl crate::disk::P2pool {
 					text = format!(" RPC [  {}/5  ]➖", len);
 					color = Color32::LIGHT_GRAY;
 					incorrect_input = true;
-				} else if Regex::is_match(&regex.port, &self.rpc) {
+				} else if REGEXES.port.is_match(&self.rpc) {
 					text = format!(" RPC [  {}/5  ]✔", len);
 					color = Color32::from_rgb(100, 230, 100);
 				} else {
@@ -308,7 +311,7 @@ impl crate::disk::P2pool {
 					text = format!(" ZMQ [  {}/5  ]➖", len);
 					color = Color32::LIGHT_GRAY;
 					incorrect_input = true;
-				} else if Regex::is_match(&regex.port, &self.zmq) {
+				} else if REGEXES.port.is_match(&self.zmq) {
 					text = format!(" ZMQ [  {}/5  ]✔", len);
 					color = Color32::from_rgb(100, 230, 100);
 				} else {

@@ -18,6 +18,14 @@
 // Some regexes used throughout Gupax.
 
 use regex::Regex;
+use lazy_static::lazy_static;
+
+//---------------------------------------------------------------------------------------------------- Lazy
+lazy_static! {
+	pub static ref REGEXES:      Regexes     = Regexes::new();
+	pub static ref P2POOL_REGEX: P2poolRegex = P2poolRegex::new();
+	pub static ref XMRIG_REGEX:  XmrigRegex  = XmrigRegex::new();
+}
 
 //---------------------------------------------------------------------------------------------------- [Regexes] struct
 // General purpose Regexes, mostly used in the GUI.
@@ -31,8 +39,8 @@ pub struct Regexes {
 }
 
 impl Regexes {
-	pub fn new() -> Self {
-		Regexes {
+	fn new() -> Self {
+		Self {
 			name: Regex::new("^[A-Za-z0-9-_.]+( [A-Za-z0-9-_.]+)*$").unwrap(),
 			address: Regex::new("^4[A-Za-z1-9]+$").unwrap(), // This still needs to check for (l, I, o, 0)
 			ipv4: Regex::new(r#"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$"#).unwrap(),
@@ -44,8 +52,8 @@ impl Regexes {
 	// Check if a Monero address is correct.
 	// This actually only checks for length & Base58, and doesn't do any checksum validation
 	// (the last few bytes of a Monero address are a Keccak hash checksum) so some invalid addresses can trick this function.
-	pub fn addr_ok(&self, address: &str) -> bool {
-		address.len() == 95 && Regex::is_match(&self.address, address) && !address.contains('0') && !address.contains('O') && !address.contains('l')
+	pub fn addr_ok(address: &str) -> bool {
+		address.len() == 95 && REGEXES.address.is_match(address) && !address.contains('0') && !address.contains('O') && !address.contains('l')
 	}
 }
 
@@ -69,25 +77,41 @@ impl Regexes {
 // Both are nominally fast enough where it doesn't matter too much but meh, why not use regex.
 #[derive(Clone,Debug)]
 pub struct P2poolRegex {
-	pub date: regex::Regex,
-	pub payout: regex::Regex,
-	pub payout_float: regex::Regex,
-	pub block: regex::Regex,
-	pub block_int: regex::Regex,
-	pub block_comma: regex::Regex,
-	pub synchronized: regex::Regex,
+	pub date: Regex,
+	pub payout: Regex,
+	pub payout_float: Regex,
+	pub block: Regex,
+	pub block_int: Regex,
+	pub block_comma: Regex,
+	pub synchronized: Regex,
 }
 
 impl P2poolRegex {
-	pub fn new() -> Self {
+	fn new() -> Self {
 		Self {
-			date: regex::Regex::new("[0-9]+-[0-9]+-[0-9]+ [0-9]+:[0-9]+:[0-9]+.[0-9]+").unwrap(),
-			payout: regex::Regex::new("payout of [0-9].[0-9]+ XMR").unwrap(), // Assumes 12 digits after the dot.
-			payout_float: regex::Regex::new("[0-9].[0-9]{12}").unwrap(), // Assumes 12 digits after the dot.
-			block: regex::Regex::new("block [0-9]{7}").unwrap(), // Monero blocks will be 7 digits for... the next 10,379 years
-			block_int: regex::Regex::new("[0-9]{7}").unwrap(),
-			block_comma: regex::Regex::new("[0-9],[0-9]{3},[0-9]{3}").unwrap(),
-			synchronized: regex::Regex::new("SYNCHRONIZED").unwrap(),
+			date: Regex::new("[0-9]+-[0-9]+-[0-9]+ [0-9]+:[0-9]+:[0-9]+.[0-9]+").unwrap(),
+			payout: Regex::new("payout of [0-9].[0-9]+ XMR").unwrap(), // Assumes 12 digits after the dot.
+			payout_float: Regex::new("[0-9].[0-9]{12}").unwrap(), // Assumes 12 digits after the dot.
+			block: Regex::new("block [0-9]{7}").unwrap(), // Monero blocks will be 7 digits for... the next 10,379 years
+			block_int: Regex::new("[0-9]{7}").unwrap(),
+			block_comma: Regex::new("[0-9],[0-9]{3},[0-9]{3}").unwrap(),
+			synchronized: Regex::new("SYNCHRONIZED").unwrap(),
+		}
+	}
+}
+
+//---------------------------------------------------------------------------------------------------- XMRig regex.
+#[derive(Debug)]
+pub struct XmrigRegex {
+	not_mining: Regex,
+	mining: Regex,
+}
+
+impl XmrigRegex {
+	fn new() -> Self {
+		Self {
+			not_mining: Regex::new("no active pools, stop mining").unwrap(),
+			mining: Regex::new("new job").unwrap(),
 		}
 	}
 }

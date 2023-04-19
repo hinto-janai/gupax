@@ -47,7 +47,6 @@ use crate::{
 	SudoState,
 	human::*,
 	GupaxP2poolApi,
-	P2poolRegex,
 	xmr::*,
 	macros::*,
 	RemoteNode,
@@ -56,6 +55,10 @@ use sysinfo::SystemExt;
 use serde::{Serialize,Deserialize};
 use sysinfo::{CpuExt,ProcessExt};
 use log::*;
+use crate::regex::{
+	P2POOL_REGEX,
+	XMRIG_REGEX,
+};
 
 //---------------------------------------------------------------------------------------------------- Constants
 // The max amount of bytes of process output we are willing to
@@ -182,7 +185,8 @@ impl Process {
 	pub fn is_alive(&self) -> bool {
 		self.state == ProcessState::Alive ||
 		self.state == ProcessState::Middle ||
-		self.state == ProcessState::Syncing
+		self.state == ProcessState::Syncing ||
+		self.state == ProcessState::NotMining
 	}
 
 	pub fn is_waiting(&self) -> bool {
@@ -191,6 +195,10 @@ impl Process {
 
 	pub fn is_syncing(&self) -> bool {
 		self.state == ProcessState::Syncing
+	}
+
+	pub fn is_not_mining(&self) -> bool {
+		self.state == ProcessState::NotMining
 	}
 }
 
@@ -205,6 +213,9 @@ pub enum ProcessState {
 
 	// Only for P2Pool, ORANGE.
 	Syncing,
+
+	// Only for XMRig, ORANGE.
+	NotMining,
 }
 
 impl Default for ProcessState { fn default() -> Self { Self::Dead } }
@@ -267,14 +278,14 @@ impl Helper {
 		}
 	}
 
-	fn read_pty_p2pool(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>, regex: P2poolRegex, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
+	fn read_pty_p2pool(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
 		while let Some(Ok(line)) = stdout.next() {
 //			println!("{}", line); // For debugging.
-			if regex.payout.is_match(&line) {
+			if P2POOL_REGEX.payout.is_match(&line) {
 				debug!("P2Pool PTY | Found payout, attempting write: {}", line);
-				let (date, atomic_unit, block) = PayoutOrd::parse_raw_payout_line(&line, &regex);
+				let (date, atomic_unit, block) = PayoutOrd::parse_raw_payout_line(&line);
 				let formatted_log_line = GupaxP2poolApi::format_payout(&date, &atomic_unit, &block);
 				GupaxP2poolApi::add_payout(&mut lock!(gupax_p2pool_api), &formatted_log_line, date, atomic_unit, block);
 				if let Err(e) = GupaxP2poolApi::write_to_all_files(&lock!(gupax_p2pool_api), &formatted_log_line) { error!("P2Pool PTY GupaxP2poolApi | Write error: {}", e); }
@@ -496,16 +507,13 @@ impl Helper {
 		let mut stdin = pair.master;
 		drop(lock);
 
-		let regex = P2poolRegex::new();
-
 		// 3. Spawn PTY read thread
 		debug!("P2Pool | Spawning PTY read thread...");
 		let output_parse = Arc::clone(&lock!(process).output_parse);
 		let output_pub = Arc::clone(&lock!(process).output_pub);
 		let gupax_p2pool_api = Arc::clone(&gupax_p2pool_api);
-		let regex_clone = regex.clone();
 		thread::spawn(move || {
-			Self::read_pty_p2pool(output_parse, output_pub, reader, regex_clone, gupax_p2pool_api);
+			Self::read_pty_p2pool(output_parse, output_pub, reader, gupax_p2pool_api);
 		});
 		let output_parse = Arc::clone(&lock!(process).output_parse);
 		let output_pub = Arc::clone(&lock!(process).output_pub);
@@ -657,7 +665,7 @@ impl Helper {
 
 			// Always update from output
 			debug!("P2Pool Watchdog | Starting [update_from_output()]");
-			PubP2poolApi::update_from_output(&pub_api, &output_parse, &output_pub, start.elapsed(), &regex, &process);
+			PubP2poolApi::update_from_output(&pub_api, &output_parse, &output_pub, start.elapsed(), &process);
 
 			// Read [local] API
 			debug!("P2Pool Watchdog | Attempting [local] API file read");
@@ -1369,12 +1377,12 @@ impl PubP2poolApi {
 
 	// Essentially greps the output for [x.xxxxxxxxxxxx XMR] where x = a number.
 	// It sums each match and counts along the way, handling an error by not adding and printing to console.
-	fn calc_payouts_and_xmr(output: &str, regex: &P2poolRegex) -> (u128 /* payout count */, f64 /* total xmr */) {
-		let iter = regex.payout.find_iter(output);
+	fn calc_payouts_and_xmr(output: &str) -> (u128 /* payout count */, f64 /* total xmr */) {
+		let iter = P2POOL_REGEX.payout.find_iter(output);
 		let mut sum: f64 = 0.0;
 		let mut count: u128 = 0;
 		for i in iter {
-			if let Some(word) = regex.payout_float.find(i.as_str()) {
+			if let Some(word) = P2POOL_REGEX.payout_float.find(i.as_str()) {
 				match word.as_str().parse::<f64>() {
 					Ok(num) => { sum += num; count += 1; },
 					Err(e)  => error!("P2Pool | Total XMR sum calculation error: [{}]", e),
@@ -1390,7 +1398,6 @@ impl PubP2poolApi {
 		output_parse: &Arc<Mutex<String>>,
 		output_pub: &Arc<Mutex<String>>,
 		elapsed: std::time::Duration,
-		regex: &P2poolRegex,
 		process: &Arc<Mutex<Process>>,
 	) {
 		// 1. Take the process's current output buffer and combine it with Pub (if not empty)
@@ -1401,10 +1408,10 @@ impl PubP2poolApi {
 
 		// 2. Parse the full STDOUT
 		let mut output_parse = lock!(output_parse);
-		let (payouts_new, xmr_new) = Self::calc_payouts_and_xmr(&output_parse, regex);
+		let (payouts_new, xmr_new) = Self::calc_payouts_and_xmr(&output_parse);
 		// Check for "SYNCHRONIZED" only if we aren't already.
 		if lock!(process).state == ProcessState::Syncing {
-			if regex.synchronized.is_match(&output_parse) {
+			if P2POOL_REGEX.synchronized.is_match(&output_parse) {
 				lock!(process).state = ProcessState::Alive;
 			}
 		}
@@ -1917,37 +1924,32 @@ mod test {
 
 	#[test]
 	fn combine_gui_pub_p2pool_api() {
-			use crate::helper::PubP2poolApi;
-			let mut gui_api = PubP2poolApi::new();
-			let mut pub_api = PubP2poolApi::new();
-			pub_api.payouts = 1;
-			pub_api.payouts_hour = 2.0;
-			pub_api.payouts_day = 3.0;
-			pub_api.payouts_month = 4.0;
-			pub_api.xmr = 1.0;
-			pub_api.xmr_hour = 2.0;
-			pub_api.xmr_day = 3.0;
-			pub_api.xmr_month = 4.0;
-			println!("BEFORE - GUI_API: {:#?}\nPUB_API: {:#?}", gui_api, pub_api);
-			assert_ne!(gui_api, pub_api);
-			PubP2poolApi::combine_gui_pub_api(&mut gui_api, &mut pub_api);
-			println!("AFTER - GUI_API: {:#?}\nPUB_API: {:#?}", gui_api, pub_api);
-			assert_eq!(gui_api, pub_api);
-			pub_api.xmr = 2.0;
-			PubP2poolApi::combine_gui_pub_api(&mut gui_api, &mut pub_api);
-			assert_eq!(gui_api, pub_api);
-			assert_eq!(gui_api.xmr, 2.0);
-			assert_eq!(pub_api.xmr, 2.0);
-		}
-
-	#[test]
-	fn build_p2pool_regex() {
-		crate::helper::P2poolRegex::new();
+		use crate::helper::PubP2poolApi;
+		let mut gui_api = PubP2poolApi::new();
+		let mut pub_api = PubP2poolApi::new();
+		pub_api.payouts = 1;
+		pub_api.payouts_hour = 2.0;
+		pub_api.payouts_day = 3.0;
+		pub_api.payouts_month = 4.0;
+		pub_api.xmr = 1.0;
+		pub_api.xmr_hour = 2.0;
+		pub_api.xmr_day = 3.0;
+		pub_api.xmr_month = 4.0;
+		println!("BEFORE - GUI_API: {:#?}\nPUB_API: {:#?}", gui_api, pub_api);
+		assert_ne!(gui_api, pub_api);
+		PubP2poolApi::combine_gui_pub_api(&mut gui_api, &mut pub_api);
+		println!("AFTER - GUI_API: {:#?}\nPUB_API: {:#?}", gui_api, pub_api);
+		assert_eq!(gui_api, pub_api);
+		pub_api.xmr = 2.0;
+		PubP2poolApi::combine_gui_pub_api(&mut gui_api, &mut pub_api);
+		assert_eq!(gui_api, pub_api);
+		assert_eq!(gui_api.xmr, 2.0);
+		assert_eq!(pub_api.xmr, 2.0);
 	}
 
 	#[test]
 	fn calc_payouts_and_xmr_from_output_p2pool() {
-		use crate::helper::{PubP2poolApi,P2poolRegex};
+		use crate::helper::{PubP2poolApi};
 		use std::sync::{Arc,Mutex};
 		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
 		let output_parse = Arc::new(Mutex::new(String::from(
@@ -1957,9 +1959,8 @@ mod test {
 		)));
 		let output_pub = Arc::new(Mutex::new(String::new()));
 		let elapsed = std::time::Duration::from_secs(60);
-		let regex = P2poolRegex::new();
 		let process = Arc::new(Mutex::new(Process::new(ProcessName::P2pool, "".to_string(), PathBuf::new())));
-		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &regex, &process);
+		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &process);
 		let public = public.lock().unwrap();
 		println!("{:#?}", public);
 		assert_eq!(public.payouts,       3);
@@ -1974,7 +1975,7 @@ mod test {
 
 	#[test]
 	fn set_p2pool_synchronized() {
-		use crate::helper::{PubP2poolApi,P2poolRegex};
+		use crate::helper::{PubP2poolApi};
 		use std::sync::{Arc,Mutex};
 		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
 		let output_parse = Arc::new(Mutex::new(String::from(
@@ -1984,12 +1985,11 @@ mod test {
 		)));
 		let output_pub = Arc::new(Mutex::new(String::new()));
 		let elapsed = std::time::Duration::from_secs(60);
-		let regex = P2poolRegex::new();
 		let process = Arc::new(Mutex::new(Process::new(ProcessName::P2pool, "".to_string(), PathBuf::new())));
 
 		// It only gets checked if we're `Syncing`.
 		process.lock().unwrap().state = ProcessState::Syncing;
-		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &regex, &process);
+		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &process);
 		println!("{:#?}", process);
 		assert!(process.lock().unwrap().state == ProcessState::Alive);
 	}
