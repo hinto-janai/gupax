@@ -203,7 +203,7 @@ pub enum ProcessState {
 	Middle, // Process is in the middle of something ([re]starting/stopping), YELLOW!
 	Waiting, // Process was successfully killed by a restart, and is ready to be started again, YELLOW!
 
-	// Only for P2Pool.
+	// Only for P2Pool, ORANGE.
 	Syncing,
 }
 

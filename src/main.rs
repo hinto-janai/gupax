@@ -1528,7 +1528,7 @@ impl eframe::App for App {
 						Dead   => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(GRAY))).on_hover_text(P2POOL_DEAD),
 						Failed => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(RED))).on_hover_text(P2POOL_FAILED),
 						Middle|Waiting => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(YELLOW))).on_hover_text(P2POOL_MIDDLE),
-						Syncing => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(BLUE))).on_hover_text(P2POOL_SYNCING),
+						Syncing => ui.add_sized([width, height], Label::new(RichText::new("P2Pool  ⏺").color(ORANGE))).on_hover_text(P2POOL_SYNCING),
 					};
 					ui.separator();
 					match xmrig_state {

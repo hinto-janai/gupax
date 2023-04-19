@@ -106,6 +106,7 @@ pub const SPACE: f32 = 10.0;
 pub const RED:           egui::Color32 = egui::Color32::from_rgb(230, 50, 50);
 pub const GREEN:         egui::Color32 = egui::Color32::from_rgb(100, 230, 100);
 pub const BLUE:          egui::Color32 = egui::Color32::from_rgb(100, 175, 255);
+pub const ORANGE:        egui::Color32 = egui::Color32::from_rgb(255, 120, 40);
 pub const YELLOW:        egui::Color32 = egui::Color32::from_rgb(230, 230, 100);
 pub const BRIGHT_YELLOW: egui::Color32 = egui::Color32::from_rgb(250, 250, 100);
 pub const BONE:          egui::Color32 = egui::Color32::from_rgb(190, 190, 190); // In between LIGHT_GRAY <-> GRAY
