@@ -2076,6 +2076,26 @@ mod test {
 	}
 
 	#[test]
+	fn set_xmrig_mining() {
+		use crate::helper::PubXmrigApi;
+		use std::sync::{Arc,Mutex};
+		let public = Arc::new(Mutex::new(PubXmrigApi::new()));
+		let output_parse = Arc::new(Mutex::new(String::from("[2022-02-12 12:49:30.311]  net      no active pools, stop mining")));
+		let output_pub = Arc::new(Mutex::new(String::new()));
+		let elapsed = std::time::Duration::from_secs(60);
+		let process = Arc::new(Mutex::new(Process::new(ProcessName::Xmrig, "".to_string(), PathBuf::new())));
+
+		process.lock().unwrap().state = ProcessState::Alive;
+		PubXmrigApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &process);
+		println!("{:#?}", process);
+		assert!(process.lock().unwrap().state == ProcessState::NotMining);
+
+		let output_parse = Arc::new(Mutex::new(String::from("[2022-02-12 12:49:30.311]  net      new job from 192.168.2.1:3333 diff 402K algo rx/0 height 2241142 (11 tx)")));
+		PubXmrigApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &process);
+		assert!(process.lock().unwrap().state == ProcessState::Alive);
+	}
+
+	#[test]
 	fn serde_priv_p2pool_local_api() {
 		let data =
 			r#"{

@@ -119,10 +119,12 @@ impl XmrigRegex {
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]
 mod test {
+	use regex::Regex;
+	use super::*;
+
 	#[test]
 	fn build_regexes() {
-		use regex::Regex;
-		let r = crate::Regexes::new();
+		let r = Regexes::new();
 		assert!(Regex::is_match(&r.name, "_this_ is... a n-a-m-e."));
 		assert!(Regex::is_match(&r.address, "44hintoFpuo3ugKfcqJvh5BmrsTRpnTasJmetKC4VXCt6QDtbHVuixdTtsm6Ptp7Y8haXnJ6j8Gj2dra8CKy5ewz7Vi9CYW"));
 		assert!(Regex::is_match(&r.ipv4, "192.168.1.2"));
@@ -140,8 +142,7 @@ mod test {
 
 	#[test]
 	fn build_p2pool_regex() {
-		use regex::Regex;
-		let r = crate::P2poolRegex::new();
+		let r = P2poolRegex::new();
 		let text = "NOTICE  2022-11-11 11:11:11.1111 P2Pool You received a payout of 0.111111111111 XMR in block 1111111";
 		let text2 = "2022-11-11 11:11:11.1111 | 0.111111111111 XMR | Block 1,111,111";
 		let text3 = "NOTICE  2020-12-11 12:35:41.3150 SideChain SYNCHRONIZED";
@@ -152,5 +153,14 @@ mod test {
 		assert_eq!(r.block_int.find(text).unwrap().as_str(),    "1111111");
 		assert_eq!(r.block_comma.find(text2).unwrap().as_str(),  "1,111,111");
 		assert_eq!(r.synchronized.find(text3).unwrap().as_str(),  "SYNCHRONIZED");
+	}
+
+	#[test]
+	fn build_xmrig_regex() {
+		let r = XmrigRegex::new();
+		let text = "[2022-02-12 12:49:30.311]  net      no active pools, stop mining";
+		let text2 = "[2022-02-12 12:49:30.311]  net      new job from 192.168.2.1:3333 diff 402K algo rx/0 height 2241142 (11 tx)";
+		assert_eq!(r.not_mining.find(text).unwrap().as_str(), "no active pools, stop mining");
+		assert_eq!(r.new_job.find(text2).unwrap().as_str(),   "new job");
 	}
 }

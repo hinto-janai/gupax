@@ -1405,7 +1405,6 @@ mod test {
 	#[test]
 	fn create_and_serde_gupax_p2pool_api() {
 		use crate::disk::GupaxP2poolApi;
-		use crate::regex::P2poolRegex;
 		use crate::xmr::PayoutOrd;
 		use crate::xmr::AtomicUnit;
 
@@ -1421,7 +1420,7 @@ mod test {
 		api.log        = "NOTICE  2022-01-27 01:30:23.1377 P2Pool You received a payout of 0.000000000001 XMR in block 2642816".to_string();
 		api.payout_u64 = 1;
 		api.xmr        = AtomicUnit::from_u64(2);
-		let (date, atomic_unit, block) = PayoutOrd::parse_raw_payout_line(&api.log, &P2poolRegex::new());
+		let (date, atomic_unit, block) = PayoutOrd::parse_raw_payout_line(&api.log);
 		let formatted_log_line = GupaxP2poolApi::format_payout(&date, &atomic_unit, &block);
 		GupaxP2poolApi::write_to_all_files(&api, &formatted_log_line).unwrap();
 		println!("AFTER WRITE: {:#?}", api);

@@ -614,7 +614,7 @@ These are community nodes that **DON'T** have ZMQ enabled but are fast and well-
 ### General Info
 You need [`cargo`](https://www.rust-lang.org/learn/get-started), Rust's build tool and package manager.
 
-There are `40` unit tests, you should probably run:
+There are `41` unit tests, you should probably run:
 ```
 cargo test
 ```
