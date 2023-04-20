@@ -1,13 +1,17 @@
 # v1.3.0
 ## Updates
-*
+* **UI:** Changed overall style (all text is monospace, darker theme, rounded corners)
+* **P2Pool:** Color status is now `ORANGE` until synchronized
+* **XMRig:** Color status is now `ORANGE` when not mining
 
 ## Fixes
-*
+* Fixed `[Status]` P2Pool stats overflowing sometimes
+* Added help messages on config loading issues (`node.toml`, `pool.toml`, etc)
+* Fixed rare crash upon bad config data
 
 ## Bundled Versions
-* [`P2Pool v3.2`](https://github.com/SChernykh/p2pool/releases/tag/v3.2)
-* [`XMRig v6.19.1`](https://github.com/xmrig/xmrig/releases/tag/v6.19.1)
+* [`P2Pool v3.3`](https://github.com/SChernykh/p2pool/releases/tag/v3.3)
+* [`XMRig v6.19.2`](https://github.com/xmrig/xmrig/releases/tag/v6.19.2)
 
 
 ---
