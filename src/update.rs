@@ -201,6 +201,7 @@ const MSG_EXTRACT: &str = "Extracting packages";
 const MSG_UPGRADE: &str = "Upgrading packages";
 pub const MSG_SUCCESS: &str = "Update successful";
 pub const MSG_FAILED: &str = "Update failed";
+pub const MSG_FAILED_HELP: &str = "Consider manually replacing your executable from: https://gupax.io/downloads";
 
 const INIT: &str = "------------------- Init -------------------";
 const METADATA: &str = "----------------- Metadata -----------------";
@@ -421,7 +422,7 @@ impl Update {
 				}
 				Err(e) => {
 					info!("Update ... FAIL: {}", e);
-					*lock2!(update,msg) = format!("{} | {}", MSG_FAILED, e);
+					*lock2!(update,msg) = format!("{} | {}\n{}", MSG_FAILED, e, MSG_FAILED_HELP);
 				},
 			};
 			*lock2!(update,updating) = false;
