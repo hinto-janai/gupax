@@ -562,7 +562,6 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | IP/Domain                        | Location                          | RPC Port | ZMQ Port    |
 |----------------------------------|-----------------------------------|----------|-------------|
 | monero.10z.com.ar                | 🇦🇷 AR - Buenos Aires F.D.         | 18089    | 18084       |
-| escom.sadovo.com                 | 🇧🇬 BG - Plovdiv                   | 18089    | 18084       |
 | monero2.10z.com.ar               | 🇧🇷 BR - São Paulo                 | 18089    | 18083       |
 | monero1.heitechsoft.com          | 🇨🇦 CA - Ontario                   | 18081    | 18084       |
 | node.monerodevs.org              | 🇨🇦 CA - Quebec                    | 18089    | 18084       |

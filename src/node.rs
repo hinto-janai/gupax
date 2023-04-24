@@ -36,7 +36,6 @@ use hyper::{
 
 pub const REMOTE_NODES: [(&str, &str, &str, &str); 24] = [
 	("monero.10z.com.ar",           "AR - Buenos Aires F.D.",         "18089", "18084"),
-	("escom.sadovo.com",            "BG - Plovdiv",                   "18089", "18084"),
 	("monero2.10z.com.ar",          "BR - São Paulo",                 "18089", "18083"),
 	("monero1.heitechsoft.com",     "CA - Ontario",                   "18081", "18084"),
 	("node.monerodevs.org",         "CA - Quebec",                    "18089", "18084"),
@@ -456,7 +455,7 @@ mod test {
 		'outer: for (ip, _, rpc, zmq) in REMOTE_NODES {
 			println!("[{n}/{REMOTE_NODE_LENGTH}] {ip} | {rpc} | {zmq}");
 			let client = client.clone();
-			// Try 5 times before failure
+			// Try 3 times before failure
 			let mut i = 1;
 			let mut response = loop {
 				let request = Request::builder()
@@ -469,7 +468,7 @@ mod test {
 					Ok(response) => break response,
 					Err(e) => {
 						println!("{:#?}", e);
-						if i > 5 {
+						if i >= 3 {
 							use std::fmt::Write;
 							writeln!(failures, "Node failure: {ip}:{rpc}:{zmq}");
 							failure_count += 1;
