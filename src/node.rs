@@ -49,7 +49,6 @@ pub const REMOTE_NODES: [(&str, &str, &str, &str); 23] = [
 	("monero.homeqloud.com",        "GR - East Macedonia and Thrace", "18089", "18083"),
 	("home.allantaylor.kiwi",       "NZ - Canterbury",                "18089", "18083"),
 	("ru.poiuty.com",               "RU - Kuzbass",                   "18081", "18084"),
-	("node-01-xmr.godevs.cloud",    "SG - Singapore",                 "18089", "18083"),
 	("node-02-xmr.godevs.cloud",    "SG - Singapore",                 "18089", "18083"),
 	("radishfields.hopto.org",      "US - Colorado",                  "18081", "18084"),
 	("xmrbandwagon.hopto.org",      "US - Colorado",                  "18081", "18084"),
