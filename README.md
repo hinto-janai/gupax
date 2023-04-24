@@ -583,7 +583,6 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
-| monero.jameswillhoite.com        | 🇺🇸 US - Ohio                      | 18089    | 18084       |
 
 These are community nodes that **DON'T** have ZMQ enabled but are fast and well-known. These are not used in Gupax but can be used for general Monero usage.
 
