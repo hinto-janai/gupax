@@ -3,7 +3,7 @@
 
 Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
 
-**To see a 3-minute video on how to set-up Gupax: [click here.](#How-To)**
+**To see a 3-minute video guide on how to set-up Gupax: [click here.](#Guide)**
 
 [![Windows](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml) [![macOS](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml) [![Linux](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml)
 
@@ -13,7 +13,7 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 
 ## Contents
 * [What is Monero/P2Pool/XMRig/Gupax?](#what-is-monerop2poolxmriggupax)
-* [How-To](#How-To)
+* [Guide](#Guide)
 * [Simple](#Simple)
 	- [Status](#Status)
 	- [Gupax](#Gupax)
@@ -54,13 +54,17 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 ## What is Monero/P2Pool/XMRig/Gupax?
 [**`Monero`**](https://getmonero.org) is a secure, private, and untraceable cryptocurrency.
 
-[Monero GUI](https://github.com/monero-project/monero-gui) lets you run a Monero node (among other things). A Monero node connects you to other peers on the Monero network and lets you download Monero's [blockchain](https://en.wikipedia.org/wiki/Blockchain).
+[Monero GUI](https://github.com/monero-project/monero-gui) allows you to run a Monero node (among other things).
 
 ---
 
-[**`P2Pool`**](https://github.com/SChernykh/p2pool) is software that lets you create/join decentralized peer-to-peer Monero mining pools.
+[**`P2Pool`**](https://github.com/SChernykh/p2pool) allows you to create/join decentralized peer-to-peer Monero mining pools.
 
-P2Pool as a concept was [first developed for Bitcoin](https://en.bitcoin.it/wiki/P2Pool) but was [never fully realized](https://github.com/p2pool/p2pool) due to limitations. These limitations were fixed when [`SChernykh`](https://github.com/SChernykh) rewrote P2Pool from scratch for Monero. P2Pool combines the best of solo mining and traditional pool mining:
+P2Pool as a concept was [first developed for Bitcoin](https://en.bitcoin.it/wiki/P2Pool) although [failed to stay relevent for various reasons](https://github.com/p2pool/p2pool).
+
+In late 2021, [`SChernykh`](https://github.com/SChernykh) rewrote P2Pool from scratch for Monero.
+
+P2Pool combines the best of solo mining and traditional pool mining:
 
 * **It's decentralized:** There's no central server that can be shutdown or pool admin that controls your hashrate
 * **It's permissionless:** It's peer-to-peer so there's no one to decide who can and cannot mine on the pool
@@ -71,42 +75,44 @@ P2Pool as a concept was [first developed for Bitcoin](https://en.bitcoin.it/wiki
 
 [**`XMRig`**](https://github.com/xmrig/xmrig) is an optimized miner that can mine Monero.
 
-Both Monero and P2Pool have built in miners but XMRig is quite faster than both of them. Due to issues like [anti-virus flagging](https://github.com/monero-project/monero-gui/pull/3829#issuecomment-1018191461), it is not feasible to integrate XMRig directly into Monero or P2Pool, however, XMRig is still freely available for anyone to download with the caveat being: you have to set it up yourself.
+Both Monero and P2Pool have built in miners but XMRig is quite faster than both of them. Due to issues like [anti-virus flagging](https://github.com/monero-project/monero-gui/pull/3829#issuecomment-1018191461), it is not feasible to integrate XMRig directly into Monero.
 
 ---
 
-**Gupax** is a GUI that helps with configuring, updating, and managing P2Pool & XMRig (both originally CLI-only).
+[**`Gupax`**](https://github.com/hinto-janai/gupax) is a GUI that helps manage P2Pool & XMRig (both originally CLI-only).
 
 <img src="images/local.png" align="left" width="50%"/>
 
-**XMRig** mines to **P2Pool**
+**`XMRig`** mines to **`P2Pool`**
 
-**P2Pool** fetchs blocks from a **Monero node**
+**`P2Pool`** fetchs blocks from a **`Monero node`**
 
-**Monero GUI** runs the ***Monero node***
+**`Monero GUI`** runs the **`Monero node`**
 
-**Gupax** runs ***P2Pool/XMRig***
+**`Gupax`** runs **`P2Pool/XMRig`**
 
 <br clear="left"/>
+
+---
 
 <img src="images/remote.png" align="left" width="50%"/>
 
-By default, Gupax will use a [Remote Monero Node](#remote-monero-nodes) so you don't have to run your own Monero node to start mining on P2Pool.
+By default, Gupax will use a [Remote Monero Node](#remote-monero-nodes) so you don't have to run [your own Monero node](#running-a-local-monero-node) to start mining on P2Pool.
 
 <br clear="left"/>
 
-## How-To
+## Guide
 https://user-images.githubusercontent.com/101352116/207978455-6ffdc0cc-204c-4594-9a2f-e10c505745bc.mp4
 
 <div align="center">
 
-1. [Download the bundled version of Gupax for your OS here](https://github.com/hinto-janai/gupax/releases) or from [gupax.io](https://gupax.io/downloads)
-2. Extract somewhere (Desktop, Documents, etc)
+1. [Download the bundled version of Gupax](https://github.com/hinto-janai/gupax/releases)
+2. Extract
 3. Launch Gupax
 4. Input your Monero address in the `P2Pool` tab
-5. Select a [`Remote Monero Node`](#remote-monero-nodes) ([or run your own local Monero node...!](https://github.com/hinto-janai/gupax#running-a-local-monero-node))
-5. Start P2Pool
-6. Start XMRig
+5. Select a [`Remote Monero Node`](#remote-monero-nodes) (or run your own local [Monero Node](#running-a-local-monero-node))
+6. Start P2Pool
+7. Start XMRig
 
 You are now mining to your own instance of P2Pool, welcome to the world of decentralized peer-to-peer mining!
 
@@ -714,7 +720,7 @@ Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store tem
 ---
 
 ### Bundled vs Standalone
-`Bundled` Gupax comes the latest version of P2Pool/XMRig already in the `zip/tar`.
+`Bundled` Gupax comes with the latest version of P2Pool/XMRig already in the `zip/tar`.
 
 `Standlone` only contains the Gupax executable.
 
