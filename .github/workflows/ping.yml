@@ -1,10 +1,14 @@
 # This uses the unit test in the [node.rs] file to ping all REMOTE_NODES
 # and attempts to serialize their JSON data to make sure they are working.
 
-name: Daily Remote Node Ping
+name: Remote Node Ping
 on:
   schedule:
     - cron: "0 4 * * *"
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 env:
   CARGO_TERM_COLOR: always

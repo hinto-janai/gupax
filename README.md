@@ -7,7 +7,7 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 
 [![Windows](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml) [![macOS](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml) [![Linux](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml)
 
-[![Daily Remote Node Ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml)
+[![Remote Node Ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml)
 
 </div>
 

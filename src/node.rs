@@ -446,9 +446,15 @@ mod test {
 		// Random User Agent
 		let rand_user_agent = crate::Pkg::get_user_agent();
 
+		// Only fail this test if >50% of nodes fail.
+		const HALF_REMOTE_NODES: usize = REMOTE_NODE_LENGTH / 2;
+		// A string buffer to append the failed node data.
+		let mut failures = String::new();
+		let mut failure_count = 0;
+
 		let mut n = 1;
-		for (ip, _, rpc, zmq) in REMOTE_NODES {
-			println!("[{}/{}] {} | {} | {}", n, REMOTE_NODE_LENGTH, ip, rpc, zmq);
+		'outer: for (ip, _, rpc, zmq) in REMOTE_NODES {
+			println!("[{n}/{REMOTE_NODE_LENGTH}] {ip} | {rpc} | {zmq}");
 			let client = client.clone();
 			// Try 5 times before failure
 			let mut i = 1;
@@ -463,8 +469,13 @@ mod test {
 					Ok(response) => break response,
 					Err(e) => {
 						println!("{:#?}", e);
-						if i > 5 { panic!("Node failure: {}:{}:{}", ip, rpc, zmq); }
-						std::thread::sleep(std::time::Duration::from_secs(3));
+						if i > 5 {
+							use std::fmt::Write;
+							writeln!(failures, "Node failure: {ip}:{rpc}:{zmq}");
+							failure_count += 1;
+							continue 'outer;
+						}
+						std::thread::sleep(std::time::Duration::from_secs(2));
 						i += 1;
 					}
 				}
@@ -474,6 +485,19 @@ mod test {
 			assert!(getinfo.id == "0");
 			assert!(getinfo.jsonrpc == "2.0");
 			n += 1;
+		}
+
+		let failure_percent = failure_count as f32 / HALF_REMOTE_NODES as f32;
+
+		// If more than half the nodes fail, something
+		// is definitely wrong, fail this test.
+		if failure_count > HALF_REMOTE_NODES {
+			panic!("[{failure_percent:.2}% of nodes failed, failure log:\n{failures}");
+		// If some failures happened, log.
+		} else if failure_count != 0 {
+			eprintln!("[{failure_count}] nodes failed ({failure_percent:.2}%):\n{failures}");
+		} else {
+			println!("No nodes failed - all OK");
 		}
 	}
 }
