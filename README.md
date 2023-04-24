@@ -5,9 +5,9 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 
 **To see a 3-minute video on how to set-up Gupax: [click here.](#How-To)**
 
-![windows](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml/badge.svg) ![macos](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml/badge.svg) ![linux](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml/badge.svg)
+[![Windows](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml) [![macOS](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml) [![Linux](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml)
 
-![daily-ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)
+[![Daily Remote Node Ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml)
 
 </div>
 
