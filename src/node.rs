@@ -34,7 +34,7 @@ use hyper::{
 // Remote Monero Nodes with ZMQ enabled, sourced from: [https://github.com/hinto-janai/monero-nodes]
 // The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
-pub const REMOTE_NODES: [(&str, &str, &str, &str); 23] = [
+pub const REMOTE_NODES: [(&str, &str, &str, &str); 20] = [
 	("monero.10z.com.ar",           "AR - Buenos Aires F.D.",         "18089", "18084"),
 	("monero2.10z.com.ar",          "BR - São Paulo",                 "18089", "18083"),
 	("monero1.heitechsoft.com",     "CA - Ontario",                   "18081", "18084"),
@@ -75,13 +75,7 @@ impl Default for RemoteNode {
 
 impl RemoteNode {
 	pub fn new() -> Self {
-		let (ip, location, rpc, zmq) = REMOTE_NODES[0];
-		Self {
-			ip,
-			location,
-			rpc,
-			zmq,
-		}
+		Self::get_random_same_ok()
 	}
 
 	pub fn check_exists(og_ip: &str) -> String {
@@ -138,6 +132,12 @@ impl RemoteNode {
 			node = REMOTE_NODES[rng].0;
 		}
 		node.to_string()
+	}
+
+	// Return a random valid node (no input str).
+	pub fn get_random_same_ok() -> Self {
+		let rng = thread_rng().gen_range(0..REMOTE_NODE_LENGTH);
+		Self::from_index(rng)
 	}
 
 	// Return the node [-1] of this one
