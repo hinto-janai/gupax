@@ -1,0 +1,39 @@
+# Forces `gupax.io` to cache stuff every hour.
+
+name: Cache `gupax.io`
+on:
+  schedule:
+    - cron: "0 * * * *"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Cache
+      run: |
+        wget \
+          --wait=1 \
+          --random-wait \
+          -e robots=off \
+          --header='Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8' \
+          --header='Accept-Encoding: identity' \
+          --header='Accept-Language: en-US,en;q=0.5' \
+          --header='Connection: keep-alive' \
+          --header='Host: gupax.io' \
+          --header='Sec-Fetch-Dest: document' \
+          --header='Sec-Fetch-Mode: navigate' \
+          --header='Sec-Fetch-Site: same-origin' \
+          --header='Sec-Fetch-User: ?1' \
+          --header='TE: trailers' \
+          --header='Upgrade-Insecure-Requests: 1' \
+          --header='User-Agent: Mozilla/5.0 (Windows NT 10.0; rv:102.0) Gecko/20100101 Firefox/102.0' \
+          --recursive \
+          --page-requisites \
+          --html-extension \
+          --convert-links \
+          --no-parent \
+          --show-progress \
+          --tries=0 \
+          --domains "gupax.io" \
+          "https://gupax.io"

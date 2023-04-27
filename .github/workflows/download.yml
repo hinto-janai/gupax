@@ -1,7 +1,7 @@
-# Attempt downloading all files from `gupax.io`
-# and verifies the SHA256SUMS & PGP signature.
+# Attempts to download all files from `gupax.io`
+# and verify the SHA256SUMS & PGP signature.
 
-name: gupax.io
+name: Download & Verify `gupax.io`
 on:
   schedule:
     - cron: "0 2 * * *"
