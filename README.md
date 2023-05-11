@@ -588,30 +588,6 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 
-These are community nodes that **DON'T** have ZMQ enabled but are fast and well-known. These are not used in Gupax but can be used for general Monero usage.
-
-| IP/Domain                         | RPC Port | Owner                                             | Owner Type |
-|-----------------------------------|----------|---------------------------------------------------|------------|
-| node.c3pool.com                   | 18081    | [C3pool](https://www.c3pool.com)                  | Pool       |
-| xmr-node.cakewallet.com           | 18081    | [Cake](https://cakewallet.com)                    | Wallet     |
-| xmr-node-eu.cakewallet.com        | 18081    | [Cake](https://cakewallet.com)                    | Wallet     |
-| xmr-node-uk.cakewallet.com        | 18081    | [Cake](https://cakewallet.com)                    | Wallet     |
-| xmr-node-usa-east.cakewallet.com  | 18081    | [Cake](https://cakewallet.com)                    | Wallet     |
-| selsta1.featherwallet.net         | 18081    | [Feather](https://featherwallet.org)              | Wallet     |
-| selsta2.featherwallet.net         | 18081    | [Feather](https://featherwallet.org)              | Wallet     |
-| nodes.hashvault.pro               | 18081    | [HashVault](https://hashvault.pro)                | Pool       |
-| node.majesticbank.is              | 18089    | [MajesticBank](https://www.majesticbank.sc)       | Exchange   |
-| node.majesticbank.su              | 18089    | [MajesticBank](https://www.majesticbank.sc)       | Exchange   |
-| 176.9.0.187                       | 18089    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L708) | Seed Node |
-| 51.79.173.165                     | 18089    | [Monero](https://github.com/monero-project/monero/blob/release-v0.18/src/p2p/net_node.inl#L715) | Seed Node |
-| node.moneroworld.com              | 18089    | [Gingeropolous](https://github.com/Gingeropolous) | Individual |
-| uwillrunanodesoon.moneroworld.com | 18089    | [Gingeropolous](https://github.com/Gingeropolous) | Individual |
-| nodex.monerujo.io                 | 18081    | [Monerujo](https://www.monerujo.io)               | Wallet     |
-| node.community.rino.io            | 18081    | [Rino](https://rino.io)                           | Wallet     |
-| node.sethforprivacy.com           | 18089    | [Seth](https://github.com/sethforprivacy)         | Individual |
-| node.supportxmr.com               | 18081    | [SupportXMR](https://www.supportxmr.com)          | Pool       |
-| node.supportxmr.ir                | 18089    | [SupportXMR](https://www.supportxmr.com)          | Pool       |
-
 ## Build
 ### General Info
 You need [`cargo`](https://www.rust-lang.org/learn/get-started), Rust's build tool and package manager.
