@@ -220,7 +220,7 @@ impl Default for State {
 
 impl State {
 	pub fn new() -> Self {
-		let max_threads = num_cpus::get();
+		let max_threads = benri::threads!();
 		let current_threads = if max_threads == 1 { 1 } else { max_threads / 2 };
 		Self {
 			status: Status::default(),

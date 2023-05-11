@@ -248,7 +248,7 @@ impl App {
 			pub_sys,
 			benchmarks,
 			pid,
-			max_threads: num_cpus::get(),
+			max_threads: benri::threads!(),
 			now,
 			admin: false,
 			exe: String::new(),

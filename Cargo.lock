@@ -344,6 +344,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
+name = "benri"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcf749a9459ea5ea4feb27b10368e6e86217274d64bcb8a0409e785c9bdf591d"
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1956,6 +1962,7 @@ dependencies = [
  "anyhow",
  "arti-client",
  "arti-hyper",
+ "benri",
  "bytes",
  "dirs",
  "eframe",
