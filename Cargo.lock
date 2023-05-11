@@ -1977,7 +1977,6 @@ dependencies = [
  "is_elevated",
  "log",
  "num-format",
- "num_cpus",
  "once_cell",
  "portable-pty",
  "rand 0.8.5",
