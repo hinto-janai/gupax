@@ -271,7 +271,6 @@ USAGE: ./gupax [--flag]
     --reset-pools     Reset the manual pool list in the [XMRig] tab
     --reset-payouts   Reset the permanent P2Pool stats that appear in the [Status] tab
     --reset-all       Reset the state, manual node list, manual pool list, and P2Pool stats
-    --ferris          Print an extremely cute crab
 ```
 
 ---

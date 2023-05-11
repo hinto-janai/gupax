@@ -1860,7 +1860,7 @@ path_xmr: {:#?}\n
 						ui.add_space(SPACE*2.0);
 
 						if cfg!(debug_assertions) { ui.label(format!("Gupax is running in debug mode - {}", self.now.elapsed().as_secs_f64())); }
-						ui.label(format!("Gupax has been running for: {}", lock!(self.pub_sys).gupax_uptime));
+						ui.label(format!("Gupax has been running for {}", lock!(self.pub_sys).gupax_uptime));
 					});
 				}
 				Tab::Status => {

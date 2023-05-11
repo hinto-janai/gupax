@@ -1,12 +1,17 @@
-# v1.3.0
+# v1.2.2
 ## Updates
 * **UI:** Changed overall style (all text is monospace, darker theme, rounded corners)
 * **P2Pool:** Color status is now `ORANGE` until synchronized
 * **XMRig:** Color status is now `ORANGE` when not mining
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Added `node.sethforprivacy.com`
+	- Added `node.moneroworld.com`
+	- Added `node.yeetin.me`
+	- Added `xmr.foxpro.su`
 
 ## Fixes
 * Fixed `[Status]` P2Pool stats overflowing sometimes
-* Added help messages on config loading issues (`node.toml`, `pool.toml`, etc)
+* Added help messages on config loading issues
 * Fixed rare crash upon bad config data
 
 ## Bundled Versions
@@ -285,7 +290,6 @@ Eh6+zWpoydVGzFdEkE5XKmnQ1dm/GQ8=
 	--reset-state  Reset all Gupax state (your settings)
 	--reset-nodes  Reset the manual node list in the [P2Pool] tab
 	--reset-all    Reset both the state and the manual node list
-	--ferris       Print an extremely cute crab
 	```
 * Added fullscreen GUI error handler (Error message + UI buttons for response, Yes/No, Quit, etc)
 * Added a native `File Explorer/Finder/GTK` file selector for picking P2Pool/XMRig binary path in `Gupax` tab
