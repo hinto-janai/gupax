@@ -18,14 +18,12 @@
 // Some regexes used throughout Gupax.
 
 use regex::Regex;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 //---------------------------------------------------------------------------------------------------- Lazy
-lazy_static! {
-	pub static ref REGEXES:      Regexes     = Regexes::new();
-	pub static ref P2POOL_REGEX: P2poolRegex = P2poolRegex::new();
-	pub static ref XMRIG_REGEX:  XmrigRegex  = XmrigRegex::new();
-}
+pub static REGEXES:      Lazy<Regexes>     = Lazy::new(|| Regexes::new());
+pub static P2POOL_REGEX: Lazy<P2poolRegex> = Lazy::new(|| P2poolRegex::new());
+pub static XMRIG_REGEX:  Lazy<XmrigRegex>  = Lazy::new(|| XmrigRegex::new());
 
 //---------------------------------------------------------------------------------------------------- [Regexes] struct
 // General purpose Regexes, mostly used in the GUI.

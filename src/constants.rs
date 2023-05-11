@@ -401,79 +401,78 @@ use egui::style::{
 	Widgets,
 	WidgetVisuals,
 };
+use once_cell::sync::Lazy;
 
 pub const ACCENT_COLOR: Color32 = Color32::from_rgb(200, 100, 100);
 pub const BG: Color32 = Color32::from_gray(20);
 
-lazy_static::lazy_static! {
-	/// This is based off [`Visuals::dark()`].
-	pub static ref VISUALS: Visuals = {
-		let selection = Selection {
-			bg_fill: ACCENT_COLOR,
-			stroke: Stroke::new(1.0, Color32::from_gray(255)),
-		};
-
-		let widgets = Widgets {
-			noninteractive: WidgetVisuals {
-				bg_fill:      BG,
-				bg_stroke:    Stroke::new(1.0, Color32::from_gray(60)), // separators, indentation lines
-				fg_stroke:    Stroke::new(1.0, Color32::from_gray(140)), // normal text color
-				rounding:     Rounding::same(10.0),
-				expansion:    0.0,
-			},
-			inactive: WidgetVisuals {
-				bg_fill:      Color32::from_gray(50),
-				bg_stroke:    Default::default(),
-				fg_stroke:    Stroke::new(1.0, Color32::from_gray(180)), // button text
-				rounding:     Rounding::same(10.0),
-				expansion:    0.0,
-			},
-			hovered: WidgetVisuals {
-				bg_fill:      Color32::from_gray(80),
-				bg_stroke:    Stroke::new(1.0, Color32::from_gray(150)), // e.g. hover over window edge or button
-				fg_stroke:    Stroke::new(1.5, Color32::from_gray(240)),
-				rounding:     Rounding::same(10.0),
-				expansion:    1.0,
-			},
-			active: WidgetVisuals {
-				bg_fill:      Color32::from_gray(55),
-				bg_stroke:    Stroke::new(1.0, Color32::WHITE),
-				fg_stroke:    Stroke::new(2.0, Color32::WHITE),
-				rounding:     Rounding::same(10.0),
-				expansion:    1.0,
-			},
-			open: WidgetVisuals {
-				bg_fill:      Color32::from_gray(27),
-				bg_stroke:    Stroke::new(1.0, Color32::from_gray(60)),
-				fg_stroke:    Stroke::new(1.0, Color32::from_gray(210)),
-				rounding:     Rounding::same(10.0),
-				expansion:    0.0,
-			},
-		};
-
-        Visuals {
-			dark_mode: true,
-			override_text_color:     None,
-			widgets,
-			selection,
-			hyperlink_color:         Color32::from_rgb(90, 170, 255),
-			faint_bg_color:          Color32::from_additive_luminance(5), // visible, but barely so
-			extreme_bg_color:        Color32::from_gray(10),            // e.g. TextEdit background
-			code_bg_color:           Color32::from_gray(64),
-			warn_fg_color:           Color32::from_rgb(255, 143, 0), // orange
-			error_fg_color:          Color32::from_rgb(255, 0, 0),  // red
-			window_rounding:         Rounding::same(6.0),
-			window_shadow:           Shadow::big_dark(),
-			popup_shadow:            Shadow::small_dark(),
-			resize_corner_size:      12.0,
-			text_cursor_width:       2.0,
-			text_cursor_preview:     false,
-			clip_rect_margin:        3.0, // should be at least half the size of the widest frame stroke + max WidgetVisuals::expansion
-			button_frame:            true,
-			collapsing_header_frame: false,
-		}
+// This is based off [`Visuals::dark()`].
+pub static VISUALS: Lazy<Visuals> = Lazy::new(|| {
+	let selection = Selection {
+		bg_fill: ACCENT_COLOR,
+		stroke: Stroke::new(1.0, Color32::from_gray(255)),
 	};
-}
+
+	let widgets = Widgets {
+		noninteractive: WidgetVisuals {
+			bg_fill:      BG,
+			bg_stroke:    Stroke::new(1.0, Color32::from_gray(60)), // separators, indentation lines
+			fg_stroke:    Stroke::new(1.0, Color32::from_gray(140)), // normal text color
+			rounding:     Rounding::same(10.0),
+			expansion:    0.0,
+		},
+		inactive: WidgetVisuals {
+			bg_fill:      Color32::from_gray(50),
+			bg_stroke:    Default::default(),
+			fg_stroke:    Stroke::new(1.0, Color32::from_gray(180)), // button text
+			rounding:     Rounding::same(10.0),
+			expansion:    0.0,
+		},
+		hovered: WidgetVisuals {
+			bg_fill:      Color32::from_gray(80),
+			bg_stroke:    Stroke::new(1.0, Color32::from_gray(150)), // e.g. hover over window edge or button
+			fg_stroke:    Stroke::new(1.5, Color32::from_gray(240)),
+			rounding:     Rounding::same(10.0),
+			expansion:    1.0,
+		},
+		active: WidgetVisuals {
+			bg_fill:      Color32::from_gray(55),
+			bg_stroke:    Stroke::new(1.0, Color32::WHITE),
+			fg_stroke:    Stroke::new(2.0, Color32::WHITE),
+			rounding:     Rounding::same(10.0),
+			expansion:    1.0,
+		},
+		open: WidgetVisuals {
+			bg_fill:      Color32::from_gray(27),
+			bg_stroke:    Stroke::new(1.0, Color32::from_gray(60)),
+			fg_stroke:    Stroke::new(1.0, Color32::from_gray(210)),
+			rounding:     Rounding::same(10.0),
+			expansion:    0.0,
+		},
+	};
+
+    Visuals {
+		dark_mode: true,
+		override_text_color:     None,
+		widgets,
+		selection,
+		hyperlink_color:         Color32::from_rgb(90, 170, 255),
+		faint_bg_color:          Color32::from_additive_luminance(5), // visible, but barely so
+		extreme_bg_color:        Color32::from_gray(10),            // e.g. TextEdit background
+		code_bg_color:           Color32::from_gray(64),
+		warn_fg_color:           Color32::from_rgb(255, 143, 0), // orange
+		error_fg_color:          Color32::from_rgb(255, 0, 0),  // red
+		window_rounding:         Rounding::same(6.0),
+		window_shadow:           Shadow::big_dark(),
+		popup_shadow:            Shadow::small_dark(),
+		resize_corner_size:      12.0,
+		text_cursor_width:       2.0,
+		text_cursor_preview:     false,
+		clip_rect_margin:        3.0, // should be at least half the size of the widest frame stroke + max WidgetVisuals::expansion
+		button_frame:            true,
+		collapsing_header_frame: false,
+	}
+});
 
 //---------------------------------------------------------------------------------------------------- TESTS
 #[cfg(test)]
