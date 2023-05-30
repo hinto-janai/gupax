@@ -57,6 +57,7 @@ use std::os::unix::fs::PermissionsExt;
 // State file
 const ERROR: &str = "Disk error";
 const PATH_ERROR: &str = "PATH for state directory could not be not found";
+
 #[cfg(target_os = "windows")]
 const DIRECTORY: &str = r#"Gupax\"#;
 #[cfg(target_os = "macos")]
@@ -104,8 +105,10 @@ pub const DEFAULT_P2POOL_PATH: &str = "p2pool/p2pool";
 #[cfg(target_os = "linux")]
 #[cfg(not(feature = "distro"))]
 pub const DEFAULT_XMRIG_PATH: &str = "xmrig/xmrig";
+#[cfg(target_os = "linux")]
 #[cfg(feature = "distro")]
 pub const DEFAULT_P2POOL_PATH: &str = "/usr/bin/p2pool";
+#[cfg(target_os = "linux")]
 #[cfg(feature = "distro")]
 pub const DEFAULT_XMRIG_PATH: &str = "/usr/bin/xmrig";
 

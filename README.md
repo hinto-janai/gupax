@@ -5,9 +5,7 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 
 **To see a 3-minute video guide on how to set-up Gupax: [click here.](#Guide)**
 
-[![Windows](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/windows.yml) [![macOS](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/macos.yml) [![Linux](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/linux.yml)
-
-[![Remote Node Ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml)
+[![CI](https://github.com/hinto-janai/gupax/actions/workflows/ci.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ci.yml) [![gupax.io](https://github.com/hinto-janai/gupax/actions/workflows/download.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/download.yml) [![Remote Node Ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml)
 
 </div>
 
