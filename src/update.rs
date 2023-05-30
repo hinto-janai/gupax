@@ -56,9 +56,9 @@ use zip::ZipArchive;
 
 //---------------------------------------------------------------------------------------------------- Constants
 // Package naming schemes:
-// gupax  | gupax-vX.X.X-(windows|macos|linux)-x64(standalone|bundle).(zip|tar.gz)
-// p2pool | p2pool-vX.X.X-(windows|macos|linux)-x64.(zip|tar.gz)
-// xmrig  | xmrig-X.X.X-(msvc-win64|macos-x64|linux-static-x64).(zip|tar.gz)
+// gupax  | gupax-vX.X.X-(windows|macos|linux)-(x64|arm64)-(standalone|bundle).(zip|tar.gz)
+// p2pool | p2pool-vX.X.X-(windows|macos|linux)-(x64|arm64).(zip|tar.gz)
+// xmrig  | xmrig-X.X.X-(msvc-win64|macos-x64|macos-arm64|linux-static-x64).(zip|tar.gz)
 //
 // Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
 // Example: https://github.com/hinto-janai/gupax/releases/download/v0.0.1/gupax-v0.0.1-linux-standalone-x64.tar.gz
@@ -85,94 +85,77 @@ const P2POOL_HASH: &str = "sha256sums.txt.asc";
 const XMRIG_HASH: &str = "SHA256SUMS";
 
 #[cfg(target_os = "windows")]
-const GUPAX_EXTENSION: &str = "-windows-x64-standalone.zip";
-#[cfg(target_os = "windows")]
-const P2POOL_EXTENSION: &str = "-windows-x64.zip";
-#[cfg(target_os = "windows")]
-const XMRIG_EXTENSION: &str = "-msvc-win64.zip";
-
-#[cfg(target_os = "macos")]
-const GUPAX_EXTENSION: &str = "-macos-x64-standalone.tar.gz";
-#[cfg(target_os = "macos")]
-const P2POOL_EXTENSION: &str = "-macos-x64.tar.gz";
-#[cfg(target_os = "macos")]
-const XMRIG_EXTENSION: &str = "-macos-x64.tar.gz";
-
-#[cfg(target_os = "linux")]
-const GUPAX_EXTENSION: &str = "-linux-x64-standalone.tar.gz";
-#[cfg(target_os = "linux")]
-const P2POOL_EXTENSION: &str = "-linux-x64.tar.gz";
-#[cfg(target_os = "linux")]
-const XMRIG_EXTENSION: &str = "-linux-static-x64.tar.gz";
-
-#[cfg(target_os = "windows")]
-const GUPAX_BINARY: &str = "Gupax.exe";
-#[cfg(target_family = "unix")]
-const GUPAX_BINARY: &str = "gupax";
-
-#[cfg(target_os = "windows")]
-const P2POOL_BINARY: &str = "p2pool.exe";
-#[cfg(target_family = "unix")]
-const P2POOL_BINARY: &str = "p2pool";
-
-#[cfg(target_os = "windows")]
-const XMRIG_BINARY: &str = "xmrig.exe";
-#[cfg(target_family = "unix")]
-const XMRIG_BINARY: &str = "xmrig";
-
-// --- Valid Windows Gupax
-#[cfg(target_os = "windows")]
-pub mod valid_gupax {
-	pub const VALID_GUPAX_1: &str = "GUPAX.exe";
-	pub const VALID_GUPAX_2: &str = "Gupax.exe";
-	pub const VALID_GUPAX_3: &str = "gupax.exe";
+mod impl_platform {
+	pub(super) const GUPAX_EXTENSION: &str = "-windows-x64-standalone.zip";
+	pub(super) const P2POOL_EXTENSION: &str = "-windows-x64.zip";
+	pub(super) const XMRIG_EXTENSION: &str = "-msvc-win64.zip";
+	pub(super) const GUPAX_BINARY: &str = "Gupax.exe";
+	pub(super) const P2POOL_BINARY: &str = "p2pool.exe";
+	pub(super) const XMRIG_BINARY: &str = "xmrig.exe";
+	pub(super) const VALID_GUPAX_1: &str = "GUPAX.exe";
+	pub(super) const VALID_GUPAX_2: &str = "Gupax.exe";
+	pub(super) const VALID_GUPAX_3: &str = "gupax.exe";
+	pub(super) const VALID_XMRIG_1: &str = "XMRIG.exe";
+	pub(super) const VALID_XMRIG_2: &str = "XMRig.exe";
+	pub(super) const VALID_XMRIG_3: &str = "Xmrig.exe";
+	pub(super) const VALID_XMRIG_4: &str = "xmrig.exe";
+	pub(super) const VALID_P2POOL_1: &str = "P2POOL.exe";
+	pub(super) const VALID_P2POOL_2: &str = "P2Pool.exe";
+	pub(super) const VALID_P2POOL_3: &str = "P2pool.exe";
+	pub(super) const VALID_P2POOL_4: &str = "p2pool.exe";
 }
-// --- Valid Unix Gupax
+
 #[cfg(target_family = "unix")]
-pub mod valid_gupax {
-	pub const VALID_GUPAX_1: &str = "GUPAX";
-	pub const VALID_GUPAX_2: &str = "Gupax";
-	pub const VALID_GUPAX_3: &str = "gupax";
+mod impl_unix {
+	pub(super) const GUPAX_BINARY: &str = "gupax";
+	pub(super) const P2POOL_BINARY: &str = "p2pool";
+	pub(super) const XMRIG_BINARY: &str = "xmrig";
+	pub(super) const VALID_GUPAX_1: &str = "GUPAX";
+	pub(super) const VALID_GUPAX_2: &str = "Gupax";
+	pub(super) const VALID_GUPAX_3: &str = "gupax";
+	pub(super) const VALID_XMRIG_1: &str = "XMRIG";
+	pub(super) const VALID_XMRIG_2: &str = "XMRig";
+	pub(super) const VALID_XMRIG_3: &str = "Xmrig";
+	pub(super) const VALID_XMRIG_4: &str = "xmrig";
+	pub(super) const VALID_P2POOL_1: &str = "P2POOL";
+	pub(super) const VALID_P2POOL_2: &str = "P2Pool";
+	pub(super) const VALID_P2POOL_3: &str = "P2pool";
+	pub(super) const VALID_P2POOL_4: &str = "p2pool";
 }
-use crate::valid_gupax::*;
+
+#[cfg(target_os = "macos")]
+#[cfg(target_arch = "x86_64")]
+mod impl_platform {
+	pub(super) use super::impl_unix::*;
+
+	pub(super) const GUPAX_EXTENSION: &str = "-macos-x64-standalone.tar.gz";
+	pub(super) const P2POOL_EXTENSION: &str = "-macos-x64.tar.gz";
+	pub(super) const XMRIG_EXTENSION: &str = "-macos-x64.tar.gz";
+}
+
+#[cfg(target_os = "macos")]
+#[cfg(target_arch = "aarch64")]
+mod impl_platform {
+	pub(super) use super::impl_unix::*;
+
+	pub(super) const GUPAX_EXTENSION: &str = "-macos-arm64-standalone.tar.gz";
+	pub(super) const P2POOL_EXTENSION: &str = "-macos-arm64.tar.gz";
+	pub(super) const XMRIG_EXTENSION: &str = "-macos-arm64.tar.gz";
+}
+
+#[cfg(target_os = "linux")]
+mod impl_platform {
+	pub(super) use super::impl_unix::*;
+
+	pub(super) const GUPAX_EXTENSION: &str = "-linux-x64-standalone.tar.gz";
+	pub(super) const P2POOL_EXTENSION: &str = "-linux-x64.tar.gz";
+	pub(super) const XMRIG_EXTENSION: &str = "-linux-static-x64.tar.gz";
+}
+
+use impl_platform::*;
+
 const VALID_GUPAX: [&str; 3] = [VALID_GUPAX_1, VALID_GUPAX_2, VALID_GUPAX_3];
-
-// --- Valid Windows XMRig
-#[cfg(target_os = "windows")]
-pub mod valid_xmrig {
-	pub const VALID_XMRIG_1: &str = "XMRIG.exe";
-	pub const VALID_XMRIG_2: &str = "XMRig.exe";
-	pub const VALID_XMRIG_3: &str = "Xmrig.exe";
-	pub const VALID_XMRIG_4: &str = "xmrig.exe";
-}
-// --- Valid Unix XMRig
-#[cfg(target_family = "unix")]
-pub mod valid_xmrig {
-	pub const VALID_XMRIG_1: &str = "XMRIG";
-	pub const VALID_XMRIG_2: &str = "XMRig";
-	pub const VALID_XMRIG_3: &str = "Xmrig";
-	pub const VALID_XMRIG_4: &str = "xmrig";
-}
-use crate::valid_xmrig::*;
 const VALID_XMRIG: [&str; 4] = [VALID_XMRIG_1, VALID_XMRIG_2, VALID_XMRIG_3, VALID_XMRIG_4];
-
-// --- Valid Windows P2Pool
-#[cfg(target_os = "windows")]
-pub mod valid_p2pool {
-	pub const VALID_P2POOL_1: &str = "P2POOL.exe";
-	pub const VALID_P2POOL_2: &str = "P2Pool.exe";
-	pub const VALID_P2POOL_3: &str = "P2pool.exe";
-	pub const VALID_P2POOL_4: &str = "p2pool.exe";
-}
-// --- Valid Unix P2Pool
-#[cfg(target_family = "unix")]
-pub mod valid_p2pool {
-	pub const VALID_P2POOL_1: &str = "P2POOL";
-	pub const VALID_P2POOL_2: &str = "P2Pool";
-	pub const VALID_P2POOL_3: &str = "P2pool";
-	pub const VALID_P2POOL_4: &str = "p2pool";
-}
-use crate::valid_p2pool::*;
 const VALID_P2POOL: [&str; 4] = [VALID_P2POOL_1, VALID_P2POOL_2, VALID_P2POOL_3, VALID_P2POOL_4];
 
 // Some fake Curl/Wget user-agents because GitHub API requires one and a Tor browser

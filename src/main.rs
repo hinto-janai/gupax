@@ -18,6 +18,17 @@
 // Hide console in Windows
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// Only (windows|macos|linux) + (x64|arm64) are supported.
+#[cfg(not(target_pointer_width = "64"))]
+compile_error!("gupax is only compatible with 64-bit CPUs");
+
+#[cfg(not(any(
+    target_os = "windows",
+    target_os = "macos",
+    target_os = "linux",
+)))]
+compile_error!("gupax is only built for windows/macos/linux");
+
 //---------------------------------------------------------------------------------------------------- Imports
 // egui/eframe
 use egui::{
