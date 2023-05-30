@@ -504,7 +504,7 @@ impl Helper {
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
-		let mut stdin = pair.master;
+		let mut stdin = pair.master.take_writer().unwrap();
 		drop(lock);
 
 		// 3. Spawn PTY read thread
@@ -896,13 +896,15 @@ impl Helper {
 		let child_pty = arc_mut!(pair.slave.spawn_command(cmd).unwrap());
 		drop(pair.slave);
 
+		let mut stdin = pair.master.take_writer().unwrap();
+
 		// 2. Input [sudo] pass, wipe, then drop.
 		if cfg!(unix) {
 			debug!("XMRig | Inputting [sudo] and wiping...");
 			// a) Sleep to wait for [sudo]'s non-echo prompt (on Unix).
 			// this prevents users pass from showing up in the STDOUT.
 			sleep!(3000);
-			if let Err(e) = writeln!(pair.master, "{}", lock!(sudo).pass) { error!("XMRig | Sudo STDIN error: {}", e); };
+			if let Err(e) = writeln!(stdin, "{}", lock!(sudo).pass) { error!("XMRig | Sudo STDIN error: {}", e); };
 			SudoState::wipe(&sudo);
 
 			// b) Reset GUI STDOUT just in case.
@@ -918,7 +920,6 @@ impl Helper {
         lock.signal = ProcessSignal::None;
         lock.start = Instant::now();
 		let reader = pair.master.try_clone_reader().unwrap(); // Get STDOUT/STDERR before moving the PTY
-		let mut stdin = pair.master;
 		drop(lock);
 
 		// 4. Spawn PTY read thread

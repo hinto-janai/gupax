@@ -1,6 +1,6 @@
 [package]
 name = "gupax"
-version = "1.2.2"
+version = "1.2.3"
 authors = ["hinto-janai <hinto.janai@protonmail.com>"]
 description = "GUI for P2Pool+XMRig"
 documentation = "https://github.com/hinto-janai/gupax"
