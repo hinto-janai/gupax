@@ -1,3 +1,18 @@
+# v1.2.3
+## Updates
+*
+
+## Fixes
+*
+
+## Bundled Versions
+* [`P2Pool v3.3`](https://github.com/SChernykh/p2pool/releases/tag/v3.3)
+* [`XMRig v6.19.2`](https://github.com/xmrig/xmrig/releases/tag/v6.19.2)
+
+
+---
+
+
 # v1.2.2
 ## Updates
 * **UI:** Changed overall style (all text is monospace, darker theme, rounded corners)
