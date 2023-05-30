@@ -491,6 +491,7 @@ impl Helper {
 		debug!("P2Pool | Creating command...");
 		let mut cmd = portable_pty::CommandBuilder::new(path.as_path());
 		cmd.args(args);
+		cmd.env("NO_COLOR", "true");
 		cmd.cwd(path.as_path().parent().unwrap());
 		// 1c. Create child
 		debug!("P2Pool | Creating child...");
