@@ -1,0 +1,5 @@
+[files]
+extend-exclude = [
+	"src/cpu.json",
+	"pgp/",
+]

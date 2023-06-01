@@ -71,7 +71,7 @@ This is how Gupax works internally when starting up:
 	- Kill processes, kill connections, exit
 
 ## Scale
-Every frame, the max available `[width, height]` are calculated, and those are used as a baseline for the Top/Bottom bars, containing the tabs and status bar. After that, all available space is given to the middle ui elements. The scale is calculated every frame so that all elements can scale immediately as the user adjusts it; this doesn't take as much CPU as you might think since frames are only rendered on user interaction. Some elements are subtracted a fixed number because the `ui.seperator()`'s add some fixed space which needs to be accounted for.
+Every frame, the max available `[width, height]` are calculated, and those are used as a baseline for the Top/Bottom bars, containing the tabs and status bar. After that, all available space is given to the middle ui elements. The scale is calculated every frame so that all elements can scale immediately as the user adjusts it; this doesn't take as much CPU as you might think since frames are only rendered on user interaction. Some elements are subtracted a fixed number because the `ui.separator()`'s add some fixed space which needs to be accounted for.
 
 ```
 Main [App] outer frame (default: [1280.0, 960.0], 4:3 aspect ratio)

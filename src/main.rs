@@ -1246,7 +1246,7 @@ impl eframe::App for App {
 		// This is separate from the [self.width != available_width] logic above
 		// because placing [init_text_styles()] above would mean calling it 60x a second
 		// while the user was readjusting the frame. It's a pretty heavy operation and looks
-		// buggy when calling it that many times. Looking for a [must_resize] in addtion to
+		// buggy when calling it that many times. Looking for a [must_resize] in addition to
 		// checking if the user is hovering over the app means that we only have call it once.
 		debug!("App | Checking if we need to resize");
 		if self.must_resize && ctx.is_pointer_over_area() {
@@ -1329,9 +1329,9 @@ impl eframe::App for App {
 						ui.add_sized([width, height], Label::new("Reset the manual node list?"))
 					},
 					ErrorButtons::Sudo => {
-						let text = format!("Why does XMRig need admin priviledge?\n{}", XMRIG_ADMIN_REASON);
+						let text = format!("Why does XMRig need admin privilege?\n{}", XMRIG_ADMIN_REASON);
 						let height = height/4.0;
-						ui.add_sized([width, height], Label::new(format!("--- Gupax needs sudo/admin priviledge for XMRig! ---\n{}", &self.error_state.msg)));
+						ui.add_sized([width, height], Label::new(format!("--- Gupax needs sudo/admin privilege for XMRig! ---\n{}", &self.error_state.msg)));
 						ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
 						ui.add_sized([width/2.0, height], Label::new(text));
 						ui.add_sized([width, height], Hyperlink::from_label_and_url("Click here for more info.", "https://xmrig.com/docs/miner/randomx-optimization-guide"))

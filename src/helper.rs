@@ -419,7 +419,7 @@ impl Helper {
 		} else {
 			// Overriding command arguments
 			if !state.arguments.is_empty() {
-				// This parses the input and attemps to fill out
+				// This parses the input and attempts to fill out
 				// the [ImgP2pool]... This is pretty bad code...
 				let mut last = "";
 				let lock = lock!(helper);
@@ -813,7 +813,7 @@ impl Helper {
 		} else {
 			// Overriding command arguments
 			if !state.arguments.is_empty() {
-				// This parses the input and attemps to fill out
+				// This parses the input and attempts to fill out
 				// the [ImgXmrig]... This is pretty bad code...
 				let mut last = "";
 				let lock = lock!(helper);
@@ -1122,8 +1122,8 @@ impl Helper {
 		//
 		// GUI Main       -> locks [p2pool] first
 		// Helper         -> locks [gui_api_p2pool] first
-		// GUI Status Tab -> trys to lock [gui_api_p2pool] -> CAN'T
-		// Helper         -> trys to lock [p2pool] -> CAN'T
+		// GUI Status Tab -> tries to lock [gui_api_p2pool] -> CAN'T
+		// Helper         -> tries to lock [p2pool] -> CAN'T
 		//
 		// These two threads are now in a deadlock because both
 		// are trying to access locks the other one already has.
@@ -1302,7 +1302,7 @@ pub struct PubP2poolApi {
 	pub p2pool_difficulty: HumanNumber,
 	pub p2pool_hashrate: HumanNumber,
 	pub miners: HumanNumber, // Current amount of miners on P2Pool sidechain
-	// Mean (calcualted in functions, not serialized)
+	// Mean (calculated in functions, not serialized)
 	pub solo_block_mean: HumanTime,   // Time it would take the user to find a solo block
 	pub p2pool_block_mean: HumanTime, // Time it takes the P2Pool sidechain to find a block
 	pub p2pool_share_mean: HumanTime, // Time it would take the user to find a P2Pool share

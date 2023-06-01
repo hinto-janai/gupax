@@ -255,7 +255,7 @@ impl State {
 		}
 	}
 
-	// Conver [State] to [String]
+	// Convert [State] to [String]
 	pub fn to_string(&self) -> Result<String, TomlError> {
 		match toml::ser::to_string(self) {
 			Ok(s) => Ok(s),
