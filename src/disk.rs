@@ -1088,10 +1088,7 @@ impl Default for Gupax {
 			auto_xmrig: false,
 			ask_before_quit: true,
 			save_before_quit: true,
-			#[cfg(not(target_os = "macos"))]
 			update_via_tor: true,
-			#[cfg(target_os = "macos")] // Arti library has issues on macOS
-			update_via_tor: false,
 			p2pool_path: DEFAULT_P2POOL_PATH.to_string(),
 			xmrig_path: DEFAULT_XMRIG_PATH.to_string(),
 			absolute_p2pool_path: into_absolute_path(DEFAULT_P2POOL_PATH.to_string()).unwrap(),
