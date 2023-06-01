@@ -45,9 +45,22 @@ use rand::{thread_rng, Rng};
 use serde::{Serialize,Deserialize};
 use std::path::{Path,PathBuf};
 use std::sync::{Arc,Mutex};
-use tls_api::{TlsConnector, TlsConnectorBuilder};
 use tokio::task::JoinHandle;
 use walkdir::WalkDir;
+
+// On apple-darwin targets there is an issue with the native and rustls
+// tls implementation so this makes it fall back to the openssl variant.
+//
+// https://gitlab.torproject.org/tpo/core/arti/-/issues/715
+#[cfg(target_os = "macos")]
+use tls_api_openssl::TlsConnector;
+#[cfg(not(target_os = "macos"))]
+use tls_api_native_tls::TlsConnector;
+
+use tls_api::{
+	TlsConnector as TlsConnectorTrait,
+	TlsConnectorBuilder,
+};
 
 #[cfg(target_os = "windows")]
 use zip::ZipArchive;
@@ -297,7 +310,7 @@ impl Update {
 			let tor = TorClient::builder().bootstrap_behavior(arti_client::BootstrapBehavior::OnDemand).create_unbootstrapped()?;
 			// This makes sure the Tor circuit is different each time
 			let tor = TorClient::isolated_client(&tor);
-			let tls = tls_api_native_tls::TlsConnector::builder()?.build()?;
+			let tls = TlsConnector::builder()?.build()?;
 		    let connector = ArtiHttpConnector::new(tor, tls);
 			let client = ClientEnum::Tor(Client::builder().build(connector));
 			Ok(client)
@@ -764,7 +777,7 @@ impl Update {
 
 #[derive(Debug,Clone)]
 pub enum ClientEnum {
-    Tor(hyper::Client<ArtiHttpConnector<tor_rtcompat::PreferredRuntime, tls_api_native_tls::TlsConnector>>),
+    Tor(hyper::Client<ArtiHttpConnector<tor_rtcompat::PreferredRuntime, TlsConnector>>),
     Https(hyper::Client<hyper_tls::HttpsConnector<hyper::client::HttpConnector>>),
 }
 

@@ -2083,6 +2083,7 @@ dependencies = [
  "tar",
  "tls-api",
  "tls-api-native-tls",
+ "tls-api-openssl",
  "tokio",
  "toml 0.7.4",
  "tor-rtcompat",
@@ -4542,6 +4543,21 @@ checksum = "7b935bda2458120a5d2cea542013796fcf13937566580027f6a08f42a52206f7"
 dependencies = [
  "anyhow",
  "native-tls",
+ "thiserror",
+ "tls-api",
+ "tls-api-test",
+ "tokio",
+]
+
+[[package]]
+name = "tls-api-openssl"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82155f245c99a3b652627f32abeacd4eae9e0fec996c1090df121e01379d28f3"
+dependencies = [
+ "anyhow",
+ "openssl",
+ "openssl-sys",
  "thiserror",
  "tls-api",
  "tls-api-test",

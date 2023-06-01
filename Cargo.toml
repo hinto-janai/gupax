@@ -66,7 +66,6 @@ serde = { version = "1.0.163", features = ["rc", "derive"] }
 serde_json = "1.0"
 sysinfo = { version = "0.29.0", default-features = false }
 tls-api = "0.9.0"
-tls-api-native-tls = "0.9.0"
 tokio = { version = "1.21.2", features = ["rt", "time", "macros", "process"] }
 toml = { version = "0.7.4", features = ["preserve_order"] }
 tor-rtcompat = "0.9.0"
@@ -81,6 +80,18 @@ flate2 = "1.0"
 sudo = "0.6.0"
 ## [glow] backend for Unix.
 eframe = { version = "0.19.0", default-features = false, features = ["glow"] }
+
+# macOS Tor
+[target.'cfg(target_os = "macos")'.dependencies]
+# On apple-darwin targets there is an issue with the native and rustls
+# tls implementation so this makes it fall back to the openssl variant.
+#
+# https://gitlab.torproject.org/tpo/core/arti/-/issues/715
+tls-api-openssl = "0.9.0"
+
+# Windows/Linux Tor
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+tls-api-native-tls = "0.9.0"
 
 # Windows dependencies
 [target.'cfg(windows)'.dependencies]
