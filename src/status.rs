@@ -114,9 +114,9 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 		let api = lock!(xmrig_api);
 		ui.add_sized([width, height], Label::new(RichText::new("Uptime").underline().color(BONE))).on_hover_text(STATUS_XMRIG_UPTIME);
 		ui.add_sized([width, height], Label::new(format!("{}", api.uptime)));
-		ui.add_sized([width, height], Label::new(RichText::new("CPU Load Averages").underline().color(BONE))).on_hover_text(STATUS_XMRIG_CPU);
+		ui.add_sized([width, height], Label::new(RichText::new("CPU Load (10s/60s/15m)").underline().color(BONE))).on_hover_text(STATUS_XMRIG_CPU);
 		ui.add_sized([width, height], Label::new(format!("{}", api.resources)));
-		ui.add_sized([width, height], Label::new(RichText::new("Hashrate Averages").underline().color(BONE))).on_hover_text(STATUS_XMRIG_HASHRATE);
+		ui.add_sized([width, height], Label::new(RichText::new("Hashrate (10s/60s/15m)").underline().color(BONE))).on_hover_text(STATUS_XMRIG_HASHRATE);
 		ui.add_sized([width, height], Label::new(format!("{}", api.hashrate)));
 		ui.add_sized([width, height], Label::new(RichText::new("Difficulty").underline().color(BONE))).on_hover_text(STATUS_XMRIG_DIFFICULTY);
 		ui.add_sized([width, height], Label::new(format!("{}", api.diff)));
