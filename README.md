@@ -630,13 +630,26 @@ This is the same as the `--release` profile, but with some changes:
 ---
 
 ### macOS
-You'll need [`Xcode`](https://developer.apple.com/xcode/).
+You'll need [`Xcode`](https://developer.apple.com/xcode/) and [`brew`](https://brew.sh).
 
-On macOS, if you want the binary to have an icon, you must install [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle) and compile with:
+Due to an issue with some [TLS code](https://gitlab.torproject.org/tpo/core/arti/-/issues/715), Arti (Tor) needs to fall back to using OpenSSL instead of the native TLS.
+
+These are statically linked into Gupax, so you'll need to have them on your system:
+```bash
+brew install pkg-config openssl
 ```
+
+If you want the binary to have an icon, you must use [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle):
+```
+cargo install cargo-bundle
 cargo bundle --release
 ```
 This bundles Gupax into a `Gupax.app`, the way it comes in the pre-built tars for macOS.
+
+To build only the binary:
+```
+cargo build --release
+```
 
 ---
 
