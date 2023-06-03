@@ -58,6 +58,7 @@ pub const REMOTE_NODES: [(&str, &str, &str, &str); 24] = [
 	("xmr.spotlightsound.com",      "US - Kansas",                    "18081", "18084"),
 	("xmrnode.facspro.net",         "US - Nebraska",                  "18089", "18084"),
 	("node.sethforprivacy.com",     "US - New York",                  "18089", "18083"),
+	("xmr.theuplink.net",           "US - New York",                  "18081", "18084"),
 	("moneronode.ddns.net",         "US - Pennsylvania",              "18089", "18084"),
 	("node.richfowler.net",         "US - Pennsylvania",              "18089", "18084"),
 ];
