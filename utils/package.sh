@@ -45,10 +45,14 @@ OUTPUT=$(cat linux/Gupax.AppImage)
 [[ $OUTPUT = "./gupax" ]]; check "linux/Gupax.AppImage = ./gupax"
 [[ -f linux/p2pool/p2pool ]]; check "linux/p2pool/p2pool"
 [[ -f linux/xmrig/xmrig ]]; check "linux/xmrig/xmrig"
-title "macOS folder check"
-[[ -d macos/Gupax.app ]]; check "macos/Gupax.app"
-[[ -f macos/Gupax.app/Contents/MacOS/p2pool/p2pool ]]; check "macos/p2pool/p2pool"
-[[ -f macos/Gupax.app/Contents/MacOS/xmrig/xmrig ]]; check "macos/xmrig/xmrig"
+title "macOS-x64 folder check"
+[[ -d macos-x64/Gupax.app ]]; check "macos-x64/Gupax.app"
+[[ -f macos-x64/Gupax.app/Contents/MacOS/p2pool/p2pool ]]; check "macos-x64/p2pool/p2pool"
+[[ -f macos-x64/Gupax.app/Contents/MacOS/xmrig/xmrig ]]; check "macos-x64/xmrig/xmrig"
+title "macOS-arm64 folder check"
+[[ -d macos-arm64/Gupax.app ]]; check "macos-arm64/Gupax.app"
+[[ -f macos-arm64/Gupax.app/Contents/MacOS/p2pool/p2pool ]]; check "macos-arm64/p2pool/p2pool"
+[[ -f macos-arm64/Gupax.app/Contents/MacOS/xmrig/xmrig ]]; check "macos-arm64/xmrig/xmrig"
 title "Windows folder check"
 [[ -f windows/Gupax.exe ]]; check "windows/Gupax.exe"
 [[ -f windows/P2Pool/p2pool.exe ]]; check "windows/P2Pool/p2pool.exe"
@@ -74,17 +78,31 @@ tar -czpf "gupax-${NEW_VER}-linux-x64-standalone.tar.gz" "gupax-$NEW_VER-linux-x
 # Remove dir
 rm -r "gupax-$NEW_VER-linux-x64-standalone"; check "rm linux dir"
 
+# x64
 # Tar macOS Bundle
-title "Tar macOS"
-mv macos "gupax-$NEW_VER-macos-x64-bundle"; check "macos -> gupax-$NEW_VER-macos-x64-bundle"
+title "Tar macOS-x64"
+mv macos-x64 "gupax-$NEW_VER-macos-x64-bundle"; check "macos-x64 -> gupax-$NEW_VER-macos-x64-bundle"
 tar -czpf "gupax-${NEW_VER}-macos-x64-bundle.tar.gz" "gupax-$NEW_VER-macos-x64-bundle" --owner=hinto --group=hinto --mtime="$DATE"; check "tar macos-bundle"
 # Tar macOS Standalone
 mv "gupax-$NEW_VER-macos-x64-bundle" "gupax-$NEW_VER-macos-x64-standalone"; check "gupax-$NEW_VER-macos-x64-bundle -> gupax-$NEW_VER-macos-x64-standalone"
 rm -r "gupax-$NEW_VER-macos-x64-standalone/Gupax.app/Contents/MacOS/p2pool"; check "rm gupax-$NEW_VER-macos-x64-standalone/Gupax.app/Contents/MacOS/p2pool"
 rm -r "gupax-$NEW_VER-macos-x64-standalone/Gupax.app/Contents/MacOS/xmrig"; check "rm gupax-$NEW_VER-macos-x64-standalone/Gupax.app/Contents/MacOS/xmrig/xmrig"
-tar -czpf "gupax-${NEW_VER}-macos-x64-standalone.tar.gz" "gupax-$NEW_VER-macos-x64-standalone" --owner=hinto --group=hinto --mtime="$DATE"; check "tar macos-standalone"
+tar -czpf "gupax-${NEW_VER}-macos-x64-standalone.tar.gz" "gupax-$NEW_VER-macos-x64-standalone" --owner=hinto --group=hinto --mtime="$DATE"; check "tar macos-x64-standalone"
 # Remove dir
-rm -r "gupax-$NEW_VER-macos-x64-standalone"; check "rm macos dir"
+rm -r "gupax-$NEW_VER-macos-x64-standalone"; check "rm macos-x64 dir"
+
+# ARM
+# Tar macOS Bundle
+title "Tar macOS-arm64"
+mv macos-arm64 "gupax-$NEW_VER-macos-arm64-bundle"; check "macos-arm64 -> gupax-$NEW_VER-macos-arm64-bundle"
+tar -czpf "gupax-${NEW_VER}-macos-arm64-bundle.tar.gz" "gupax-$NEW_VER-macos-arm64-bundle" --owner=hinto --group=hinto --mtime="$DATE"; check "tar macos-arm64-bundle"
+# Tar macOS Standalone
+mv "gupax-$NEW_VER-macos-arm64-bundle" "gupax-$NEW_VER-macos-arm64-standalone"; check "gupax-$NEW_VER-macos-arm64-bundle -> gupax-$NEW_VER-macos-arm64-standalone"
+rm -r "gupax-$NEW_VER-macos-arm64-standalone/Gupax.app/Contents/MacOS/p2pool"; check "rm gupax-$NEW_VER-macos-arm64-standalone/Gupax.app/Contents/MacOS/p2pool"
+rm -r "gupax-$NEW_VER-macos-arm64-standalone/Gupax.app/Contents/MacOS/xmrig"; check "rm gupax-$NEW_VER-macos-arm64-standalone/Gupax.app/Contents/MacOS/xmrig/xmrig"
+tar -czpf "gupax-${NEW_VER}-macos-arm64-standalone.tar.gz" "gupax-$NEW_VER-macos-arm64-standalone" --owner=hinto --group=hinto --mtime="$DATE"; check "tar macos-arm64-standalone"
+# Remove dir
+rm -r "gupax-$NEW_VER-macos-arm64-standalone"; check "rm macos dir"
 
 # Zip Windows Bundle
 title "Zip Windows"

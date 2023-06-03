@@ -581,11 +581,13 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | xmr.foxpro.su                    | 🇳🇱 NL - North Holland             | 18081    | 18084       |
 | home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
 | ru.poiuty.com                    | 🇷🇺 RU - Kuzbass                   | 18081    | 18084       |
+| xmr.support                      | 🇺🇸 US - California                | 18081    | 18083       |
 | radishfields.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmrbandwagon.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmr.spotlightsound.com           | 🇺🇸 US - Kansas                    | 18081    | 18084       |
 | xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
 | node.sethforprivacy.com          | 🇺🇸 US - New York                  | 18089    | 18083       |
+| xmr.theuplink.net                | 🇺🇸 US - New York                  | 18081    | 18084       |
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 

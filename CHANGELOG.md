@@ -1,13 +1,17 @@
 # v1.2.3
 ## Updates
-*
+* Added ARM (Apple Silicon) macOS releases (bundle includes ARM P2Pool/XMRig)
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Added `xmr.support`
+	- Added `xmr.theuplink.net`
 
 ## Fixes
-*
+* Fixed macOS Tor+TLS issue, updates are now via Tor by default ([#28](https://github.com/hinto-janai/gupax/issues/28))
+* Fixed undisplayable ANSI codes in P2Pool's terminal ([#24](https://github.com/hinto-janai/gupax/issues/34))
 
 ## Bundled Versions
-* [`P2Pool v3.3`](https://github.com/SChernykh/p2pool/releases/tag/v3.3)
-* [`XMRig v6.19.2`](https://github.com/xmrig/xmrig/releases/tag/v6.19.2)
+* [`P2Pool v3.4`](https://github.com/SChernykh/p2pool/releases/tag/v3.4)
+* [`XMRig v6.19.3`](https://github.com/xmrig/xmrig/releases/tag/v6.19.3)
 
 
 ---

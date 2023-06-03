@@ -70,7 +70,7 @@ use zip::ZipArchive;
 //---------------------------------------------------------------------------------------------------- Constants
 // Package naming schemes:
 // gupax  | gupax-vX.X.X-(windows|macos|linux)-(x64|arm64)-(standalone|bundle).(zip|tar.gz)
-// p2pool | p2pool-vX.X.X-(windows|macos|linux)-(x64|arm64).(zip|tar.gz)
+// p2pool | p2pool-vX.X.X-(windows|macos|linux)-(x64|aarch64).(zip|tar.gz)
 // xmrig  | xmrig-X.X.X-(msvc-win64|macos-x64|macos-arm64|linux-static-x64).(zip|tar.gz)
 //
 // Download link = PREFIX + Version (found at runtime) + SUFFIX + Version + EXT
@@ -152,7 +152,7 @@ mod impl_platform {
 	pub(super) use super::impl_unix::*;
 
 	pub(super) const GUPAX_EXTENSION: &str = "-macos-arm64-standalone.tar.gz";
-	pub(super) const P2POOL_EXTENSION: &str = "-macos-arm64.tar.gz";
+	pub(super) const P2POOL_EXTENSION: &str = "-macos-aarch64.tar.gz";
 	pub(super) const XMRIG_EXTENSION: &str = "-macos-arm64.tar.gz";
 }
 
