@@ -52,6 +52,7 @@ pub const REMOTE_NODES: [(&str, &str, &str, &str); 24] = [
 	("xmr.foxpro.su",               "NL - North Holland",             "18081", "18084"),
 	("home.allantaylor.kiwi",       "NZ - Canterbury",                "18089", "18083"),
 	("ru.poiuty.com",               "RU - Kuzbass",                   "18081", "18084"),
+	("xmr.support",                 "US - California",                "18081", "18083"),
 	("radishfields.hopto.org",      "US - Colorado",                  "18081", "18084"),
 	("xmrbandwagon.hopto.org",      "US - Colorado",                  "18081", "18084"),
 	("xmr.spotlightsound.com",      "US - Kansas",                    "18081", "18084"),
