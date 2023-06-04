@@ -21,10 +21,14 @@ jobs:
       run: wget --content-disposition "https://gupax.io/windows-bundle"
     - name: Download Windows Standalone
       run: wget --content-disposition "https://gupax.io/windows"
-    - name: Download macOS Bundle
-      run: wget --content-disposition "https://gupax.io/macos-bundle"
-    - name: Download macOS Standalone
-      run: wget --content-disposition "https://gupax.io/macos"
+    - name: Download macOS-x64 Bundle
+      run: wget --content-disposition "https://gupax.io/macos-x64-bundle"
+    - name: Download macOS-x64 Standalone
+      run: wget --content-disposition "https://gupax.io/macos-x64"
+    - name: Download macOS-arm64 Bundle
+      run: wget --content-disposition "https://gupax.io/macos-arm64-bundle"
+    - name: Download macOS-arm64 Standalone
+      run: wget --content-disposition "https://gupax.io/macos-arm64"
     - name: Download Linux Bundle
       run: wget --content-disposition "https://gupax.io/linux-bundle"
     - name: Download Linux Standalone
