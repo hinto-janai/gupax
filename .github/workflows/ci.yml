@@ -17,7 +17,6 @@ jobs:
     strategy:
       matrix:
         os: [windows-2019, macos-11, ubuntu-20.04]
-        build: [dev, release]
 
     steps:
     - name: Checkout
@@ -31,7 +30,7 @@ jobs:
         path: |
           ~/.cargo
           target
-        key: ${{ matrix.os }}-${{ matrix.build }}
+        key: ${{ matrix.os }}
 
     - name: Install dependencies
       run: |
@@ -45,40 +44,44 @@ jobs:
       shell: bash
 
     - name: Test
-      run: cargo test --all-features --profile ${{ matrix.build }}
+      run: cargo test --all-features --release
 
     - name: Build
       run: |
         if [ "$RUNNER_OS" == "macOS" ]; then
-          cargo bundle --all-features --profile ${{ matrix.build }}
-          cargo bundle --all-features --profile ${{ matrix.build }} --target aarch64-apple-darwin
+          cargo bundle --all-features --release
+          cargo bundle --all-features --release --target aarch64-apple-darwin
+        elif [ "$RUNNER_OS" == "Linux" ]; then
+          cargo build --all-features --release --target x86_64-unknown-linux-gnu
         else
-          cargo build --all-features --profile ${{ matrix.build }}
+          cargo build --all-features --release
         fi
       shell: bash
 
-    - name: Archive (Debug)
+    - name: Archive (Windows)
+      if: ${{ runner.os == 'Windows' }}
       uses: actions/upload-artifact@v3
       with:
-        name: gupax-debug-${{ matrix.os }}
-        if: matrix.os == 'windows-2019'
-          path: target/debug/gupax.exe
-        if: matrix.os == 'macos-11'
-          path: |
-            target/debug/bundle/osx/Gupax.app
-            target/aarch64-apple-darwin/debug/bundle/osx/Gupax.app
-        if: matrix.os == 'ubuntu-20.04'
-          path: target/debug/gupax
+        name: windows
+        path: target/release/gupax.exe
 
-    - name: Archive (Release)
+    - name: Archive (macOS-x64)
+      if: ${{ runner.os == 'macOS' }}
       uses: actions/upload-artifact@v3
       with:
-        name: gupax-release-${{ matrix.os }}
-        if: matrix.os == 'windows-2019'
-          path: target/release/gupax.exe
-        if: matrix.os == 'macos-11'
-          path: |
-            target/release/bundle/osx/Gupax.app
-            target/aarch64-apple-darwin/release/bundle/osx/Gupax.app
-        if: matrix.os == 'ubuntu-20.04'
-          path: target/release/gupax
+        name: macos-x64
+        path: target/release/bundle/osx/Gupax.app
+
+    - name: Archive (macOS-arm64)
+      if: ${{ runner.os == 'macOS' }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: macos-arm64
+        path: target/aarch64-apple-darwin/release/bundle/osx/Gupax.app
+
+    - name: Archive (Linux)
+      if: ${{ runner.os == 'Linux' }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux
+        path: target/x86_64-unknown-linux-gnu/release/gupax
