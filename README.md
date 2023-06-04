@@ -638,7 +638,7 @@ Due to an issue with some [TLS code](https://gitlab.torproject.org/tpo/core/arti
 
 These are statically linked into Gupax, so you'll need to have them on your system:
 ```bash
-brew install pkg-config openssl
+brew install pkg-config openssl xz
 ```
 
 If you want the binary to have an icon, you must use [`cargo-bundle`](https://github.com/burtonageo/cargo-bundle):
