@@ -57,8 +57,28 @@ jobs:
         fi
       shell: bash
 
-    - name: Archive
+    - name: Archive (Debug)
       uses: actions/upload-artifact@v3
       with:
-        name: festival-${{ matrix.os }}
-        path: target
+        name: gupax-debug-${{ matrix.os }}
+        if: matrix.os == 'windows-2019'
+          path: target/debug/gupax.exe
+        if: matrix.os == 'macos-11'
+          path: |
+            target/debug/bundle/osx/Gupax.app
+            target/aarch64-apple-darwin/debug/bundle/osx/Gupax.app
+        if: matrix.os == 'ubuntu-20.04'
+          path: target/debug/gupax
+
+    - name: Archive (Release)
+      uses: actions/upload-artifact@v3
+      with:
+        name: gupax-release-${{ matrix.os }}
+        if: matrix.os == 'windows-2019'
+          path: target/release/gupax.exe
+        if: matrix.os == 'macos-11'
+          path: |
+            target/release/bundle/osx/Gupax.app
+            target/aarch64-apple-darwin/release/bundle/osx/Gupax.app
+        if: matrix.os == 'ubuntu-20.04'
+          path: target/release/gupax
