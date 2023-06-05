@@ -402,9 +402,10 @@ impl Helper {
 			args.push("--rpc-port".to_string()); args.push(rpc.to_string());                // RPC Port
 			args.push("--zmq-port".to_string()); args.push(zmq.to_string());                // ZMQ Port
 			args.push("--data-api".to_string()); args.push(api_path.display().to_string()); // API Path
-			args.push("--local-api".to_string()); // Enable API
-			args.push("--no-color".to_string());  // Remove color escape sequences, Gupax terminal can't parse it :(
-			args.push("--mini".to_string());      // P2Pool Mini
+			args.push("--local-api".to_string());  // Enable API
+			args.push("--no-color".to_string());   // Remove color escape sequences, Gupax terminal can't parse it :(
+			args.push("--mini".to_string());       // P2Pool Mini
+			args.push("--light-mode".to_string()); // Assume user is not using P2Pool to mine.
 			*lock2!(helper,img_p2pool) = ImgP2pool {
 				mini: "P2Pool Mini".to_string(),
 				address: Self::head_tail_of_monero_address(&state.address),
@@ -455,6 +456,7 @@ impl Helper {
 				args.push("--data-api".to_string());  args.push(api_path.display().to_string()); // API Path
 				args.push("--local-api".to_string());               // Enable API
 				args.push("--no-color".to_string());                // Remove color escape sequences
+				args.push("--light-mode".to_string());              // Assume user is not using P2Pool to mine.
 				if state.mini { args.push("--mini".to_string()); }; // Mini
 				*lock2!(helper,img_p2pool) = ImgP2pool {
 					mini: if state.mini { "P2Pool Mini".to_string() } else { "P2Pool Main".to_string() },
