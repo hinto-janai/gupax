@@ -1,3 +1,18 @@
+# v1.2.4
+## Updates
+*
+
+## Fixes
+*
+
+## Bundled Versions
+* [`P2Pool v3.5`](https://github.com/SChernykh/p2pool/releases/tag/v3.5)
+* [`XMRig v6.20.0`](https://github.com/xmrig/xmrig/releases/tag/v6.20.0)
+
+
+---
+
+
 # v1.2.3
 ## Updates
 * Added ARM (Apple Silicon) macOS releases (bundle includes ARM P2Pool/XMRig)

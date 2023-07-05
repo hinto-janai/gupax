@@ -1259,7 +1259,9 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui-winit",
+ "egui_glow",
  "getrandom 0.2.8",
+ "glow",
  "glutin",
  "js-sys",
  "percent-encoding",
@@ -1321,6 +1323,21 @@ checksum = "f698f685bb0ad39e87109e2f695ded0bccde77d5d40bbf7590cb5561c1e3039d"
 dependencies = [
  "egui",
  "image",
+]
+
+[[package]]
+name = "egui_glow"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad77d4a00402bae9658ee64be148f4b2a0b38e4fc7874970575ca01ed1c5b75d"
+dependencies = [
+ "bytemuck",
+ "egui",
+ "glow",
+ "memoffset 0.6.5",
+ "tracing",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -2032,7 +2049,7 @@ dependencies = [
 
 [[package]]
 name = "gupax"
-version = "1.2.3"
+version = "1.2.4"
 dependencies = [
  "anyhow",
  "arti-client",
