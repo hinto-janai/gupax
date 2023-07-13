@@ -7,6 +7,7 @@
 	- Removed `node.moneroworld.com`
 	- Removed `de.poiuty.com`
 	- Removed `m1.poiuty.com`
+	- Removed `reynald.ro`
 
 ## Fixes
 *
