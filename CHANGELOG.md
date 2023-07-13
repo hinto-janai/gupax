@@ -9,6 +9,7 @@
 	- Removed `m1.poiuty.com`
 	- Removed `reynald.ro`
 	- Removed `monero.homeqloud.com`
+	- Removed `xmr.foxpro.su`
 
 ## Fixes
 *
