@@ -1016,8 +1016,8 @@ pub struct P2pool {
 	pub simple: bool,
 	pub mini: bool,
 	pub auto_ping: bool,
-	pub backup_host: bool,
 	pub auto_select: bool,
+	pub backup_host: bool,
 	pub out_peers: u16,
 	pub in_peers: u16,
 	pub log_level: u8,
@@ -1229,6 +1229,7 @@ mod test {
 			mini = true
 			auto_ping = true
 			auto_select = true
+			backup_host = true
 			out_peers = 10
 			in_peers = 450
 			log_level = 3
@@ -1268,7 +1269,7 @@ mod test {
 			selected_port = "3333"
 
 			[version]
-			gupax = "v1.0.0"
+			gupax = "v1.3.0"
 			p2pool = "v2.5"
 			xmrig = "v6.18.0"
 		"#;
@@ -1402,6 +1403,7 @@ mod test {
 		assert!(merged_state.contains(r#"node = "Seth""#));
 		assert!(!merged_state.contains("SETTING_THAT_DOESNT_EXIST_ANYMORE"));
 		assert!(merged_state.contains("44hintoFpuo3ugKfcqJvh5BmrsTRpnTasJmetKC4VXCt6QDtbHVuixdTtsm6Ptp7Y8haXnJ6j8Gj2dra8CKy5ewz7Vi9CYW"));
+		assert!(merged_state.contains("backup_host = true"));
 	}
 
 	#[test]

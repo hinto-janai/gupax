@@ -1,5 +1,6 @@
-# v1.2.4
+# v1.3.0
 ## Updates
+* Added P2Pool [backup host support](https://github.com/SChernykh/p2pool/blob/master/docs/COMMAND_LINE.MD#multiple-backup-hosts). `[Simple]` will fallback to next fastest nodes, `[Advanced]` will fallback to all other nodes in list.
 * [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
 	- Added `sf.xmr.support`
 	- Added `node.cryptocano.de`
@@ -17,9 +18,6 @@
 	- Removed `xmr.foxpro.su`
 	- Removed `radishfields.hopto.org`
 	- Removed `node.sethforprivacy.com`
-
-## Fixes
-*
 
 ## Bundled Versions
 * [`P2Pool v3.5`](https://github.com/SChernykh/p2pool/releases/tag/v3.5)
