@@ -570,7 +570,6 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | p2pmd.xmrvsbeast.com             | 🇩🇪 DE - Hesse                     | 18081    | 18083       |
 | node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
 | p2pool.uk                        | 🇬🇧 GB - England                   | 18089    | 18084       |
-| monero.homeqloud.com             | 🇬🇷 GR - East Macedonia and Thrace | 18089    | 18083       |
 | xmr.foxpro.su                    | 🇳🇱 NL - North Holland             | 18081    | 18084       |
 | home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
 | ru.poiuty.com                    | 🇷🇺 RU - Kuzbass                   | 18081    | 18084       |
