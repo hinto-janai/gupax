@@ -4,6 +4,7 @@
 	- Added `sf.xmr.support`
 	- Added `node.cryptocano.de`
 	- Added `bunkernet.ddns.net`
+	- Added `oracle.netrix.cc`
 	- Removed `xmr.aa78i2efsewr0neeknk.xyz`
 	- Removed `node.yeetin.me`
 	- Removed `monero2.10z.com.ar`
