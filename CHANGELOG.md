@@ -1,6 +1,10 @@
 # v1.2.4
 ## Updates
-*
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Removed `xmr.aa78i2efsewr0neeknk.xyz`
+	- Removed `node.yeetin.me`
+	- Removed `monero2.10z.com.ar`
+	- Removed `node.moneroworld.com`
 
 ## Fixes
 *
