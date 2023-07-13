@@ -11,6 +11,7 @@
 	- Removed `monero.homeqloud.com`
 	- Removed `xmr.foxpro.su`
 	- Removed `radishfields.hopto.org`
+	- Removed `node.sethforprivacy.com`
 
 ## Fixes
 *
