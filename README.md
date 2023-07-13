@@ -568,6 +568,7 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | monero1.heitechsoft.com          | 🇨🇦 CA - Ontario                   | 18081    | 18084       |
 | node.monerodevs.org              | 🇨🇦 CA - Quebec                    | 18089    | 18084       |
 | p2pmd.xmrvsbeast.com             | 🇩🇪 DE - Hesse                     | 18081    | 18083       |
+| node.cryptocano.de               | 🇩🇪 DE - Lower Saxony              | 18089    | 18083       |
 | node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
 | p2pool.uk                        | 🇬🇧 GB - England                   | 18089    | 18084       |
 | home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
