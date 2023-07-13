@@ -573,7 +573,6 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
 | ru.poiuty.com                    | 🇷🇺 RU - Kuzbass                   | 18081    | 18084       |
 | xmr.support                      | 🇺🇸 US - California                | 18081    | 18083       |
-| radishfields.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmrbandwagon.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmr.spotlightsound.com           | 🇺🇸 US - Kansas                    | 18081    | 18084       |
 | xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |

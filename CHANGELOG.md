@@ -10,6 +10,7 @@
 	- Removed `reynald.ro`
 	- Removed `monero.homeqloud.com`
 	- Removed `xmr.foxpro.su`
+	- Removed `radishfields.hopto.org`
 
 ## Fixes
 *
