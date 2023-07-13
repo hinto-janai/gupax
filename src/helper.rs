@@ -328,7 +328,7 @@ impl Helper {
 
 	// The "restart frontend" to a "frontend" function.
 	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
-	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
+	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf, backup_hosts: Option<Vec<crate::Node>>) {
 		info!("P2Pool | Attempting to restart...");
 		lock2!(helper,p2pool).signal = ProcessSignal::Restart;
 		lock2!(helper,p2pool).state = ProcessState::Middle;
@@ -344,16 +344,21 @@ impl Helper {
 			}
 			// Ok, process is not alive, start the new one!
 			info!("P2Pool | Old process seems dead, starting new one!");
-			Self::start_p2pool(&helper, &state, &path);
+			Self::start_p2pool(&helper, &state, &path, backup_hosts);
 		});
 		info!("P2Pool | Restart ... OK");
 	}
 
 	// The "frontend" function that parses the arguments, and spawns either the [Simple] or [Advanced] P2Pool watchdog thread.
-	pub fn start_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) {
+	pub fn start_p2pool(
+		helper: &Arc<Mutex<Self>>,
+		state: &crate::disk::P2pool,
+		path: &std::path::PathBuf,
+		backup_hosts: Option<Vec<crate::Node>>,
+	) {
 		lock2!(helper,p2pool).state = ProcessState::Middle;
 
-		let (args, api_path_local, api_path_network, api_path_pool) = Self::build_p2pool_args_and_mutate_img(helper, state, path);
+		let (args, api_path_local, api_path_network, api_path_pool) = Self::build_p2pool_args_and_mutate_img(helper, state, path, backup_hosts);
 
 		// Print arguments & user settings to console
 		crate::disk::print_dash(&format!(
@@ -387,7 +392,12 @@ impl Helper {
 	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
 	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
-	pub fn build_p2pool_args_and_mutate_img(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf) -> (Vec<String>, PathBuf, PathBuf, PathBuf) {
+	pub fn build_p2pool_args_and_mutate_img(
+		helper: &Arc<Mutex<Self>>,
+		state: &crate::disk::P2pool,
+		path: &std::path::PathBuf,
+		backup_hosts: Option<Vec<crate::Node>>,
+	) -> (Vec<String>, PathBuf, PathBuf, PathBuf) {
 		let mut args = Vec::with_capacity(500);
 		let path = path.clone();
 		let mut api_path = path;
@@ -406,6 +416,18 @@ impl Helper {
 			args.push("--no-color".to_string());   // Remove color escape sequences, Gupax terminal can't parse it :(
 			args.push("--mini".to_string());       // P2Pool Mini
 			args.push("--light-mode".to_string()); // Assume user is not using P2Pool to mine.
+
+			// Push other nodes if `backup_host`.
+			if let Some(nodes) = backup_hosts {
+				for node in nodes {
+					if (node.ip.as_str(), node.rpc.as_str(), node.zmq.as_str()) != (ip, rpc, zmq) {
+						args.push("--host".to_string());     args.push(node.ip.to_string());
+						args.push("--rpc-port".to_string()); args.push(node.rpc.to_string());
+						args.push("--zmq-port".to_string()); args.push(node.zmq.to_string());
+					}
+				}
+			}
+
 			*lock2!(helper,img_p2pool) = ImgP2pool {
 				mini: "P2Pool Mini".to_string(),
 				address: Self::head_tail_of_monero_address(&state.address),
@@ -458,6 +480,19 @@ impl Helper {
 				args.push("--no-color".to_string());                // Remove color escape sequences
 				args.push("--light-mode".to_string());              // Assume user is not using P2Pool to mine.
 				if state.mini { args.push("--mini".to_string()); }; // Mini
+
+				// Push other nodes if `backup_host`.
+				if let Some(nodes) = backup_hosts {
+					for node in nodes {
+						let ip = if node.ip == "localhost" { "127.0.0.1" } else { &node.ip };
+						if (node.ip.as_str(), node.rpc.as_str(), node.zmq.as_str()) != (ip, &state.rpc, &state.zmq) {
+							args.push("--host".to_string());     args.push(node.ip.to_string());
+							args.push("--rpc-port".to_string()); args.push(node.rpc.to_string());
+							args.push("--zmq-port".to_string()); args.push(node.zmq.to_string());
+						}
+					}
+				}
+
 				*lock2!(helper,img_p2pool) = ImgP2pool {
 					mini: if state.mini { "P2Pool Mini".to_string() } else { "P2Pool Main".to_string() },
 					address: Self::head_tail_of_monero_address(&state.address),

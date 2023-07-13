@@ -223,11 +223,15 @@ impl crate::disk::P2pool {
 		debug!("P2Pool Tab | Rendering [Auto-*] buttons");
 		ui.group(|ui| {
 		ui.horizontal(|ui| {
-			let width = (width/2.0)-(SPACE*1.75);
-			// [Auto-node] + [Auto-select]
+			let width = (width/3.0)-(SPACE*1.75);
+			// [Auto-node]
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_select, "Auto-select")).on_hover_text(P2POOL_AUTO_SELECT);
 			ui.separator();
+			// [Auto-node]
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_ping, "Auto-ping")).on_hover_text(P2POOL_AUTO_NODE);
+			ui.separator();
+			// [Backup host]
+			ui.add_sized([width, height], Checkbox::new(&mut self.backup_host, "Backup host")).on_hover_text(P2POOL_BACKUP_HOST);
 		})});
 
 		debug!("P2Pool Tab | Rendering warning text");
@@ -483,6 +487,14 @@ impl crate::disk::P2pool {
 				ui.add_sized([width, height], Slider::new(&mut self.log_level, 0..=6)).on_hover_text(P2POOL_LOG);
 			});
 		})});
+		});
+
+		debug!("P2Pool Tab | Rendering Backup host button");
+		ui.group(|ui| {
+			let width = width - SPACE;
+			let height = ui.available_height() / 3.0;
+			// [Backup host]
+			ui.add_sized([width, height], Checkbox::new(&mut self.backup_host, "Backup host")).on_hover_text(P2POOL_BACKUP_HOST);
 		});
 	}
 	}

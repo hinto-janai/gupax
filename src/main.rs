@@ -527,6 +527,43 @@ impl App {
 		info!("App ... OK");
 		app
 	}
+
+	pub fn gather_backup_hosts(&self) -> Option<Vec<Node>> {
+		if !self.state.p2pool.backup_host {
+			return None;
+		}
+
+		if self.state.p2pool.simple {
+			let mut ip = lock!(self.ping).fastest.to_string();
+
+			let mut vec = Vec::with_capacity(REMOTE_NODES.len());
+
+			for _ in 0..REMOTE_NODES.len() {
+				let (ip_new, rpc, zmq)  = RemoteNode::get_ip_rpc_zmq(&ip);
+
+				let node = Node {
+					ip: ip_new.into(),
+					rpc: rpc.into(),
+					zmq: zmq.into(),
+				};
+
+				vec.push(node);
+				ip = RemoteNode::get_next_from_ping(ip_new, &lock!(self.ping).nodes);
+			}
+
+			return Some(vec);
+		}
+
+		if !self.state.p2pool.simple {
+			return Some(self.node_vec
+				.iter()
+				.map(|(_, node)| node.clone())
+				.collect()
+			);
+		}
+
+		None
+	}
 }
 
 //---------------------------------------------------------------------------------------------------- [Tab] Enum + Impl
@@ -855,7 +892,8 @@ fn init_auto(app: &mut App) {
 		} else if !crate::update::check_p2pool_path(&app.state.gupax.p2pool_path) {
 			warn!("Gupax | P2Pool path is not valid! Skipping auto-p2pool...");
 		} else {
-			Helper::start_p2pool(&app.helper, &app.state.p2pool, &app.state.gupax.absolute_p2pool_path);
+			let backup_hosts = app.gather_backup_hosts();
+			Helper::start_p2pool(&app.helper, &app.state.p2pool, &app.state.gupax.absolute_p2pool_path, backup_hosts);
 		}
 	} else {
 		info!("Skipping auto-p2pool...");
@@ -1641,7 +1679,7 @@ impl eframe::App for App {
 								if key.is_up() && !wants_input || ui.add_sized([width, height], Button::new("⟲")).on_hover_text("Restart P2Pool").clicked() {
 									lock!(self.og).update_absolute_path();
 									self.state.update_absolute_path();
-									Helper::restart_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
+									Helper::restart_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path, self.gather_backup_hosts());
 								}
 								if key.is_down() && !wants_input || ui.add_sized([width, height], Button::new("⏹")).on_hover_text("Stop P2Pool").clicked() {
 									Helper::stop_p2pool(&self.helper);
@@ -1672,7 +1710,7 @@ impl eframe::App for App {
 								if (ui_enabled && key.is_up() && !wants_input) || ui.add_sized([width, height], Button::new(RichText::new("▶").color(color))).on_hover_text("Start P2Pool").on_disabled_hover_text(text).clicked() {
 									lock!(self.og).update_absolute_path();
 									self.state.update_absolute_path();
-									Helper::start_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path);
+									Helper::start_p2pool(&self.helper, &self.state.p2pool, &self.state.gupax.absolute_p2pool_path, self.gather_backup_hosts());
 								}
 							}
 						});
