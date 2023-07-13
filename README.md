@@ -581,6 +581,7 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | xmr.theuplink.net                | 🇺🇸 US - New York                  | 18081    | 18084       |
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
+| bunkernet.ddns.net               | 🇿🇦 ZA - Western Cape              | 18089    | 18084       |
 
 ## Build
 ### General Info

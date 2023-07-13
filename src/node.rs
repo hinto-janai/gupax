@@ -52,6 +52,7 @@ pub const REMOTE_NODES: [(&str, &str, &str, &str); 16] = [
 	("xmr.theuplink.net",           "US - New York",                  "18081", "18084"),
 	("moneronode.ddns.net",         "US - Pennsylvania",              "18089", "18084"),
 	("node.richfowler.net",         "US - Pennsylvania",              "18089", "18084"),
+	("bunkernet.ddns.net",          "ZA - Western Cape",              "18089", "18084"),
 ];
 
 pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
