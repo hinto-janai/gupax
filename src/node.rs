@@ -34,11 +34,10 @@ use hyper::{
 // Remote Monero Nodes with ZMQ enabled, sourced from: [https://github.com/hinto-janai/monero-nodes]
 // The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
-pub const REMOTE_NODES: [(&str, &str, &str, &str); 21] = [
+pub const REMOTE_NODES: [(&str, &str, &str, &str); 20] = [
 	("monero.10z.com.ar",           "AR - Buenos Aires F.D.",         "18089", "18084"),
 	("monero1.heitechsoft.com",     "CA - Ontario",                   "18081", "18084"),
 	("node.monerodevs.org",         "CA - Quebec",                    "18089", "18084"),
-	("m1.poiuty.com",               "DE - Berlin",                    "18081", "18084"),
 	("p2pmd.xmrvsbeast.com",        "DE - Hesse",                     "18081", "18083"),
 	("reynald.ro",                  "FR - Île-de-France",             "18089", "18084"),
 	("node2.monerodevs.org",        "FR - Occitanie",                 "18089", "18084"),

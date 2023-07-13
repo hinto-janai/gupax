@@ -6,6 +6,7 @@
 	- Removed `monero2.10z.com.ar`
 	- Removed `node.moneroworld.com`
 	- Removed `de.poiuty.com`
+	- Removed `m1.poiuty.com`
 
 ## Fixes
 *
