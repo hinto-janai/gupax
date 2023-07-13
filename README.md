@@ -570,6 +570,7 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | oracle.netrix.cc                 | 🇨🇭 CH - Zurich                    | 18089    | 18083       |
 | p2pmd.xmrvsbeast.com             | 🇩🇪 DE - Hesse                     | 18081    | 18083       |
 | node.cryptocano.de               | 🇩🇪 DE - Lower Saxony              | 18089    | 18083       |
+| fbx.tranbert.com                 | 🇫🇷 FR - Île-de-France             | 18089    | 18084       |
 | node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
 | p2pool.uk                        | 🇬🇧 GB - England                   | 18089    | 18084       |
 | home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
