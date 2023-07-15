@@ -51,6 +51,8 @@ jobs:
         if [ "$RUNNER_OS" == "macOS" ]; then
           cargo bundle --all-features --release
           cargo bundle --all-features --release --target aarch64-apple-darwin
+          chmod +x target/release/bundle/osx/Gupax.app/Contents/MacOS/gupax
+          chmod +x target/aarch64-apple-darwin/release/bundle/osx/Gupax.app/Contents/MacOS/gupax
         elif [ "$RUNNER_OS" == "Linux" ]; then
           cargo build --all-features --release --target x86_64-unknown-linux-gnu
         else
