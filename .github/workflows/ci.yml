@@ -51,10 +51,13 @@ jobs:
         if [ "$RUNNER_OS" == "macOS" ]; then
           cargo bundle --all-features --release
           cargo bundle --all-features --release --target aarch64-apple-darwin
-          chmod +x target/release/bundle/osx/Gupax.app/Contents/MacOS/gupax
-          chmod +x target/aarch64-apple-darwin/release/bundle/osx/Gupax.app/Contents/MacOS/gupax
+          mv target/release/bundle/osx/Gupax.app Gupax-macos-x64.app
+          mv target/aarch64-apple-darwin/release/bundle/osx/Gupax.app Gupax-macos-arm64.app
+          tar -cf macos.tar Gupax-macos-arm64.app Gupax-macos-x64.app
         elif [ "$RUNNER_OS" == "Linux" ]; then
           cargo build --all-features --release --target x86_64-unknown-linux-gnu
+          mv target/x86_64-unknown-linux-gnu/release/gupax .
+          tar -cf linux.tar gupax
         else
           cargo build --all-features --release
         fi
@@ -67,23 +70,16 @@ jobs:
         name: windows
         path: target/release/gupax.exe
 
-    - name: Archive (macOS-x64)
+    - name: Archive
       if: ${{ runner.os == 'macOS' }}
       uses: actions/upload-artifact@v3
       with:
-        name: macos-x64
-        path: target/release/bundle/osx/Gupax.app
-
-    - name: Archive (macOS-arm64)
-      if: ${{ runner.os == 'macOS' }}
-      uses: actions/upload-artifact@v3
-      with:
-        name: macos-arm64
-        path: target/aarch64-apple-darwin/release/bundle/osx/Gupax.app
+        name: macos
+        path: macos.tar
 
     - name: Archive (Linux)
       if: ${{ runner.os == 'Linux' }}
       uses: actions/upload-artifact@v3
       with:
         name: linux
-        path: target/x86_64-unknown-linux-gnu/release/gupax
+        path: linux.tar
