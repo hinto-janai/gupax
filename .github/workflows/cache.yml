@@ -1,9 +1,9 @@
-# Forces `gupax.io` to cache stuff every hour.
+# Forces `gupax.io` to cache stuff every day.
 
 name: Cache `gupax.io`
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "* 0 * * *"
 
 jobs:
   build:
