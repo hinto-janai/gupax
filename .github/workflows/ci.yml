@@ -44,22 +44,22 @@ jobs:
       shell: bash
 
     - name: Test
-      run: cargo test --all-features --release
+      run: cargo test --release
 
     - name: Build
       run: |
         if [ "$RUNNER_OS" == "macOS" ]; then
-          cargo bundle --all-features --release
-          cargo bundle --all-features --release --target aarch64-apple-darwin
+          cargo bundle --release
+          cargo bundle --release --target aarch64-apple-darwin
           mv target/release/bundle/osx/Gupax.app Gupax-macos-x64.app
           mv target/aarch64-apple-darwin/release/bundle/osx/Gupax.app Gupax-macos-arm64.app
           tar -cf macos.tar Gupax-macos-arm64.app Gupax-macos-x64.app
         elif [ "$RUNNER_OS" == "Linux" ]; then
-          cargo build --all-features --release --target x86_64-unknown-linux-gnu
+          cargo build --release --target x86_64-unknown-linux-gnu
           mv target/x86_64-unknown-linux-gnu/release/gupax .
           tar -cf linux.tar gupax
         else
-          cargo build --all-features --release
+          cargo build --release
         fi
       shell: bash
 
