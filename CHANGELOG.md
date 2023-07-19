@@ -1,3 +1,18 @@
+# v1.3.1
+## Updates
+*
+
+## Fixes
+*
+
+## Bundled Versions
+* [`P2Pool v3.5`](https://github.com/SChernykh/p2pool/releases/tag/v3.5)
+* [`XMRig v6.20.0`](https://github.com/xmrig/xmrig/releases/tag/v6.20.0)
+
+
+---
+
+
 # v1.3.0
 ## Updates
 * Added P2Pool [backup host support](https://github.com/SChernykh/p2pool/blob/master/docs/COMMAND_LINE.MD#multiple-backup-hosts). `[Simple]` will fallback to next fastest nodes, `[Advanced]` will fallback to all other nodes in list.
