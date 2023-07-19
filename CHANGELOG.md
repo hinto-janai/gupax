@@ -1,9 +1,7 @@
 # v1.3.1
-## Updates
-*
-
 ## Fixes
-*
+* Auto update issue ([#40](https://github.com/hinto-janai/gupax/issues/40))
+* macOS launch issue ([#39](https://github.com/hinto-janai/gupax/issues/39))
 
 ## Bundled Versions
 * [`P2Pool v3.5`](https://github.com/SChernykh/p2pool/releases/tag/v3.5)
