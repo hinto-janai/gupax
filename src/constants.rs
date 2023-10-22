@@ -38,6 +38,10 @@ pub const APP_MAX_HEIGHT: f32 = 2160.0;
 // Default, 1280x960
 pub const APP_DEFAULT_WIDTH:  f32 = 1280.0;
 pub const APP_DEFAULT_HEIGHT: f32 = 960.0;
+// App resolution scaling
+pub const APP_MIN_SCALE:  f32 = 0.1;
+pub const APP_MAX_SCALE: f32 = 2.0;
+pub const APP_DEFAULT_SCALE: f32 = 1.0;
 
 // Constants specific for Linux distro packaging of Gupax
 #[cfg(feature = "distro")]
@@ -237,6 +241,7 @@ pub const GUPAX_AUTO_XMRIG:       &str = "Automatically start XMRig on Gupax sta
 pub const GUPAX_ADJUST:           &str = "Adjust and set the width/height of the Gupax window";
 pub const GUPAX_WIDTH:            &str = "Set the width of the Gupax window";
 pub const GUPAX_HEIGHT:           &str = "Set the height of the Gupax window";
+pub const GUPAX_SCALE:            &str = "Set the resolution scaling of the Gupax window (resize window to re-apply scaling)";
 pub const GUPAX_LOCK_WIDTH:       &str = "Automatically match the HEIGHT against the WIDTH in a 4:3 ratio";
 pub const GUPAX_LOCK_HEIGHT:      &str = "Automatically match the WIDTH against the HEIGHT in a 4:3 ratio";
 pub const GUPAX_NO_LOCK:          &str = "Allow individual selection of width and height";

@@ -231,7 +231,7 @@ impl crate::disk::Gupax {
 					self.selected_width = width as u16;
 				},
 			}
-			let height = height/2.5;
+			let height = height/3.5;
 			ui.horizontal(|ui| {
 				ui.set_enabled(self.ratio != Ratio::Height);
 				ui.add_sized([width, height], Label::new(format!(" Width [{}-{}]:", APP_MIN_WIDTH as u16, APP_MAX_WIDTH as u16)));
@@ -241,6 +241,10 @@ impl crate::disk::Gupax {
 				ui.set_enabled(self.ratio != Ratio::Width);
 				ui.add_sized([width, height], Label::new(format!("Height [{}-{}]:", APP_MIN_HEIGHT as u16, APP_MAX_HEIGHT as u16)));
 				ui.add_sized([width, height], Slider::new(&mut self.selected_height, APP_MIN_HEIGHT as u16..=APP_MAX_HEIGHT as u16)).on_hover_text(GUPAX_HEIGHT);
+			});
+			ui.horizontal(|ui| {
+				ui.add_sized([width, height], Label::new(format!("Scaling [{APP_MIN_SCALE}..{APP_MAX_SCALE}]:")));
+				ui.add_sized([width, height], Slider::new(&mut self.selected_scale, APP_MIN_SCALE..=APP_MAX_SCALE).step_by(0.1)).on_hover_text(GUPAX_SCALE);
 			});
 		});
 		ui.style_mut().override_text_style = Some(egui::TextStyle::Button);

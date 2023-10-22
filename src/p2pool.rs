@@ -112,7 +112,7 @@ impl crate::disk::P2pool {
 	let height = ui.available_height();
 	if self.simple {
 		// [Node]
-		let height = height / 6.0;
+		let height = height / 6.5;
 		ui.spacing_mut().slider_width = width - 8.0;
 		ui.spacing_mut().icon_width = width / 25.0;
 

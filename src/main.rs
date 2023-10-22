@@ -79,6 +79,7 @@ mod human;
 mod regex;
 mod xmr;
 mod macros;
+mod free;
 use {macros::*,crate::regex::*,ferris::*,constants::*,node::*,disk::*,update::*,gupax::*,helper::*};
 
 // Sudo (dummy values for Windows)
@@ -174,7 +175,7 @@ pub struct App {
 impl App {
 	fn cc(cc: &eframe::CreationContext<'_>, app: Self) -> Self {
 		let resolution = cc.integration_info.window_info.size;
-		init_text_styles(&cc.egui_ctx, resolution[0]);
+		init_text_styles(&cc.egui_ctx, resolution[0], crate::free::clamp_scale(app.state.gupax.selected_scale));
 		cc.egui_ctx.set_visuals(VISUALS.clone());
 		Self {
 			resolution,
@@ -335,6 +336,9 @@ impl App {
 				State::new()
 			},
 		};
+		// Clamp window resolution scaling values.
+		app.state.gupax.selected_scale = crate::free::clamp_scale(app.state.gupax.selected_scale);
+
 		app.og = arc_mut!(app.state.clone());
 		// Read node list
 		info!("App Init | Reading node list...");
@@ -777,7 +781,7 @@ impl KeyPressed {
 
 //---------------------------------------------------------------------------------------------------- Init functions
 #[inline(always)]
-fn init_text_styles(ctx: &egui::Context, width: f32) {
+fn init_text_styles(ctx: &egui::Context, width: f32, pixels_per_point: f32) {
 	let scale = width / 30.0;
 	let mut style = (*ctx.style()).clone();
 	style.text_styles = [
@@ -796,7 +800,9 @@ fn init_text_styles(ctx: &egui::Context, width: f32) {
 	style.spacing.icon_spacing = 20.0;
 	style.spacing.scroll_bar_width = width / 150.0;
 	ctx.set_style(style);
-	ctx.set_pixels_per_point(1.0);
+	// Make sure scale f32 is a regular number.
+	let pixels_per_point = crate::free::clamp_scale(pixels_per_point);
+	ctx.set_pixels_per_point(pixels_per_point);
 	ctx.request_repaint();
 }
 
@@ -1308,7 +1314,7 @@ impl eframe::App for App {
 					});
 					ctx.request_repaint();
 					info!("App | Resizing frame to match new internal resolution: [{}x{}]", self.width, self.height);
-					init_text_styles(ctx, self.width);
+					init_text_styles(ctx, self.width, self.state.gupax.selected_scale);
 					self.resizing = false;
 				}
 			});

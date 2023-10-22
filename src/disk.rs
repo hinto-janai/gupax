@@ -991,7 +991,7 @@ pub struct Status {
 	pub hash_metric: Hash,
 }
 
-#[derive(Clone,Eq,PartialEq,Debug,Deserialize,Serialize)]
+#[derive(Clone,PartialEq,Debug,Deserialize,Serialize)]
 pub struct Gupax {
 	pub simple: bool,
 	pub auto_update: bool,
@@ -1007,6 +1007,7 @@ pub struct Gupax {
 	pub absolute_xmrig_path: PathBuf,
 	pub selected_width: u16,
 	pub selected_height: u16,
+	pub selected_scale: f32,
 	pub tab: Tab,
 	pub ratio: Ratio,
 }
@@ -1096,6 +1097,7 @@ impl Default for Gupax {
 			absolute_xmrig_path: into_absolute_path(DEFAULT_XMRIG_PATH.to_string()).unwrap(),
 			selected_width: APP_DEFAULT_WIDTH as u16,
 			selected_height: APP_DEFAULT_HEIGHT as u16,
+			selected_scale: APP_DEFAULT_SCALE,
 			ratio: Ratio::Width,
 			tab: Tab::About,
 		}
