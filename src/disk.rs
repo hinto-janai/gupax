@@ -1215,6 +1215,7 @@ mod test {
 			absolute_xmrig_path = "/home/hinto/xmrig/xmrig"
 			selected_width = 1280
 			selected_height = 960
+			selected_scale = 0.0
 			tab = "About"
 			ratio = "Width"
 

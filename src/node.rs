@@ -57,7 +57,7 @@ pub const REMOTE_NODES: [(&str, &str, &str, &str); 19] = [
 ];
 
 pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
-pub const REMOTE_NODE_MAX_CHARS: usize = 24; // monero1.heitechsoft.com
+pub const REMOTE_NODE_MAX_CHARS: usize = 25; // monero1.heitechsoft.com
 
 pub struct RemoteNode {
 	pub ip: &'static str,
@@ -211,7 +211,7 @@ pub fn format_ip_location(og_ip: &str, extra_space: bool) -> String {
 }
 
 pub fn format_ip(ip: &str) -> String {
-	format!("{: >28}", ip)
+	format!("{ip: >25}")
 }
 
 //---------------------------------------------------------------------------------------------------- Node data
@@ -413,7 +413,7 @@ mod test {
 	#[test]
 	fn spacing() {
 		for (ip, _, _, _) in crate::REMOTE_NODES {
-			assert!(crate::format_ip(ip).len() == crate::REMOTE_NODE_MAX_CHARS);
+			assert!(crate::format_ip(ip).len() <= crate::REMOTE_NODE_MAX_CHARS);
 		}
 	}
 
