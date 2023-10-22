@@ -1,3 +1,17 @@
+# v1.3.2
+## Updates
+* Added window scaling option (`0.1..2.0` pixel scaling multiplier)
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Removed `oracle.netrix.cc`
+
+## Bundled Versions
+* [`P2Pool v3.7`](https://github.com/SChernykh/p2pool/releases/tag/v3.7)
+* [`XMRig v6.20.0`](https://github.com/xmrig/xmrig/releases/tag/v6.20.0)
+
+
+---
+
+
 # v1.3.1
 ## Fixes
 * Auto update issue ([#40](https://github.com/hinto-janai/gupax/issues/40))

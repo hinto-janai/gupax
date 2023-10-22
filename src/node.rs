@@ -57,7 +57,7 @@ pub const REMOTE_NODES: [(&str, &str, &str, &str); 19] = [
 ];
 
 pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
-pub const REMOTE_NODE_MAX_CHARS: usize = 28; // xmr.aa78i2efsewr0neeknk.xyz
+pub const REMOTE_NODE_MAX_CHARS: usize = 24; // monero1.heitechsoft.com
 
 pub struct RemoteNode {
 	pub ip: &'static str,
