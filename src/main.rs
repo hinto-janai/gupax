@@ -80,6 +80,7 @@ mod regex;
 mod xmr;
 mod macros;
 mod free;
+mod panic;
 use {macros::*,crate::regex::*,ferris::*,constants::*,node::*,disk::*,update::*,gupax::*,helper::*};
 
 // Sudo (dummy values for Windows)
@@ -1116,9 +1117,16 @@ fn cmp_f64(a: f64, b: f64) -> std::cmp::Ordering {
 //---------------------------------------------------------------------------------------------------- Main [App] frame
 fn main() {
 	let now = Instant::now();
+
+	// Set custom panic hook.
+	crate::panic::set_panic_hook(now);
+
+	// Init logger.
 	init_logger(now);
 	let mut app = App::new(now);
 	init_auto(&mut app);
+
+	// Init GUI stuff.
 	let selected_width = app.state.gupax.selected_width as f32;
 	let selected_height = app.state.gupax.selected_height as f32;
 	let initial_window_size = if selected_width > APP_MAX_WIDTH || selected_height > APP_MAX_HEIGHT {
@@ -1128,10 +1136,14 @@ fn main() {
 		Some(Vec2::new(app.state.gupax.selected_width as f32, app.state.gupax.selected_height as f32))
 	};
 	let options = init_options(initial_window_size);
+
+	// Gupax folder cleanup.
 	match clean_dir() {
 		Ok(_) => info!("Temporary folder cleanup ... OK"),
 		Err(e) => warn!("Could not cleanup [gupax_tmp] folders: {}", e),
 	}
+
+	// Run Gupax.
 	info!("/*************************************/ Init ... OK /*************************************/");
 	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
 }
