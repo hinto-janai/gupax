@@ -112,27 +112,23 @@ impl crate::disk::Xmrig {
 	if self.simple { ui.add_space(SPACE); }
 	debug!("XMRig Tab | Rendering [Threads]");
 	ui.vertical(|ui| {
-		let width = width/10.0;
+		let width = width / 10.0;
+		let text_width = width * 2.4;
+		ui.spacing_mut().slider_width = width * 7.1;
 		ui.spacing_mut().icon_width = width / 25.0;
 		ui.horizontal(|ui| {
-			ui.spacing_mut().slider_width = width*8.35;
-			ui.add_sized([width, text_edit], Label::new(format!("Threads [1-{}]:", self.max_threads)));
+			ui.add_sized([text_width, text_edit], Label::new(format!("Threads [1-{}]:", self.max_threads)));
 			ui.add_sized([width, text_edit], Slider::new(&mut self.current_threads, 1..=self.max_threads)).on_hover_text(XMRIG_THREADS);
 		});
 		#[cfg(not(target_os = "linux"))] // Pause on active isn't supported on Linux
 		ui.horizontal(|ui| {
-			ui.spacing_mut().slider_width = width*7.7;
-			ui.add_sized([width, text_edit], Label::new(format!("Pause on active [0-255]:")));
+			ui.add_sized([text_width, text_edit], Label::new(format!("Pause on active [0-255]:")));
 			ui.add_sized([width, text_edit], Slider::new(&mut self.pause, 0..=255)).on_hover_text(format!("{} [{}] seconds.", XMRIG_PAUSE, self.pause));
 		});
 	});
 
 	//---------------------------------------------------------------------------------------------------- Simple
-	if self.simple {
-//		ui.group(|ui|
-
-//		});
-	} else {
+	if !self.simple {
 		debug!("XMRig Tab | Rendering [Pool List] elements");
 		let width = ui.available_width() - 10.0;
 		let mut incorrect_input = false; // This will disable [Add/Delete] on bad input
