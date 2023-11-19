@@ -176,10 +176,7 @@ const VALID_P2POOL: [&str; 4] = [VALID_P2POOL_1, VALID_P2POOL_2, VALID_P2POOL_3,
 const FAKE_USER_AGENT: [&str; 50] = [
 	"Wget/1.16.3","Wget/1.17","Wget/1.17.1","Wget/1.18","Wget/1.18","Wget/1.19","Wget/1.19.1","Wget/1.19.2","Wget/1.19.3","Wget/1.19.4",
 	"Wget/1.19.5","Wget/1.20","Wget/1.20.1","Wget/1.20.2","Wget/1.20.3","Wget/1.21","Wget/1.21.1","Wget/1.21.2","Wget/1.21.3",
-	"curl/7.65.3","curl/7.66.0","curl/7.67.0","curl/7.68.0","curl/7.69.0","curl/7.69.1","curl/7.70.0","curl/7.70.1","curl/7.71.0",
-	"curl/7.71.1","curl/7.72.0","curl/7.73.0","curl/7.74.0","curl/7.75.0","curl/7.76.0","curl/7.76.1","curl/7.77.0","curl/7.78.0",
-	"curl/7.79.0","curl/7.79.1","curl/7.80.0","curl/7.81.0","curl/7.82.0","curl/7.83.0","curl/7.83.1","curl/7.84.0","curl/7.85.0",
-	"curl/7.86.0","curl/7.87.0","curl/7.88.0","curl/7.88.1",
+	"curl/7.65.3","curl/7.66.0","curl/7.67.0","curl/7.68.0",
 ];
 
 const MSG_NONE: &str = "No update in progress";
