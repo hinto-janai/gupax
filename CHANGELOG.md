@@ -1,3 +1,23 @@
+# v1.3.3
+## Updates
+* Crashes will now create a file on disk with debug information ([#59](https://github.com/hinto-janai/gupax/pull/59))
+	| OS       | Path |
+	|----------|------|
+	| Windows  | `C:\Users\USER\AppData\Roaming\Gupax\crash.txt`           |
+	| macOS    | `/Users/USER/Library/Application Support/Gupax/crash.txt` |
+	| Linux    | `/home/USER/.local/share/gupax/crash.txt`                 |
+
+## Fixes
+* XMRig `[Simple]` tab slider overflow ([#60](https://github.com/hinto-janai/gupax/pull/60))
+
+## Bundled Versions
+* [`P2Pool v3.9`](https://github.com/SChernykh/p2pool/releases/tag/v3.9)
+* [`XMRig v6.20.0`](https://github.com/xmrig/xmrig/releases/tag/v6.20.0)
+
+
+---
+
+
 # v1.3.2
 ## Updates
 * Added window scaling option (`0.1..2.0` pixel scaling multiplier)
