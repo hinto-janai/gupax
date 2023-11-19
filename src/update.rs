@@ -173,10 +173,10 @@ const VALID_P2POOL: [&str; 4] = [VALID_P2POOL_1, VALID_P2POOL_2, VALID_P2POOL_3,
 
 // Some fake Curl/Wget user-agents because GitHub API requires one and a Tor browser
 // user-agent might be fingerprintable without all the associated headers.
-const FAKE_USER_AGENT: [&str; 50] = [
+const FAKE_USER_AGENT: [&str; 25] = [
 	"Wget/1.16.3","Wget/1.17","Wget/1.17.1","Wget/1.18","Wget/1.18","Wget/1.19","Wget/1.19.1","Wget/1.19.2","Wget/1.19.3","Wget/1.19.4",
-	"Wget/1.19.5","Wget/1.20","Wget/1.20.1","Wget/1.20.2","Wget/1.20.3","Wget/1.21","Wget/1.21.1","Wget/1.21.2","Wget/1.21.3",
-	"curl/7.65.3","curl/7.66.0","curl/7.67.0","curl/7.68.0",
+	"Wget/1.19.5","Wget/1.20","Wget/1.20.1","Wget/1.20.2","Wget/1.20.3","Wget/1.21","Wget/1.21.1","Wget/1.21.2","Wget/1.21.3","Wget/1.21.4",
+	"curl/7.65.3","curl/7.66.0","curl/7.67.0","curl/7.68.0","curl/8.4.0",
 ];
 
 const MSG_NONE: &str = "No update in progress";
