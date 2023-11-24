@@ -579,7 +579,6 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are 
 | xmrbandwagon.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
 | xmr.spotlightsound.com           | 🇺🇸 US - Kansas                    | 18081    | 18084       |
 | xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
-| xmr.theuplink.net                | 🇺🇸 US - New York                  | 18081    | 18084       |
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | bunkernet.ddns.net               | 🇿🇦 ZA - Western Cape              | 18089    | 18084       |
