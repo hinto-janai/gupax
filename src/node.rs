@@ -236,6 +236,25 @@ impl NodeData {
 	}
 }
 
+//---------------------------------------------------------------------------------------------------- `/get_info`
+// A struct repr of the JSON-RPC we're
+// expecting back from the pinged nodes.
+//
+// This structs leave out most fields on purpose,
+// we only need a few to verify it works.
+#[derive(Debug, serde::Deserialize)]
+struct GetInfo<'a> {
+	id: &'a str,
+	jsonrpc: &'a str,
+	result: GetInfoResult,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct GetInfoResult {
+ 	mainnet: bool,
+	synchronized: bool,
+}
+
 //---------------------------------------------------------------------------------------------------- Ping data
 #[derive(Debug)]
 pub struct Ping {
@@ -363,26 +382,37 @@ impl Ping {
 
 	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
 		let ms;
-		let info;
 		let now = Instant::now();
+
+		const DEAD_NODE_PING: u128 = 5000;
+
 		match tokio::time::timeout(Duration::from_secs(5), client.request(request)).await {
-			Ok(_) => {
-				ms = now.elapsed().as_millis();
-				info = format!("{}ms ... {}", ms, ip);
-				info!("Ping | {}", info)
+			Ok(Ok(json_rpc)) => {
+				// Attempt to convert to JSON-RPC.
+				match hyper::body::to_bytes(json_rpc.into_body()).await {
+					Ok(b) => {
+						if serde_json::from_slice::<GetInfo<'_>>(&b).is_ok() {
+							ms = now.elapsed().as_millis();
+						} else {
+							ms = DEAD_NODE_PING;
+							warn!("Ping | {ip} responded but with invalid get_info, remove this node!");
+						}
+					},
+					_ => ms = DEAD_NODE_PING,
+				};
 			},
-			Err(_) => {
-				ms = 5000;
-				info = format!("{}ms ... {}", ms, ip);
-				warn!("Ping | {}", info)
-			},
+			_ => ms = DEAD_NODE_PING,
 		};
+
+		let info = format!("{ms}ms ... {ip}");
+		info!("Ping | {ms}ms ... {ip}");
+
 		let color;
 		if ms < 300 {
 			color = GREEN;
 		} else if ms < 500 {
 			color = YELLOW;
-		} else if ms < 5000 {
+		} else if ms < DEAD_NODE_PING {
 			color = RED;
 		} else {
 			color = BLACK;
