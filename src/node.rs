@@ -239,8 +239,8 @@ impl NodeData {
 // A struct repr of the JSON-RPC we're
 // expecting back from the pinged nodes.
 //
-// This structs leave out most fields on purpose,
-// we only need a few to verify it works.
+// This struct leaves out most fields on purpose,
+// we only need a few to verify the node is ok.
 #[derive(Debug, serde::Deserialize)]
 struct GetInfo<'a> {
 	id: &'a str,
@@ -379,22 +379,37 @@ impl Ping {
 		Ok(fastest_info)
 	}
 
-	async fn response(client: Client<HttpConnector>, request: Request<Body>, ip: &'static str, ping: Arc<Mutex<Self>>, percent: f32, node_vec: Arc<Mutex<Vec<NodeData>>>) {
+	async fn response(
+		client: Client<HttpConnector>,
+		request: Request<Body>,
+		ip: &'static str,
+		ping: Arc<Mutex<Self>>,
+		percent: f32,
+		node_vec: Arc<Mutex<Vec<NodeData>>>
+	) {
+		const DEAD_NODE_PING: u128 = 5000;
+
 		let ms;
 		let now = Instant::now();
-
-		const DEAD_NODE_PING: u128 = 5000;
 
 		match tokio::time::timeout(Duration::from_secs(5), client.request(request)).await {
 			Ok(Ok(json_rpc)) => {
 				// Attempt to convert to JSON-RPC.
 				match hyper::body::to_bytes(json_rpc.into_body()).await {
 					Ok(b) => {
-						if serde_json::from_slice::<GetInfo<'_>>(&b).is_ok() {
-							ms = now.elapsed().as_millis();
-						} else {
-							ms = DEAD_NODE_PING;
-							warn!("Ping | {ip} responded but with invalid get_info, remove this node!");
+						match serde_json::from_slice::<GetInfo<'_>>(&b) {
+							Ok(rpc) => {
+								if rpc.result.mainnet && rpc.result.synchronized {
+									ms = now.elapsed().as_millis();
+								} else {
+									ms = DEAD_NODE_PING;
+									warn!("Ping | {ip} responded with valid get_info but is not in sync, remove this node!");
+								}
+							}
+							_ => {
+								ms = DEAD_NODE_PING;
+								warn!("Ping | {ip} responded but with invalid get_info, remove this node!");
+							}
 						}
 					},
 					_ => ms = DEAD_NODE_PING,
@@ -406,21 +421,21 @@ impl Ping {
 		let info = format!("{ms}ms ... {ip}");
 		info!("Ping | {ms}ms ... {ip}");
 
-		let color;
-		if ms < 300 {
-			color = GREEN;
+		let color = if ms < 300 {
+			GREEN
 		} else if ms < 500 {
-			color = YELLOW;
+			YELLOW
 		} else if ms < DEAD_NODE_PING {
-			color = RED;
+			RED
 		} else {
-			color = BLACK;
-		}
+			BLACK
+		};
+
 		let mut ping = lock!(ping);
 		ping.msg = info;
 		ping.prog += percent;
 		drop(ping);
-		lock!(node_vec).push(NodeData { ip, ms, color, });
+		lock!(node_vec).push(NodeData { ip, ms, color });
 	}
 }
 
