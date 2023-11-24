@@ -324,7 +324,7 @@ pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolAp
 
 	// Comparison
 	ui.group(|ui| {
-		ui.add_sized([width, text], Hyperlink::from_label_and_url("Other CPUs", "https://github.com/hinto-janai/xmrig-benchmarks")).on_hover_text(STATUS_SUBMENU_OTHER_CPUS);
+		ui.add_sized([width, text], Hyperlink::from_label_and_url("Other CPUs", "https://xmrig.com/benchmark")).on_hover_text(STATUS_SUBMENU_OTHER_CPUS);
 	});
 
 	egui::ScrollArea::both().always_show_scroll(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {

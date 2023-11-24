@@ -31,7 +31,7 @@ use hyper::{
 };
 
 //---------------------------------------------------------------------------------------------------- Node list
-// Remote Monero Nodes with ZMQ enabled, sourced from: [https://github.com/hinto-janai/monero-nodes]
+// Remote Monero Nodes with ZMQ enabled.
 // The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
 pub const REMOTE_NODES: [(&str, &str, &str, &str); 18] = [
