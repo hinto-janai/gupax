@@ -153,7 +153,7 @@ This submenu shows:
 This submenu shows:
 - Your hashrate vs others with the same CPU
 - List of similar CPUs and their stats
-- Data source: [Here](https://github.com/hinto-janai/xmrig-benchmarks) & [here](https://xmrig.com/benchmark)
+- Data source: [here](https://xmrig.com/benchmark)
 
 <br clear="left"/>
 
@@ -560,7 +560,9 @@ For transparency, here's all the connections Gupax makes:
 | DNS | DNS connections will usually be handled by your OS (or whatever custom DNS setup you have). If using Tor, DNS requests for updates [*should*](https://tpo.pages.torproject.net/core/doc/rust/arti/) be routed through the Tor network automatically | All of the above | All of the above |
 
 ## Remote Monero Nodes
-These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab. They are sourced from [this list](https://github.com/hinto-janai/monero-nodes), which itself sources from [`monero.fail`](https://monero.fail). The nodes with the most consistent uptime are used.
+These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab.
+
+The nodes with the most consistent uptime are used.
 
 | IP/Domain                        | Location                          | RPC Port | ZMQ Port    |
 |----------------------------------|-----------------------------------|----------|-------------|
