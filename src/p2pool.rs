@@ -43,7 +43,7 @@ impl crate::disk::P2pool {
 	debug!("P2Pool Tab | Rendering [Console]");
 	ui.group(|ui| {
 	if self.simple {
-		let height = height / 2.4;
+		let height = height / 2.8;
 		let width = width - SPACE;
 		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
 			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
