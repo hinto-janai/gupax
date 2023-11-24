@@ -6,13 +6,17 @@
 	| Windows  | `C:\Users\USER\AppData\Roaming\Gupax\crash.txt`           |
 	| macOS    | `/Users/USER/Library/Application Support/Gupax/crash.txt` |
 	| Linux    | `/home/USER/.local/share/gupax/crash.txt`                 |
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Removed `xmr.theuplink.net`
 
 ## Fixes
+* P2Pool ping now verifies node is synchronized (#[63](https://github.com/hinto-janai/gupax/pull/63))
 * XMRig `[Simple]` tab slider overflow ([#60](https://github.com/hinto-janai/gupax/pull/60))
+* P2Pool `[Simple]` tab height overflow (https://github.com/hinto-janai/gupax/commit/b4a4e83457c8fc353e75ddf6c284bd41422f0db4)
 
 ## Bundled Versions
 * [`P2Pool v3.9`](https://github.com/SChernykh/p2pool/releases/tag/v3.9)
-* [`XMRig v6.20.0`](https://github.com/xmrig/xmrig/releases/tag/v6.20.0)
+* [`XMRig v6.21.0`](https://github.com/xmrig/xmrig/releases/tag/v6.21.0)
 
 
 ---
