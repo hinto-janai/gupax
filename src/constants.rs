@@ -270,20 +270,24 @@ pub const GUPAX_PATH_P2POOL: &str = "The location of the P2Pool binary: Both abs
 pub const GUPAX_PATH_XMRIG: &str = "The location of the XMRig binary: Both absolute and relative paths are accepted; A red [X] will appear if there is no file found at the given path";
 
 // P2Pool
-pub const P2POOL_MAIN:           &str = "Use the P2Pool main-chain. This P2Pool finds blocks faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
-pub const P2POOL_MINI:           &str = "Use the P2Pool mini-chain. This P2Pool finds blocks slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
-pub const P2POOL_OUT:            &str = "How many out-bound peers to connect to? (you connecting to others)";
-pub const P2POOL_IN:             &str = "How many in-bound peers to allow? (others connecting to you)";
-pub const P2POOL_LOG:            &str = "Verbosity of the console log";
-pub const P2POOL_AUTO_NODE:      &str = "Automatically ping the remote Monero nodes at Gupax startup";
-pub const P2POOL_AUTO_SELECT:    &str = "Automatically select the fastest remote Monero node after pinging";
-pub const P2POOL_BACKUP_HOST:    &str = "Automatically switch to the other nodes listed if the current one is down";
-pub const P2POOL_SELECT_FASTEST: &str = "Select the fastest remote Monero node";
-pub const P2POOL_SELECT_RANDOM:  &str = "Select a random remote Monero node";
-pub const P2POOL_SELECT_LAST:    &str = "Select the previous remote Monero node";
-pub const P2POOL_SELECT_NEXT:    &str = "Select the next remote Monero node";
-pub const P2POOL_PING:           &str = "Ping the built-in remote Monero nodes";
-pub const P2POOL_ADDRESS:        &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
+pub const P2POOL_MAIN:                   &str = "Use the P2Pool main-chain. This P2Pool finds blocks faster, but has a higher difficulty. Suitable for miners with more than 50kH/s";
+pub const P2POOL_MINI:                   &str = "Use the P2Pool mini-chain. This P2Pool finds blocks slower, but has a lower difficulty. Suitable for miners with less than 50kH/s";
+pub const P2POOL_OUT:                    &str = "How many out-bound peers to connect to? (you connecting to others)";
+pub const P2POOL_IN:                     &str = "How many in-bound peers to allow? (others connecting to you)";
+pub const P2POOL_LOG:                    &str = "Verbosity of the console log";
+pub const P2POOL_AUTO_NODE:              &str = "Automatically ping the remote Monero nodes at Gupax startup";
+pub const P2POOL_AUTO_SELECT:            &str = "Automatically select the fastest remote Monero node after pinging";
+pub const P2POOL_BACKUP_HOST_SIMPLE:     &str =
+r#"Automatically switch to the other nodes listed if the current one is down.
+
+Note: you must ping the remote nodes or this feature will default to only using the currently selected node."#;
+pub const P2POOL_BACKUP_HOST_ADVANCED:   &str = "Automatically switch to the other nodes in your list if the current one is down.";
+pub const P2POOL_SELECT_FASTEST:         &str = "Select the fastest remote Monero node";
+pub const P2POOL_SELECT_RANDOM:          &str = "Select a random remote Monero node";
+pub const P2POOL_SELECT_LAST:            &str = "Select the previous remote Monero node";
+pub const P2POOL_SELECT_NEXT:            &str = "Select the next remote Monero node";
+pub const P2POOL_PING:                   &str = "Ping the built-in remote Monero nodes";
+pub const P2POOL_ADDRESS:                &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
 pub const P2POOL_COMMUNITY_NODE_WARNING: &str =
 r#"TL;DR: Run & use your own Monero Node.
 

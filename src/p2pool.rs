@@ -231,7 +231,7 @@ impl crate::disk::P2pool {
 			ui.add_sized([width, height], Checkbox::new(&mut self.auto_ping, "Auto-ping")).on_hover_text(P2POOL_AUTO_NODE);
 			ui.separator();
 			// [Backup host]
-			ui.add_sized([width, height], Checkbox::new(&mut self.backup_host, "Backup host")).on_hover_text(P2POOL_BACKUP_HOST);
+			ui.add_sized([width, height], Checkbox::new(&mut self.backup_host, "Backup host")).on_hover_text(P2POOL_BACKUP_HOST_SIMPLE);
 		})});
 
 		debug!("P2Pool Tab | Rendering warning text");
@@ -494,7 +494,7 @@ impl crate::disk::P2pool {
 			let width = width - SPACE;
 			let height = ui.available_height() / 3.0;
 			// [Backup host]
-			ui.add_sized([width, height], Checkbox::new(&mut self.backup_host, "Backup host")).on_hover_text(P2POOL_BACKUP_HOST);
+			ui.add_sized([width, height], Checkbox::new(&mut self.backup_host, "Backup host")).on_hover_text(P2POOL_BACKUP_HOST_ADVANCED);
 		});
 	}
 	}

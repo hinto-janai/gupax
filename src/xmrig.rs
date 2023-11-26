@@ -114,7 +114,7 @@ impl crate::disk::Xmrig {
 	ui.vertical(|ui| {
 		let width = width / 10.0;
 		let text_width = width * 2.4;
-		ui.spacing_mut().slider_width = width * 7.1;
+		ui.spacing_mut().slider_width = width * 6.5;
 		ui.spacing_mut().icon_width = width / 25.0;
 		ui.horizontal(|ui| {
 			ui.add_sized([text_width, text_edit], Label::new(format!("Threads [1-{}]:", self.max_threads)));

@@ -538,36 +538,65 @@ impl App {
 			return None;
 		}
 
-		if self.state.p2pool.simple {
-			let mut ip = lock!(self.ping).fastest.to_string();
+		// INVARIANT:
+		// We must ensure all nodes are capable of
+		// sending/receiving valid JSON-RPC requests.
+		//
+		// This is done during the `Ping` phase, meaning
+		// all the nodes listed in our `self.ping` should
+		// have ping data. We can use this data to filter
+		// out "dead" nodes.
+		//
+		// The user must have at least pinged once so that
+		// we actually have this data to work off of, else,
+		// this "backup host" feature will return here
+		// with 0 extra nodes as we can't be sure that any
+		// of them are actually online.
+		//
+		// Realistically, most of them are, but we can't be sure,
+		// and checking here without explicitly asking the user
+		// to connect to nodes is a no-go (also, non-async environment).
+		if !lock!(self.ping).pinged {
+			warn!("Backup hosts ... simple node backup: no ping data available, returning None");
+			return None;
+		}
 
+		if self.state.p2pool.simple {
 			let mut vec = Vec::with_capacity(REMOTE_NODES.len());
 
-			for _ in 0..REMOTE_NODES.len() {
-				let (ip_new, rpc, zmq)  = RemoteNode::get_ip_rpc_zmq(&ip);
+			// Locking during this entire loop should be fine,
+			// only a few nodes to iter through.
+			for pinged_node in lock!(self.ping).nodes.iter() {
+				// Continue if this node is not green/yellow.
+				if pinged_node.ms > crate::node::RED_NODE_PING {
+					continue;
+				}
+
+				let (ip, rpc, zmq)  = RemoteNode::get_ip_rpc_zmq(&pinged_node.ip);
 
 				let node = Node {
-					ip: ip_new.into(),
+					ip: ip.into(),
 					rpc: rpc.into(),
 					zmq: zmq.into(),
 				};
 
 				vec.push(node);
-				ip = RemoteNode::get_next_from_ping(ip_new, &lock!(self.ping).nodes);
 			}
 
-			return Some(vec);
-		}
-
-		if !self.state.p2pool.simple {
-			return Some(self.node_vec
+			if vec.is_empty() {
+				warn!("Backup hosts ... simple node backup: no viable nodes found");
+				None
+			} else {
+				info!("Backup hosts ... simple node backup list: {vec:#?}");
+				Some(vec)
+			}
+		} else {
+			Some(self.node_vec
 				.iter()
 				.map(|(_, node)| node.clone())
 				.collect()
-			);
+			)
 		}
-
-		None
 	}
 }
 

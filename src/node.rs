@@ -214,6 +214,11 @@ pub fn format_ip(ip: &str) -> String {
 }
 
 //---------------------------------------------------------------------------------------------------- Node data
+pub const GREEN_NODE_PING:   u128 = 300;
+// yellow is anything in-between green/red
+pub const RED_NODE_PING:     u128 = 500;
+pub const TIMEOUT_NODE_PING: u128 = 5000;
+
 #[derive(Debug, Clone)]
 pub struct NodeData {
 	pub ip: &'static str,
@@ -387,8 +392,6 @@ impl Ping {
 		percent: f32,
 		node_vec: Arc<Mutex<Vec<NodeData>>>
 	) {
-		const DEAD_NODE_PING: u128 = 5000;
-
 		let ms;
 		let now = Instant::now();
 
@@ -402,30 +405,30 @@ impl Ping {
 								if rpc.result.mainnet && rpc.result.synchronized {
 									ms = now.elapsed().as_millis();
 								} else {
-									ms = DEAD_NODE_PING;
+									ms = TIMEOUT_NODE_PING;
 									warn!("Ping | {ip} responded with valid get_info but is not in sync, remove this node!");
 								}
 							}
 							_ => {
-								ms = DEAD_NODE_PING;
+								ms = TIMEOUT_NODE_PING;
 								warn!("Ping | {ip} responded but with invalid get_info, remove this node!");
 							}
 						}
 					},
-					_ => ms = DEAD_NODE_PING,
+					_ => ms = TIMEOUT_NODE_PING,
 				};
 			},
-			_ => ms = DEAD_NODE_PING,
+			_ => ms = TIMEOUT_NODE_PING,
 		};
 
 		let info = format!("{ms}ms ... {ip}");
 		info!("Ping | {ms}ms ... {ip}");
 
-		let color = if ms < 300 {
+		let color = if ms < GREEN_NODE_PING {
 			GREEN
-		} else if ms < 500 {
+		} else if ms < RED_NODE_PING {
 			YELLOW
-		} else if ms < DEAD_NODE_PING {
+		} else if ms < TIMEOUT_NODE_PING {
 			RED
 		} else {
 			BLACK
