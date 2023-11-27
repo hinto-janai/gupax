@@ -10,8 +10,8 @@
 	- Removed `xmr.theuplink.net`
 
 ## Fixes
-* P2Pool `[Simple]`'s backup hosts option will only include green/yellow nodes (<300ms ping) (#[65](https://github.com/hinto-janai/gupax/pull/65))
-* P2Pool ping now verifies node is synchronized (#[63](https://github.com/hinto-janai/gupax/pull/63))
+* P2Pool `[Simple]`'s backup hosts option will only include green/yellow nodes (<300ms ping) ([#65](https://github.com/hinto-janai/gupax/pull/65))
+* P2Pool ping now verifies node is synchronized ([#63](https://github.com/hinto-janai/gupax/pull/63))
 * XMRig `[Simple]` tab slider overflow ([#60](https://github.com/hinto-janai/gupax/pull/60))
 * P2Pool `[Simple]` tab height overflow (https://github.com/hinto-janai/gupax/commit/b4a4e83457c8fc353e75ddf6c284bd41422f0db4)
 
