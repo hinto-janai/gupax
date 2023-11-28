@@ -1,3 +1,15 @@
+# v1.3.4
+# Fixes
+* Domain parsing is more relaxed, allows subdomains with longer TLDs (thanks @soupslurpr [#67](https://github.com/hinto-janai/gupax/pull/67))
+
+## Bundled Versions
+* [`P2Pool v3.9`](https://github.com/SChernykh/p2pool/releases/tag/v3.9)
+* [`XMRig v6.21.0`](https://github.com/xmrig/xmrig/releases/tag/v6.21.0)
+
+
+---
+
+
 # v1.3.3
 ## Changes
 * Crashes will now create a file on disk with debug information ([#59](https://github.com/hinto-janai/gupax/pull/59))
