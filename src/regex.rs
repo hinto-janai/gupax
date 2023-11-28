@@ -127,10 +127,16 @@ mod test {
 		assert!(Regex::is_match(&r.address, "44hintoFpuo3ugKfcqJvh5BmrsTRpnTasJmetKC4VXCt6QDtbHVuixdTtsm6Ptp7Y8haXnJ6j8Gj2dra8CKy5ewz7Vi9CYW"));
 		assert!(Regex::is_match(&r.ipv4, "192.168.1.2"));
 		assert!(Regex::is_match(&r.ipv4, "127.0.0.1"));
+		assert!(Regex::is_match(&r.domain, "sub.domain.com"));
+		assert!(Regex::is_match(&r.domain, "sub.domain.longtld"));
+		assert!(Regex::is_match(&r.domain, "sub.sub.domain.longtld"));
 		assert!(Regex::is_match(&r.domain, "my.node.com"));
+		assert!(Regex::is_match(&r.domain, "my.node.longtld"));
 		assert!(Regex::is_match(&r.domain, "my.monero-node123.net"));
 		assert!(Regex::is_match(&r.domain, "www.my-node.org"));
 		assert!(Regex::is_match(&r.domain, "www.my-monero-node123.io"));
+		assert!(Regex::is_match(&r.domain, "www.my-monero-node123.longtld"));
+		assert!(Regex::is_match(&r.domain, "www.my-monero-node123.org"));
 		for i in 1..=65535 {
 			assert!(Regex::is_match(&r.port, &i.to_string()));
 		}
