@@ -273,15 +273,18 @@ impl Helper {
 		let mut stdout = std::io::BufReader::new(reader).lines();
 
 		// Run a ANSI escape sequence filter for the first few lines.
-		for (i, line) in stdout.next().enumerate() {
-			let Some(Ok(line)) = line else { continue; }
+		let mut i = 0;
+		while let Some(Ok(line)) = stdout.next() {
 			let line = strip_ansi_escapes::strip_str(line);
 			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("XMRig PTY Parse | Output error: {}", e); }
 			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("XMRig PTY Pub | Output error: {}", e); }
 			if i > 20 {
 				break;
+			} else {
+				i += 1;
 			}
 		}
+		drop(i);
 
 		while let Some(Ok(line)) = stdout.next() {
 //			println!("{}", line); // For debugging.
@@ -295,15 +298,18 @@ impl Helper {
 		let mut stdout = std::io::BufReader::new(reader).lines();
 
 		// Run a ANSI escape sequence filter for the first few lines.
-		for (i, line) in stdout.next().enumerate() {
-			let Some(Ok(line)) = line else { continue; }
+		let mut i = 0;
+		while let Some(Ok(line)) = stdout.next() {
 			let line = strip_ansi_escapes::strip_str(line);
 			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("P2Pool PTY Parse | Output error: {}", e); }
 			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("P2Pool PTY Pub | Output error: {}", e); }
 			if i > 20 {
 				break;
+			} else {
+				i += 1;
 			}
 		}
+		drop(i);
 
 		while let Some(Ok(line)) = stdout.next() {
 //			println!("{}", line); // For debugging.
