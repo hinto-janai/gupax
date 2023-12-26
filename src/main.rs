@@ -877,18 +877,18 @@ fn init_logger(now: Instant) {
 #[inline(always)]
 fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	let mut options = eframe::NativeOptions::default();
-	options.min_window_size = Some(Vec2::new(APP_MIN_WIDTH, APP_MIN_HEIGHT));
-	options.max_window_size = Some(Vec2::new(APP_MAX_WIDTH, APP_MAX_HEIGHT));
-	options.initial_window_size = initial_window_size;
+	options.viewport.min_inner_size = Some(Vec2::new(APP_MIN_WIDTH, APP_MIN_HEIGHT));
+	options.viewport.max_inner_size = Some(Vec2::new(APP_MAX_WIDTH, APP_MAX_HEIGHT));
+	options.viewport.inner_size = initial_window_size;
 	options.follow_system_theme = false;
 	options.default_theme = eframe::Theme::Dark;
 	let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read icon bytes").to_rgba8();
 	let (icon_width, icon_height) = icon.dimensions();
-	options.icon_data = Some(eframe::IconData {
+	options.viewport.icon = Some(Arc::new(egui::viewport::IconData {
 		rgba: icon.into_raw(),
 		width: icon_width,
 		height: icon_height,
-	});
+	}));
 	info!("init_options() ... OK");
 	options
 }
