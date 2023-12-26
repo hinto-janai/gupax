@@ -1247,8 +1247,10 @@ impl eframe::App for App {
 		let wants_input = ctx.wants_keyboard_input();
 
         if key.is_f11() {
-            let info = frame.info();
-            frame.set_fullscreen(!info.window_info.fullscreen);
+			let info = ctx.input(|i| i.viewport());
+			if info.maximized == Some(true) {
+				ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(true));
+			}
 		// Change Tabs LEFT
         } else if key.is_z() && !wants_input {
 			match self.tab {
