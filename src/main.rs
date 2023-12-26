@@ -174,8 +174,7 @@ pub struct App {
 }
 
 impl App {
-	fn cc(cc: &eframe::CreationContext<'_>, app: Self) -> Self {
-		let resolution = cc.integration_info.window_info.size;
+	fn cc(cc: &eframe::CreationContext<'_>, resolution: Vec2, app: Self) -> Self {
 		init_text_styles(&cc.egui_ctx, resolution[0], crate::free::clamp_scale(app.state.gupax.selected_scale));
 		cc.egui_ctx.set_visuals(VISUALS.clone());
 		Self {
@@ -1172,9 +1171,11 @@ fn main() {
 		Err(e) => warn!("Could not cleanup [gupax_tmp] folders: {}", e),
 	}
 
+	let resolution = Vec2::new(selected_width, selected_height);
+
 	// Run Gupax.
 	info!("/*************************************/ Init ... OK /*************************************/");
-	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
+	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, resolution, app))),);
 }
 
 impl eframe::App for App {
