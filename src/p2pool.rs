@@ -64,7 +64,7 @@ impl crate::disk::P2pool {
 		ui.separator();
 		let response = ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(buffer), r#"Type a command (e.g "help" or "status") and press Enter"#)).on_hover_text(P2POOL_INPUT);
 		// If the user pressed enter, dump buffer contents into the process STDIN
-		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
+		if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
 			response.request_focus();                  // Get focus back
 			let buffer = std::mem::take(buffer);       // Take buffer
 			let mut process = lock!(process); // Lock
