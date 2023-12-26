@@ -1178,7 +1178,7 @@ fn main() {
 
 	// Run Gupax.
 	info!("/*************************************/ Init ... OK /*************************************/");
-	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, resolution, app))),);
+	eframe::run_native(&app.name_version.clone(), options, Box::new(move |cc| Box::new(App::cc(cc, resolution, app))),);
 }
 
 impl eframe::App for App {
@@ -1247,8 +1247,7 @@ impl eframe::App for App {
 		let wants_input = ctx.wants_keyboard_input();
 
         if key.is_f11() {
-			let info = ctx.input(|i| i.viewport());
-			if info.maximized == Some(true) {
+			if ctx.input(|i| i.viewport().maximized == Some(true)) {
 				ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(true));
 			}
 		// Change Tabs LEFT
