@@ -65,10 +65,6 @@ impl AtomicUnit {
 		self.0
 	}
 
-	pub fn to_string(self) -> String {
-		self.0.to_string()
-	}
-
 	pub fn sum_vec(vec: &Vec<Self>) -> Self {
 		let mut sum = 0;
 		for int in vec {
@@ -400,6 +396,7 @@ r#"2022-09-08 18:42:55.4636 | 0.001000000000 XMR | Block 2,654,321
 		]);
 		println!("OG: {:#?}", payout_ord);
 
+		#[allow(clippy::never_loop)]
 		for (_, atomic_unit, _) in payout_ord.rev_iter() {
 			if atomic_unit.to_u64() == 3000000000 {
 				break
