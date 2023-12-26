@@ -33,7 +33,7 @@ compile_error!("gupax is only built for windows/macos/linux");
 // egui/eframe
 use egui::{
 	TextStyle::*,
-	color::Color32,
+	Color32,
 	FontFamily::Proportional,
 	TextStyle,Spinner,
 	Layout,Align,
@@ -1532,7 +1532,7 @@ impl eframe::App for App {
 						ui.horizontal(|ui| {
 							let response = ui.add_sized([sudo_width*8.0, height], TextEdit::hint_text(TextEdit::singleline(&mut sudo.pass).password(hide), PASSWORD_TEXT));
 							let box_width = (ui.available_width()/2.0)-5.0;
-							if (response.lost_focus() && ui.input().key_pressed(Key::Enter)) ||
+							if (response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter))) ||
 							ui.add_sized([box_width, height], Button::new("Enter")).on_hover_text(PASSWORD_ENTER).clicked() {
 								response.request_focus();
 								if !sudo.testing {
