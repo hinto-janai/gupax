@@ -827,7 +827,10 @@ fn init_text_styles(ctx: &egui::Context, width: f32, pixels_per_point: f32) {
 	style.spacing.icon_width_inner = width / 35.0;
 	style.spacing.icon_width = width / 25.0;
 	style.spacing.icon_spacing = 20.0;
-	style.spacing.scroll_bar_width = width / 150.0;
+	style.spacing.scroll = egui::style::ScrollStyle {
+		bar_width: width / 150.0,
+		..egui::style::ScrollStyle::solid()
+	};
 	ctx.set_style(style);
 	// Make sure scale f32 is a regular number.
 	let pixels_per_point = crate::free::clamp_scale(pixels_per_point);
