@@ -65,6 +65,14 @@ impl AtomicUnit {
 		self.0
 	}
 
+	#[allow(clippy::inherent_to_string_shadow_display)]
+	// This is terrible but it formats it in a different way
+	// than `Display`, but for backwards compat, changing it
+	// requires touching other code, so...
+	pub fn to_string(self) -> String {
+		self.0.to_string()
+	}
+
 	pub fn sum_vec(vec: &Vec<Self>) -> Self {
 		let mut sum = 0;
 		for int in vec {
