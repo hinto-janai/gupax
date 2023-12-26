@@ -1182,36 +1182,38 @@ fn main() {
 }
 
 impl eframe::App for App {
-	#[inline(always)]
-	fn on_close_event(&mut self) -> bool {
-		if self.state.gupax.ask_before_quit {
-			// If we're already on the [ask_before_quit] screen and
-			// the user tried to exit again, exit.
-			if self.error_state.quit_twice {
-				if self.state.gupax.save_before_quit { self.save_before_quit(); }
-				return true
-			}
-			// Else, set the error
-			self.error_state.set("", ErrorFerris::Oops, ErrorButtons::StayQuit);
-			self.error_state.quit_twice = true;
-			false
-		// Else, just quit.
-		} else {
-			if self.state.gupax.save_before_quit { self.save_before_quit(); }
-			true
-		}
-	}
-
-	#[inline(always)]
+	#[inline]
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
 		// *-------*
 		// | DEBUG |
 		// *-------*
 		debug!("App | ----------- Start of [update()] -----------");
 
+		// If closing.
+		// Used to be `eframe::App::on_close_event(&mut self) -> bool`.
+		ctx.input(|input| {
+			if !input.viewport().close_requested() {
+				return;
+			}
+			if self.state.gupax.ask_before_quit {
+				// If we're already on the [ask_before_quit] screen and
+				// the user tried to exit again, exit.
+				if self.error_state.quit_twice {
+					if self.state.gupax.save_before_quit { self.save_before_quit(); }
+					ctx.send_viewport_cmd(egui::viewport::ViewportCommand::Close);
+				}
+				// Else, set the error
+				self.error_state.set("", ErrorFerris::Oops, ErrorButtons::StayQuit);
+				self.error_state.quit_twice = true;
+			// Else, just quit.
+			} else {
+				if self.state.gupax.save_before_quit { self.save_before_quit(); }
+				ctx.send_viewport_cmd(egui::viewport::ViewportCommand::Close);
+			}
+		});
+
 		// If [F11] was pressed, reverse [fullscreen] bool
-		let mut input = ctx.input_mut();
-		let key: KeyPressed = {
+		let key: KeyPressed = ctx.input_mut(|input| {
 			if input.consume_key(Modifiers::NONE, Key::F11) {
 				KeyPressed::F11
 			} else if input.consume_key(Modifiers::NONE, Key::Z) {
@@ -1237,8 +1239,8 @@ impl eframe::App for App {
 			} else {
 				KeyPressed::None
 			}
-		};
-		drop(input);
+		});
+
 		// Check if egui wants keyboard input.
 		// This prevents keyboard shortcuts from clobbering TextEdits.
 		// (Typing S in text would always [Save] instead)
