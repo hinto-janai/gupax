@@ -1,6 +1,7 @@
 # v1.3.4
 # Fixes
 * Domain parsing is more relaxed, allows subdomains with longer TLDs (thanks @soupslurpr [#67](https://github.com/hinto-janai/gupax/pull/67))
+* ANSI escape sequences in Windows P2Pool/XMRig terminal output ([#71](https://github.com/hinto-janai/gupax/pull/71))
 
 ## Bundled Versions
 * [`P2Pool v3.9`](https://github.com/SChernykh/p2pool/releases/tag/v3.9)

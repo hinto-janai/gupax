@@ -271,6 +271,21 @@ impl Helper {
 	fn read_pty_xmrig(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
+
+		// Run a ANSI escape sequence filter for the first few lines.
+		let mut i = 0;
+		while let Some(Ok(line)) = stdout.next() {
+			let line = strip_ansi_escapes::strip_str(line);
+			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("XMRig PTY Parse | Output error: {}", e); }
+			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("XMRig PTY Pub | Output error: {}", e); }
+			if i > 20 {
+				break;
+			} else {
+				i += 1;
+			}
+		}
+		drop(i);
+
 		while let Some(Ok(line)) = stdout.next() {
 //			println!("{}", line); // For debugging.
 			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("XMRig PTY Parse | Output error: {}", e); }
@@ -281,6 +296,21 @@ impl Helper {
 	fn read_pty_p2pool(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
+
+		// Run a ANSI escape sequence filter for the first few lines.
+		let mut i = 0;
+		while let Some(Ok(line)) = stdout.next() {
+			let line = strip_ansi_escapes::strip_str(line);
+			if let Err(e) = writeln!(lock!(output_parse), "{}", line) { error!("P2Pool PTY Parse | Output error: {}", e); }
+			if let Err(e) = writeln!(lock!(output_pub), "{}", line) { error!("P2Pool PTY Pub | Output error: {}", e); }
+			if i > 20 {
+				break;
+			} else {
+				i += 1;
+			}
+		}
+		drop(i);
+
 		while let Some(Ok(line)) = stdout.next() {
 //			println!("{}", line); // For debugging.
 			if P2POOL_REGEX.payout.is_match(&line) {
