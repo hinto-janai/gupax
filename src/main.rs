@@ -811,7 +811,7 @@ impl KeyPressed {
 //---------------------------------------------------------------------------------------------------- Init functions
 #[inline(always)]
 fn init_text_styles(ctx: &egui::Context, width: f32, pixels_per_point: f32) {
-	let scale = width / 30.0;
+	let scale = width / 35.5;
 	let mut style = (*ctx.style()).clone();
 	style.text_styles = [
 		(Small, FontId::new(scale/3.0, egui::FontFamily::Monospace)),
