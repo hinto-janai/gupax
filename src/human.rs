@@ -36,22 +36,21 @@ impl Default for HumanTime {
 }
 
 impl HumanTime {
-	#[inline(always)]
+	#[inline]
 	pub const fn new() -> HumanTime {
 		HumanTime(ZERO_SECONDS)
 	}
 
-	#[inline(always)]
+	#[inline]
 	pub const fn into_human(d: Duration) -> HumanTime {
 		HumanTime(d)
 	}
 
-	#[inline(always)]
+	#[inline]
 	pub const fn from_u64(u: u64) -> HumanTime {
 		HumanTime(Duration::from_secs(u))
 	}
 
-	#[inline(always)]
 	fn plural(f: &mut std::fmt::Formatter, started: &mut bool, name: &str, value: u64) -> std::fmt::Result {
 		if value > 0 {
 			if *started {
@@ -114,19 +113,19 @@ impl std::fmt::Display for HumanNumber {
 }
 
 impl HumanNumber {
-	#[inline(always)]
+	#[inline]
 	pub fn unknown() -> Self {
 		Self("???".to_string())
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_str(s: &str) -> Self {
 		Self(s.to_string())
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn to_hashrate(f: f32) -> Self {
 		Self(format!("{} H/s", Self::from_f32(f)))
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn to_percent(f: f32) -> Self {
 		if f < 0.01 {
 			Self("0%".to_string())
@@ -134,67 +133,67 @@ impl HumanNumber {
 			Self(format!("{:.2}%", f))
 		}
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn to_percent_3_point(f: f32) -> Self {
 		Self(format!("{:.3}%", f))
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn to_percent_no_fmt(f: f32) -> Self {
 		Self(format!("{}%", f))
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_f64_to_percent_3_point(f: f64) -> Self {
 		Self(format!("{:.3}%", f))
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_f64_to_percent_6_point(f: f64) -> Self {
 		Self(format!("{:.6}%", f))
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_f64_to_percent_9_point(f: f64) -> Self {
 		Self(format!("{:.9}%", f))
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_f64_to_percent_no_fmt(f: f64) -> Self {
 		Self(format!("{}%", f))
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_f32(f: f32) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&(f as u64), &LOCALE);
 		Self(buf.as_str().to_string())
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_f64(f: f64) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&(f as u128), &LOCALE);
 		Self(buf.as_str().to_string())
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_u16(u: u16) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&u, &LOCALE);
 		Self(buf.as_str().to_string())
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_u32(u: u32) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&u, &LOCALE);
 		Self(buf.as_str().to_string())
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_u64(u: u64) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&u, &LOCALE);
 		Self(buf.as_str().to_string())
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_u128(u: u128) -> Self {
 		let mut buf = num_format::Buffer::new();
 		buf.write_formatted(&u, &LOCALE);
 		Self(buf.as_str().to_string())
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_hashrate(array: [Option<f32>; 3]) -> Self {
 		let mut string = "[".to_string();
 		let mut buf = num_format::Buffer::new();
@@ -221,7 +220,7 @@ impl HumanNumber {
 
 		Self(string)
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_load(array: [Option<f32>; 3]) -> Self {
 		let mut string = "[".to_string();
 		let mut n = 0;
@@ -241,30 +240,30 @@ impl HumanNumber {
 		Self(string)
 	}
 	// [1_000_000] -> [1.000 MH/s]
-	#[inline(always)]
+	#[inline]
 	pub fn from_u64_to_megahash_3_point(hash: u64) -> Self {
 		let hash = (hash as f64)/1_000_000.0;
 		let hash = format!("{:.3} MH/s", hash);
 		Self(hash)
 	}
 	// [1_000_000_000] -> [1.000 GH/s]
-	#[inline(always)]
+	#[inline]
 	pub fn from_u64_to_gigahash_3_point(hash: u64) -> Self {
 		let hash = (hash as f64)/1_000_000_000.0;
 		let hash = format!("{:.3} GH/s", hash);
 		Self(hash)
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_f64_12_point(f: f64) -> Self {
 		let f = format!("{:.12}", f);
 		Self(f)
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn from_f64_no_fmt(f: f64) -> Self {
 		let f = format!("{}", f);
 		Self(f)
 	}
-	#[inline(always)]
+	#[inline]
 	pub fn as_str(&self) -> &str {
 		self.0.as_str()
 	}

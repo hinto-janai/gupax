@@ -286,6 +286,8 @@ impl Update {
 		Ok(tmp_dir)
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Get an HTTPS client. Uses [Arti] if Tor is enabled.
 	// The base type looks something like [hyper::Client<...>].
 	// This is then wrapped with the custom [ClientEnum] type to implement
@@ -319,6 +321,8 @@ impl Update {
 		}
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Intermediate function that spawns a new thread
 	// which starts the async [start()] function that
 	// actually contains the code. This is so that everytime
@@ -422,6 +426,8 @@ impl Update {
 		});
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Download process:
 	// 0. setup tor, client, http, etc
 	// 1. fill vector with all enums
@@ -791,6 +797,8 @@ pub struct Pkg {
 }
 
 impl Pkg {
+	#[cold]
+	#[inline(never)]
 	pub fn new(name: Name) -> Self {
 		let link_metadata = match name {
 			Gupax => GUPAX_METADATA,
@@ -824,6 +832,8 @@ impl Pkg {
 	}
 
 	//---------------------------------------------------------------------------------------------------- Pkg functions
+	#[cold]
+	#[inline(never)]
 	// Generate fake [User-Agent] HTTP header
 	pub fn get_user_agent() -> &'static str {
 		let index = FAKE_USER_AGENT.len() - 1;
@@ -834,6 +844,8 @@ impl Pkg {
 		user_agent
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Generate GET request based off input URI + fake user agent
 	fn get_request(link: String, user_agent: &'static str) -> Result<Request<Body>, anyhow::Error> {
 		let request = Request::builder()
@@ -844,6 +856,8 @@ impl Pkg {
 		Ok(request)
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Get metadata using [Generic hyper::client<C>] & [Request]
 	// and change [version, prog] under an Arc<Mutex>
 	async fn get_metadata<C>(new_ver: Arc<Mutex<String>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), Error>
@@ -856,6 +870,8 @@ impl Pkg {
 		Ok(())
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Takes a [Request], fills the appropriate [Pkg]
 	// [bytes] field with the [Archive/Standalone]
 	async fn get_bytes<C>(bytes: Arc<Mutex<bytes::Bytes>>, client: Client<C>, link: String, user_agent: &'static str) -> Result<(), anyhow::Error>
@@ -874,6 +890,8 @@ impl Pkg {
 		Ok(())
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Take in a [Name] and [Vec] of [Pkg]s, find
 	// that [Name]'s corresponding new version.
 	fn get_new_pkg_version(name: Name, vec: &[&Pkg]) -> Result<String, Error> {

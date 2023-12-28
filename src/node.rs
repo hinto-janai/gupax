@@ -291,6 +291,8 @@ impl Ping {
 	}
 
 	//---------------------------------------------------------------------------------------------------- Main Ping function
+	#[cold]
+	#[inline(never)]
 	// Intermediate function for spawning thread
 	pub fn spawn_thread(ping: &Arc<Mutex<Self>>) {
 		info!("Spawning ping thread...");
@@ -333,6 +335,8 @@ impl Ping {
 	// >500ms = RED
 	// timeout = BLACK
 	// default = GRAY
+	#[cold]
+	#[inline(never)]
 	#[tokio::main]
 	pub async fn ping(ping: &Arc<Mutex<Self>>) -> Result<String, anyhow::Error> {
 		// Start ping
@@ -384,6 +388,8 @@ impl Ping {
 		Ok(fastest_info)
 	}
 
+	#[cold]
+	#[inline(never)]
 	async fn response(
 		client: Client<HttpConnector>,
 		request: Request<Body>,

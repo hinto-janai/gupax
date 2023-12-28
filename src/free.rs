@@ -4,7 +4,8 @@
 use crate::constants::*;
 
 //----------------------------------------------------------------------------------------------------
-#[inline]
+#[cold]
+#[inline(never)]
 // Clamp the scaling resolution `f32` to a known good `f32`.
 pub fn clamp_scale(scale: f32) -> f32 {
 	// Make sure it is finite.

@@ -177,10 +177,12 @@ impl Process {
 	}
 
 	// Borrow a [&str], return an owned split collection
+	#[inline]
 	pub fn parse_args(args: &str) -> Vec<String> {
 		args.split_whitespace().map(|s| s.to_owned()).collect()
 	}
 
+	#[inline]
 	// Convenience functions
 	pub fn is_alive(&self) -> bool {
 		self.state == ProcessState::Alive ||
@@ -189,14 +191,17 @@ impl Process {
 		self.state == ProcessState::NotMining
 	}
 
+	#[inline]
 	pub fn is_waiting(&self) -> bool {
 		self.state == ProcessState::Middle || self.state == ProcessState::Waiting
 	}
 
+	#[inline]
 	pub fn is_syncing(&self) -> bool {
 		self.state == ProcessState::Syncing
 	}
 
+	#[inline]
 	pub fn is_not_mining(&self) -> bool {
 		self.state == ProcessState::NotMining
 	}
@@ -268,6 +273,8 @@ impl Helper {
 		}
 	}
 
+	#[cold]
+	#[inline(never)]
 	fn read_pty_xmrig(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
@@ -293,6 +300,8 @@ impl Helper {
 		}
 	}
 
+	#[cold]
+	#[inline(never)]
 	fn read_pty_p2pool(output_parse: Arc<Mutex<String>>, output_pub: Arc<Mutex<String>>, reader: Box<dyn std::io::Read + Send>, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
 		use std::io::BufRead;
 		let mut stdout = std::io::BufReader::new(reader).lines();
@@ -349,6 +358,8 @@ impl Helper {
 	}
 
 	//---------------------------------------------------------------------------------------------------- P2Pool specific
+	#[cold]
+	#[inline(never)]
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_p2pool(helper: &Arc<Mutex<Self>>) {
 		info!("P2Pool | Attempting to stop...");
@@ -356,6 +367,8 @@ impl Helper {
 		lock2!(helper,p2pool).state = ProcessState::Middle;
 	}
 
+	#[cold]
+	#[inline(never)]
 	// The "restart frontend" to a "frontend" function.
 	// Basically calls to kill the current p2pool, waits a little, then starts the below function in a a new thread, then exit.
 	pub fn restart_p2pool(helper: &Arc<Mutex<Self>>, state: &crate::disk::P2pool, path: &std::path::PathBuf, backup_hosts: Option<Vec<crate::Node>>) {
@@ -379,6 +392,8 @@ impl Helper {
 		info!("P2Pool | Restart ... OK");
 	}
 
+	#[cold]
+	#[inline(never)]
 	// The "frontend" function that parses the arguments, and spawns either the [Simple] or [Advanced] P2Pool watchdog thread.
 	pub fn start_p2pool(
 		helper: &Arc<Mutex<Self>>,
@@ -419,6 +434,8 @@ impl Helper {
 		head.to_owned() + "..." + tail
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Takes in some [State/P2pool] and parses it to build the actual command arguments.
 	// Returns the [Vec] of actual arguments, and mutates the [ImgP2pool] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
@@ -543,6 +560,8 @@ impl Helper {
 		(args, api_path_local, api_path_network, api_path_pool)
 	}
 
+	#[cold]
+	#[inline(never)]
 	// The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	fn spawn_p2pool_watchdog(process: Arc<Mutex<Process>>, gui_api: Arc<Mutex<PubP2poolApi>>, pub_api: Arc<Mutex<PubP2poolApi>>, args: Vec<String>, path: std::path::PathBuf, api_path_local: std::path::PathBuf, api_path_network: std::path::PathBuf, api_path_pool: std::path::PathBuf, gupax_p2pool_api: Arc<Mutex<GupaxP2poolApi>>) {
 		// 1a. Create PTY
@@ -772,6 +791,8 @@ impl Helper {
 	}
 
 	//---------------------------------------------------------------------------------------------------- XMRig specific, most functions are very similar to P2Pool's
+	#[cold]
+	#[inline(never)]
 	// If processes are started with [sudo] on macOS, they must also
 	// be killed with [sudo] (even if I have a direct handle to it as the
 	// parent process...!). This is only needed on macOS, not Linux.
@@ -791,6 +812,8 @@ impl Helper {
 		child.wait().unwrap().success()
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Just sets some signals for the watchdog thread to pick up on.
 	pub fn stop_xmrig(helper: &Arc<Mutex<Self>>) {
 		info!("XMRig | Attempting to stop...");
@@ -798,6 +821,8 @@ impl Helper {
 		lock2!(helper,xmrig).state = ProcessState::Middle;
 	}
 
+	#[cold]
+	#[inline(never)]
 	// The "restart frontend" to a "frontend" function.
 	// Basically calls to kill the current xmrig, waits a little, then starts the below function in a a new thread, then exit.
 	pub fn restart_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
@@ -821,6 +846,8 @@ impl Helper {
 		info!("XMRig | Restart ... OK");
 	}
 
+	#[cold]
+	#[inline(never)]
 	pub fn start_xmrig(helper: &Arc<Mutex<Self>>, state: &crate::disk::Xmrig, path: &std::path::PathBuf, sudo: Arc<Mutex<SudoState>>) {
 		lock2!(helper,xmrig).state = ProcessState::Middle;
 
@@ -840,6 +867,8 @@ impl Helper {
 		});
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Takes in some [State/Xmrig] and parses it to build the actual command arguments.
 	// Returns the [Vec] of actual arguments, and mutates the [ImgXmrig] for the main GUI thread
 	// It returns a value... and mutates a deeply nested passed argument... this is some pretty bad code...
@@ -940,6 +969,8 @@ impl Helper {
 		cmd
 	}
 
+	#[cold]
+	#[inline(never)]
 	// The XMRig watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
 	// This isn't actually async, a tokio runtime is unfortunately needed because [Hyper] is an async library (HTTP API calls)
 	#[tokio::main]
@@ -1151,6 +1182,7 @@ impl Helper {
 	}
 
 	//---------------------------------------------------------------------------------------------------- The "helper"
+	#[inline(always)] // called once
 	fn update_pub_sys_from_sysinfo(sysinfo: &sysinfo::System, pub_sys: &mut Sys, pid: &sysinfo::Pid, helper: &Helper, max_threads: usize) {
 		let gupax_uptime = helper.uptime.to_string();
 		let cpu = &sysinfo.cpus()[0];
@@ -1180,6 +1212,8 @@ impl Helper {
 		};
 	}
 
+	#[cold]
+	#[inline(never)]
 	// The "helper" thread. Syncs data between threads here and the GUI.
 	pub fn spawn_helper(helper: &Arc<Mutex<Self>>, mut sysinfo: sysinfo::System, pid: sysinfo::Pid, max_threads: usize) {
 		// The ordering of these locks is _very_ important. They MUST be in sync with how the main GUI thread locks stuff
@@ -1428,6 +1462,7 @@ impl PubP2poolApi {
 		}
 	}
 
+	#[inline]
 	// The issue with just doing [gui_api = pub_api] is that values get overwritten.
 	// This doesn't matter for any of the values EXCEPT for the output, so we must
 	// manually append it instead of overwriting.
@@ -1443,6 +1478,7 @@ impl PubP2poolApi {
 		};
 	}
 
+	#[inline]
 	// Essentially greps the output for [x.xxxxxxxxxxxx XMR] where x = a number.
 	// It sums each match and counts along the way, handling an error by not adding and printing to console.
 	fn calc_payouts_and_xmr(output: &str) -> (u128 /* payout count */, f64 /* total xmr */) {
@@ -1607,6 +1643,7 @@ impl PubP2poolApi {
 		};
 	}
 
+	#[inline]
 	pub fn calculate_share_or_block_time(hashrate: u64, difficulty: u64) -> HumanTime {
 		if hashrate == 0 {
 			HumanTime::new()
@@ -1615,6 +1652,7 @@ impl PubP2poolApi {
 		}
 	}
 
+	#[inline]
 	pub fn calculate_dominance(my_hashrate: u64, global_hashrate: u64) -> HumanNumber {
 		if global_hashrate == 0 {
 			HumanNumber::unknown()
@@ -1854,6 +1892,7 @@ impl PubXmrigApi {
 		}
 	}
 
+	#[inline]
 	fn combine_gui_pub_api(gui_api: &mut Self, pub_api: &mut Self) {
 		let output = std::mem::take(&mut gui_api.output);
 		let buf = std::mem::take(&mut pub_api.output);
@@ -1938,6 +1977,8 @@ impl PrivXmrigApi {
 			hashrate: Hashrate::new(),
 		}
 	}
+
+	#[inline]
 	// Send an HTTP request to XMRig's API, serialize it into [Self] and return it
 	async fn request_xmrig_api(client: hyper::Client<hyper::client::HttpConnector>, api_uri: &str) -> std::result::Result<Self, anyhow::Error> {
 		let request = hyper::Request::builder()

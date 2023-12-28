@@ -8,6 +8,8 @@ use crate::constants::{
 };
 
 //----------------------------------------------------------------------------------------------------
+#[cold]
+#[inline(never)]
 /// Set custom panic hook.
 pub(crate) fn set_panic_hook(now: std::time::Instant) {
 	std::panic::set_hook(Box::new(move |panic_info| {

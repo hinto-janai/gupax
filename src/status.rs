@@ -42,8 +42,23 @@ use egui::{
 };
 
 impl crate::disk::Status {
-#[inline(always)]
-pub fn show(&mut self, sys: &Arc<Mutex<Sys>>, p2pool_api: &Arc<Mutex<PubP2poolApi>>, xmrig_api: &Arc<Mutex<PubXmrigApi>>, p2pool_img: &Arc<Mutex<ImgP2pool>>, xmrig_img: &Arc<Mutex<ImgXmrig>>, p2pool_alive: bool, xmrig_alive: bool, max_threads: usize, gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>, benchmarks: &[Benchmark], width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+#[inline(always)] // called once
+pub fn show(&mut self,
+	sys: &Arc<Mutex<Sys>>,
+	p2pool_api: &Arc<Mutex<PubP2poolApi>>,
+	xmrig_api: &Arc<Mutex<PubXmrigApi>>,
+	p2pool_img: &Arc<Mutex<ImgP2pool>>,
+	xmrig_img: &Arc<Mutex<ImgXmrig>>,
+	p2pool_alive: bool,
+	xmrig_alive: bool,
+	max_threads: usize,
+	gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>,
+	benchmarks: &[Benchmark],
+	width: f32,
+	height: f32,
+	_ctx: &egui::Context,
+	ui: &mut egui::Ui
+) {
 	//---------------------------------------------------------------------------------------------------- [Processes]
 	if self.submenu == Submenu::Processes {
 	let width = (width/3.0)-(SPACE*1.666);
