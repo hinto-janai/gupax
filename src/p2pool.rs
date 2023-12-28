@@ -151,7 +151,7 @@ impl crate::disk::P2pool {
 			debug!("P2Pool Tab | Rendering [ComboBox] of Remote Nodes");
 			let ip_location = crate::node::format_ip_location(&self.node, false);
 			let text = RichText::new(format!(" ⏺ {}ms | {}", ms, ip_location)).color(color);
-			ComboBox::from_id_source("remote_nodes").selected_text(text).show_ui(ui, |ui| {
+			ComboBox::from_id_source("remote_nodes").selected_text(text).width(width).show_ui(ui, |ui| {
 				for data in lock!(ping).nodes.iter() {
 					let ms = crate::node::format_ms(data.ms);
 					let ip_location = crate::node::format_ip_location(data.ip, true);
@@ -338,7 +338,7 @@ impl crate::disk::P2pool {
 			// [Ping List]
 			debug!("P2Pool Tab | Rendering [Node List]");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
-			ComboBox::from_id_source("manual_nodes").selected_text(text).show_ui(ui, |ui| {
+			ComboBox::from_id_source("manual_nodes").selected_text(text).width(width).show_ui(ui, |ui| {
 				let mut n = 0;
 				for (name, node) in node_vec.iter() {
 					let text = RichText::new(format!("{}. {}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", n+1, name, node.ip, node.rpc, node.zmq));

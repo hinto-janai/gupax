@@ -228,7 +228,7 @@ impl crate::disk::Xmrig {
 			// [Node List]
 			debug!("XMRig Tab | Rendering [Node List] ComboBox");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
-			ComboBox::from_id_source("manual_pool").selected_text(text).show_ui(ui, |ui| {
+			ComboBox::from_id_source("manual_pool").selected_text(text).width(width).show_ui(ui, |ui| {
 				let mut n = 0;
 				for (name, pool) in pool_vec.iter() {
 					let text = format!("{}. {}\n     IP: {}\n   Port: {}\n    Rig: {}", n+1, name, pool.ip, pool.port, pool.rig);
