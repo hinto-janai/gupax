@@ -1515,7 +1515,21 @@ impl PubP2poolApi {
 		let (payouts_new, xmr_new) = Self::calc_payouts_and_xmr(&output_parse);
 		// Check for "SYNCHRONIZED" only if we aren't already.
 		if lock!(process).state == ProcessState::Syncing {
-			if P2POOL_REGEX.synchronized.is_match(&output_parse) {
+			// How many times the word was captured.
+			let synchronized_captures = P2POOL_REGEX.synchronized.find_iter(&output_parse).count();
+
+			// If P2Pool receives shares before syncing, it will start mining on its own sidechain.
+			// In this instance, we technically are "synced" on block 1 and P2Pool will print "SYNCHRONIZED"
+			// although, that doesn't necessarily mean we're synced on main/mini-chain.
+			//
+			// So, if we find a `next block = 1`, that means we
+			// must look for at least 2 instances of "SYNCHRONIZED",
+			// one for the sidechain, one for main/mini.
+			if (P2POOL_REGEX.next_height_1.is_match(&output_parse) && synchronized_captures > 1)
+				// if there is no `next block = 1`, fallback to
+				// just finding 1 instance of "SYNCHRONIZED".
+				|| synchronized_captures > 0
+			{
 				lock!(process).state = ProcessState::Alive;
 			}
 		}
