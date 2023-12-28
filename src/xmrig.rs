@@ -37,8 +37,18 @@ use crate::regex::{
 };
 
 impl crate::disk::Xmrig {
-	#[inline(always)]
-	pub fn show(&mut self, pool_vec: &mut Vec<(String, Pool)>, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubXmrigApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+#[inline(always)] // called once
+pub fn show(
+	&mut self,
+	pool_vec: &mut Vec<(String, Pool)>,
+	process: &Arc<Mutex<Process>>,
+	api: &Arc<Mutex<PubXmrigApi>>,
+	buffer: &mut String,
+	width: f32,
+	height: f32,
+	_ctx: &egui::Context,
+	ui: &mut egui::Ui
+) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	debug!("XMRig Tab | Rendering [Console]");

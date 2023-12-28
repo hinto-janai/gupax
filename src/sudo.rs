@@ -54,6 +54,8 @@ impl Default for SudoState {
 }
 
 impl SudoState {
+	#[cold]
+	#[inline(never)]
 	#[cfg(target_os = "windows")]
 	pub fn new() -> Self {
 		Self {
@@ -66,6 +68,8 @@ impl SudoState {
 			signal: ProcessSignal::None,
 		}
 	}
+	#[cold]
+	#[inline(never)]
 	#[cfg(target_family = "unix")]
 	pub fn new() -> Self {
 		Self {
@@ -79,6 +83,8 @@ impl SudoState {
 		}
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Resets the state.
 	pub fn reset(state: &Arc<Mutex<Self>>) {
 		Self::wipe(state);
@@ -88,6 +94,8 @@ impl SudoState {
 //		state.signal = ProcessSignal::None;
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Swaps the pass with another 256-capacity String,
 	// zeroizes the old and drops it.
 	pub fn wipe(state: &Arc<Mutex<Self>>) {
@@ -100,6 +108,8 @@ impl SudoState {
 		info!("Sudo | Password wipe with 0's ... OK");
 	}
 
+	#[cold]
+	#[inline(never)]
 	// Spawns a thread and tests sudo with the provided password.
 	// Sudo takes the password through STDIN via [--stdin].
 	// Sets the appropriate state fields on success/failure.

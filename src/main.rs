@@ -174,6 +174,8 @@ pub struct App {
 }
 
 impl App {
+	#[cold]
+	#[inline(never)]
 	fn cc(cc: &eframe::CreationContext<'_>, resolution: Vec2, app: Self) -> Self {
 		init_text_styles(&cc.egui_ctx, resolution[0], crate::free::clamp_scale(app.state.gupax.selected_scale));
 		cc.egui_ctx.set_visuals(VISUALS.clone());
@@ -183,12 +185,16 @@ impl App {
 		}
 	}
 
+	#[cold]
+	#[inline(never)]
 	fn save_before_quit(&mut self) {
 		if let Err(e) = State::save(&mut self.state, &self.state_path) { error!("State file: {}", e); }
 		if let Err(e) = Node::save(&self.node_vec, &self.node_path) { error!("Node list: {}", e); }
 		if let Err(e) = Pool::save(&self.pool_vec, &self.pool_path) { error!("Pool list: {}", e); }
 	}
 
+	#[cold]
+	#[inline(never)]
 	fn new(now: Instant) -> Self {
 		info!("Initializing App Struct...");
 		info!("App Init | P2Pool & XMRig processes...");
@@ -532,6 +538,8 @@ impl App {
 		app
 	}
 
+	#[cold]
+	#[inline(never)]
 	pub fn gather_backup_hosts(&self) -> Option<Vec<Node>> {
 		if !self.state.p2pool.backup_host {
 			return None;
@@ -732,6 +740,8 @@ struct Images {
 }
 
 impl Images {
+	#[cold]
+	#[inline(never)]
 	fn new() -> Self {
 		Self {
 			banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
@@ -770,46 +780,23 @@ enum KeyPressed {
 }
 
 impl KeyPressed {
-	fn is_f11(&self) -> bool {
-		*self == Self::F11
-	}
-	fn is_z(&self) -> bool {
-		*self == Self::Z
-	}
-	fn is_x(&self) -> bool {
-		*self == Self::X
-	}
-	fn is_up(&self) -> bool {
-		*self == Self::Up
-	}
-	fn is_down(&self) -> bool {
-		*self == Self::Down
-	}
-	fn is_esc(&self) -> bool {
-		*self == Self::Esc
-	}
-	fn is_s(&self) -> bool {
-		*self == Self::S
-	}
-	fn is_r(&self) -> bool {
-		*self == Self::R
-	}
-	fn is_d(&self) -> bool {
-		*self == Self::D
-	}
-	fn is_c(&self) -> bool {
-		*self == Self::C
-	}
-	fn is_v(&self) -> bool {
-		*self == Self::V
-	}
-	fn is_none(&self) -> bool {
-		*self == Self::None
-	}
+	#[inline] fn is_f11(&self) -> bool { *self == Self::F11 }
+	#[inline] fn is_z(&self) -> bool { *self == Self::Z }
+	#[inline] fn is_x(&self) -> bool { *self == Self::X }
+	#[inline] fn is_up(&self) -> bool { *self == Self::Up }
+	#[inline] fn is_down(&self) -> bool { *self == Self::Down }
+	#[inline] fn is_esc(&self) -> bool { *self == Self::Esc }
+	#[inline] fn is_s(&self) -> bool { *self == Self::S }
+	#[inline] fn is_r(&self) -> bool { *self == Self::R }
+	#[inline] fn is_d(&self) -> bool { *self == Self::D }
+	#[inline] fn is_c(&self) -> bool { *self == Self::C }
+	#[inline] fn is_v(&self) -> bool { *self == Self::V }
+	#[inline] fn is_none(&self) -> bool { *self == Self::None }
 }
 
 //---------------------------------------------------------------------------------------------------- Init functions
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn init_text_styles(ctx: &egui::Context, width: f32, pixels_per_point: f32) {
 	let scale = width / 35.5;
 	let mut style = (*ctx.style()).clone();
@@ -838,7 +825,8 @@ fn init_text_styles(ctx: &egui::Context, width: f32, pixels_per_point: f32) {
 	ctx.request_repaint();
 }
 
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn init_logger(now: Instant) {
 	use env_logger::fmt::Color;
 	let filter_env = std::env::var("RUST_LOG").unwrap_or_else(|_| "INFO".to_string());
@@ -874,7 +862,8 @@ fn init_logger(now: Instant) {
 	info!("Log level ... {}", filter);
 }
 
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	let mut options = eframe::NativeOptions::default();
 	options.viewport.min_inner_size = Some(Vec2::new(APP_MIN_WIDTH, APP_MIN_HEIGHT));
@@ -893,7 +882,8 @@ fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	options
 }
 
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn init_auto(app: &mut App) {
 	// Return early if [--no-startup] was not passed
 	if app.no_startup {
@@ -955,6 +945,8 @@ fn init_auto(app: &mut App) {
 }
 
 //---------------------------------------------------------------------------------------------------- Reset functions
+#[cold]
+#[inline(never)]
 fn reset_state(path: &PathBuf) -> Result<(), TomlError> {
 	match State::create_new(path) {
 		Ok(_)  => { info!("Resetting [state.toml] ... OK"); Ok(()) },
@@ -962,7 +954,8 @@ fn reset_state(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn reset_nodes(path: &PathBuf) -> Result<(), TomlError> {
 	match Node::create_new(path) {
 		Ok(_)  => { info!("Resetting [node.toml] ... OK"); Ok(()) },
@@ -970,7 +963,8 @@ fn reset_nodes(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn reset_pools(path: &PathBuf) -> Result<(), TomlError> {
 	match Pool::create_new(path) {
 		Ok(_)  => { info!("Resetting [pool.toml] ... OK"); Ok(()) },
@@ -978,7 +972,8 @@ fn reset_pools(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn reset_gupax_p2pool_api(path: &PathBuf) -> Result<(), TomlError> {
 	match GupaxP2poolApi::create_new(path) {
 		Ok(_)  => { info!("Resetting GupaxP2poolApi ... OK"); Ok(()) },
@@ -986,7 +981,8 @@ fn reset_gupax_p2pool_api(path: &PathBuf) -> Result<(), TomlError> {
 	}
 }
 
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf, gupax_p2pool_api: &PathBuf) {
 	let mut code = 0;
 	// Attempt to remove directory first
@@ -1023,7 +1019,8 @@ fn reset(path: &PathBuf, state: &PathBuf, node: &PathBuf, pool: &PathBuf, gupax_
 }
 
 //---------------------------------------------------------------------------------------------------- Misc functions
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 	info!("Parsing CLI arguments...");
 	let mut args: Vec<String> = env::args().collect();
@@ -1066,7 +1063,8 @@ fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
 }
 
 // Get absolute [Gupax] binary path
-#[inline(always)]
+#[cold]
+#[inline(never)]
 pub fn get_exe() -> Result<String, std::io::Error> {
 	match std::env::current_exe() {
 		Ok(path) => { Ok(path.display().to_string()) },
@@ -1075,7 +1073,8 @@ pub fn get_exe() -> Result<String, std::io::Error> {
 }
 
 // Get absolute [Gupax] directory path
-#[inline(always)]
+#[cold]
+#[inline(never)]
 pub fn get_exe_dir() -> Result<String, std::io::Error> {
 	match std::env::current_exe() {
 		Ok(mut path) => { path.pop(); Ok(path.display().to_string()) },
@@ -1085,7 +1084,8 @@ pub fn get_exe_dir() -> Result<String, std::io::Error> {
 
 // Clean any [gupax_update_.*] directories
 // The trailing random bits must be exactly 10 alphanumeric characters
-#[inline(always)]
+#[cold]
+#[inline(never)]
 pub fn clean_dir() -> Result<(), anyhow::Error> {
 	let regex = Regex::new("^gupax_update_[A-Za-z0-9]{10}$").unwrap();
 	for entry in std::fs::read_dir(get_exe_dir()?)? {
@@ -1103,7 +1103,8 @@ pub fn clean_dir() -> Result<(), anyhow::Error> {
 }
 
 // Print disk files to console
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn print_disk_file(path: &PathBuf) {
 	match std::fs::read_to_string(path) {
 		Ok(string) => { print!("{}", string); exit(0); },
@@ -1112,7 +1113,8 @@ fn print_disk_file(path: &PathBuf) {
 }
 
 // Prints the GupaxP2PoolApi files.
-#[inline(always)]
+#[cold]
+#[inline(never)]
 fn print_gupax_p2pool_api(gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>) {
 	let api = lock!(gupax_p2pool_api);
 	let log = match std::fs::read_to_string(&api.path_log) {
@@ -1135,7 +1137,7 @@ fn print_gupax_p2pool_api(gupax_p2pool_api: &Arc<Mutex<GupaxP2poolApi>>) {
 	exit(0);
 }
 
-#[inline(always)]
+#[inline]
 fn cmp_f64(a: f64, b: f64) -> std::cmp::Ordering {
     match (a <= b, a >= b) {
         (false, true) => std::cmp::Ordering::Greater,
@@ -1182,7 +1184,6 @@ fn main() {
 }
 
 impl eframe::App for App {
-	#[inline]
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
 		// *-------*
 		// | DEBUG |

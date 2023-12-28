@@ -36,8 +36,21 @@ use crate::regex::{
 };
 
 impl crate::disk::P2pool {
-	#[inline(always)]
-	pub fn show(&mut self, node_vec: &mut Vec<(String, Node)>, _og: &Arc<Mutex<State>>, ping: &Arc<Mutex<Ping>>, process: &Arc<Mutex<Process>>, api: &Arc<Mutex<PubP2poolApi>>, buffer: &mut String, width: f32, height: f32, _ctx: &egui::Context, ui: &mut egui::Ui) {
+#[inline(always)] // called once
+pub fn show(
+	&mut self,
+	node_vec: &mut Vec<(String,
+	Node)>,
+	_og: &Arc<Mutex<State>>,
+	ping: &Arc<Mutex<Ping>>,
+	process: &Arc<Mutex<Process>>,
+	api: &Arc<Mutex<PubP2poolApi>>,
+	buffer: &mut String,
+	width: f32,
+	height: f32,
+	_ctx: &egui::Context,
+	ui: &mut egui::Ui
+) {
 	let text_edit = height / 25.0;
 	//---------------------------------------------------------------------------------------------------- [Simple] Console
 	debug!("P2Pool Tab | Rendering [Console]");

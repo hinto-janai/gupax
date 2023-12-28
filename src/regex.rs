@@ -37,6 +37,8 @@ pub struct Regexes {
 }
 
 impl Regexes {
+	#[cold]
+	#[inline(never)]
 	fn new() -> Self {
 		Self {
 			name: Regex::new("^[A-Za-z0-9-_.]+( [A-Za-z0-9-_.]+)*$").unwrap(),
@@ -47,6 +49,7 @@ impl Regexes {
 		}
 	}
 
+	#[inline]
 	// Check if a Monero address is correct.
 	// This actually only checks for length & Base58, and doesn't do any checksum validation
 	// (the last few bytes of a Monero address are a Keccak hash checksum) so some invalid addresses can trick this function.
@@ -85,6 +88,8 @@ pub struct P2poolRegex {
 }
 
 impl P2poolRegex {
+	#[cold]
+	#[inline(never)]
 	fn new() -> Self {
 		Self {
 			date: Regex::new("[0-9]+-[0-9]+-[0-9]+ [0-9]+:[0-9]+:[0-9]+.[0-9]+").unwrap(),
