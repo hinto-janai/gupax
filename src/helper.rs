@@ -1525,11 +1525,13 @@ impl PubP2poolApi {
 			// So, if we find a `next block = 1`, that means we
 			// must look for at least 2 instances of "SYNCHRONIZED",
 			// one for the sidechain, one for main/mini.
-			if (P2POOL_REGEX.next_height_1.is_match(&output_parse) && synchronized_captures > 1)
+			if P2POOL_REGEX.next_height_1.is_match(&output_parse) {
+				if synchronized_captures > 1 {
+					lock!(process).state = ProcessState::Alive;
+				}
+			} else if synchronized_captures > 0 {
 				// if there is no `next block = 1`, fallback to
 				// just finding 1 instance of "SYNCHRONIZED".
-				|| synchronized_captures > 0
-			{
 				lock!(process).state = ProcessState::Alive;
 			}
 		}
@@ -2122,6 +2124,60 @@ mod test {
 			r#"payout of 5.000000000001 XMR in block 1111
 			NOTICE  2021-12-27 21:42:17.2008 SideChain SYNCHRONIZED
 			payout of 5.000000000001 XMR in block 1113"#
+		)));
+		let output_pub = Arc::new(Mutex::new(String::new()));
+		let elapsed = std::time::Duration::from_secs(60);
+		let process = Arc::new(Mutex::new(Process::new(ProcessName::P2pool, "".to_string(), PathBuf::new())));
+
+		// It only gets checked if we're `Syncing`.
+		process.lock().unwrap().state = ProcessState::Syncing;
+		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &process);
+		println!("{:#?}", process);
+		assert!(process.lock().unwrap().state == ProcessState::Alive);
+	}
+
+	#[test]
+	fn p2pool_synchronized_false_positive() {
+		use crate::helper::{PubP2poolApi};
+		use std::sync::{Arc,Mutex};
+		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
+
+		// The SideChain that is "SYNCHRONIZED" in this output is
+		// probably not main/mini, but the sidechain started on height 1,
+		// so this should _not_ trigger alive state.
+		let output_parse = Arc::new(Mutex::new(String::from(
+			r#"payout of 5.000000000001 XMR in block 1111
+			SideChain new chain tip: next height = 1
+			NOTICE  2021-12-27 21:42:17.2008 SideChain SYNCHRONIZED
+			payout of 5.000000000001 XMR in block 1113"#
+		)));
+		let output_pub = Arc::new(Mutex::new(String::new()));
+		let elapsed = std::time::Duration::from_secs(60);
+		let process = Arc::new(Mutex::new(Process::new(ProcessName::P2pool, "".to_string(), PathBuf::new())));
+
+		// It only gets checked if we're `Syncing`.
+		process.lock().unwrap().state = ProcessState::Syncing;
+		PubP2poolApi::update_from_output(&public, &output_parse, &output_pub, elapsed, &process);
+		println!("{:#?}", process);
+		assert!(process.lock().unwrap().state == ProcessState::Syncing); // still syncing
+	}
+
+	#[test]
+	fn p2pool_synchronized_double_synchronized() {
+		use crate::helper::{PubP2poolApi};
+		use std::sync::{Arc,Mutex};
+		let public = Arc::new(Mutex::new(PubP2poolApi::new()));
+
+		// The 1st SideChain that is "SYNCHRONIZED" in this output is
+		// the sidechain started on height 1, but there is another one
+		// which means the real main/mini is probably synced,
+		// so this _should_ trigger alive state.
+		let output_parse = Arc::new(Mutex::new(String::from(
+			r#"payout of 5.000000000001 XMR in block 1111
+			SideChain new chain tip: next height = 1
+			NOTICE  2021-12-27 21:42:17.2008 SideChain SYNCHRONIZED
+			payout of 5.000000000001 XMR in block 1113
+			NOTICE  2021-12-27 21:42:17.2100 SideChain SYNCHRONIZED"#
 		)));
 		let output_pub = Arc::new(Mutex::new(String::new()));
 		let elapsed = std::time::Duration::from_secs(60);
