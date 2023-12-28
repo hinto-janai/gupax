@@ -65,6 +65,10 @@ impl AtomicUnit {
 		self.0
 	}
 
+	#[allow(clippy::inherent_to_string_shadow_display)]
+	// This is terrible but it formats it in a different way
+	// than `Display`, but for backwards compat, changing it
+	// requires touching other code, so...
 	pub fn to_string(self) -> String {
 		self.0.to_string()
 	}
@@ -400,6 +404,7 @@ r#"2022-09-08 18:42:55.4636 | 0.001000000000 XMR | Block 2,654,321
 		]);
 		println!("OG: {:#?}", payout_ord);
 
+		#[allow(clippy::never_loop)]
 		for (_, atomic_unit, _) in payout_ord.rev_iter() {
 			if atomic_unit.to_u64() == 3000000000 {
 				break

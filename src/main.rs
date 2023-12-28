@@ -33,7 +33,7 @@ compile_error!("gupax is only built for windows/macos/linux");
 // egui/eframe
 use egui::{
 	TextStyle::*,
-	color::Color32,
+	Color32,
 	FontFamily::Proportional,
 	TextStyle,Spinner,
 	Layout,Align,
@@ -174,8 +174,7 @@ pub struct App {
 }
 
 impl App {
-	fn cc(cc: &eframe::CreationContext<'_>, app: Self) -> Self {
-		let resolution = cc.integration_info.window_info.size;
+	fn cc(cc: &eframe::CreationContext<'_>, resolution: Vec2, app: Self) -> Self {
 		init_text_styles(&cc.egui_ctx, resolution[0], crate::free::clamp_scale(app.state.gupax.selected_scale));
 		cc.egui_ctx.set_visuals(VISUALS.clone());
 		Self {
@@ -812,7 +811,7 @@ impl KeyPressed {
 //---------------------------------------------------------------------------------------------------- Init functions
 #[inline(always)]
 fn init_text_styles(ctx: &egui::Context, width: f32, pixels_per_point: f32) {
-	let scale = width / 30.0;
+	let scale = width / 35.5;
 	let mut style = (*ctx.style()).clone();
 	style.text_styles = [
 		(Small, FontId::new(scale/3.0, egui::FontFamily::Monospace)),
@@ -828,7 +827,10 @@ fn init_text_styles(ctx: &egui::Context, width: f32, pixels_per_point: f32) {
 	style.spacing.icon_width_inner = width / 35.0;
 	style.spacing.icon_width = width / 25.0;
 	style.spacing.icon_spacing = 20.0;
-	style.spacing.scroll_bar_width = width / 150.0;
+	style.spacing.scroll = egui::style::ScrollStyle {
+		bar_width: width / 150.0,
+		..egui::style::ScrollStyle::solid()
+	};
 	ctx.set_style(style);
 	// Make sure scale f32 is a regular number.
 	let pixels_per_point = crate::free::clamp_scale(pixels_per_point);
@@ -875,18 +877,18 @@ fn init_logger(now: Instant) {
 #[inline(always)]
 fn init_options(initial_window_size: Option<Vec2>) -> NativeOptions {
 	let mut options = eframe::NativeOptions::default();
-	options.min_window_size = Some(Vec2::new(APP_MIN_WIDTH, APP_MIN_HEIGHT));
-	options.max_window_size = Some(Vec2::new(APP_MAX_WIDTH, APP_MAX_HEIGHT));
-	options.initial_window_size = initial_window_size;
+	options.viewport.min_inner_size = Some(Vec2::new(APP_MIN_WIDTH, APP_MIN_HEIGHT));
+	options.viewport.max_inner_size = Some(Vec2::new(APP_MAX_WIDTH, APP_MAX_HEIGHT));
+	options.viewport.inner_size = initial_window_size;
 	options.follow_system_theme = false;
 	options.default_theme = eframe::Theme::Dark;
 	let icon = image::load_from_memory(BYTES_ICON).expect("Failed to read icon bytes").to_rgba8();
 	let (icon_width, icon_height) = icon.dimensions();
-	options.icon_data = Some(eframe::IconData {
+	options.viewport.icon = Some(Arc::new(egui::viewport::IconData {
 		rgba: icon.into_raw(),
 		width: icon_width,
 		height: icon_height,
-	});
+	}));
 	info!("init_options() ... OK");
 	options
 }
@@ -1172,42 +1174,55 @@ fn main() {
 		Err(e) => warn!("Could not cleanup [gupax_tmp] folders: {}", e),
 	}
 
+	let resolution = Vec2::new(selected_width, selected_height);
+
 	// Run Gupax.
 	info!("/*************************************/ Init ... OK /*************************************/");
-	eframe::run_native(&app.name_version.clone(), options, Box::new(|cc| Box::new(App::cc(cc, app))),);
+	eframe::run_native(&app.name_version.clone(), options, Box::new(move |cc| Box::new(App::cc(cc, resolution, app))),);
 }
 
 impl eframe::App for App {
-	#[inline(always)]
-	fn on_close_event(&mut self) -> bool {
-		if self.state.gupax.ask_before_quit {
-			// If we're already on the [ask_before_quit] screen and
-			// the user tried to exit again, exit.
-			if self.error_state.quit_twice {
-				if self.state.gupax.save_before_quit { self.save_before_quit(); }
-				return true
-			}
-			// Else, set the error
-			self.error_state.set("", ErrorFerris::Oops, ErrorButtons::StayQuit);
-			self.error_state.quit_twice = true;
-			false
-		// Else, just quit.
-		} else {
-			if self.state.gupax.save_before_quit { self.save_before_quit(); }
-			true
-		}
-	}
-
-	#[inline(always)]
+	#[inline]
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
 		// *-------*
 		// | DEBUG |
 		// *-------*
 		debug!("App | ----------- Start of [update()] -----------");
 
+		// If closing.
+		// Used to be `eframe::App::on_close_event(&mut self) -> bool`.
+		let close_signal = ctx.input(|input| {
+			use egui::viewport::ViewportCommand;
+
+			if !input.viewport().close_requested() {
+				return None;
+			}
+			if self.state.gupax.ask_before_quit {
+				// If we're already on the [ask_before_quit] screen and
+				// the user tried to exit again, exit.
+				if self.error_state.quit_twice {
+					if self.state.gupax.save_before_quit { self.save_before_quit(); }
+					return Some(ViewportCommand::Close);
+				}
+				// Else, set the error
+				self.error_state.set("", ErrorFerris::Oops, ErrorButtons::StayQuit);
+				self.error_state.quit_twice = true;
+				Some(ViewportCommand::CancelClose)
+			// Else, just quit.
+			} else {
+				if self.state.gupax.save_before_quit { self.save_before_quit(); }
+				Some(ViewportCommand::Close)
+			}
+		});
+		// This will either:
+		// 1. Cancel a close signal
+		// 2. Close the program
+		if let Some(cmd) = close_signal {
+			ctx.send_viewport_cmd(cmd);
+		}
+
 		// If [F11] was pressed, reverse [fullscreen] bool
-		let mut input = ctx.input_mut();
-		let key: KeyPressed = {
+		let key: KeyPressed = ctx.input_mut(|input| {
 			if input.consume_key(Modifiers::NONE, Key::F11) {
 				KeyPressed::F11
 			} else if input.consume_key(Modifiers::NONE, Key::Z) {
@@ -1233,16 +1248,17 @@ impl eframe::App for App {
 			} else {
 				KeyPressed::None
 			}
-		};
-		drop(input);
+		});
+
 		// Check if egui wants keyboard input.
 		// This prevents keyboard shortcuts from clobbering TextEdits.
 		// (Typing S in text would always [Save] instead)
 		let wants_input = ctx.wants_keyboard_input();
 
         if key.is_f11() {
-            let info = frame.info();
-            frame.set_fullscreen(!info.window_info.fullscreen);
+			if ctx.input(|i| i.viewport().maximized == Some(true)) {
+				ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(true));
+			}
 		// Change Tabs LEFT
         } else if key.is_z() && !wants_input {
 			match self.tab {
@@ -1524,7 +1540,7 @@ impl eframe::App for App {
 						ui.horizontal(|ui| {
 							let response = ui.add_sized([sudo_width*8.0, height], TextEdit::hint_text(TextEdit::singleline(&mut sudo.pass).password(hide), PASSWORD_TEXT));
 							let box_width = (ui.available_width()/2.0)-5.0;
-							if (response.lost_focus() && ui.input().key_pressed(Key::Enter)) ||
+							if (response.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter))) ||
 							ui.add_sized([box_width, height], Button::new("Enter")).on_hover_text(PASSWORD_ENTER).clicked() {
 								response.request_focus();
 								if !sudo.testing {

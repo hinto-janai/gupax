@@ -65,7 +65,7 @@ impl crate::disk::Xmrig {
 		ui.separator();
 		let response = ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(buffer), r#"Commands: [h]ashrate, [p]ause, [r]esume, re[s]ults, [c]onnection"#)).on_hover_text(XMRIG_INPUT);
 		// If the user pressed enter, dump buffer contents into the process STDIN
-		if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
+		if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
 			response.request_focus();                  // Get focus back
 			let buffer = std::mem::take(buffer);       // Take buffer
 			let mut process = lock!(process); // Lock
@@ -228,7 +228,7 @@ impl crate::disk::Xmrig {
 			// [Node List]
 			debug!("XMRig Tab | Rendering [Node List] ComboBox");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
-			ComboBox::from_id_source("manual_pool").selected_text(text).show_ui(ui, |ui| {
+			ComboBox::from_id_source("manual_pool").selected_text(text).width(width).show_ui(ui, |ui| {
 				let mut n = 0;
 				for (name, pool) in pool_vec.iter() {
 					let text = format!("{}. {}\n     IP: {}\n   Port: {}\n    Rig: {}", n+1, name, pool.ip, pool.port, pool.rig);

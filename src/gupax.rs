@@ -259,7 +259,8 @@ impl crate::disk::Gupax {
 			ui.separator();
 			if ui.add_sized([width, height], SelectableLabel::new(self.ratio == None, "No lock")).on_hover_text(GUPAX_NO_LOCK).clicked() { self.ratio = None; }
 			if ui.add_sized([width, height], Button::new("Set")).on_hover_text(GUPAX_SET).clicked() {
-				frame.set_window_size(Vec2::new(self.selected_width as f32, self.selected_height as f32));
+				let size = Vec2::new(self.selected_width as f32, self.selected_height as f32);
+				ui.ctx().send_viewport_cmd(egui::viewport::ViewportCommand::InnerSize(size));
 			}
 		})});
 	}

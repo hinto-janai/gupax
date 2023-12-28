@@ -33,10 +33,12 @@ benri = "0.1.12"
 bytes = "1.4.0"
 dirs = "5.0.1"
 #--------------------------------------------------------------------------------
-egui = "0.19.0"
-egui_extras = { version = "0.19.0", features = ["image"] }
+egui = "0.24.1"
+egui_extras = { version = "0.24.1", features = ["image"] }
+## 2023-12-28: https://github.com/hinto-janai/gupax/issues/68
+eframe = { version = "0.24.1", default-features = false, features = ["glow"] }
 
-## Update 2023-Feb-06: The below gets fixed by using the [wgpu] backend instead of [glow]
+## 2023-02-06: The below gets fixed by using the [wgpu] backend instead of [glow]
 ## It also fixes crashes on CPU-based graphics. Only used for Windows.
 ## Using [wgpu] actually crashes macOS (fixed in 0.20.x though).
 
@@ -79,8 +81,6 @@ strip-ansi-escapes = "0.2.0"
 tar = "0.4.38"
 flate2 = "1.0"
 sudo = "0.6.0"
-## [glow] backend for macOS/Linux.
-eframe = { version = "0.19.0", default-features = false, features = ["glow"] }
 
 # macOS
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -105,7 +105,6 @@ tls-api-native-tls = "0.9.0"
 [target.'cfg(windows)'.dependencies]
 zip = "0.6.6"
 is_elevated = "0.1.2"
-eframe = { version = "0.19.0", default-features = false, features = ["glow"] }
 
 # For Windows build (icon)
 [target.'cfg(windows)'.build-dependencies]
