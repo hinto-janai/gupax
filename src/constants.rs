@@ -434,7 +434,7 @@ pub static VISUALS: Lazy<Visuals> = Lazy::new(|| {
 			fg_stroke:    Stroke::new(1.0, Color32::from_gray(140)), // normal text color
 			rounding:     Rounding::same(10.0),
 			expansion:    0.0,
-			weak_bg_fill: Color32::from_gray(27),
+			weak_bg_fill: BG,
 		},
 		inactive: WidgetVisuals {
 			bg_fill:      Color32::from_gray(50),
@@ -442,7 +442,7 @@ pub static VISUALS: Lazy<Visuals> = Lazy::new(|| {
 			fg_stroke:    Stroke::new(1.0, Color32::from_gray(180)), // button text
 			rounding:     Rounding::same(10.0),
 			expansion:    0.0,
-			weak_bg_fill: Color32::from_gray(27),
+			weak_bg_fill: Color32::from_gray(50),
 		},
 		hovered: WidgetVisuals {
 			bg_fill:      Color32::from_gray(80),
@@ -450,7 +450,7 @@ pub static VISUALS: Lazy<Visuals> = Lazy::new(|| {
 			fg_stroke:    Stroke::new(1.5, Color32::from_gray(240)),
 			rounding:     Rounding::same(10.0),
 			expansion:    1.0,
-			weak_bg_fill: Color32::from_gray(27),
+			weak_bg_fill: Color32::from_gray(80),
 		},
 		active: WidgetVisuals {
 			bg_fill:      Color32::from_gray(55),
@@ -458,7 +458,7 @@ pub static VISUALS: Lazy<Visuals> = Lazy::new(|| {
 			fg_stroke:    Stroke::new(2.0, Color32::WHITE),
 			rounding:     Rounding::same(10.0),
 			expansion:    1.0,
-			weak_bg_fill: Color32::from_gray(27),
+			weak_bg_fill: Color32::from_gray(120),
 		},
 		open: WidgetVisuals {
 			bg_fill:      Color32::from_gray(27),
@@ -466,7 +466,7 @@ pub static VISUALS: Lazy<Visuals> = Lazy::new(|| {
 			fg_stroke:    Stroke::new(1.0, Color32::from_gray(210)),
 			rounding:     Rounding::same(10.0),
 			expansion:    0.0,
-			weak_bg_fill: Color32::from_gray(27),
+			weak_bg_fill: Color32::from_gray(120),
 		},
 	};
 
