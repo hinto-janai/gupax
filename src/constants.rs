@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const GUPAX_VERSION:  &str = concat!("v", env!("CARGO_PKG_VERSION")); // e.g: v1.0.0
-pub const P2POOL_VERSION: &str = "v3.9";
+pub const P2POOL_VERSION: &str = "v3.10";
 pub const XMRIG_VERSION:  &str = "v6.21.0";
 pub const COMMIT:         &str = env!("COMMIT"); // set in build.rs
 // e.g: Gupax_v1_0_0

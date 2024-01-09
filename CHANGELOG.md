@@ -5,7 +5,7 @@
 * P2Pool appearing green (synchronized) on false-positives ([#75](https://github.com/hinto-janai/gupax/pull/75))
 
 ## Bundled Versions
-* [`P2Pool v3.9`](https://github.com/SChernykh/p2pool/releases/tag/v3.9)
+* [`P2Pool v3.10`](https://github.com/SChernykh/p2pool/releases/tag/v3.10)
 * [`XMRig v6.21.0`](https://github.com/xmrig/xmrig/releases/tag/v6.21.0)
 
 
