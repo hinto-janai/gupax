@@ -1930,9 +1930,12 @@ impl PubXmrigApi {
 	) {
 		// 1. Take the process's current output buffer and combine it with Pub (if not empty)
 		let mut output_pub = lock!(output_pub);
-		if !output_pub.is_empty() {
+
+		{
 			let mut public = lock!(public);
-			public.output.push_str(&std::mem::take(&mut *output_pub));
+			if !output_pub.is_empty() {
+				public.output.push_str(&std::mem::take(&mut *output_pub));
+			}
 			// Update uptime
 			public.uptime = HumanTime::into_human(elapsed);
 		}
