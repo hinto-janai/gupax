@@ -1,5 +1,17 @@
+# v1.3.5
+## Fixes
+* Fix flickering `0s` XMRig uptime (thanks @Tomoyukiryu & @Burner8 [#77](https://github.com/hinto-janai/gupax/pull/77))
+
+## Bundled Versions
+* [`P2Pool v3.10`](https://github.com/SChernykh/p2pool/releases/tag/v3.10)
+* [`XMRig v6.21.0`](https://github.com/xmrig/xmrig/releases/tag/v6.21.0)
+
+
+---
+
+
 # v1.3.4
-# Fixes
+## Fixes
 * Domain parsing is more relaxed, allows subdomains with longer TLDs (thanks @soupslurpr [#67](https://github.com/hinto-janai/gupax/pull/67))
 * ANSI escape sequences in Windows P2Pool/XMRig terminal output ([#71](https://github.com/hinto-janai/gupax/pull/71))
 * P2Pool appearing green (synchronized) on false-positives ([#75](https://github.com/hinto-janai/gupax/pull/75))
