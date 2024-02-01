@@ -575,7 +575,6 @@ The nodes with the most consistent uptime are used.
 | node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
 | p2pool.uk                        | 🇬🇧 GB - England                   | 18089    | 18084       |
 | home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
-| ru.poiuty.com                    | 🇷🇺 RU - Kuzbass                   | 18081    | 18084       |
 | xmr.support                      | 🇺🇸 US - California                | 18081    | 18083       |
 | sf.xmr.support                   | 🇺🇸 US - California                | 18081    | 18083       |
 | xmrbandwagon.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
@@ -583,7 +582,6 @@ The nodes with the most consistent uptime are used.
 | xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
 | moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
 | node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
-| bunkernet.ddns.net               | 🇿🇦 ZA - Western Cape              | 18089    | 18084       |
 
 ## Build
 ### General Info
