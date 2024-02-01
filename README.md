@@ -562,26 +562,27 @@ For transparency, here's all the connections Gupax makes:
 ## Remote Monero Nodes
 These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab.
 
-The nodes with the most consistent uptime are used.
-
-| IP/Domain                        | Location                          | RPC Port | ZMQ Port    |
-|----------------------------------|-----------------------------------|----------|-------------|
-| monero.10z.com.ar                | 🇦🇷 AR - Buenos Aires F.D.         | 18089    | 18084       |
-| monero1.heitechsoft.com          | 🇨🇦 CA - Ontario                   | 18081    | 18084       |
-| node.monerodevs.org              | 🇨🇦 CA - Quebec                    | 18089    | 18084       |
-| p2pmd.xmrvsbeast.com             | 🇩🇪 DE - Hesse                     | 18081    | 18083       |
-| node.cryptocano.de               | 🇩🇪 DE - Lower Saxony              | 18089    | 18083       |
-| fbx.tranbert.com                 | 🇫🇷 FR - Île-de-France             | 18089    | 18084       |
-| node2.monerodevs.org             | 🇫🇷 FR - Occitanie                 | 18089    | 18084       |
-| p2pool.uk                        | 🇬🇧 GB - England                   | 18089    | 18084       |
-| home.allantaylor.kiwi            | 🇳🇿 NZ - Canterbury                | 18089    | 18083       |
-| xmr.support                      | 🇺🇸 US - California                | 18081    | 18083       |
-| sf.xmr.support                   | 🇺🇸 US - California                | 18081    | 18083       |
-| xmrbandwagon.hopto.org           | 🇺🇸 US - Colorado                  | 18081    | 18084       |
-| xmr.spotlightsound.com           | 🇺🇸 US - Kansas                    | 18081    | 18084       |
-| xmrnode.facspro.net              | 🇺🇸 US - Nebraska                  | 18089    | 18084       |
-| moneronode.ddns.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
-| node.richfowler.net              | 🇺🇸 US - Pennsylvania              | 18089    | 18084       |
+| IP/Domain               | Location          | RPC Port | ZMQ Port |
+|-------------------------|-------------------|----------|----------|
+| monero.10z.com.ar       | 🇦🇷 Argentina      | 18089    | 18084    |
+| monero1.heitechsoft.com | 🇨🇦 Canada         | 18081    | 18084    |
+| node.monerodevs.org     | 🇨🇦 Canada         | 18089    | 18084    |
+| xmr3.rs.me              | 🇩🇪 Germany        | 18089    | 18084    |
+| node.cryptocano.de      | 🇩🇪 Germany        | 18089    | 18083    |
+| p2pmd.xmrvsbeast.com    | 🇩🇪 Germany        | 18081    | 18083    |
+| fbx.tranbert.com        | 🇫🇷 France         | 18089    | 18084    |
+| node2.monerodevs.org    | 🇫🇷 France         | 18089    | 18084    |
+| home.allantaylor.kiwi   | 🇳🇿 New Zealand    | 18089    | 18083    |
+| xmr1.rs.me              | 🇸🇬 Singapore      | 18089    | 18084    |
+| p2pool.uk               | 🇬🇧 United Kingdom | 18089    | 18084    |
+| xmr2.rs.me              | 🇺🇸 United States  | 18089    | 18084    |
+| xmr.support             | 🇺🇸 United States  | 18081    | 18083    |
+| sf.xmr.support          | 🇺🇸 United States  | 18081    | 18083    |
+| xmrbandwagon.hopto.org  | 🇺🇸 United States  | 18081    | 18084    |
+| xmr.spotlightsound.com  | 🇺🇸 United States  | 18081    | 18084    |
+| xmrnode.facspro.net     | 🇺🇸 United States  | 18089    | 18084    |
+| moneronode.ddns.net     | 🇺🇸 United States  | 18089    | 18084    |
+| node.richfowler.net     | 🇺🇸 United States  | 18089    | 18084    |
 
 ## Build
 ### General Info

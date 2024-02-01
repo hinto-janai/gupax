@@ -43,9 +43,9 @@ pub const REMOTE_NODES: [(&str, &str, &str, &str); 19] = [
 	("p2pmd.xmrvsbeast.com",   "Germany",        "18081", "18083"),
 	("fbx.tranbert.com",       "France",         "18089", "18084"),
 	("node2.monerodevs.org",   "France",         "18089", "18084"),
-	("p2pool.uk",              "United Kingdom", "18089", "18084"),
 	("home.allantaylor.kiwi",  "New Zealand",    "18089", "18083"),
 	("xmr1.rs.me",             "Singapore",      "18089", "18084"),
+	("p2pool.uk",              "United Kingdom", "18089", "18084"),
 	("xmr2.rs.me",             "United States",  "18089", "18084"),
 	("xmr.support",            "United States",  "18081", "18083"),
 	("sf.xmr.support",         "United States",  "18081", "18083"),
@@ -71,7 +71,7 @@ pub const REMOTE_NODE_MAX_CHARS: usize = {
 		index += 1;
 	}
 
-	assert!(len != 0 );
+	assert!(len != 0);
 	len
 };
 
