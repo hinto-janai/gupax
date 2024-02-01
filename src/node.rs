@@ -35,28 +35,44 @@ use hyper::{
 // The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
 pub const REMOTE_NODES: [(&str, &str, &str, &str); 18] = [
-	("monero.10z.com.ar",           "AR - Buenos Aires F.D.",         "18089", "18084"),
-	("monero1.heitechsoft.com",     "CA - Ontario",                   "18081", "18084"),
-	("node.monerodevs.org",         "CA - Quebec",                    "18089", "18084"),
-	("node.cryptocano.de",          "DE - Lower Saxony",              "18089", "18083"),
-	("p2pmd.xmrvsbeast.com",        "DE - Hesse",                     "18081", "18083"),
-	("fbx.tranbert.com",            "FR - Île-de-France",             "18089", "18084"),
-	("node2.monerodevs.org",        "FR - Occitanie",                 "18089", "18084"),
-	("p2pool.uk",                   "GB - England",                   "18089", "18084"),
-	("home.allantaylor.kiwi",       "NZ - Canterbury",                "18089", "18083"),
-	("ru.poiuty.com",               "RU - Kuzbass",                   "18081", "18084"),
-	("xmr.support",                 "US - California",                "18081", "18083"),
-	("sf.xmr.support",              "US - California",                "18081", "18083"),
-	("xmrbandwagon.hopto.org",      "US - Colorado",                  "18081", "18084"),
-	("xmr.spotlightsound.com",      "US - Kansas",                    "18081", "18084"),
-	("xmrnode.facspro.net",         "US - Nebraska",                  "18089", "18084"),
-	("moneronode.ddns.net",         "US - Pennsylvania",              "18089", "18084"),
-	("node.richfowler.net",         "US - Pennsylvania",              "18089", "18084"),
-	("bunkernet.ddns.net",          "ZA - Western Cape",              "18089", "18084"),
+	("monero.10z.com.ar",      "AR - Buenos Aires F.D.", "18089", "18084"),
+	("monero1.heitechsoft.com","CA - Ontario",           "18081", "18084"),
+	("node.monerodevs.org",    "CA - Quebec",            "18089", "18084"),
+	("node.cryptocano.de",     "DE - Lower Saxony",      "18089", "18083"),
+	("p2pmd.xmrvsbeast.com",   "DE - Hesse",             "18081", "18083"),
+	("fbx.tranbert.com",       "FR - Île-de-France",     "18089", "18084"),
+	("node2.monerodevs.org",   "FR - Occitanie",         "18089", "18084"),
+	("p2pool.uk",              "GB - England",           "18089", "18084"),
+	("home.allantaylor.kiwi",  "NZ - Canterbury",        "18089", "18083"),
+	("ru.poiuty.com",          "RU - Kuzbass",           "18081", "18084"),
+	("xmr.support",            "US - California",        "18081", "18083"),
+	("sf.xmr.support",         "US - California",        "18081", "18083"),
+	("xmrbandwagon.hopto.org", "US - Colorado",          "18081", "18084"),
+	("xmr.spotlightsound.com", "US - Kansas",            "18081", "18084"),
+	("xmrnode.facspro.net",    "US - Nebraska",          "18089", "18084"),
+	("moneronode.ddns.net",    "US - Pennsylvania",      "18089", "18084"),
+	("node.richfowler.net",    "US - Pennsylvania",      "18089", "18084"),
+	("bunkernet.ddns.net",     "ZA - Western Cape",      "18089", "18084"),
 ];
 
 pub const REMOTE_NODE_LENGTH: usize = REMOTE_NODES.len();
-pub const REMOTE_NODE_MAX_CHARS: usize = 25; // monero1.heitechsoft.com
+
+// Iterate through all nodes, find the longest domain.
+pub const REMOTE_NODE_MAX_CHARS: usize = {
+	let mut len = 0;
+	let mut index = 0;
+
+	while index < REMOTE_NODE_LENGTH {
+		let (node, _, _, _) = REMOTE_NODES[index];
+		if node.len() > len {
+			len = node.len();
+		}
+		index += 1;
+	}
+
+	assert!(len != 0 );
+	len
+};
 
 pub struct RemoteNode {
 	pub ip: &'static str,
@@ -190,10 +206,10 @@ impl std::fmt::Display for RemoteNode {
 // 5000 = 4 max length
 pub fn format_ms(ms: u128) -> String {
 	match ms.to_string().len() {
-		1 => format!("{}ms   ", ms),
-		2 => format!("{}ms  ", ms),
-		3 => format!("{}ms ", ms),
-		_ => format!("{}ms", ms),
+		1 => format!("{ms}ms   "),
+		2 => format!("{ms}ms  "),
+		3 => format!("{ms}ms "),
+		_ => format!("{ms}ms"),
 	}
 }
 
@@ -203,14 +219,15 @@ pub fn format_ip_location(og_ip: &str, extra_space: bool) -> String {
 	for (ip, location, _, _) in REMOTE_NODES {
 		if og_ip == ip {
 			let ip = if extra_space { format_ip(ip) } else { ip.to_string() };
-			return format!("{} | {}", ip, location)
+			return format!("{ip} | {location}");
 		}
 	}
 	"??? | ???".to_string()
 }
 
 pub fn format_ip(ip: &str) -> String {
-	format!("{ip: >25}")
+	const _: () = if 23 != REMOTE_NODE_MAX_CHARS { panic!(); };
+	format!("{ip: >23}")
 }
 
 //---------------------------------------------------------------------------------------------------- Node data
