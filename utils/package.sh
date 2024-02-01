@@ -2,11 +2,6 @@
 
 START_TIME=$EPOCHSECONDS
 
-# Get original timezone
-OG_TIMEZONE=$(timedatectl show | grep Timezone)
-OG_TIMEZONE=${OG_TIMEZONE/Timezone=/}
-set_og_timezone() { sudo timedatectl set-timezone "$OG_TIMEZONE"; }
-
 title() { printf "\n\e[1;93m%s\e[0m\n" "============================ $1 ============================"; }
 check() {
 	local CODE=$?
@@ -14,21 +9,16 @@ check() {
 		printf "${BASH_LINENO} | %s ... \e[1;92mOK\e[0m\n" "$1"
 	else
 		printf "${BASH_LINENO} | %s ... \e[1;91mFAIL\e[0m\n" "$1"
-		set_og_timezone
 		exit $CODE
 	fi
 }
 int() {
-	printf "\n\n%s\n" "Exit detected, resetting timezone to [${OG_TIMEZONE}]"
-	set_og_timezone
 	exit 1
 }
 
 trap 'int' INT
 
-# Check sudo (for changing timezone)
 title "Basic checks"
-sudo -v; check "sudo"
 # Check for needed files
 [[ -d skel ]]; check "skel"
 [[ -f skel/CHANGELOG.md ]]; check "skel/CHANGELOG.md"
@@ -60,11 +50,7 @@ title "Windows folder check"
 
 # Get random date for tar/zip
 title "RNG Date"
-RNG=$((EPOCHSECONDS-RANDOM*4)); check "RNG ... $RNG"
 DATE=$(date -d @${RNG}); check "DATE ... $DATE"
-RNG_TIMEZONE=$(timedatectl list-timezones | sed -n "$((RANDOM%$(timedatectl list-timezones | wc -l)))p"); check "RNG_TIMEZONE ... $RNG_TIMEZONE"
-# Set random timezone
-sudo timedatectl set-timezone "$RNG_TIMEZONE"; check "set rng timezone"
 
 # Tar Linux Bundle
 title "Tar Linux"
@@ -138,5 +124,4 @@ check "Changelog into clipboard"
 
 # Reset timezone
 title "End"
-set_og_timezone; check "Reset timezone"
 printf "\n%s\n" "package.sh ... Took [$((EPOCHSECONDS-START_TIME))] seconds ... OK!"
