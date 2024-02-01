@@ -1,3 +1,18 @@
+# v1.3.6
+## Changes
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Removed `bunkernet.ddns.net`
+	- Removed `ru.poiuty.com`
+	- Added `xmr{1,2,3}.rs.me` (thanks @SChernykh [#80](https://github.com/hinto-janai/gupax/pull/80))
+
+## Bundled Versions
+* [`P2Pool v3.10`](https://github.com/SChernykh/p2pool/releases/tag/v3.10)
+* [`XMRig v6.21.0`](https://github.com/xmrig/xmrig/releases/tag/v6.21.0)
+
+
+---
+
+
 # v1.3.5
 ## Fixes
 * Fix flickering `0s` XMRig uptime (thanks @Tomoyukiryu & @Burner8 [#77](https://github.com/hinto-janai/gupax/pull/77))
