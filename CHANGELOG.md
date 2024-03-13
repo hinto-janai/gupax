@@ -3,6 +3,7 @@
 * [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
 	- Removed `bunkernet.ddns.net`
 	- Removed `ru.poiuty.com`
+	- Removed `moneronode.ddns.net`
 	- Added `xmr{1,2,3}.rs.me` (thanks @SChernykh [#80](https://github.com/hinto-janai/gupax/pull/80))
 
 ## Bundled Versions
