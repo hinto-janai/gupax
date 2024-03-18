@@ -36,7 +36,11 @@ dirs = "5.0.1"
 egui = "0.24.1"
 egui_extras = { version = "0.24.1", features = ["image"] }
 ## 2023-12-28: https://github.com/hinto-janai/gupax/issues/68
-eframe = { version = "0.24.1", default-features = false, features = ["glow"] }
+##
+## 2024-03-18: Both `glow` and `wgpu` seem to crash:
+## <https://github.com/hinto-janai/gupax/issues/84>
+## `wgpu` seems to crash on less computers though so...
+eframe = { version = "0.24.1", default-features = false, features = ["wgpu"] }
 
 ## 2023-02-06: The below gets fixed by using the [wgpu] backend instead of [glow]
 ## It also fixes crashes on CPU-based graphics. Only used for Windows.
@@ -99,7 +103,6 @@ lzma-sys = { version = "0.1.20", features = ["static"] }
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 tls-api-native-tls = "0.9.0"
-## [wgpu] backend
 
 # Windows dependencies
 [target.'cfg(windows)'.dependencies]
