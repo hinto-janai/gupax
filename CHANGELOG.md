@@ -6,6 +6,9 @@
 	- Removed `bunkernet.ddns.net`
 	- Removed `ru.poiuty.com`
 
+## Fixes
+- Non-responding nodes not being sorted by ping speed
+
 ## Bundled Versions
 * [`P2Pool v3.10`](https://github.com/SChernykh/p2pool/releases/tag/v3.10)
 * [`XMRig v6.21.1`](https://github.com/xmrig/xmrig/releases/tag/v6.21.1)
