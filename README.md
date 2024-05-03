@@ -41,6 +41,7 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 	- [Windows](#Windows)
 * [License](#License)
 * [FAQ](#FAQ)
+	- [System requirements](#system-requirements)
 	- [Where are updates downloaded from?](#where-are-updates-downloaded-from)
 	- [P2Pool connection errors](#p2pool-connection-errors)
 	- [Can I quit mid-update?](#can-i-quit-mid-update)
@@ -669,6 +670,19 @@ The GUI library Gupax uses is [egui](https://github.com/emilk/egui). It is licen
 [Gupax](https://github.com/hinto-janai/gupax/blob/master/LICENSE), [P2Pool](https://github.com/SChernykh/p2pool/blob/master/LICENSE), and [XMRig](https://github.com/xmrig/xmrig/blob/master/LICENSE) are licensed under the GNU General Public License v3.0.
 
 ## FAQ
+### System requirements
+Gupax may not run on machines with:
+- a deprecated OS (Windows 7, Ubuntu 18.04, etc)
+- an older CPU (<2010)
+
+Anything more recent than this should be okay.
+
+---
+
+Gupax only supports ARM CPUs for macOS.
+
+Windows and Linux are not supported as `XMRig` does not provide official binaries. This means machines like Raspberry Pis will not work.
+
 ### Where are updates downloaded from?
 The latest versions are downloaded using GitHub's API.
 * Gupax [`https://github.com/hinto-janai/gupax`](https://github.com/hinto-janai/gupax)
