@@ -32,8 +32,10 @@ use anyhow::{anyhow, Error};
 use arti_client::TorClient;
 use arti_hyper::*;
 use hyper::{
+    body::Body,
+    client::Client,
     header::{HeaderValue, LOCATION},
-    Body, Client, Request,
+    Request,
 };
 use log::*;
 use rand::distributions::Alphanumeric;
@@ -172,7 +174,6 @@ const VALID_P2POOL: [&str; 4] = [
 // Some fake Curl/Wget user-agents because GitHub API requires one and a Tor browser
 // user-agent might be fingerprintable without all the associated headers.
 const FAKE_USER_AGENT: [&str; 25] = [
-    "Wget/1.16.3",
     "Wget/1.17",
     "Wget/1.17.1",
     "Wget/1.18",
@@ -192,11 +193,12 @@ const FAKE_USER_AGENT: [&str; 25] = [
     "Wget/1.21.2",
     "Wget/1.21.3",
     "Wget/1.21.4",
-    "curl/7.65.3",
-    "curl/7.66.0",
-    "curl/7.67.0",
-    "curl/7.68.0",
+    "Wget/1.24.5",
     "curl/8.4.0",
+    "curl/8.5.0",
+    "curl/8.6.0",
+    "curl/8.7.0",
+    "curl/8.7.1",
 ];
 
 const MSG_NONE: &str = "No update in progress";

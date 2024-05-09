@@ -482,8 +482,8 @@ pub static VISUALS: Lazy<Visuals> = Lazy::new(|| {
         warn_fg_color: Color32::from_rgb(255, 143, 0), // orange
         error_fg_color: Color32::from_rgb(255, 0, 0),  // red
         window_rounding: Rounding::same(6.0),
-        window_shadow: Shadow::big_dark(),
-        popup_shadow: Shadow::small_dark(),
+        // window_shadow: Shadow::big_dark(),
+        // popup_shadow: Shadow::small_dark(),
         ..Visuals::dark()
     }
 });

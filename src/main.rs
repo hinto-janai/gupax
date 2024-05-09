@@ -1659,7 +1659,7 @@ impl eframe::App for App {
         // It incrementally becomes more opaque until [self.alpha] >= 250, when we just switch to pure black (no alpha).
         // When black, we're safe to [init_text_styles()], and then incrementally go transparent, until we remove the layer.
         if self.resizing {
-            egui::Area::new("resize_layer")
+            egui::Area::new("resize_layer".into())
                 .order(egui::Order::Foreground)
                 .anchor(egui::Align2::CENTER_CENTER, (0.0, 0.0))
                 .show(ctx, |ui| {
@@ -1693,7 +1693,7 @@ impl eframe::App for App {
                     }
                 });
         } else if self.alpha != 0 {
-            egui::Area::new("resize_layer")
+            egui::Area::new("resize_layer".into())
                 .order(egui::Order::Foreground)
                 .anchor(egui::Align2::CENTER_CENTER, (0.0, 0.0))
                 .show(ctx, |ui| {
