@@ -15,135 +15,178 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-	Regexes,
-	constants::*,
-	disk::*,
-	Process,
-	PubXmrigApi,
-	macros::*,
-};
+use crate::regex::REGEXES;
+use crate::{constants::*, disk::*, macros::*, Process, PubXmrigApi, Regexes};
 use egui::{
-	TextEdit,SelectableLabel,ComboBox,Label,Button,RichText,Slider,Checkbox,
-	TextStyle::*,
+    Button, Checkbox, ComboBox, Label, RichText, SelectableLabel, Slider, TextEdit, TextStyle::*,
 };
-use std::{
-	sync::{Arc,Mutex},
-};
-use regex::Regex;
 use log::*;
-use crate::regex::{
-	REGEXES,
-};
+use regex::Regex;
+use std::sync::{Arc, Mutex};
 
 impl crate::disk::Xmrig {
-#[inline(always)] // called once
-pub fn show(
-	&mut self,
-	pool_vec: &mut Vec<(String, Pool)>,
-	process: &Arc<Mutex<Process>>,
-	api: &Arc<Mutex<PubXmrigApi>>,
-	buffer: &mut String,
-	width: f32,
-	height: f32,
-	_ctx: &egui::Context,
-	ui: &mut egui::Ui
-) {
-	let text_edit = height / 25.0;
-	//---------------------------------------------------------------------------------------------------- [Simple] Console
-	debug!("XMRig Tab | Rendering [Console]");
-	ui.group(|ui| {
-	if self.simple {
-		let height = height / 1.5;
-		let width = width - SPACE;
-		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
-			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
-			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
-				ui.add_sized([width, height], TextEdit::multiline(&mut lock!(api).output.as_str()));
-			});
-		});
-	//---------------------------------------------------------------------------------------------------- [Advanced] Console
-	} else {
-		let height = height / 2.8;
-		let width = width - SPACE;
-		egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
-			ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
-			egui::ScrollArea::vertical().stick_to_bottom(true).max_width(width).max_height(height).auto_shrink([false; 2]).show_viewport(ui, |ui, _| {
-				ui.add_sized([width, height], TextEdit::multiline(&mut lock!(api).output.as_str()));
-			});
-		});
-		ui.separator();
-		let response = ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(buffer), r#"Commands: [h]ashrate, [p]ause, [r]esume, re[s]ults, [c]onnection"#)).on_hover_text(XMRIG_INPUT);
-		// If the user pressed enter, dump buffer contents into the process STDIN
-		if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-			response.request_focus();                  // Get focus back
-			let buffer = std::mem::take(buffer);       // Take buffer
-			let mut process = lock!(process); // Lock
-			if process.is_alive() { process.input.push(buffer); } // Push only if alive
-		}
-	}
-	});
+    #[inline(always)] // called once
+    pub fn show(
+        &mut self,
+        pool_vec: &mut Vec<(String, Pool)>,
+        process: &Arc<Mutex<Process>>,
+        api: &Arc<Mutex<PubXmrigApi>>,
+        buffer: &mut String,
+        width: f32,
+        height: f32,
+        _ctx: &egui::Context,
+        ui: &mut egui::Ui,
+    ) {
+        let text_edit = height / 25.0;
+        //---------------------------------------------------------------------------------------------------- [Simple] Console
+        debug!("XMRig Tab | Rendering [Console]");
+        ui.group(|ui| {
+            if self.simple {
+                let height = height / 1.5;
+                let width = width - SPACE;
+                egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
+                    ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
+                    egui::ScrollArea::vertical()
+                        .stick_to_bottom(true)
+                        .max_width(width)
+                        .max_height(height)
+                        .auto_shrink([false; 2])
+                        .show_viewport(ui, |ui, _| {
+                            ui.add_sized(
+                                [width, height],
+                                TextEdit::multiline(&mut lock!(api).output.as_str()),
+                            );
+                        });
+                });
+            //---------------------------------------------------------------------------------------------------- [Advanced] Console
+            } else {
+                let height = height / 2.8;
+                let width = width - SPACE;
+                egui::Frame::none().fill(DARK_GRAY).show(ui, |ui| {
+                    ui.style_mut().override_text_style = Some(Name("MonospaceSmall".into()));
+                    egui::ScrollArea::vertical()
+                        .stick_to_bottom(true)
+                        .max_width(width)
+                        .max_height(height)
+                        .auto_shrink([false; 2])
+                        .show_viewport(ui, |ui, _| {
+                            ui.add_sized(
+                                [width, height],
+                                TextEdit::multiline(&mut lock!(api).output.as_str()),
+                            );
+                        });
+                });
+                ui.separator();
+                let response = ui
+                    .add_sized(
+                        [width, text_edit],
+                        TextEdit::hint_text(
+                            TextEdit::singleline(buffer),
+                            r#"Commands: [h]ashrate, [p]ause, [r]esume, re[s]ults, [c]onnection"#,
+                        ),
+                    )
+                    .on_hover_text(XMRIG_INPUT);
+                // If the user pressed enter, dump buffer contents into the process STDIN
+                if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    response.request_focus(); // Get focus back
+                    let buffer = std::mem::take(buffer); // Take buffer
+                    let mut process = lock!(process); // Lock
+                    if process.is_alive() {
+                        process.input.push(buffer);
+                    } // Push only if alive
+                }
+            }
+        });
 
-	//---------------------------------------------------------------------------------------------------- Arguments
-	if !self.simple {
-		debug!("XMRig Tab | Rendering [Arguments]");
-		ui.group(|ui| { ui.horizontal(|ui| {
-			let width = (width/10.0) - SPACE;
-			ui.add_sized([width, text_edit], Label::new("Command arguments:"));
-			ui.add_sized([ui.available_width(), text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.arguments), r#"--url <...> --user <...> --config <...>"#)).on_hover_text(XMRIG_ARGUMENTS);
-			self.arguments.truncate(1024);
-		})});
-		ui.set_enabled(self.arguments.is_empty());
-	//---------------------------------------------------------------------------------------------------- Address
-		debug!("XMRig Tab | Rendering [Address]");
-		ui.group(|ui| {
-			let width = width - SPACE;
-			ui.spacing_mut().text_edit_width = (width)-(SPACE*3.0);
-			let text;
-			let color;
-			let len = format!("{:02}", self.address.len());
-			if self.address.is_empty() {
-				text = format!("Monero Address [{}/95] ➖", len);
-				color = LIGHT_GRAY;
-			} else if Regexes::addr_ok(&self.address) {
-				text = format!("Monero Address [{}/95] ✔", len);
-				color = GREEN;
-			} else {
-				text = format!("Monero Address [{}/95] ❌", len);
-				color = RED;
-			}
-			ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
-			ui.add_sized([width, text_edit], TextEdit::hint_text(TextEdit::singleline(&mut self.address), "4...")).on_hover_text(XMRIG_ADDRESS);
-			self.address.truncate(95);
-		});
-	}
+        //---------------------------------------------------------------------------------------------------- Arguments
+        if !self.simple {
+            debug!("XMRig Tab | Rendering [Arguments]");
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    let width = (width / 10.0) - SPACE;
+                    ui.add_sized([width, text_edit], Label::new("Command arguments:"));
+                    ui.add_sized(
+                        [ui.available_width(), text_edit],
+                        TextEdit::hint_text(
+                            TextEdit::singleline(&mut self.arguments),
+                            r#"--url <...> --user <...> --config <...>"#,
+                        ),
+                    )
+                    .on_hover_text(XMRIG_ARGUMENTS);
+                    self.arguments.truncate(1024);
+                })
+            });
+            ui.set_enabled(self.arguments.is_empty());
+            //---------------------------------------------------------------------------------------------------- Address
+            debug!("XMRig Tab | Rendering [Address]");
+            ui.group(|ui| {
+                let width = width - SPACE;
+                ui.spacing_mut().text_edit_width = (width) - (SPACE * 3.0);
+                let text;
+                let color;
+                let len = format!("{:02}", self.address.len());
+                if self.address.is_empty() {
+                    text = format!("Monero Address [{}/95] ➖", len);
+                    color = LIGHT_GRAY;
+                } else if Regexes::addr_ok(&self.address) {
+                    text = format!("Monero Address [{}/95] ✔", len);
+                    color = GREEN;
+                } else {
+                    text = format!("Monero Address [{}/95] ❌", len);
+                    color = RED;
+                }
+                ui.add_sized(
+                    [width, text_edit],
+                    Label::new(RichText::new(text).color(color)),
+                );
+                ui.add_sized(
+                    [width, text_edit],
+                    TextEdit::hint_text(TextEdit::singleline(&mut self.address), "4..."),
+                )
+                .on_hover_text(XMRIG_ADDRESS);
+                self.address.truncate(95);
+            });
+        }
 
-	//---------------------------------------------------------------------------------------------------- Threads
-	if self.simple { ui.add_space(SPACE); }
-	debug!("XMRig Tab | Rendering [Threads]");
-	ui.vertical(|ui| {
-		let width = width / 10.0;
-		let text_width = width * 2.4;
-		ui.spacing_mut().slider_width = width * 6.5;
-		ui.spacing_mut().icon_width = width / 25.0;
-		ui.horizontal(|ui| {
-			ui.add_sized([text_width, text_edit], Label::new(format!("Threads [1-{}]:", self.max_threads)));
-			ui.add_sized([width, text_edit], Slider::new(&mut self.current_threads, 1..=self.max_threads)).on_hover_text(XMRIG_THREADS);
-		});
-		#[cfg(not(target_os = "linux"))] // Pause on active isn't supported on Linux
-		ui.horizontal(|ui| {
-			ui.add_sized([text_width, text_edit], Label::new(format!("Pause on active [0-255]:")));
-			ui.add_sized([width, text_edit], Slider::new(&mut self.pause, 0..=255)).on_hover_text(format!("{} [{}] seconds.", XMRIG_PAUSE, self.pause));
-		});
-	});
+        //---------------------------------------------------------------------------------------------------- Threads
+        if self.simple {
+            ui.add_space(SPACE);
+        }
+        debug!("XMRig Tab | Rendering [Threads]");
+        ui.vertical(|ui| {
+            let width = width / 10.0;
+            let text_width = width * 2.4;
+            ui.spacing_mut().slider_width = width * 6.5;
+            ui.spacing_mut().icon_width = width / 25.0;
+            ui.horizontal(|ui| {
+                ui.add_sized(
+                    [text_width, text_edit],
+                    Label::new(format!("Threads [1-{}]:", self.max_threads)),
+                );
+                ui.add_sized(
+                    [width, text_edit],
+                    Slider::new(&mut self.current_threads, 1..=self.max_threads),
+                )
+                .on_hover_text(XMRIG_THREADS);
+            });
+            #[cfg(not(target_os = "linux"))] // Pause on active isn't supported on Linux
+            ui.horizontal(|ui| {
+                ui.add_sized(
+                    [text_width, text_edit],
+                    Label::new(format!("Pause on active [0-255]:")),
+                );
+                ui.add_sized([width, text_edit], Slider::new(&mut self.pause, 0..=255))
+                    .on_hover_text(format!("{} [{}] seconds.", XMRIG_PAUSE, self.pause));
+            });
+        });
 
-	//---------------------------------------------------------------------------------------------------- Simple
-	if !self.simple {
-		debug!("XMRig Tab | Rendering [Pool List] elements");
-		let width = ui.available_width() - 10.0;
-		let mut incorrect_input = false; // This will disable [Add/Delete] on bad input
-		// [Pool IP/Port]
-		ui.horizontal(|ui| {
+        //---------------------------------------------------------------------------------------------------- Simple
+        if !self.simple {
+            debug!("XMRig Tab | Rendering [Pool List] elements");
+            let width = ui.available_width() - 10.0;
+            let mut incorrect_input = false; // This will disable [Add/Delete] on bad input
+                                             // [Pool IP/Port]
+            ui.horizontal(|ui| {
 		ui.group(|ui| {
 			let width = width/10.0;
 			ui.vertical(|ui| {
@@ -353,77 +396,97 @@ pub fn show(
 		});
 		});
 		});
-		ui.add_space(5.0);
+            ui.add_space(5.0);
 
-		debug!("XMRig Tab | Rendering [API] TextEdits");
-		// [HTTP API IP/Port]
-		ui.group(|ui| { ui.horizontal(|ui| {
-		ui.vertical(|ui| {
-			let width = width/10.0;
-			ui.spacing_mut().text_edit_width = width*2.39;
-			// HTTP API
-			ui.horizontal(|ui| {
-				let text;
-				let color;
-				let len = format!("{:03}", self.api_ip.len());
-				if self.api_ip.is_empty() {
-					text = format!("HTTP API IP   [{}/255]➖", len);
-					color = LIGHT_GRAY;
-					incorrect_input = true;
-				} else if self.api_ip == "localhost" || REGEXES.ipv4.is_match(&self.api_ip) || REGEXES.domain.is_match(&self.api_ip) {
-					text = format!("HTTP API IP   [{}/255]✔", len);
-					color = GREEN;
-				} else {
-					text = format!("HTTP API IP   [{}/255]❌", len);
-					color = RED;
-					incorrect_input = true;
-				}
-				ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
-				ui.text_edit_singleline(&mut self.api_ip).on_hover_text(XMRIG_API_IP);
-				self.api_ip.truncate(255);
-			});
-			ui.horizontal(|ui| {
-				let text;
-				let color;
-				let len = self.api_port.len();
-				if self.api_port.is_empty() {
-					text = format!("HTTP API Port [  {}/5  ]➖", len);
-					color = LIGHT_GRAY;
-					incorrect_input = true;
-				} else if REGEXES.port.is_match(&self.api_port) {
-					text = format!("HTTP API Port [  {}/5  ]✔", len);
-					color = GREEN;
-				} else {
-					text = format!("HTTP API Port [  {}/5  ]❌", len);
-					color = RED;
-					incorrect_input = true;
-				}
-				ui.add_sized([width, text_edit], Label::new(RichText::new(text).color(color)));
-				ui.text_edit_singleline(&mut self.api_port).on_hover_text(XMRIG_API_PORT);
-				self.api_port.truncate(5);
-			});
-		});
+            debug!("XMRig Tab | Rendering [API] TextEdits");
+            // [HTTP API IP/Port]
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        let width = width / 10.0;
+                        ui.spacing_mut().text_edit_width = width * 2.39;
+                        // HTTP API
+                        ui.horizontal(|ui| {
+                            let text;
+                            let color;
+                            let len = format!("{:03}", self.api_ip.len());
+                            if self.api_ip.is_empty() {
+                                text = format!("HTTP API IP   [{}/255]➖", len);
+                                color = LIGHT_GRAY;
+                                incorrect_input = true;
+                            } else if self.api_ip == "localhost"
+                                || REGEXES.ipv4.is_match(&self.api_ip)
+                                || REGEXES.domain.is_match(&self.api_ip)
+                            {
+                                text = format!("HTTP API IP   [{}/255]✔", len);
+                                color = GREEN;
+                            } else {
+                                text = format!("HTTP API IP   [{}/255]❌", len);
+                                color = RED;
+                                incorrect_input = true;
+                            }
+                            ui.add_sized(
+                                [width, text_edit],
+                                Label::new(RichText::new(text).color(color)),
+                            );
+                            ui.text_edit_singleline(&mut self.api_ip)
+                                .on_hover_text(XMRIG_API_IP);
+                            self.api_ip.truncate(255);
+                        });
+                        ui.horizontal(|ui| {
+                            let text;
+                            let color;
+                            let len = self.api_port.len();
+                            if self.api_port.is_empty() {
+                                text = format!("HTTP API Port [  {}/5  ]➖", len);
+                                color = LIGHT_GRAY;
+                                incorrect_input = true;
+                            } else if REGEXES.port.is_match(&self.api_port) {
+                                text = format!("HTTP API Port [  {}/5  ]✔", len);
+                                color = GREEN;
+                            } else {
+                                text = format!("HTTP API Port [  {}/5  ]❌", len);
+                                color = RED;
+                                incorrect_input = true;
+                            }
+                            ui.add_sized(
+                                [width, text_edit],
+                                Label::new(RichText::new(text).color(color)),
+                            );
+                            ui.text_edit_singleline(&mut self.api_port)
+                                .on_hover_text(XMRIG_API_PORT);
+                            self.api_port.truncate(5);
+                        });
+                    });
 
-		ui.separator();
+                    ui.separator();
 
-		debug!("XMRig Tab | Rendering [TLS/Keepalive] buttons");
-		ui.vertical(|ui| {
-			// TLS/Keepalive
-			ui.horizontal(|ui| {
-				let width = (ui.available_width()/2.0)-11.0;
-				let height = text_edit*2.0;
-//				let mut style = (*ctx.style()).clone();
-//				style.spacing.icon_width_inner = width / 8.0;
-//				style.spacing.icon_width = width / 6.0;
-//				style.spacing.icon_spacing = 20.0;
-//				ctx.set_style(style);
-				ui.add_sized([width, height], Checkbox::new(&mut self.tls, "TLS Connection")).on_hover_text(XMRIG_TLS);
-				ui.separator();
-				ui.add_sized([width, height], Checkbox::new(&mut self.keepalive, "Keepalive")).on_hover_text(XMRIG_KEEPALIVE);
-			});
-		});
-		});
-		});
-	}
-	}
+                    debug!("XMRig Tab | Rendering [TLS/Keepalive] buttons");
+                    ui.vertical(|ui| {
+                        // TLS/Keepalive
+                        ui.horizontal(|ui| {
+                            let width = (ui.available_width() / 2.0) - 11.0;
+                            let height = text_edit * 2.0;
+                            //				let mut style = (*ctx.style()).clone();
+                            //				style.spacing.icon_width_inner = width / 8.0;
+                            //				style.spacing.icon_width = width / 6.0;
+                            //				style.spacing.icon_spacing = 20.0;
+                            //				ctx.set_style(style);
+                            ui.add_sized(
+                                [width, height],
+                                Checkbox::new(&mut self.tls, "TLS Connection"),
+                            )
+                            .on_hover_text(XMRIG_TLS);
+                            ui.separator();
+                            ui.add_sized(
+                                [width, height],
+                                Checkbox::new(&mut self.keepalive, "Keepalive"),
+                            )
+                            .on_hover_text(XMRIG_KEEPALIVE);
+                        });
+                    });
+                });
+            });
+        }
+    }
 }
