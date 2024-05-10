@@ -162,8 +162,12 @@ pub const STATUS_GUPAX_SYSTEM_CPU_MODEL: &str =
     "The detected model of your system's CPU and its current frequency";
 //--
 pub const STATUS_P2POOL_UPTIME: &str = "How long P2Pool has been online";
-pub const STATUS_P2POOL_PAYOUTS:     &str = "The total amount of payouts received in this instance of P2Pool and an extrapolated estimate of how many you will receive. Warning: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
-pub const STATUS_P2POOL_XMR:         &str = "The total amount of XMR mined in this instance of P2Pool and an extrapolated estimate of how many you will mine in the future. Warning: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
+pub const STATUS_P2POOL_PAYOUTS:     &str = "The total amount of payouts received in this instance of P2Pool and an extrapolated estimate of how many you will receive.
+
+Note: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
+pub const STATUS_P2POOL_XMR:         &str = "The total amount of XMR mined in this instance of P2Pool and an extrapolated estimate of how many you will mine in the future.
+
+Note: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
 pub const STATUS_P2POOL_HASHRATE:    &str = "The total amount of hashrate your P2Pool has pointed at it in 15 minute, 1 hour, and 24 hour averages";
 pub const STATUS_P2POOL_SHARES: &str = "The total amount of shares found on P2Pool";
 pub const STATUS_P2POOL_EFFORT: &str =
@@ -250,7 +254,9 @@ pub const GUPAX_UP_TO_DATE: &str = "Gupax is up-to-date";
 #[cfg(not(target_os = "macos"))]
 pub const GUPAX_UPDATE_VIA_TOR:   &str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
 #[cfg(target_os = "macos")] // Arti library has issues on macOS
-pub const GUPAX_UPDATE_VIA_TOR:   &str = "WARNING: This option is unstable on macOS. Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required";
+pub const GUPAX_UPDATE_VIA_TOR:   &str = "Update through the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required.
+
+Note: This option is unstable on macOS.";
 pub const GUPAX_ASK_BEFORE_QUIT: &str = "Ask before quitting Gupax";
 pub const GUPAX_SAVE_BEFORE_QUIT: &str = "Automatically save any changed settings before quitting";
 pub const GUPAX_AUTO_P2POOL:      &str = "Automatically start P2Pool on Gupax startup. If you are using [P2Pool Simple], this will NOT wait for your [Auto-Ping] to finish, it will start P2Pool on the pool you already have selected. This option will fail if your P2Pool settings aren't valid!";
@@ -307,18 +313,18 @@ pub const P2POOL_SELECT_LAST: &str = "Select the previous remote Monero node";
 pub const P2POOL_SELECT_NEXT: &str = "Select the next remote Monero node";
 pub const P2POOL_PING: &str = "Ping the built-in remote Monero nodes";
 pub const P2POOL_ADDRESS:                &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
-pub const P2POOL_COMMUNITY_NODE_WARNING: &str = r#"TL;DR: Run & use your own Monero Node.
+pub const P2POOL_COMMUNITY_NODE_WARNING: &str = r#"--- Run and use your own Monero node ---
 
-Using a Remote Monero Node is convenient but comes at the cost of privacy and reliability.
+Using a remote Monero node is convenient but comes at the cost of privacy and reliability.
 
 You may encounter connection issues with remote nodes which may cause mining performance loss! Late info from laggy nodes will cause your mining jobs to start later than they should.
 
-Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently 170GB). If you have the disk space, consider using the [Advanced] tab and connecting to your own Monero node.
+Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently ~170GB). If you have the disk space, consider using the [Advanced] tab and connecting to your own Monero node.
 
 For a simple guide, see the [Running a Local Monero Node] section on Gupax's GitHub by clicking this message."#;
 
 pub const P2POOL_INPUT: &str = "Send a command to P2Pool";
-pub const P2POOL_ARGUMENTS: &str = r#"WARNING: Use [--no-color] and make sure to set [--data-api <PATH>] & [--local-api] so that the [Status] tab can work!
+pub const P2POOL_ARGUMENTS: &str = r#"Note: [--no-color] & [--data-api <PATH>] & [--local-api] must be set so that the [Status] tab can work!
 
 Start P2Pool with these arguments and override all below settings"#;
 pub const P2POOL_SIMPLE: &str = r#"Use simple P2Pool settings:
@@ -363,7 +369,7 @@ pub const XMRIG_ADVANCED: &str = r#"Use advanced XMRig settings:
   - TLS setting
   - Keepalive setting"#;
 pub const XMRIG_INPUT: &str = "Send a command to XMRig";
-pub const XMRIG_ARGUMENTS: &str = r#"WARNING: Use [--no-color] and make sure to set [--http-host <IP>] & [--http-port <PORT>] so that the [Status] tab can work!
+pub const XMRIG_ARGUMENTS: &str = r#"Note: [--no-color] & [--http-host <IP>] & [--http-port <PORT>] must be setso that the [Status] tab can work!
 
 Start XMRig with these arguments and override all below settings"#;
 pub const XMRIG_ADDRESS:        &str = "Specify which Monero address to payout to. This does nothing if mining to P2Pool since the address being paid out to will be the one P2Pool started with. This doubles as a rig identifier for P2Pool and some pools.";
