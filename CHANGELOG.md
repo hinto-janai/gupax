@@ -1,3 +1,15 @@
+# v1.3.7
+## Fixes
+- Not starting on Windows if CPU does not support `>= OpenGL 3.3` (thanks @Cyrix126 [#78](https://github.com/hinto-janai/gupax/issues/78))
+
+## Bundled Versions
+* [`P2Pool v3.10`](https://github.com/SChernykh/p2pool/releases/tag/v3.10)
+* [`XMRig v6.21.3`](https://github.com/xmrig/xmrig/releases/tag/v6.21.3)
+
+
+---
+
+
 # v1.3.6
 ## Changes
 * [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
