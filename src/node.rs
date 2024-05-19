@@ -28,19 +28,16 @@ use std::time::{Duration, Instant};
 // Remote Monero Nodes with ZMQ enabled.
 // The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
-pub const REMOTE_NODES: [(&str, &str, &str, &str); 18] = [
+pub const REMOTE_NODES: [(&str, &str, &str, &str); 15] = [
     ("monero.10z.com.ar", "Argentina", "18089", "18084"),
     ("monero1.heitechsoft.com", "Canada", "18081", "18084"),
     ("node.monerodevs.org", "Canada", "18089", "18084"),
-    ("xmr3.rs.me", "Germany", "18089", "18084"),
     ("node.cryptocano.de", "Germany", "18089", "18083"),
     ("p2pmd.xmrvsbeast.com", "Germany", "18081", "18083"),
     ("fbx.tranbert.com", "France", "18089", "18084"),
     ("node2.monerodevs.org", "France", "18089", "18084"),
     ("home.allantaylor.kiwi", "New Zealand", "18089", "18083"),
-    ("xmr1.rs.me", "Singapore", "18089", "18084"),
     ("p2pool.uk", "United Kingdom", "18089", "18084"),
-    ("xmr2.rs.me", "United States", "18089", "18084"),
     ("xmr.support", "United States", "18081", "18083"),
     ("sf.xmr.support", "United States", "18081", "18083"),
     ("xmrbandwagon.hopto.org", "United States", "18081", "18084"),
