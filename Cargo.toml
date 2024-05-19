@@ -108,7 +108,7 @@ tls-api-native-tls = "0.9.0"
 [target.'cfg(windows)'.dependencies]
 zip = "1.2.2"
 is_elevated = "0.1.2"
-wgpu = { version = "0.20.0", features = ["angle"] }
+wgpu = { version = "0.19.4", features = ["angle"] }
 
 # For Windows build (icon)
 [target.'cfg(windows)'.build-dependencies]

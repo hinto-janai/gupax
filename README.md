@@ -42,6 +42,7 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 * [License](#License)
 * [FAQ](#FAQ)
 	- [System requirements](#system-requirements)
+	- [Gupax does not start](#gupax-does-not-start)
 	- [Where are updates downloaded from?](#where-are-updates-downloaded-from)
 	- [P2Pool connection errors](#p2pool-connection-errors)
 	- [Can I quit mid-update?](#can-i-quit-mid-update)
@@ -677,11 +678,26 @@ Gupax may not run on machines with:
 
 Anything more recent than this should be okay.
 
----
+### Gupax does not start
 
-Gupax only supports ARM CPUs for macOS.
+#### Windows
+Gupax may have issues with machines with older CPUs (~14 years old, <3.3 OpenGL) on Windows.
 
-Windows and Linux are not supported as `XMRig` does not provide official binaries. This means machines like Raspberry Pis will not work.
+Gupax may also be flagged by antivirus, adding an exception to the Gupax folder should fix this.
+
+#### macOS
+Gupax may fail to start on macOS due to Apple's security features. Apps downloaded from the internet may be flagged as 'unsafe' if they lack proper notarization by Apple.
+
+As a workaround you can remove the quarantine flag on the .app file by running the following command in your terminal:
+
+```bash
+xattr -d com.apple.quarantine Gupax.app
+```
+
+#### Linux ARM
+Gupax only supports ARM for macOS, not Linux.
+
+Linux ARM is not supported as `XMRig` does not provide official binaries. This means machines like Raspberry Pis will not work.
 
 ### Where are updates downloaded from?
 The latest versions are downloaded using GitHub's API.
@@ -692,8 +708,6 @@ The latest versions are downloaded using GitHub's API.
 GitHub's API blocks request that do not have an HTTP `User-Agent` header.
 
 [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janai/gupax/blob/2c5bd0d7f6a39415353769427d60c0ca57f29710/src/update.rs#L178)
-
----
 
 ### P2Pool connection errors
 **TL;DR: Run & use your own Monero Node.**
@@ -708,21 +722,15 @@ Running and using your own local Monero node improves privacy and ensures your c
 
 For a simple guide, see the [Running a Local Monero Node](#running-a-local-monero-node) section.
 
----
-
 ### Can I quit mid-update?
 If you started an update, you should let it finish. If the update has been stuck for a *long* time, quitting Gupax is probably okay. The worst that can happen is that your `Gupax/P2Pool/XMRig` binaries may be moved/deleted. Those can be easily redownloaded. Your actual `Gupax` user data (settings, custom nodes, pools, etc) is never touched.
 
 Although Gupax uses a temporary folder (`gupax_update_[A-Za-z0-9]`) to store temporary downloaded files, there aren't measures in place to revert an upgrade once the file swapping has actually started. If you quit Gupax anytime before the `Upgrading packages` phase (after metadata, download, extraction), you will technically be safe but this is not recommended as it is risky, especially since these updates can be very fast.
 
----
-
 ### Bundled vs Standalone
 `Bundled` Gupax comes with the latest version of P2Pool/XMRig already in the `zip/tar`.
 
 `Standalone` only contains the Gupax executable.
-
----
 
 ### How much memory does Gupax use?
 Gupax itself uses around 100-400 megabytes of memory.
@@ -731,12 +739,8 @@ Gupax also holds up to [500,000 bytes](https://github.com/hinto-janai/gupax/blob
 
 Memory usage should *never* be above 500~ megabytes. If you see Gupax using more than this, please send a bug report.
 
----
-
 ### How is sudo handled? (on macOS/Linux)
 [See here for more info.](https://github.com/hinto-janai/gupax/tree/main/src#sudo)
-
----
 
 ### Why does Gupax need to be Admin? (on Windows)
 [See here for more info.](https://github.com/hinto-janai/gupax/tree/main/src#why-does-gupax-need-to-be-admin-on-windows)
