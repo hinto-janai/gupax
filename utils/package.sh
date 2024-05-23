@@ -50,6 +50,7 @@ title "Windows folder check"
 
 # Get random date for tar/zip
 title "RNG Date"
+RNG=$((EPOCHSECONDS-RANDOM*4)); check "RNG ... $RNG"
 DATE=$(date -d @${RNG}); check "DATE ... $DATE"
 
 # Tar Linux Bundle
