@@ -1,4 +1,8 @@
 # v1.3.8
+## Changes
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Removed `xmr{1,2,3}.rs.me` (thanks @MattJGH [#79](https://github.com/hinto-janai/gupax/issues/79#issuecomment-2127273487))
+
 ## Fixes
 - Visual bug on Windows (thanks @Cyrix126)
 
