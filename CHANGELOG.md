@@ -1,3 +1,16 @@
+# v1.3.9
+## Changes
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Removed `xmrnode.facspro.net` (thanks @SChernykh [#94](https://github.com/hinto-janai/gupax/issues/94))
+
+## Bundled Versions
+* [`P2Pool v4.0`](https://github.com/SChernykh/p2pool/releases/tag/v4.0)
+* [`XMRig v6.21.3`](https://github.com/xmrig/xmrig/releases/tag/v6.21.3)
+
+
+---
+
+
 # v1.3.8
 ## Changes
 * [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:

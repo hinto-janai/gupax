@@ -579,7 +579,6 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab.
 | sf.xmr.support          | 🇺🇸 United States  | 18081    | 18083    |
 | xmrbandwagon.hopto.org  | 🇺🇸 United States  | 18081    | 18084    |
 | xmr.spotlightsound.com  | 🇺🇸 United States  | 18081    | 18084    |
-| xmrnode.facspro.net     | 🇺🇸 United States  | 18089    | 18084    |
 | node.richfowler.net     | 🇺🇸 United States  | 18089    | 18084    |
 
 ## Build
