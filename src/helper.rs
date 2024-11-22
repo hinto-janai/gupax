@@ -264,6 +264,7 @@ impl std::fmt::Display for ProcessName {
 //---------------------------------------------------------------------------------------------------- [Helper]
 impl Helper {
     //---------------------------------------------------------------------------------------------------- General Functions
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         instant: std::time::Instant,
         pub_sys: Arc<Mutex<Sys>>,
@@ -318,7 +319,6 @@ impl Helper {
                 i += 1;
             }
         }
-        drop(i);
 
         while let Some(Ok(line)) = stdout.next() {
             //			println!("{}", line); // For debugging.
@@ -358,7 +358,6 @@ impl Helper {
                 i += 1;
             }
         }
-        drop(i);
 
         while let Some(Ok(line)) = stdout.next() {
             //			println!("{}", line); // For debugging.
@@ -398,7 +397,7 @@ impl Helper {
                 "{} Watchdog | Output is nearing {} bytes, resetting!",
                 name, MAX_GUI_OUTPUT_BYTES
             );
-            let text = format!("{}\n{} GUI log is exceeding the maximum: {} bytes!\nI've reset the logs for you!\n{}\n\n\n\n", HORI_CONSOLE, name, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
+            let text = format!("{}\n{} GUI log is exceeding the maximum: {} bytes!\nResetting the logs...\n{}\n\n\n\n", HORI_CONSOLE, name, MAX_GUI_OUTPUT_BYTES, HORI_CONSOLE);
             output.clear();
             output.push_str(&text);
             debug!("{} Watchdog | Resetting GUI output ... OK", name);
@@ -687,6 +686,7 @@ impl Helper {
 
     #[cold]
     #[inline(never)]
+    #[expect(clippy::too_many_arguments)]
     // The P2Pool watchdog. Spawns 1 OS thread for reading a PTY (STDOUT+STDERR), and combines the [Child] with a PTY so STDIN actually works.
     fn spawn_p2pool_watchdog(
         process: Arc<Mutex<Process>>,
@@ -1109,7 +1109,7 @@ impl Helper {
         // The actual binary we're executing is [sudo], technically
         // the XMRig path is just an argument to sudo, so add it.
         // Before that though, add the ["--prompt"] flag and set it
-        // to emptyness so that it doesn't show up in the output.
+        // to emptiness so that it doesn't show up in the output.
         if cfg!(unix) {
             args.push(r#"--prompt="#.to_string());
             args.push("--".to_string());
@@ -1262,7 +1262,7 @@ impl Helper {
         // 1a. Create PTY
         debug!("XMRig | Creating PTY...");
         let pty = portable_pty::native_pty_system();
-        let mut pair = pty
+        let pair = pty
             .openpty(portable_pty::PtySize {
                 rows: 100,
                 cols: 1000,
@@ -2395,7 +2395,7 @@ impl PubXmrigApi {
     // Formats raw private data into ready-to-print human readable version.
     fn update_from_priv(public: &Arc<Mutex<Self>>, private: PrivXmrigApi) {
         let mut public = lock!(public);
-        let hashrate_raw = match private.hashrate.total.get(0) {
+        let hashrate_raw = match private.hashrate.total.first() {
             Some(Some(h)) => *h,
             _ => 0.0,
         };
@@ -2911,7 +2911,7 @@ mod test {
 		    "hugepages": true
 		}"#;
         use crate::helper::PrivXmrigApi;
-        let priv_api = serde_json::from_str::<PrivXmrigApi>(&data).unwrap();
+        let priv_api = serde_json::from_str::<PrivXmrigApi>(data).unwrap();
         let json = serde_json::ser::to_string_pretty(&priv_api).unwrap();
         println!("{}", json);
         let data_after_ser = r#"{

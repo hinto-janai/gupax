@@ -281,14 +281,14 @@ mod test {
     fn human_number() {
         use crate::human::HumanNumber;
         assert!(HumanNumber::to_percent(0.001).to_string() == "0%");
-        assert!(HumanNumber::to_percent(12.123123123123).to_string() == "12.12%");
+        assert!(HumanNumber::to_percent(12.123_123).to_string() == "12.12%");
         assert!(HumanNumber::to_percent_3_point(0.001).to_string() == "0.001%");
         assert!(
             HumanNumber::from_hashrate([Some(123.1), Some(11111.1), None]).to_string()
                 == "[123 H/s, 11,111 H/s, ??? H/s]"
         );
         assert!(
-            HumanNumber::from_hashrate([None, Some(1.123), Some(123123.312)]).to_string()
+            HumanNumber::from_hashrate([None, Some(1.123), Some(123_123.31)]).to_string()
                 == "[??? H/s, 1 H/s, 123,123 H/s]"
         );
         assert!(
@@ -299,8 +299,8 @@ mod test {
             HumanNumber::from_load([None, Some(4321.43), Some(1234.1)]).to_string()
                 == "[???, 4321.43, 1234.10]"
         );
-        assert!(HumanNumber::from_f32(123_123.123123123).to_string() == "123,123");
-        assert!(HumanNumber::from_f64(123_123_123.123123123123123).to_string() == "123,123,123");
+        assert!(HumanNumber::from_f32(123_123.125).to_string() == "123,123");
+        assert!(HumanNumber::from_f64(123_123_123.123_123_12).to_string() == "123,123,123");
         assert!(HumanNumber::from_u16(1_000).to_string() == "1,000");
         assert!(HumanNumber::from_u16(65_535).to_string() == "65,535");
         assert!(HumanNumber::from_u32(65_536).to_string() == "65,536");

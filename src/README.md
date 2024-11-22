@@ -21,7 +21,6 @@
 | cpu.json     | [XMRig benchmark data in JSON](https://github.com/hinto-janai/xmrig-benchmarks)
 | constants.rs | General constants used in Gupax
 | disk.rs      | Code for writing to disk: `state.toml/node.toml/pool.toml`; This holds the structs for the [State] struct
-| ferris.rs    | Cute crab bytes
 | gupax.rs     | `Gupax` tab
 | helper.rs    | The "helper" thread that runs for the entire duration Gupax is alive. All the processing that needs to be done without blocking the main GUI thread runs here, including everything related to handling P2Pool/XMRig
 | human.rs     | Code for displaying human readable numbers & time

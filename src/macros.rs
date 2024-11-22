@@ -88,7 +88,7 @@ mod test {
         use std::sync::{Arc, Mutex};
         let arc_mutex = Arc::new(Mutex::new(false));
         *lock!(arc_mutex) = true;
-        assert!(*lock!(arc_mutex) == true);
+        assert!(*lock!(arc_mutex));
     }
 
     #[test]
@@ -101,19 +101,19 @@ mod test {
             a: Arc::new(Mutex::new(false)),
         }));
         *lock2!(arc_mutex, a) = true;
-        assert!(*lock2!(arc_mutex, a) == true);
+        assert!(*lock2!(arc_mutex, a));
     }
 
     #[test]
     fn arc_mut() {
         let a = arc_mut!(false);
-        assert!(*lock!(a) == false);
+        assert!(!(*lock!(a)));
     }
 
     #[test]
     fn flip() {
         let mut b = true;
         flip!(b);
-        assert!(b == false);
+        assert!(!b);
     }
 }

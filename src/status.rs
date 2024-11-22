@@ -21,13 +21,13 @@ use crate::{
 };
 use egui::{
     Hyperlink, Label, ProgressBar, RichText, SelectableLabel, Slider, Spinner, TextEdit, TextStyle,
-    TextStyle::Monospace, TextStyle::Name,
+    TextStyle::Name,
 };
 use log::*;
 use std::sync::{Arc, Mutex};
 
 impl crate::disk::Status {
-    #[inline(always)] // called once
+    #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
         sys: &Arc<Mutex<Sys>>,

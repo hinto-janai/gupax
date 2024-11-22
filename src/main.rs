@@ -29,9 +29,8 @@ compile_error!("gupax is only built for windows/macos/linux");
 // egui/eframe
 use eframe::{egui, NativeOptions};
 use egui::{
-    Align, Button, CentralPanel, Color32, FontFamily::Proportional, FontId, Hyperlink, Key, Label,
-    Layout, Modifiers, RichText, SelectableLabel, Spinner, Stroke, TextEdit, TextStyle,
-    TextStyle::*, TopBottomPanel, Vec2,
+    Align, Button, CentralPanel, Color32, FontId, Hyperlink, Key, Label, Layout, Modifiers,
+    RichText, SelectableLabel, Spinner, TextEdit, TextStyle, TextStyle::*, TopBottomPanel, Vec2,
 };
 use egui_extras::RetainedImage;
 // Logging
@@ -57,7 +56,6 @@ use sysinfo::SystemExt;
 //mod benchmark;
 mod constants;
 mod disk;
-mod ferris;
 mod free;
 mod gupax;
 mod helper;
@@ -71,10 +69,7 @@ mod status;
 mod update;
 mod xmr;
 mod xmrig;
-use {
-    crate::regex::*, constants::*, disk::*, ferris::*, gupax::*, helper::*, macros::*, node::*,
-    update::*,
-};
+use {crate::regex::*, constants::*, disk::*, gupax::*, helper::*, macros::*, node::*, update::*};
 
 // Sudo (dummy values for Windows)
 mod sudo;
@@ -153,7 +148,6 @@ pub struct App {
     now: Instant,                   // Internal timer
     exe: String,                    // Path for [Gupax] binary
     dir: String,                    // Directory [Gupax] binary is in
-    resolution: Vec2,               // Frame resolution
     os: &'static str,               // OS
     admin: bool,                    // Are we admin? (for Windows)
     os_data_path: PathBuf,          // OS data path (e.g: ~/.local/share/gupax/)
@@ -161,7 +155,6 @@ pub struct App {
     state_path: PathBuf,            // State file path
     node_path: PathBuf,             // Node file path
     pool_path: PathBuf,             // Pool file path
-    version: &'static str,          // Gupax version
     name_version: String,           // [Gupax vX.X.X]
     img: Images,                    // Custom Struct holding pre-compiled bytes of [Images]
 }
@@ -176,7 +169,7 @@ impl App {
             crate::free::clamp_scale(app.state.gupax.selected_scale),
         );
         cc.egui_ctx.set_visuals(VISUALS.clone());
-        Self { resolution, ..app }
+        Self { ..app }
     }
 
     #[cold]
@@ -237,7 +230,7 @@ impl App {
             let cpu = sysinfo.cpus()[0].brand();
             let mut json: Vec<Benchmark> =
                 serde_json::from_slice(include_bytes!("cpu.json")).unwrap();
-            json.sort_by(|a, b| cmp_f64(strsim::jaro(&b.cpu, &cpu), strsim::jaro(&a.cpu, &cpu)));
+            json.sort_by(|a, b| cmp_f64(strsim::jaro(&b.cpu, cpu), strsim::jaro(&a.cpu, cpu)));
             json
         };
         info!("App Init | Assuming user's CPU is: {}", benchmarks[0].cpu);
@@ -297,14 +290,12 @@ impl App {
             admin: false,
             exe: String::new(),
             dir: String::new(),
-            resolution: Vec2::new(APP_DEFAULT_HEIGHT, APP_DEFAULT_WIDTH),
             os: OS,
             os_data_path: PathBuf::new(),
             gupax_p2pool_api_path: PathBuf::new(),
             state_path: PathBuf::new(),
             node_path: PathBuf::new(),
             pool_path: PathBuf::new(),
-            version: GUPAX_VERSION,
             name_version: format!("Gupax {}", GUPAX_VERSION),
             img: Images::new(),
         };
@@ -494,7 +485,7 @@ impl App {
                 og.p2pool.selected_index,
                 app.og_node_vec.len()
             );
-            let (name, node) = match app.og_node_vec.get(0) {
+            let (name, node) = match app.og_node_vec.first() {
                 Some(zero) => zero.clone(),
                 None => Node::new_tuple(),
             };
@@ -517,7 +508,7 @@ impl App {
                 og.xmrig.selected_index,
                 app.og_pool_vec.len()
             );
-            let (name, pool) = match app.og_pool_vec.get(0) {
+            let (name, pool) = match app.og_pool_vec.first() {
                 Some(zero) => zero.clone(),
                 None => Pool::new_tuple(),
             };
@@ -627,7 +618,7 @@ impl App {
                     continue;
                 }
 
-                let (ip, rpc, zmq) = RemoteNode::get_ip_rpc_zmq(&pinged_node.ip);
+                let (ip, rpc, zmq) = RemoteNode::get_ip_rpc_zmq(pinged_node.ip);
 
                 let node = Node {
                     ip: ip.into(),
@@ -779,12 +770,6 @@ impl ErrorState {
 //---------------------------------------------------------------------------------------------------- [Images] struct
 struct Images {
     banner: RetainedImage,
-    happy: RetainedImage,
-    cute: RetainedImage,
-    oops: RetainedImage,
-    error: RetainedImage,
-    panic: RetainedImage,
-    sudo: RetainedImage,
 }
 
 impl Images {
@@ -793,12 +778,6 @@ impl Images {
     fn new() -> Self {
         Self {
             banner: RetainedImage::from_image_bytes("banner.png", BYTES_BANNER).unwrap(),
-            happy: RetainedImage::from_image_bytes("happy.png", FERRIS_HAPPY).unwrap(),
-            cute: RetainedImage::from_image_bytes("cute.png", FERRIS_CUTE).unwrap(),
-            oops: RetainedImage::from_image_bytes("oops.png", FERRIS_OOPS).unwrap(),
-            error: RetainedImage::from_image_bytes("error.png", FERRIS_ERROR).unwrap(),
-            panic: RetainedImage::from_image_bytes("panic.png", FERRIS_PANIC).unwrap(),
-            sudo: RetainedImage::from_image_bytes("panic.png", FERRIS_SUDO).unwrap(),
         }
     }
 }
@@ -871,10 +850,6 @@ impl KeyPressed {
     #[inline]
     fn is_v(&self) -> bool {
         *self == Self::V
-    }
-    #[inline]
-    fn is_none(&self) -> bool {
-        *self == Self::None
     }
 }
 
@@ -1227,10 +1202,6 @@ fn parse_args<S: Into<String>>(mut app: App, panic: S) -> App {
                 println!("Gupax {} [OS: {}, Commit: {}]\nThis Gupax was originally bundled with:\n    - P2Pool {}\n    - XMRig {}\n\n{}", GUPAX_VERSION, OS_NAME, &COMMIT[..40], P2POOL_VERSION, XMRIG_VERSION, ARG_COPYRIGHT);
                 exit(0);
             }
-            "--ferris" => {
-                println!("{}", FERRIS_ANSI);
-                exit(0);
-            }
             _ => (),
         }
     }
@@ -1479,7 +1450,8 @@ fn main() {
         &app.name_version.clone(),
         options,
         Box::new(move |cc| Box::new(App::cc(cc, resolution, app))),
-    );
+    )
+    .unwrap();
 }
 
 impl eframe::App for App {
@@ -1723,18 +1695,9 @@ impl eframe::App for App {
 				// Display ferris
 				use ErrorFerris::*;
 				use ErrorButtons::*;
-				let ferris = match self.error_state.ferris {
-					Happy => &self.img.happy,
-					Cute => &self.img.cute,
-					Oops  => &self.img.oops,
-					Error => &self.img.error,
-					Panic => &self.img.panic,
-					ErrorFerris::Sudo => &self.img.sudo,
-				};
-				match self.error_state.buttons {
-					Debug => ui.add_sized([width, height/4.0], Label::new("--- Debug Info ---\n\nPress [ESC] to quit")),
-					    _ => ferris.show_max_size(ui, Vec2::new(width, height)),
-				};
+				if self.error_state.buttons == Debug {
+                    ui.add_sized([width, height/4.0], Label::new("--- Debug Info ---\n\nPress [ESC] to quit"));
+				}
 
 				// Error/Quit screen
 				match self.error_state.buttons {
@@ -1895,17 +1858,12 @@ impl eframe::App for App {
         // They don't need to be compared anyway.
         debug!("App | Checking diff between [og] & [state]");
         let og = lock!(self.og);
-        if og.status != self.state.status
+        self.diff = og.status != self.state.status
             || og.gupax != self.state.gupax
             || og.p2pool != self.state.p2pool
             || og.xmrig != self.state.xmrig
             || self.og_node_vec != self.node_vec
-            || self.og_pool_vec != self.pool_vec
-        {
-            self.diff = true;
-        } else {
-            self.diff = false;
-        }
+            || self.og_pool_vec != self.pool_vec;
         drop(og);
 
         // Top: Tabs
@@ -2253,8 +2211,8 @@ impl eframe::App for App {
                                             .on_hover_text("Restart P2Pool")
                                             .clicked()
                                     {
-                                        lock!(self.og).update_absolute_path();
-                                        self.state.update_absolute_path();
+                                        let _ = lock!(self.og).update_absolute_path();
+                                        let _ = self.state.update_absolute_path();
                                         Helper::restart_p2pool(
                                             &self.helper,
                                             &self.state.p2pool,
@@ -2308,8 +2266,8 @@ impl eframe::App for App {
                                             .on_disabled_hover_text(text)
                                             .clicked()
                                     {
-                                        lock!(self.og).update_absolute_path();
-                                        self.state.update_absolute_path();
+                                        let _ = lock!(self.og).update_absolute_path();
+                                        let _ = self.state.update_absolute_path();
                                         Helper::start_p2pool(
                                             &self.helper,
                                             &self.state.p2pool,
@@ -2363,8 +2321,8 @@ impl eframe::App for App {
                                             .on_hover_text("Restart XMRig")
                                             .clicked()
                                     {
-                                        lock!(self.og).update_absolute_path();
-                                        self.state.update_absolute_path();
+                                        let _ = lock!(self.og).update_absolute_path();
+                                        let _ = self.state.update_absolute_path();
                                         if cfg!(windows) {
                                             Helper::restart_xmrig(
                                                 &self.helper,
@@ -2424,8 +2382,8 @@ impl eframe::App for App {
                                             .on_disabled_hover_text(text)
                                             .clicked()
                                     {
-                                        lock!(self.og).update_absolute_path();
-                                        self.state.update_absolute_path();
+                                        let _ = lock!(self.og).update_absolute_path();
+                                        let _ = self.state.update_absolute_path();
                                         if cfg!(windows) {
                                             Helper::start_xmrig(
                                                 &self.helper,
@@ -2601,7 +2559,7 @@ mod test {
         let benchmarks: Vec<Benchmark> = {
             let mut json: Vec<Benchmark> =
                 serde_json::from_slice(include_bytes!("cpu.json")).unwrap();
-            json.sort_by(|a, b| cmp_f64(strsim::jaro(&b.cpu, &cpu), strsim::jaro(&a.cpu, &cpu)));
+            json.sort_by(|a, b| cmp_f64(strsim::jaro(&b.cpu, cpu), strsim::jaro(&a.cpu, cpu)));
             json
         };
 

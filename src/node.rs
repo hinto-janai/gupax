@@ -20,7 +20,6 @@ use egui::Color32;
 use hyper::{client::HttpConnector, Body, Client, Request};
 use log::*;
 use rand::{thread_rng, Rng};
-use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -28,18 +27,13 @@ use std::time::{Duration, Instant};
 // Remote Monero Nodes with ZMQ enabled.
 // The format is an array of tuples consisting of: (IP, LOCATION, RPC_PORT, ZMQ_PORT)
 
-pub const REMOTE_NODES: [(&str, &str, &str, &str); 14] = [
+pub const REMOTE_NODES: [(&str, &str, &str, &str); 9] = [
     ("monero.10z.com.ar", "Argentina", "18089", "18084"),
-    ("monero1.heitechsoft.com", "Canada", "18081", "18084"),
     ("node.monerodevs.org", "Canada", "18089", "18084"),
-    ("node.cryptocano.de", "Germany", "18089", "18083"),
     ("p2pmd.xmrvsbeast.com", "Germany", "18081", "18083"),
-    ("fbx.tranbert.com", "France", "18089", "18084"),
     ("node2.monerodevs.org", "France", "18089", "18084"),
-    ("home.allantaylor.kiwi", "New Zealand", "18089", "18083"),
     ("p2pool.uk", "United Kingdom", "18089", "18084"),
     ("xmr.support", "United States", "18081", "18083"),
-    ("sf.xmr.support", "United States", "18081", "18083"),
     ("xmrbandwagon.hopto.org", "United States", "18081", "18084"),
     ("xmr.spotlightsound.com", "United States", "18081", "18084"),
     ("node.richfowler.net", "United States", "18089", "18084"),
@@ -260,10 +254,10 @@ pub fn format_ip_location(og_ip: &str, extra_space: bool) -> String {
 }
 
 pub fn format_ip(ip: &str) -> String {
-    const _: () = if 23 != REMOTE_NODE_MAX_CHARS {
+    const _: () = if 22 != REMOTE_NODE_MAX_CHARS {
         panic!();
     };
-    format!("{ip: >23}")
+    format!("{ip: >22}")
 }
 
 //---------------------------------------------------------------------------------------------------- Node data
@@ -409,7 +403,7 @@ impl Ping {
         let mut handles = Vec::with_capacity(REMOTE_NODE_LENGTH);
         let node_vec = arc_mut!(Vec::with_capacity(REMOTE_NODE_LENGTH));
 
-        for (ip, _, rpc, zmq) in REMOTE_NODES {
+        for (ip, _country, rpc, _zmq) in REMOTE_NODES {
             let client = client.clone();
             let ping = Arc::clone(&ping);
             let node_vec = Arc::clone(&node_vec);
@@ -531,7 +525,7 @@ mod test {
     #[ignore]
     async fn full_ping() {
         use crate::{REMOTE_NODES, REMOTE_NODE_LENGTH};
-        use hyper::{client::HttpConnector, Body, Client, Request};
+        use hyper::{client::HttpConnector, Client, Request};
         use serde::{Deserialize, Serialize};
 
         #[derive(Deserialize, Serialize)]

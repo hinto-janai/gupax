@@ -2,4 +2,5 @@
 extend-exclude = [
 	"src/cpu.json",
 	"pgp/",
+	"external",
 ]

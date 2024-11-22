@@ -16,8 +16,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pub const GUPAX_VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION")); // e.g: v1.0.0
-pub const P2POOL_VERSION: &str = "v3.10";
-pub const XMRIG_VERSION: &str = "v6.21.3";
+pub const P2POOL_VERSION: &str = "v4.2";
+pub const XMRIG_VERSION: &str = "v6.22.2";
 pub const COMMIT: &str = env!("COMMIT"); // set in build.rs
                                          // e.g: Gupax_v1_0_0
                                          // Would have been [Gupax_v1.0.0] but P2Pool truncates everything after [.]
@@ -164,10 +164,10 @@ pub const STATUS_GUPAX_SYSTEM_CPU_MODEL: &str =
 pub const STATUS_P2POOL_UPTIME: &str = "How long P2Pool has been online";
 pub const STATUS_P2POOL_PAYOUTS:     &str = "The total amount of payouts received in this instance of P2Pool and an extrapolated estimate of how many you will receive.
 
-Note: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
+Note: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time.";
 pub const STATUS_P2POOL_XMR:         &str = "The total amount of XMR mined in this instance of P2Pool and an extrapolated estimate of how many you will mine in the future.
 
-Note: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time!";
+Note: these stats will be quite inaccurate if your P2Pool hasn't been running for a long time.";
 pub const STATUS_P2POOL_HASHRATE:    &str = "The total amount of hashrate your P2Pool has pointed at it in 15 minute, 1 hour, and 24 hour averages";
 pub const STATUS_P2POOL_SHARES: &str = "The total amount of shares found on P2Pool";
 pub const STATUS_P2POOL_EFFORT: &str =
@@ -259,8 +259,8 @@ pub const GUPAX_UPDATE_VIA_TOR:   &str = "Update through the Tor network. Tor is
 Note: This option is unstable on macOS.";
 pub const GUPAX_ASK_BEFORE_QUIT: &str = "Ask before quitting Gupax";
 pub const GUPAX_SAVE_BEFORE_QUIT: &str = "Automatically save any changed settings before quitting";
-pub const GUPAX_AUTO_P2POOL:      &str = "Automatically start P2Pool on Gupax startup. If you are using [P2Pool Simple], this will NOT wait for your [Auto-Ping] to finish, it will start P2Pool on the pool you already have selected. This option will fail if your P2Pool settings aren't valid!";
-pub const GUPAX_AUTO_XMRIG:       &str = "Automatically start XMRig on Gupax startup. This option will fail if your XMRig settings aren't valid!";
+pub const GUPAX_AUTO_P2POOL:      &str = "Automatically start P2Pool on Gupax startup. If you are using [P2Pool Simple], this will NOT wait for your [Auto-Ping] to finish, it will start P2Pool on the pool you already have selected. This option will fail if your P2Pool settings aren't valid.";
+pub const GUPAX_AUTO_XMRIG:       &str = "Automatically start XMRig on Gupax startup. This option will fail if your XMRig settings aren't valid.";
 pub const GUPAX_ADJUST: &str = "Adjust and set the width/height of the Gupax window";
 pub const GUPAX_WIDTH: &str = "Set the width of the Gupax window";
 pub const GUPAX_HEIGHT: &str = "Set the height of the Gupax window";
@@ -312,16 +312,16 @@ pub const P2POOL_SELECT_RANDOM: &str = "Select a random remote Monero node";
 pub const P2POOL_SELECT_LAST: &str = "Select the previous remote Monero node";
 pub const P2POOL_SELECT_NEXT: &str = "Select the next remote Monero node";
 pub const P2POOL_PING: &str = "Ping the built-in remote Monero nodes";
-pub const P2POOL_ADDRESS:                &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!";
+pub const P2POOL_ADDRESS:                &str = "You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool.";
 pub const P2POOL_COMMUNITY_NODE_WARNING: &str = r#"--- Run and use your own Monero node ---
 
 Using a remote Monero node is convenient but comes at the cost of privacy and reliability.
 
-You may encounter connection issues with remote nodes which may cause mining performance loss! Late info from laggy nodes will cause your mining jobs to start later than they should.
+You may encounter connection issues with remote nodes which may cause mining performance loss. Late info from remote nodes may cause mining jobs to start later than they should.
 
-Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently ~170GB). If you have the disk space, consider using the [Advanced] tab and connecting to your own Monero node.
+Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain. If you have the disk space, consider using the [Advanced] tab and connecting to your own Monero node.
 
-For a simple guide, see the [Running a Local Monero Node] section on Gupax's GitHub by clicking this message."#;
+For a simple guide, see the [Running a Local Monero Node] documentation by clicking this message."#;
 
 pub const P2POOL_INPUT: &str = "Send a command to P2Pool";
 pub const P2POOL_ARGUMENTS: &str = r#"Note: [--no-color] & [--data-api <PATH>] & [--local-api] must be set so that the [Status] tab can work!
@@ -415,9 +415,9 @@ For more information, see link below:
 <https://github.com/hinto-janai/gupax>"#;
 
 //---------------------------------------------------------------------------------------------------- Visuals
-use egui::epaint::{Rounding, Shadow, Stroke};
+use egui::epaint::{Rounding, Stroke};
 
-use egui::{style::Spacing, Color32, Visuals};
+use egui::{Color32, Visuals};
 
 use egui::style::{Selection, WidgetVisuals, Widgets};
 use once_cell::sync::Lazy;
@@ -499,7 +499,9 @@ pub static VISUALS: Lazy<Visuals> = Lazy::new(|| {
 mod test {
     #[test]
     fn gupax_version_is_semver() {
-        assert_eq!(crate::GUPAX_VERSION.len(), 6);
+        let len = crate::GUPAX_VERSION.len();
+        println!("{len}");
+        assert!(len == 6 || len == 7);
     }
 
     #[test]

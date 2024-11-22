@@ -3,9 +3,9 @@
 
 Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero) on [**P2Pool**](https://github.com/SChernykh/p2pool), using [**XMRig**](https://github.com/xmrig/xmrig).
 
-**To see a 3-minute video guide on how to set-up Gupax: [click here.](#Guide)**
+To see a 3-minute video guide on how to set-up Gupax: [click here.](#Guide)
 
-[![CI](https://github.com/hinto-janai/gupax/actions/workflows/ci.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ci.yml) [![gupax.io](https://github.com/hinto-janai/gupax/actions/workflows/download.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/download.yml) [![Remote Node Ping](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ping.yml)
+[![CI](https://github.com/hinto-janai/gupax/actions/workflows/ci.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/ci.yml) [![gupax.io](https://github.com/hinto-janai/gupax/actions/workflows/download.yml/badge.svg)](https://github.com/hinto-janai/gupax/actions/workflows/download.yml)
 
 </div>
 
@@ -19,11 +19,10 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 	- [XMRig](#XMRig)
 * [Advanced](#Advanced)
 	- [Verifying](#Verifying)
-	- [Running a Local Monero Node](#running-a-local-monero-node)
+	- [Running a Local Monero node](#running-a-local-monero-node)
 	- [Command Line](#Command-Line)
 	- [Key Shortcuts](#Key-Shortcuts)
-	- [Resolution](#Resolution)
-	- [Tor/Arti](#TorArti)
+	- [Tor](#Tor)
 	- [Logs](#Logs)
 	- [Disk](#Disk)
 	- [Swapping P2Pool/XMRig](#Swapping-P2PoolXMRig)
@@ -32,7 +31,7 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 	- [P2Pool](#P2Pool-1)
 	- [XMRig](#XMRig-1)
 * [Connections](#Connections)
-* [Remote Monero Nodes](#remote-monero-nodes)
+* [Remote Monero nodes](#remote-monero-nodes)
 * [Build](#Build)
 	- [General Info](#General-Info)
 	- [Linux](#Linux)
@@ -54,7 +53,7 @@ Gupax is a GUI for mining [**Monero**](https://github.com/monero-project/monero)
 ## What is Monero/P2Pool/XMRig/Gupax?
 [**`Monero`**](https://getmonero.org) is a secure, private, and untraceable cryptocurrency.
 
-[Monero GUI](https://github.com/monero-project/monero-gui) allows you to run a Monero node (among other things).
+[Monero GUI](https://github.com/monero-project/monero-gui) allows you to run a Monero node, among other things.
 
 ---
 
@@ -69,17 +68,17 @@ P2Pool combines the best of solo mining and traditional pool mining:
 * **It's decentralized:** There's no central server that can be shutdown or pool admin that controls your hashrate
 * **It's permissionless:** It's peer-to-peer so there's no one to decide who can and cannot mine on the pool
 * **It's trustless:** Funds are never in custody, all pool blocks pay out to miners directly and immediately
-* **0% transaction fee, 0 payout fee, immediate ~0.0003 XMR minimum payout**
+* **0% transaction fee, 0 payout fee, immediate ~0.00027 XMR minimum payout**
 
 ---
 
 [**`XMRig`**](https://github.com/xmrig/xmrig) is an optimized miner that can mine Monero.
 
-Both Monero and P2Pool have built in miners but XMRig is quite faster than both of them. Due to issues like [anti-virus flagging](https://github.com/monero-project/monero-gui/pull/3829#issuecomment-1018191461), it is not feasible to integrate XMRig directly into Monero.
+Both Monero and P2Pool have built in miners but XMRig is faster than both of them. Due to issues like [anti-virus flagging](https://github.com/monero-project/monero-gui/pull/3829#issuecomment-1018191461), it is not feasible to integrate XMRig directly into Monero.
 
 ---
 
-[**`Gupax`**](https://github.com/hinto-janai/gupax) is a GUI that helps manage P2Pool & XMRig (both originally CLI-only).
+[**`Gupax`**](https://github.com/hinto-janai/gupax) is a GUI that helps manage P2Pool & XMRig which are both CLI-only.
 
 <img src="images/local.png" align="left" width="50%"/>
 
@@ -97,7 +96,7 @@ Both Monero and P2Pool have built in miners but XMRig is quite faster than both 
 
 <img src="images/remote.png" align="left" width="50%"/>
 
-By default, Gupax will use a [Remote Monero Node](#remote-monero-nodes) so you don't have to run [your own Monero node](#running-a-local-monero-node) to start mining on P2Pool.
+By default, Gupax will use a [Remote Monero node](#remote-monero-nodes) so you don't have to run [your own Monero node](#running-a-local-monero-node) to start mining on P2Pool.
 
 <br clear="left"/>
 
@@ -110,7 +109,7 @@ https://user-images.githubusercontent.com/101352116/207978455-6ffdc0cc-204c-4594
 2. Extract
 3. Launch Gupax
 4. Input your Monero address in the `P2Pool` tab
-5. Select a [`Remote Monero Node`](#remote-monero-nodes) (or run your own local [Monero Node](#running-a-local-monero-node))
+5. Select a [`Remote Monero node`](#remote-monero-nodes) (or run your own local [Monero node](#running-a-local-monero-node))
 6. Start P2Pool
 7. Start XMRig
 
@@ -167,8 +166,8 @@ This tab has the updater and general Gupax settings.
 If `Check for updates` is pressed, Gupax will update your `Gupax/P2Pool/XMRig` (if needed) using the [GitHub API](#where-are-updates-downloaded-from).
 
 Below that, there are some general Gupax settings:
-| Setting            | What does it do?  |
-|--------------------|-------------------| 
+| Setting            | What it does |
+|--------------------|--------------|
 | `Update via Tor`   | Causes updates to be fetched via the Tor network. Tor is embedded within Gupax; a Tor system proxy is not required
 | `Auto-Update`      | Gupax will automatically check for updates at startup
 | `Auto-P2Pool`      | Gupax will automatically start P2Pool at startup
@@ -179,7 +178,7 @@ Below that, there are some general Gupax settings:
 ---
 
 ### P2Pool
-P2Pool Simple allows you to ping & connect to a [Remote Monero Node](#remote-monero-nodes) and start your own local P2Pool instance on the `Mini` sidechain.
+P2Pool Simple allows you to ping & connect to a [Remote Monero node](#remote-monero-nodes) and start your own local P2Pool instance on the `Mini` sidechain.
 
 To start P2Pool, first input the Monero address you'd like to receive payouts from. You must use a primary Monero address to mine on P2Pool (starts with a 4). It is highly recommended to create a new wallet since addresses are public on P2Pool!
 
@@ -204,30 +203,27 @@ XMRig Simple will always mine to your own local P2Pool (`127.0.0.1:3333`), if yo
 ### Verifying
 It is recommended to verify the hash and PGP signature of the download before using Gupax.
 
-Download the [`SHA256SUMS`](https://github.com/hinto-janai/gupax/releases/latest) file, download and import my [`PGP key`](https://github.com/hinto-janai/gupax/blob/main/pgp/hinto-janai.asc), and verify:
+Download the [`SHA256SUMS`](https://github.com/hinto-janai/gupax/releases/latest) file, download and import this [`PGP key`](https://github.com/hinto-janai/gupax/blob/main/pgp/hinto-janai.asc), and verify:
 ```bash
 sha256sum -c SHA256SUMS
 gpg --import hinto-janai.asc
 gpg --verify SHA256SUMS
 ```
 
-Q: How can I be sure the P2Pool/XMRig bundled with Gupax hasn't been tampered with?  
-A: Verify the hash.
-
-You can always compare the hash of the `P2Pool/XMRig` binaries bundled with Gupax with the hashes of the binaries found here:
+You can compare the hash of the `P2Pool/XMRig` binaries bundled with Gupax with the hashes of the binaries found here:
 - https://github.com/SChernykh/p2pool/releases
 - https://github.com/xmrig/xmrig/releases
 
-Make sure the _version_ you are comparing against is correct, and make sure you are comparing the _binary_ to the _binary_, not the `tar/zip`. If they match, you can be sure they are the exact same. Verifying the PGP signature is also recommended:
+Make sure the _version_ you are comparing against is correct, and make sure you are comparing the _binary_ to the _binary_, not the `tar/zip`. If they match, they are the exact same. Verifying the PGP signature is also recommended:
 - P2Pool - [`SChernykh.asc`](https://github.com/monero-project/gitian.sigs/blob/master/gitian-pubkeys/SChernykh.asc)
 - XMRig - [`xmrig.asc`](https://github.com/xmrig/xmrig/blob/master/doc/gpg_keys/xmrig.asc)
- 
+
 ---
 
-### Running a Local Monero Node
-Running and using your own local Monero node improves privacy and security. It also means you won't be depending on one of the [Remote Monero Nodes](#remote-monero-nodes) provided by Gupax. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently `155GB`).
+### Running a Local Monero node
+Running and using your own local Monero node improves privacy and security. It also means you won't be depending on one of the [Remote Monero nodes](#remote-monero-nodes) provided by Gupax. This comes at the cost of downloading and syncing Monero's blockchain yourself.
 
-If you'd like to run and use your own local Monero node for P2Pool, follow these steps:
+To run and use your own local Monero node for P2Pool, follow these steps:
 
 <div align="center">
 	<img src="images/local_node.png" width="66%"/>
@@ -237,10 +233,9 @@ If you'd like to run and use your own local Monero node for P2Pool, follow these
 3. Enable `Local node`
 4. Enter `--zmq-pub=tcp://127.0.0.1:18083` into `Daemon startup flags`
 5. [(Optionally)](https://github.com/SChernykh/p2pool#windows) enter `--disable-dns-checkpoints --enable-dns-blocklist` into `Daemon startup flags`
+6. Start and fully sync node
 
 </div>
-
-After syncing the blockchain, you will now have your own Monero node.
 
 The 4th step enables `ZMQ`, which is extra Monero node functionality that is needed for P2Pool to work correctly.
 
@@ -249,14 +244,10 @@ The 5th step:
 - `--disable-dns-checkpoints` avoids periodical lag when DNS is updated (it's not needed when mining)
 - `--enable-dns-blocklist` bans known bad nodes
 
-[For more detailed information on configuring a Monero node, click here.](https://monerodocs.org)
-
 ---
 
 ### Command Line
-By default, Gupax has `auto-update` & `auto-ping` enabled. This can only be turned off in the GUI which causes a chicken-and-egg problem.
-
-To get around this, start Gupax with `--no-startup`. This will disable all `auto` features for that instance.
+By default, Gupax has `auto-update` & `auto-ping` enabled. This can only be turned off in the GUI. To get around this, start Gupax with `--no-startup`. This will disable all `auto` features for that instance.
 ```
 USAGE: ./gupax [--flag]
 
@@ -276,9 +267,6 @@ USAGE: ./gupax [--flag]
 ---
 
 ### Key Shortcuts
-The letter keys (Z/X/C/V/S/R) will only work if nothing is in focus, i.e, you _are not_ editing a text box.
-
-An ALT+F4 will also trigger the exit confirm screen (if enabled).
 ```
 *---------------------------------------*
 |             Key shortcuts             |
@@ -298,23 +286,10 @@ An ALT+F4 will also trigger the exit confirm screen (if enabled).
 
 ---
 
-### Resolution
-The default resolution of Gupax is `1280x960` which is a `4:3` aspect ratio.
-
-This can be changed by dragging the corner of the window itself or by using the resolution sliders in the `Gupax Advanced` tab. After a resolution change, Gupax will fade-in/out of black and will take a second to resize all the UI elements to scale correctly to the new resolution.
-
-If you have changed your OS's pixel scaling, you may need to resize Gupax to see all UI correctly.
-
-The minimum window size is: `640x480`  
-The maximum window size is: `3840x2160`  
-Fullscreen mode can also be entered by pressing `F11`.
-
----
-
-### Tor/Arti
+### Tor
 By default, Gupax updates via Tor. In particular, it uses [`Arti`](https://gitlab.torproject.org/tpo/core/arti), the official Rust implementation of Tor.
 
-Instead of bootstrapping onto the Tor network every time, Arti saves state/cache about the Tor network (circuits, guards, etc) for later reuse onto the disk:
+Arti saves state/cache about the Tor network (circuits, guards, etc) for later reuse onto the disk:
 
 State:
 | OS       | Data Folder                                                   |
@@ -354,10 +329,8 @@ The current files saved to disk:
 ---
 
 ### Logs
-Gupax has console logs that show with increasing detail, what exactly it is is doing.
-
 There are multiple log filter levels but by default, `INFO` and above are enabled.
-To view more detailed console debug information, start Gupax with the environment variable `RUST_LOG` set to a log level like so:
+To view more detailed console debug information, start Gupax with the environment variable `RUST_LOG` set to a log level:
 ```bash
 RUST_LOG=(trace|debug|info|warn|error) ./gupax
 ```
@@ -366,12 +339,11 @@ For example:
 RUST_LOG=debug ./gupax
 ```
 
-In general:
-- `ERROR` means something has gone wrong and that something will probably break
-- `WARN` means something has gone wrong, but things will be fine
-- `INFO` logs are general info about what Gupax (the GUI thread) is currently doing
-- `DEBUG` logs are much more verbose and include what EVERY thread is doing (not just the main GUI thread)
-- `TRACE` logs are insanely verbose and shows very low-level logs
+- `ERROR`: has gone wrong and that something will probably break
+- `WARN`: something has gone wrong, but things will be fine
+- `INFO`: general info about what Gupax (the GUI thread) is currently doing
+- `DEBUG`: much more verbose and include what EVERY thread is doing (not just the main GUI thread)
+- `TRACE`: insanely verbose and shows very low-level logs
 
 ---
 
@@ -463,13 +435,13 @@ Along with the updater and settings mentioned in [Simple](#simple), `Gupax Advan
 - The selected tab on startup
 - Gupax's resolution
 
-**Warning:** Gupax will use your custom PATH/binary and will replace them if you use `Check for updates` in the `[Gupax]` tab. There are sanity checks in place, however. Your PATH MUST end in a value that _appears_ correct or else the updater will refuse to start:
+**Warning:** Gupax will use your custom PATH/binary and will replace them if you use `Check for updates` in the `[Gupax]` tab. Your PATH must end in a value that appears correct or else the updater will refuse to start:
 | Binary   | Accepted values                  | Good PATH       | Bad PATH |
 |----------|----------------------------------|-----------------|----------|
-| `P2Pool` | `P2POOL, P2Pool, P2pool, p2pool` | `P2pool/p2pool` | `Documents/my_really_important_file`
+| `P2Pool` | `P2POOL, P2Pool, P2pool, p2pool` | `P2pool/p2pool` | `Documents/important_file`
 | `XMRig`  | `XMRIG, XMRig, Xmrig, xmrig`     | `XMRig/XMRig`   | `Desktop/`
 
-If using Windows, the PATH _must_ end with `.exe`.
+If using Windows, the PATH must end with `.exe`.
 
 ---
 
@@ -488,9 +460,9 @@ The manual node list allows you save and connect up-to 1000 custom Monero nodes:
 | Data Field | Purpose                                                       | Limits                                                 | Max Length     |
 |------------|---------------------------------------------------------------|--------------------------------------------------------|----------------|
 | `Name`     | A unique name to identify this node (only for Gupax purposes) | Only `[A-Za-z0-9-_.]` and spaces allowed               | 30 characters  |
-| `IP`       | The Monero Node IP to connect to with P2Pool                  | It must be a valid IPv4 address or a valid domain name | 255 characters |
-| `RPC`      | The RPC port of the Monero node                               | `[1-65535]`                                            | 5 characters   | 
-| `ZMQ`      | The ZMQ port of the Monero node                               | `[1-65535]`                                            | 5 characters   | 
+| `IP`       | The Monero node IP to connect to with P2Pool                  | It must be a valid IPv4 address or a valid domain name | 255 characters |
+| `RPC`      | The RPC port of the Monero node                               | `[1-65535]`                                            | 5 characters   |
+| `ZMQ`      | The ZMQ port of the Monero node                               | `[1-65535]`                                            | 5 characters   |
 
 The `Main/Mini` selector allows you to change which P2Pool sidechain you mine on:
 | P2Pool Sidechain | Description                                                  | Use-case                                  |
@@ -514,7 +486,6 @@ The remaining sliders control miscellaneous settings:
 | `In peers`  | How many in-bound peers P2Pool will allow to connect to you | `10`    | `10..450`     |
 | `Log level` | Verbosity of the P2Pool console log                         | `3`     | `0..6`        |
 
-
 ---
 
 ### XMRig
@@ -537,7 +508,7 @@ The manual pool list allows you save and connect up-to 1000 custom Pools (regard
 |------------|---------------------------------------------------------------|--------------------------------------------------------|----------------|
 | `Name`     | A unique name to identify this pool (only for Gupax purposes) | Only `[A-Za-z0-9-_.]` and spaces allowed               | 30 characters  |
 | `IP`       | The pool IP to connect to with XMRig                          | It must be a valid IPv4 address or a valid domain name | 255 characters |
-| `Port`     | The port of the pool                                          | `[1-65535]`                                            | 5 characters   | 
+| `Port`     | The port of the pool                                          | `[1-65535]`                                            | 5 characters   |
 | `Rig`      | An optional rig ID; This will be the name shown on the pool   | Only `[A-Za-z0-9-_]` and spaces allowed                | 30 characters  |
 
 The HTTP API textboxes allow you to change to IP/Port XMRig's HTTP API opens up on:
@@ -558,25 +529,20 @@ For transparency, here's all the connections Gupax makes:
 | Domain             | Why                                                   | When | Where |
 |--------------------|-------------------------------------------------------|------|-------|
 | https://github.com | Fetching metadata information on packages + download  | `[Gupax]` tab -> `Check for updates` | [`update.rs`](https://github.com/hinto-janai/gupax/blob/main/src/update.rs) |
-| Remote Monero Nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janai/gupax/blob/main/src/node.rs) |
+| Remote Monero nodes | Connecting to with P2Pool, measuring ping latency | `[P2Pool Simple]` tab | [`node.rs`](https://github.com/hinto-janai/gupax/blob/main/src/node.rs) |
 | DNS | DNS connections will usually be handled by your OS (or whatever custom DNS setup you have). If using Tor, DNS requests for updates [*should*](https://tpo.pages.torproject.net/core/doc/rust/arti/) be routed through the Tor network automatically | All of the above | All of the above |
 
-## Remote Monero Nodes
+## Remote Monero nodes
 These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab.
 
 | IP/Domain               | Location          | RPC Port | ZMQ Port |
 |-------------------------|-------------------|----------|----------|
 | monero.10z.com.ar       | 🇦🇷 Argentina      | 18089    | 18084    |
-| monero1.heitechsoft.com | 🇨🇦 Canada         | 18081    | 18084    |
 | node.monerodevs.org     | 🇨🇦 Canada         | 18089    | 18084    |
-| node.cryptocano.de      | 🇩🇪 Germany        | 18089    | 18083    |
 | p2pmd.xmrvsbeast.com    | 🇩🇪 Germany        | 18081    | 18083    |
-| fbx.tranbert.com        | 🇫🇷 France         | 18089    | 18084    |
 | node2.monerodevs.org    | 🇫🇷 France         | 18089    | 18084    |
-| home.allantaylor.kiwi   | 🇳🇿 New Zealand    | 18089    | 18083    |
 | p2pool.uk               | 🇬🇧 United Kingdom | 18089    | 18084    |
 | xmr.support             | 🇺🇸 United States  | 18081    | 18083    |
-| sf.xmr.support          | 🇺🇸 United States  | 18081    | 18083    |
 | xmrbandwagon.hopto.org  | 🇺🇸 United States  | 18081    | 18084    |
 | xmr.spotlightsound.com  | 🇺🇸 United States  | 18081    | 18084    |
 | node.richfowler.net     | 🇺🇸 United States  | 18089    | 18084    |
@@ -585,16 +551,10 @@ These are the remote nodes used by Gupax in the `[P2Pool Simple]` tab.
 ### General Info
 You need [`cargo`](https://www.rust-lang.org/learn/get-started), Rust's build tool and package manager.
 
-There are `41` unit tests, you should probably run:
-```
-cargo test
-```
-before attempting a full build.
-
 ---
 
 ### Linux
-The pre-compiled Linux binaries are built on Debian 11, you'll need these packages to build:
+The pre-compiled Linux binaries are built on Ubuntu 20.04, you'll need these packages to build:
 ```
 sudo apt install build-essential cmake libgtk-3-dev
 ```
@@ -706,17 +666,17 @@ GitHub's API blocks request that do not have an HTTP `User-Agent` header.
 [Gupax uses a random recent version of a `Wget/Curl` user-agent.](https://github.com/hinto-janai/gupax/blob/2c5bd0d7f6a39415353769427d60c0ca57f29710/src/update.rs#L178)
 
 ### P2Pool connection errors
-**TL;DR: Run & use your own Monero Node.**
+**TL;DR: Run & use your own Monero node.**
 
-If you are using the [default P2Pool settings](#P2Pool) then you are using a [Remote Monero Node](#remote-monero-nodes). Using a remote node is convenient but comes at the cost of privacy and reliability. You may encounter connections issues with these nodes that look like this:
+If you are using the [default P2Pool settings](#P2Pool) then you are using a [Remote Monero node](#remote-monero-nodes). Using a remote node is convenient but comes at the cost of privacy and reliability. You may encounter connections issues with these nodes that look like this:
 ```
 2023-01-05 12:27:37.7962 P2PServer peer 23.233.96.72:37888 is ahead on mainchain (height 2792939, your height 2792936). Is your monerod stuck or lagging?
 ```
-To fix this you can select a different remote node, or better yet: [Run your own local Monero Node](#running-a-local-monero-node).
+To fix this you can select a different remote node, or better yet: [Run your own local Monero node](#running-a-local-monero-node).
 
 Running and using your own local Monero node improves privacy and ensures your connection is as stable as your own internet connection. This comes at the cost of downloading and syncing Monero's blockchain yourself (currently 155GB). If you have the disk space, consider using the [P2Pool Advanced](#p2pool-1) tab and connecting to your own Monero node.
 
-For a simple guide, see the [Running a Local Monero Node](#running-a-local-monero-node) section.
+For a simple guide, see the [Running a Local Monero node](#running-a-local-monero-node) section.
 
 ### Can I quit mid-update?
 If you started an update, you should let it finish. If the update has been stuck for a *long* time, quitting Gupax is probably okay. The worst that can happen is that your `Gupax/P2Pool/XMRig` binaries may be moved/deleted. Those can be easily redownloaded. Your actual `Gupax` user data (settings, custom nodes, pools, etc) is never touched.

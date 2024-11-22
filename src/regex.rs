@@ -21,9 +21,9 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 //---------------------------------------------------------------------------------------------------- Lazy
-pub static REGEXES: Lazy<Regexes> = Lazy::new(|| Regexes::new());
-pub static P2POOL_REGEX: Lazy<P2poolRegex> = Lazy::new(|| P2poolRegex::new());
-pub static XMRIG_REGEX: Lazy<XmrigRegex> = Lazy::new(|| XmrigRegex::new());
+pub static REGEXES: Lazy<Regexes> = Lazy::new(Regexes::new);
+pub static P2POOL_REGEX: Lazy<P2poolRegex> = Lazy::new(P2poolRegex::new);
+pub static XMRIG_REGEX: Lazy<XmrigRegex> = Lazy::new(XmrigRegex::new);
 
 //---------------------------------------------------------------------------------------------------- [Regexes] struct
 // General purpose Regexes, mostly used in the GUI.

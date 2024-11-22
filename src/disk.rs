@@ -817,13 +817,13 @@ impl GupaxP2poolApi {
             "GupaxP2poolApi | Deleting old folder at [{}]...",
             path.display()
         );
-        std::fs::remove_dir_all(&path)?;
+        std::fs::remove_dir_all(path)?;
         info!(
             "GupaxP2poolApi | Creating new default folder at [{}]...",
             path.display()
         );
-        create_gupax_p2pool_dir(&path)?;
-        Self::create_all_files(&path)?;
+        create_gupax_p2pool_dir(path)?;
+        Self::create_all_files(path)?;
         Ok(())
     }
 

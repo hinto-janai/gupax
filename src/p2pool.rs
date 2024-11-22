@@ -22,11 +22,10 @@ use egui::{
     Slider, Spinner, TextEdit, TextStyle::*,
 };
 use log::*;
-use regex::Regex;
 use std::sync::{Arc, Mutex};
 
 impl crate::disk::P2pool {
-    #[inline(always)] // called once
+    #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
         node_vec: &mut Vec<(String, Node)>,
@@ -323,7 +322,7 @@ impl crate::disk::P2pool {
             ui.add_sized(
                 [width, height / 2.0],
                 Hyperlink::from_label_and_url(
-                    "WARNING: It is recommended to use your own Monero Node (hover for details)",
+                    "Warning: It is recommended to use your own Monero node.",
                     "https://github.com/hinto-janai/gupax#running-a-local-monero-node",
                 ),
             )
@@ -431,11 +430,10 @@ impl crate::disk::P2pool {
 			debug!("P2Pool Tab | Rendering [Node List]");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
 			ComboBox::from_id_source("manual_nodes").selected_text(text).width(width).show_ui(ui, |ui| {
-				let mut n = 0;
-				for (name, node) in node_vec.iter() {
-					let text = RichText::new(format!("{}. {}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", n+1, name, node.ip, node.rpc, node.zmq));
+				for (i, (name, node)) in node_vec.iter().enumerate() {
+					let text = RichText::new(format!("{}. {}\n     IP: {}\n    RPC: {}\n    ZMQ: {}", i+1, name, node.ip, node.rpc, node.zmq));
 					if ui.add(SelectableLabel::new(self.selected_name == *name, text)).clicked() {
-						self.selected_index = n;
+						self.selected_index = i;
 						let node = node.clone();
 						self.selected_name = name.clone();
 						self.selected_ip = node.ip.clone();
@@ -446,7 +444,6 @@ impl crate::disk::P2pool {
 						self.rpc = node.rpc;
 						self.zmq = node.zmq;
 					}
-					n += 1;
 				}
 			});
 			// [Add/Save]

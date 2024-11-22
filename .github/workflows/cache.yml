@@ -1,4 +1,4 @@
-# Forces `gupax.io` to cache stuff every day.
+# Forces `gupax.io` to cache.
 
 name: Cache `gupax.io`
 on:

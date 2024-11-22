@@ -21,11 +21,10 @@ use egui::{
     Button, Checkbox, ComboBox, Label, RichText, SelectableLabel, Slider, TextEdit, TextStyle::*,
 };
 use log::*;
-use regex::Regex;
 use std::sync::{Arc, Mutex};
 
 impl crate::disk::Xmrig {
-    #[inline(always)] // called once
+    #[expect(clippy::too_many_arguments)]
     pub fn show(
         &mut self,
         pool_vec: &mut Vec<(String, Pool)>,
@@ -282,8 +281,7 @@ impl crate::disk::Xmrig {
 			debug!("XMRig Tab | Rendering [Node List] ComboBox");
 			let text = RichText::new(format!("{}. {}", self.selected_index+1, self.selected_name));
 			ComboBox::from_id_source("manual_pool").selected_text(text).width(width).show_ui(ui, |ui| {
-				let mut n = 0;
-				for (name, pool) in pool_vec.iter() {
+				for (n, (name, pool)) in pool_vec.iter().enumerate() {
 					let text = format!("{}. {}\n     IP: {}\n   Port: {}\n    Rig: {}", n+1, name, pool.ip, pool.port, pool.rig);
 					if ui.add(SelectableLabel::new(self.selected_name == *name, text)).clicked() {
 						self.selected_index = n;
@@ -297,7 +295,6 @@ impl crate::disk::Xmrig {
 						self.ip = pool.ip;
 						self.port = pool.port;
 					}
-					n += 1;
 				}
 			});
 			// [Add/Save]
