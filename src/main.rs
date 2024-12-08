@@ -2412,6 +2412,7 @@ impl eframe::App for App {
 			self.width = ui.available_width();
 			self.height = ui.available_height();
 			ui.style_mut().override_text_style = Some(TextStyle::Body);
+        egui::ScrollArea::vertical().show(ui, |ui| {
 			match self.tab {
 				Tab::About => {
 					debug!("App | Entering [About] Tab");
@@ -2543,6 +2544,7 @@ path_xmr: {:#?}\n
 					crate::disk::Xmrig::show(&mut self.state.xmrig, &mut self.pool_vec, &self.xmrig, &self.xmrig_api, &mut self.xmrig_stdin, self.width, self.height, ctx, ui);
 				}
 			}
+        });
 		});
     }
 }
