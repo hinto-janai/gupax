@@ -569,17 +569,6 @@ The Linux release tars come with another file next to the Gupax binary: `Gupax.A
 
 ***This is not an actual [AppImage](https://en.wikipedia.org/wiki/AppImage)***, it is just a text file that contains: `./gupax`. This allows users to double-click and execute Gupax in file explorers like `Nautilus` in Ubuntu/Debian.
 
-### Building for a distribution
-Gupax has a build flag for use as a package in a Linux distribution:
-```
-cargo build --release --features distro
-```
-This is the same as the `--release` profile, but with some changes:
-| Change                                     | Reason |
-|--------------------------------------------|--------|
-| Built-in `Update` feature is disabled      | Updates should be handled by the native package manager
-| Default `P2Pool/XMRig` path is `/usr/bin/` | `P2Pool/XMRig` exist in _[some](https://aur.archlinux.org)_ repositories, which means they'll be installed in `/usr/bin/`
-
 ---
 
 ### macOS

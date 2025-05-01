@@ -43,10 +43,6 @@ pub const APP_MIN_SCALE: f32 = 0.1;
 pub const APP_MAX_SCALE: f32 = 2.0;
 pub const APP_DEFAULT_SCALE: f32 = 1.0;
 
-// Constants specific for Linux distro packaging of Gupax
-#[cfg(feature = "distro")]
-pub const DISTRO_NO_UPDATE: &str = r#"This [Gupax] was compiled for use as a Linux distro package. Built-in updates are disabled. The below settings [Update-via-Tor] & [Auto-Update] will not do anything. Please use your package manager to update [Gupax/P2Pool/XMRig]."#;
-
 // Use macOS shaped icon for macOS
 #[cfg(target_os = "macos")]
 pub const BYTES_ICON: &[u8] = include_bytes!("../images/icons/icon@2x.png");

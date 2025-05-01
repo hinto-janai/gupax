@@ -23,7 +23,6 @@ incremental = true
 
 [features]
 default = []
-distro = []
 
 [dependencies]
 anyhow = "1.0.83"

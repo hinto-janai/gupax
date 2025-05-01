@@ -373,14 +373,6 @@ impl Update {
         error_state: &mut ErrorState,
         restart: &Arc<Mutex<Restart>>,
     ) {
-        // We really shouldn't be in the function for
-        // the Linux distro Gupax (UI gets disabled)
-        // but if somehow get in here, just return.
-        #[cfg(feature = "distro")]
-        error!("Update | This is the [Linux distro] version of Gupax, updates are disabled");
-        #[cfg(feature = "distro")]
-        return;
-
         // Check P2Pool path for safety
         // Attempt relative to absolute path
         let p2pool_path = match into_absolute_path(gupax.p2pool_path.clone()) {
@@ -530,13 +522,6 @@ impl Update {
         state_ver: Arc<Mutex<Version>>,
         restart: Arc<Mutex<Restart>>,
     ) -> Result<(), anyhow::Error> {
-        #[cfg(feature = "distro")]
-        error!("Update | This is the [Linux distro] version of Gupax, updates are disabled");
-        #[cfg(feature = "distro")]
-        return Err(anyhow!(
-            "This is the [Linux distro] version of Gupax, updates are disabled"
-        ));
-
         //---------------------------------------------------------------------------------------------------- Init
         *lock2!(update, updating) = true;
         // Set timer

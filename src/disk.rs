@@ -91,19 +91,10 @@ pub const DEFAULT_XMRIG_PATH: &str = r"XMRig\xmrig.exe";
 #[cfg(target_os = "macos")]
 pub const DEFAULT_XMRIG_PATH: &str = "xmrig/xmrig";
 
-// Default to [/usr/bin/] for Linux distro builds.
 #[cfg(target_os = "linux")]
-#[cfg(not(feature = "distro"))]
 pub const DEFAULT_P2POOL_PATH: &str = "p2pool/p2pool";
 #[cfg(target_os = "linux")]
-#[cfg(not(feature = "distro"))]
 pub const DEFAULT_XMRIG_PATH: &str = "xmrig/xmrig";
-#[cfg(target_os = "linux")]
-#[cfg(feature = "distro")]
-pub const DEFAULT_P2POOL_PATH: &str = "/usr/bin/p2pool";
-#[cfg(target_os = "linux")]
-#[cfg(feature = "distro")]
-pub const DEFAULT_XMRIG_PATH: &str = "/usr/bin/xmrig";
 
 //---------------------------------------------------------------------------------------------------- General functions for all [File]'s
 // get_file_path()      | Return absolute path to OS data path + filename

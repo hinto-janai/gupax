@@ -101,16 +101,7 @@ impl crate::disk::Gupax {
             let width = width - SPACE;
             let updating = *lock2!(update, updating);
             ui.vertical(|ui| {
-                // If [Gupax] is being built for a Linux distro,
-                // disable built-in updating completely.
-                #[cfg(feature = "distro")]
-                ui.set_enabled(false);
-                #[cfg(feature = "distro")]
-                ui.add_sized([width, button], Button::new("Updates are disabled"))
-                    .on_disabled_hover_text(DISTRO_NO_UPDATE);
-                #[cfg(not(feature = "distro"))]
                 ui.set_enabled(!updating);
-                #[cfg(not(feature = "distro"))]
                 if ui
                     .add_sized([width, button], Button::new("Check for updates"))
                     .on_hover_text(GUPAX_UPDATE)

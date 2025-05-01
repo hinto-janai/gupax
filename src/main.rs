@@ -1007,7 +1007,6 @@ fn init_auto(app: &mut App) {
     }
 
     // [Auto-Update]
-    #[cfg(not(feature = "distro"))]
     if app.state.gupax.auto_update {
         Update::spawn_thread(
             &app.og,
@@ -2418,10 +2417,6 @@ impl eframe::App for App {
 					// If [D], show some debug info with [ErrorState]
 					if key.is_d() {
 						debug!("App | Entering [Debug Info]");
-						#[cfg(feature = "distro")]
-						let distro = true;
-						#[cfg(not(feature = "distro"))]
-						let distro = false;
 						let p2pool_gui_len = lock!(self.p2pool_api).output.len();
 						let xmrig_gui_len = lock!(self.xmrig_api).output.len();
 						let gupax_p2pool_api = lock!(self.gupax_p2pool_api);
@@ -2441,7 +2436,6 @@ Pool list length: {}\n
 Admin privilege: {}\n
 Release build: {}\n
 Debug build: {}\n
-Distro build: {}\n
 Build commit: {}\n
 OS Data PATH: {}\n
 Gupax PATH: {}\n
@@ -2481,7 +2475,6 @@ path_xmr: {:#?}\n
 							self.admin,
 							!cfg!(debug_assertions),
 							cfg!(debug_assertions),
-							distro,
 							COMMIT,
 							self.os_data_path.display(),
 							self.exe,

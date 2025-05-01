@@ -2,6 +2,7 @@
 ## Changes
 * [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
 	- Added `node.hinto.rs`
+- Removed `distro` feature
 
 ## Bundled Versions
 * [`P2Pool v4.4`](https://github.com/SChernykh/p2pool/releases/tag/v4.4)
