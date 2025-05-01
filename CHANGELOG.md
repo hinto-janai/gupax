@@ -1,13 +1,25 @@
 # v1.3.10
 ## Changes
 * [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
+	- Added `node.hinto.rs`
+
+## Bundled Versions
+* [`P2Pool v4.4`](https://github.com/SChernykh/p2pool/releases/tag/v4.4)
+* [`XMRig v6.22.2`](https://github.com/xmrig/xmrig/releases/tag/v6.22.2)
+
+
+---
+
+
+# v1.3.10
+## Changes
+* [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
 	- Removed `monero1.heitechsoft.com`
 	- Removed `node.cryptocano.de`
 	- Removed `fbx.tranbert.com`
 	- Removed `home.allantaylor.kiwi`
 	- Removed `sf.xmr.support`
 * Text/visual changes
-
 
 ## Bundled Versions
 * [`P2Pool v4.2`](https://github.com/SChernykh/p2pool/releases/tag/v4.2)
