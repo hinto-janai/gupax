@@ -1,11 +1,15 @@
-# v1.3.10
+# v1.3.11
 ## Changes
 * [Remote Node](https://github.com/hinto-janai/gupax#remote-monero-nodes) changes:
 	- Added `node.hinto.rs`
-- Removed `distro` feature
+- Removed `distro` Cargo.toml feature
+
+## Fixes
+- Central panel UI spacing (thanks @ngducdun)
+- P2Pool synchronization detection
 
 ## Bundled Versions
-* [`P2Pool v4.4`](https://github.com/SChernykh/p2pool/releases/tag/v4.4)
+* [`P2Pool v4.6`](https://github.com/SChernykh/p2pool/releases/tag/v4.6)
 * [`XMRig v6.22.2`](https://github.com/xmrig/xmrig/releases/tag/v6.22.2)
 
 
