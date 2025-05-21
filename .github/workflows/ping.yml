@@ -16,14 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Cache
-      uses: actions/cache@v3.2.3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
         key: ping
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
         sudo apt update

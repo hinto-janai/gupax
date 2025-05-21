@@ -16,16 +16,16 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-2019, macos-14, ubuntu-20.04]
+        os: [windows-2022, macos-15, ubuntu-22.04]
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
 
     - name: Cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo
@@ -66,21 +66,21 @@ jobs:
 
     - name: Archive (Windows)
       if: ${{ runner.os == 'Windows' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: windows
         path: target/release/gupax.exe
 
     - name: Archive
       if: ${{ runner.os == 'macOS' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: macos
         path: macos.tar
 
     - name: Archive (Linux)
       if: ${{ runner.os == 'Linux' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: linux
         path: linux.tar
