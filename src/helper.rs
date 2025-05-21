@@ -2604,7 +2604,7 @@ mod test {
         // so this should _not_ trigger alive state.
         let output_parse = Arc::new(Mutex::new(String::from(
             r#"payout of 5.000000000001 XMR in block 1111
-			SideChain new chain tip: next height = 1
+			SideChain new chain tip: next height = 1,
 			NOTICE  2021-12-27 21:42:17.2008 SideChain SYNCHRONIZED
 			payout of 5.000000000001 XMR in block 1113"#,
         )));
@@ -2635,7 +2635,7 @@ mod test {
         // so this _should_ trigger alive state.
         let output_parse = Arc::new(Mutex::new(String::from(
             r#"payout of 5.000000000001 XMR in block 1111
-			SideChain new chain tip: next height = 1
+			SideChain new chain tip: next height = 1,
 			NOTICE  2021-12-27 21:42:17.2008 SideChain SYNCHRONIZED
 			payout of 5.000000000001 XMR in block 1113
 			NOTICE  2021-12-27 21:42:17.2100 SideChain SYNCHRONIZED"#,
